@@ -14,7 +14,9 @@
   - Étape 6 — squelette `platform/` (apps, services, tests) + `platform/CLAUDE.md` ; aucun code applicatif.
   - Étape 7 — contrôle final : gitleaks (fichiers + historique) sans fuite ; hooks pre-commit au vert ; aucune clé Claude, aucun téléphone ou e-mail réel ; 88 skills conformes (frontmatter, exemples fictifs, limites, sources) ; principes repris mot pour mot.
 - **Bilan des skills :** 88 (46 plateforme dont `garde-fous-communs`, 42 salle de contrôle) — 24 `complet`, 64 `v1`. Chaque agent a des cas de refus ou d'escalade.
-- **Prochaine étape proposée :** lever les blocages juridiques et humains de la vague 0 (voir §3 et §4), puis démarrer `platform/services/identite` et `dossier-fhir` sur données fictives.
+- **Dépôt :** fondations fusionnées dans `main` via [PR n°1](https://github.com/Poppy540/MBOLO-MED/pull/1) ; `main` protégée (pull request obligatoire, force-push et suppression interdits).
+- **En cours :** développement vague 0 en petites PR — A outillage (monorepo TypeScript/pnpm, CI, `@mbolo/journal-securise`) ; puis B `dossier-fhir` (HAPI FHIR, données fictives), C `identite` (Keycloak), D premiers e2e.
+- **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 
 ## 2. Décisions validées
 
@@ -42,6 +44,7 @@
 | 2026-09-26 | Coffre-fort : Infisical (UE, puis auto-hébergé) | D-0002, [ADR-0005](docs/architecture/adr/0005-coffre-fort-secrets.md) |
 | 2026-09-26 | Messagerie salle de contrôle : Slack + astreinte Grafana OnCall (appel / SMS) | D-0002, [ADR-0006](docs/architecture/adr/0006-messagerie-salle-de-controle.md) |
 | 2026-09-26 | Feature flags : Unleash via OpenFeature | D-0002, [ADR-0007](docs/architecture/adr/0007-feature-flags-unleash.md) |
+| 2026-09-26 | Socle : monorepo TypeScript (Node 22, pnpm), CI GitHub Actions ; identité via Keycloak (ADR à venir) | [ADR-0008](docs/architecture/adr/0008-socle-technique.md) |
 
 ## 3. Hypothèses en attente de confirmation
 
@@ -56,12 +59,11 @@
 
 ## 4. Questions ouvertes pour le porteur de projet
 
-1. **Avis juridique** sur la localisation des données de santé (condition de l'ADR-0004) ; devis et contrat HDS à vérifier avant engagement.
+1. **Conclusions de l'avis juridique** à transmettre (localisation des données, médecin étranger, ordonnances, formalités CNPDCP) ; devis et contrat HDS à vérifier avant engagement.
 2. Qui compose le **comité médical**, qui est **directeur médical de garde**, qui est **responsable sécurité** ?
 3. Liste fermée des **actions de niveau 4** autorisées à l'Agent 6 ?
 4. Valider le **contenu des vagues** et fixer les seuils chiffrés des critères de passage.
 5. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
-6. Activer la **protection de branche** GitHub sur `main` (l'accès GitHub de Claude est rétabli).
 
 ## 5. Leçons apprises
 

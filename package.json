@@ -1,0 +1,32 @@
+{
+  "name": "mbolo-sante",
+  "private": true,
+  "description": "Mbolo Santé — plateforme de téléconsultation (monorepo)",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "verifier:skills": "python3 scripts/verifier_skills.py .",
+    "verifier": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm verifier:skills"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.20.4",
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.9",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^3.2.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

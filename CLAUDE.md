@@ -31,7 +31,8 @@ Mbolo Santé se positionne en **complément** du programme public eGabon-SIS, ja
 | `agents/_commun/` | Skill partagé `garde-fous-communs` (injection, transparence, secrets, urgence) |
 | `control-room/` | Salle de contrôle privée du porteur de projet : fiches, décisions, rapports, risques |
 | `secrets/` | **Inventaire** des clés et modèles `CHANGEME` — jamais de valeur (`secrets/local/` ignoré, jamais lu) |
-| `platform/` | Code applicatif : `apps/`, `services/`, `tests/` (squelette pour l'instant) |
+| `platform/` | Code applicatif : `apps/`, `services/`, `packages/` (bibliothèques partagées), `tests/` |
+| `scripts/`, `.github/workflows/` | Scripts de contrôle et CI (sécurité, skills, code) |
 | `docs/projet/` | Vision, parcours, équipe pluridisciplinaire |
 | `docs/architecture/` | Décisions d'architecture (ADR) et schémas |
 | `docs/securite/` | Modèle de menaces, registre des traitements, AIPD, plan d'incident |
@@ -70,7 +71,11 @@ pre-commit run --all-files                           # tout contrôler
 gitleaks dir . --config .gitleaks.toml --redact      # détecter des secrets dans les fichiers
 gitleaks detect --source . --config .gitleaks.toml --redact   # … et dans l'historique Git
 claude --agent pilote-orchestrateur                  # ouvrir la salle de contrôle (Agent 6)
-# À compléter : tests Playwright/Gherkin, lint, lancement local de la plateforme.
+pnpm install                                         # installer les dépendances (Node 22, pnpm)
+pnpm verifier                                        # format + lint + types + tests + conformité des skills
+pnpm test                                            # tests unitaires (Vitest)
+python3 scripts/verifier_skills.py .                 # conformité des 88 skills (aussi exécuté en CI)
+# À compléter : tests Playwright/Gherkin, lancement local de la plateforme (Docker Compose).
 ```
 
 ## Ce que Claude Code ne fait jamais dans ce dépôt
