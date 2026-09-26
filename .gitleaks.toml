@@ -1,0 +1,26 @@
+# Configuration gitleaks — Mbolo Santé
+# Reprend toutes les règles par défaut de gitleaks et ajoute des règles propres au projet.
+title = "Mbolo Santé — détection de secrets"
+
+[extend]
+useDefault = true
+
+# Clé API Claude (règle par défaut renforcée : elle ne doit apparaître dans AUCUN fichier)
+[[rules]]
+id = "mbolo-anthropic-api-key"
+description = "Clé API Anthropic / Claude"
+regex = '''sk-ant-[a-zA-Z0-9_\-]{20,}'''
+tags = ["anthropic", "cle-api"]
+
+# Affectation d'une valeur non factice à une variable sensible dans un .env.example
+[[rules]]
+id = "mbolo-valeur-reelle-dans-modele"
+description = "Valeur qui n'est pas CHANGEME dans un modèle de secrets"
+path = '''secrets/templates/.*\.env\.example$'''
+# RE2 (moteur de gitleaks) ne gère pas les lookahead : les valeurs CHANGEME sont exclues par l'allowlist ci-dessous.
+regex = '''(?im)^[A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASS|PWD|PRIVATE)[A-Z0-9_]*=["']?[^\s"'#]{6,}'''
+tags = ["modele", "secrets"]
+
+[allowlist]
+description = "Valeurs factices autorisées"
+regexes = ['''CHANGEME[_A-Z0-9-]*''', '''\[FICTIF\]''']

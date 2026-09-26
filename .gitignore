@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────
+# Mbolo Santé — fichiers à ne JAMAIS suivre dans Git
+# Principe n°5 : aucun secret dans le dépôt.
+# ─────────────────────────────────────────────
+
+# Secrets locaux (usage strictement local, jamais lu par Claude Code)
+secrets/local/*
+!secrets/local/.gitkeep
+
+# Fichiers d'environnement (les modèles *.env.example restent suivis)
+.env
+.env.*
+*.env
+!*.env.example
+.env.local
+
+# Clés, certificats, magasins de clés
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# Configuration locale de Claude Code (préférences personnelles)
+.claude/settings.local.json
+
+# Données : aucune donnée réelle ne doit entrer dans le dépôt
+*.sqlite
+*.db
+dumps/
+exports-patients/
+
+# Dépendances et artefacts de build
+node_modules/
+dist/
+build/
+coverage/
+.venv/
+__pycache__/
+*.pyc
+
+# Rapports de tests et de scanners (peuvent contenir des extraits sensibles)
+playwright-report/
+test-results/
+gitleaks-report*.json
+
+# Système / éditeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

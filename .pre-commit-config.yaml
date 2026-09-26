@@ -1,0 +1,42 @@
+# Mbolo Santé — contrôles avant commit
+# Installation : voir secrets/README.md, section « Détecteur de secrets ».
+#   pip install pre-commit && pre-commit install
+# Lancement manuel sur tout le dépôt : pre-commit run --all-files
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks — détection de secrets
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+        name: détection de clés privées
+      - id: check-added-large-files
+        name: refus des fichiers volumineux (> 500 Ko)
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      - id: no-commit-to-branch
+        name: interdiction de commiter sur main
+        args: ["--branch", "main"]
+
+  - repo: local
+    hooks:
+      - id: interdire-fichiers-env
+        name: interdiction des fichiers .env réels
+        entry: "Fichier .env réel détecté : utilisez un modèle *.env.example avec des valeurs CHANGEME."
+        language: fail
+        files: '(^|/)\.env(\.[^/]*)?$'
+        exclude: '\.env\.example$'
+      - id: interdire-secrets-local
+        name: interdiction de suivre secrets/local/
+        entry: "secrets/local/ ne doit jamais être commité."
+        language: fail
+        files: '^secrets/local/(?!\.gitkeep$)'
