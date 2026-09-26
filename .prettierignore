@@ -1,0 +1,9 @@
+# Seul le code est formaté automatiquement ; la documentation est rédigée à la main.
+**/*.md
+**/*.yaml
+**/*.yml
+pnpm-lock.yaml
+node_modules
+dist
+coverage
+secrets

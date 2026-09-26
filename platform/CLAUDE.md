@@ -17,10 +17,13 @@
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
 | `services/notifications` | SMS, WhatsApp, e-mail — gabarits approuvés | 1 |
 | `services/feature-flags` | Activation par ville, spécialité, type d'utilisateur (ADR-0003) | 0 |
+| `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |
 | `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`) | 0 |
 | `tests/e2e-playwright` | Étapes Playwright, personas fictifs, profils réseau | 0 |
 
 ## Règles locales
+- Socle : TypeScript strict, pnpm, ESLint, Prettier, Vitest (ADR-0008). Avant de pousser : `pnpm verifier`.
+- Journalisation : uniquement via `@mbolo/journal-securise` (`console.log` interdit par le lint).
 - Lire d'abord `CLAUDE.md` (racine) : principes non négociables, interdits.
 - **Données de santé** : uniquement dans `services/dossier-fhir` (et stockage chiffré des documents). Les autres services ne gardent que des références.
 - **Agents IA** : jamais d'accès direct à une base ; uniquement via des outils à portée minimale, journalisés, qui injectent les secrets côté serveur.

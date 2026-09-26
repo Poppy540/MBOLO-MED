@@ -1,0 +1,4 @@
+packages:
+  - "platform/apps/*"
+  - "platform/services/*"
+  - "platform/packages/*"
