@@ -38,6 +38,10 @@
 | 2026-09-26 | Cas de test « option C » : 3 cas pour skills vague 0 et cliniques, 1 cas pour les skills V1 ; 3 cas obligatoires avant activation | D-0001 |
 | 2026-09-26 | Skills ajoutés : `garde-fous-communs`, `interoperabilite-egabon-sis`, `pseudonymisation-donnees`, `coordination-interpretes` | D-0001 |
 | 2026-09-26 | Nom d'usage « Mbolo Santé » (dépôt `MBOLO-MED`) | D-0001 |
+| 2026-09-26 | Hébergement : OVHcloud HDS (France), **sous réserve de l'avis juridique** sur la localisation au Gabon | [D-0002](control-room/decisions/0002-choix-outils-infrastructure.md), [ADR-0004](docs/architecture/adr/0004-hebergement-donnees-sante.md) |
+| 2026-09-26 | Coffre-fort : Infisical (UE, puis auto-hébergé) | D-0002, [ADR-0005](docs/architecture/adr/0005-coffre-fort-secrets.md) |
+| 2026-09-26 | Messagerie salle de contrôle : Slack + astreinte Grafana OnCall (appel / SMS) | D-0002, [ADR-0006](docs/architecture/adr/0006-messagerie-salle-de-controle.md) |
+| 2026-09-26 | Feature flags : Unleash via OpenFeature | D-0002, [ADR-0007](docs/architecture/adr/0007-feature-flags-unleash.md) |
 
 ## 3. Hypothèses en attente de confirmation
 
@@ -52,15 +56,12 @@
 
 ## 4. Questions ouvertes pour le porteur de projet
 
-1. Quel **coffre-fort de secrets** retenir (Vault, Doppler, coffre du cloud, 1Password) ?
-2. Quel **hébergeur** pour les données de santé ?
-3. Quelle **messagerie** pour la salle de contrôle (Slack, Teams, Telegram) ?
-4. Quel **service de feature flags** (Unleash, Flagsmith, GrowthBook, solution interne) ?
-5. Qui compose le **comité médical**, qui est **directeur médical de garde**, qui est **responsable sécurité** ?
-6. Liste fermée des **actions de niveau 4** autorisées à l'Agent 6 ?
-7. Valider le **contenu des vagues** et fixer les seuils chiffrés des critères de passage.
-8. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
-9. Activer la **protection de branche** GitHub sur `main` (l'accès GitHub de Claude est rétabli).
+1. **Avis juridique** sur la localisation des données de santé (condition de l'ADR-0004) ; devis et contrat HDS à vérifier avant engagement.
+2. Qui compose le **comité médical**, qui est **directeur médical de garde**, qui est **responsable sécurité** ?
+3. Liste fermée des **actions de niveau 4** autorisées à l'Agent 6 ?
+4. Valider le **contenu des vagues** et fixer les seuils chiffrés des critères de passage.
+5. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
+6. Activer la **protection de branche** GitHub sur `main` (l'accès GitHub de Claude est rétabli).
 
 ## 5. Leçons apprises
 

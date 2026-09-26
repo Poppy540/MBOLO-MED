@@ -1,7 +1,7 @@
 # Inventaire des clés — Mbolo Santé
 
-> **Aucune valeur ici.** Ce tableau décrit les clés ; les valeurs vivent dans le coffre-fort (choix à valider, voir `README.md` §3).
-> Emplacement noté sous la forme neutre `mbolo/<env>/<service>/<CLE>`, où `<env>` ∈ {`dev`, `recette`, `prod`}.
+> **Aucune valeur ici.** Ce tableau décrit les clés ; les valeurs vivent dans le coffre-fort **Infisical** (ADR-0005, voir `README.md` §3).
+> Emplacement noté `mbolo/<env>/<service>/` = projet Infisical `mbolo-sante`, environnement `<env>` ∈ {`dev`, `recette`, `prod`}, dossier `/<service>/`.
 > **Clé API Claude : exclue de cet inventaire** (voir `README.md` §2).
 > Les vagues sont celles de `docs/deploiement/vagues.md` (proposition à valider).
 
@@ -95,20 +95,21 @@
 | `SENTRY_AUTH_TOKEN_READONLY` | Sentry | **Agent 6** | Lire les erreurs | Lecture seule ; données personnelles filtrées côté Sentry | P | idem | 90 j | RT | 1 |
 | `GRAFANA_API_TOKEN_VIEWER` | Grafana | **Agent 6** | Lire métriques et SLO | Rôle Viewer | P | idem | 90 j | RT | 1 |
 | `SECURITY_SCANNER_TOKEN_READONLY` | Scanners de sécurité | **Agent 6** | Lire les résultats ; relancer un scan si niveau 4 validé | Lecture (+ relance de scan) | P | idem | 90 j | RS | 0 |
-| `OWNER_MESSAGING_BOT_TOKEN` | Messagerie du porteur de projet (à choisir) | **Agent 6** | Alertes, briefs | Envoi vers le canal du porteur et des astreintes uniquement | P | idem | 90 j | PP | 0 |
+| `SLACK_BOT_TOKEN_PILOTE` | Slack (ADR-0006) | **Agent 6** | Alertes, briefs, fiches | Écriture seule dans les canaux de la salle de contrôle ; pas de lecture des messages privés | P | idem | 90 j | PP | 0 |
+| `ONCALL_INTEGRATION_URL_PILOTE` | Grafana OnCall (ADR-0006) | **Agent 6** | Déclencher l'astreinte (appel / SMS) pour les alertes critiques | Création d'alerte uniquement | P | idem | 90 j | RS | 0 |
 
 ## Feature flags
 
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
-| `FEATURE_FLAGS_SERVER_SDK_KEY` | Service de feature flags (à choisir) | Plateforme | Évaluer les flags | Évaluation seule | D R P | `mbolo/<env>/feature-flags/` | 90 j | RT | 0 |
-| `FEATURE_FLAGS_READONLY_KEY_PILOTE` | Service de feature flags | **Agent 6** | Lire l'état des flags | **Lecture seule** — jamais d'activation | P | idem | 90 j | RT | 0 |
+| `UNLEASH_BACKEND_TOKEN` | Unleash (ADR-0007) | Plateforme | Évaluer les flags | Jeton backend, évaluation seule | D R P | `mbolo/<env>/feature-flags/` | 90 j | RT | 0 |
+| `UNLEASH_READONLY_TOKEN_PILOTE` | Unleash | **Agent 6** | Lire l'état des flags | **Lecture seule** — jamais d'activation | P | idem | 90 j | RT | 0 |
 
 ## Coffre-fort
 
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
-| `SECRETS_VAULT_ROLE_ID` / `_SECRET_ID` | Coffre-fort | **Infrastructure uniquement** | Identité machine pour lire les secrets d'un service | Une politique par service, lecture des seuls chemins du service | D R P | Fourni par l'orchestrateur d'infrastructure, jamais stocké | 30 j ou identité de charge de travail (OIDC) | RS | 0 |
+| `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` / `_CLIENT_SECRET` | Infisical (ADR-0005) | **Infrastructure uniquement** | Identité machine pour lire les secrets d'un service | Une politique par service, lecture des seuls chemins du service | D R P | Fourni par l'orchestrateur d'infrastructure, jamais stocké | 30 j ou identité de charge de travail (OIDC) | RS | 0 |
 
 ## Hors inventaire
 
@@ -119,3 +120,4 @@
 | Date | Modification | Validée par |
 |---|---|---|
 | 2026-09-26 | Création initiale (vague 0) | En attente — responsable sécurité à nommer |
+| 2026-09-26 | Outils choisis (D-0002) : Infisical, Slack + Grafana OnCall, Unleash ; variables renommées en conséquence | En attente — responsable sécurité à nommer |

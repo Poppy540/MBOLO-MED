@@ -8,7 +8,7 @@ metadata:
   cas-de-test: "1/3"
 ---
 
-> **Version 1** — outil de flags à choisir (ADR-0003).
+> **Version 1** — outil : Unleash via OpenFeature (ADR-0007).
 
 # Feature flags par vague
 

@@ -1,7 +1,7 @@
 # ADR-0003 — Déploiement progressif par feature flags
 
 - **Date :** 2026-09-26
-- **Statut :** acceptée ; outil (Unleash, Flagsmith, GrowthBook ou interne) à choisir
+- **Statut :** acceptée ; outil : **Unleash** (ADR-0007)
 
 ## Décision
 - Chaque fonction activable par **ville**, **spécialité** et **type d'utilisateur**.

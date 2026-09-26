@@ -22,16 +22,13 @@ La clé API Claude (`ANTHROPIC_API_KEY`) est **exclue de ce dossier**, à la dem
 
 Elle n'apparaît dans aucun fichier du dépôt ; gitleaks la détecte (règle `mbolo-anthropic-api-key` dans `.gitleaks.toml`).
 
-## 3. Choix du coffre-fort — **à valider par le porteur de projet**
+## 3. Coffre-fort retenu : Infisical (D-0002, ADR-0005)
 
-| Option | Points forts | Limites |
-|---|---|---|
-| HashiCorp Vault (auto-hébergé ou HCP) | Secrets dynamiques (identifiants de base de données à durée de vie courte), audit détaillé, open source | Exploitation exigeante si auto-hébergé |
-| Doppler | Très simple, intégrations CI/CD | SaaS hors Afrique ; dépendance fournisseur |
-| AWS Secrets Manager / GCP Secret Manager / Azure Key Vault | Intégré au cloud retenu, rotation native | Lié au choix d'hébergement (encore ouvert) |
-| 1Password Secrets Automation | Ergonomie, partage humain + machine | Moins adapté aux secrets dynamiques |
-
-**Recommandation provisoire :** choisir le coffre du fournisseur d'hébergement retenu pour les données de santé (décision encore ouverte, voir `memory.md`), ou Vault si l'hébergement est multi-fournisseurs ou local. Tant que ce choix n'est pas fait, les emplacements sont notés sous la forme neutre `mbolo/<env>/<service>/<CLE>`.
+- **Infisical**, région UE au démarrage, puis auto-hébergement chez l'hébergeur retenu.
+- Organisation : projet `mbolo-sante` ; environnements `dev`, `recette`, `prod` ; un dossier par service (`/paiement-mobile-money/`, `/fhir/`…) — c'est ce que désigne la notation `mbolo/<env>/<service>/` de l'inventaire.
+- **Une identité machine par service et par agent**, limitée à son dossier ; authentification par identité de charge de travail (Kubernetes, OIDC) de préférence.
+- Journal d'audit du coffre consulté par le responsable sécurité.
+- Repli possible : OpenBao / HashiCorp Vault si des secrets dynamiques deviennent nécessaires.
 
 ## 4. Règles de base
 
