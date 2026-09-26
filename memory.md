@@ -10,8 +10,9 @@
   - Étape 2 — sécurité : `.gitignore`, pre-commit + gitleaks, `.claude/settings.json`, `secrets/` (inventaire sans valeurs, 16 modèles `CHANGEME`).
   - Étape 3 — référence : `CLAUDE.md`, `memory.md`, `README.md`, `docs/deploiement/vagues.md`, squelettes de `docs/`.
   - Étape 4 — agents 1 à 5 : `CLAUDE.md`, `system-prompt.md`, `permissions.md`, 45 skills + `garde-fous-communs` (`agents/_commun/`), cas de test (option C).
-- **En cours :** étape 5 — salle de contrôle (Agent 6).
-- **À venir :** étape 6 (squelette `platform/`), 7 (contrôle final).
+  - Étape 5 — salle de contrôle : 7 sous-agents (`.claude/agents/`), 42 skills (`.claude/skills/`, dont 20 complets), modèles de fiche, brief, rapport, revue, décision ; registre des risques initial (12 risques).
+- **En cours :** étape 6 — squelette `platform/`.
+- **À venir :** étape 7 (contrôle final).
 - **Blocage :** push vers GitHub refusé (403, accès de l'app Claude au dépôt). Commits conservés en local sur `claude/new-session-h3sea4`.
 
 ## 2. Décisions validées
