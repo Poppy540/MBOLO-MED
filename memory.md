@@ -11,8 +11,8 @@
   - Étape 3 — référence : `CLAUDE.md`, `memory.md`, `README.md`, `docs/deploiement/vagues.md`, squelettes de `docs/`.
   - Étape 4 — agents 1 à 5 : `CLAUDE.md`, `system-prompt.md`, `permissions.md`, 45 skills + `garde-fous-communs` (`agents/_commun/`), cas de test (option C).
   - Étape 5 — salle de contrôle : 7 sous-agents (`.claude/agents/`), 42 skills (`.claude/skills/`, dont 20 complets), modèles de fiche, brief, rapport, revue, décision ; registre des risques initial (12 risques).
-- **En cours :** étape 6 — squelette `platform/`.
-- **À venir :** étape 7 (contrôle final).
+  - Étape 6 — squelette `platform/` (apps, services, tests) + `platform/CLAUDE.md` ; aucun code applicatif.
+- **En cours :** étape 7 — contrôle final.
 - **Blocage :** push vers GitHub refusé (403, accès de l'app Claude au dépôt). Commits conservés en local sur `claude/new-session-h3sea4`.
 
 ## 2. Décisions validées
