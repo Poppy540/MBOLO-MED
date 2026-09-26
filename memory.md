@@ -12,7 +12,9 @@
   - Étape 4 — agents 1 à 5 : `CLAUDE.md`, `system-prompt.md`, `permissions.md`, 45 skills + `garde-fous-communs` (`agents/_commun/`), cas de test (option C).
   - Étape 5 — salle de contrôle : 7 sous-agents (`.claude/agents/`), 42 skills (`.claude/skills/`, dont 20 complets), modèles de fiche, brief, rapport, revue, décision ; registre des risques initial (12 risques).
   - Étape 6 — squelette `platform/` (apps, services, tests) + `platform/CLAUDE.md` ; aucun code applicatif.
-- **En cours :** étape 7 — contrôle final.
+  - Étape 7 — contrôle final : gitleaks (fichiers + historique) sans fuite ; hooks pre-commit au vert ; aucune clé Claude, aucun téléphone ou e-mail réel ; 88 skills conformes (frontmatter, exemples fictifs, limites, sources) ; principes repris mot pour mot.
+- **Bilan des skills :** 88 (46 plateforme dont `garde-fous-communs`, 42 salle de contrôle) — 24 `complet`, 64 `v1`. Chaque agent a des cas de refus ou d'escalade.
+- **Prochaine étape proposée :** lever les blocages juridiques et humains de la vague 0 (voir §3 et §4), puis démarrer `platform/services/identite` et `dossier-fhir` sur données fictives.
 - **Blocage :** push vers GitHub refusé (403, accès de l'app Claude au dépôt). Commits conservés en local sur `claude/new-session-h3sea4`.
 
 ## 2. Décisions validées
@@ -63,4 +65,5 @@
 
 ## 5. Leçons apprises
 
-_(vide au départ)_
+- 2026-09-26 — Vérifier l'existence d'un dossier avant d'y écrire en série (un `cd` échoué a interrompu une création de fichiers ; rien n'a été écrit au mauvais endroit).
+- 2026-09-26 — gitleaks utilise le moteur RE2 : pas de lookahead dans les règles ; exclure les valeurs factices par l'allowlist.
