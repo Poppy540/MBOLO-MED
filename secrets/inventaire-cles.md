@@ -1,0 +1,123 @@
+# Inventaire des clés — Mbolo Santé
+
+> **Aucune valeur ici.** Ce tableau décrit les clés ; les valeurs vivent dans le coffre-fort **Infisical** (ADR-0005, voir `README.md` §3).
+> Emplacement noté `mbolo/<env>/<service>/` = projet Infisical `mbolo-sante`, environnement `<env>` ∈ {`dev`, `recette`, `prod`}, dossier `/<service>/`.
+> **Clé API Claude : exclue de cet inventaire** (voir `README.md` §2).
+> Les vagues sont celles de `docs/deploiement/vagues.md` (proposition à valider).
+
+**Légende des responsables** (rôles à nommer par le porteur de projet) : **RT** responsable technique · **RS** responsable sécurité · **RP** responsable pharmacies et partenariats · **RR** responsable recrutement · **RA** responsable de l'Académie · **PP** porteur de projet.
+
+**Environnements** : D = dev, R = recette, P = production. En D et R, les clés pointent vers des bacs à sable ou des données fictives uniquement.
+
+## Paiement
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `MOBILE_MONEY_AGGREGATOR_API_KEY` / `_API_SECRET` | Agrégateur mobile money | Plateforme | Initier un paiement, lire son statut | Collecte uniquement ; pas de décaissement | D R P | `mbolo/<env>/paiement-mobile-money/` | 90 j | RT | 1 |
+| `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET` | Agrégateur mobile money | Plateforme | Vérifier la signature des notifications | Vérification uniquement | D R P | idem | 180 j | RT | 1 |
+| `AIRTEL_MONEY_CLIENT_ID` / `_SECRET` | Airtel Money (si intégration directe) | Plateforme | Paiement | Collecte uniquement | D R P | `mbolo/<env>/paiement-mobile-money/` | 90 j | RT | 1 |
+| `MOOV_MONEY_CLIENT_ID` / `_SECRET` | Moov Money (si intégration directe) | Plateforme | Paiement | Collecte uniquement | D R P | idem | 90 j | RT | 1 |
+| `CARD_PAYMENT_SECRET_KEY` | Prestataire carte (diaspora) | Plateforme | Paiement, abonnements | Clé restreinte : paiements + abonnements, pas de virements | D R P | `mbolo/<env>/paiement-carte/` | 90 j | RT | 2 |
+| `CARD_PAYMENT_PUBLISHABLE_KEY` | Prestataire carte | Plateforme (front) | Formulaire de paiement | Publique par nature, suivie pour cohérence | D R P | idem | à la rotation de la clé secrète | RT | 2 |
+| `CARD_PAYMENT_WEBHOOK_SIGNING_SECRET` | Prestataire carte | Plateforme | Vérifier les notifications | Vérification uniquement | D R P | idem | 180 j | RT | 2 |
+| `PAYMENT_STATUS_READONLY_TOKEN_AGENT02` | Service paiement interne | **Agent 2** | Lire le statut de paiement d'une ordonnance ou d'un parcours | **Lecture seule**, statut uniquement, pas de montant détaillé ni de moyen de paiement | D R P | `mbolo/<env>/paiement-carte/` | 90 j | RT | 2 |
+
+## Vidéo
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `WEBRTC_API_KEY` / `_API_SECRET` | Serveur WebRTC | Plateforme | Générer des jetons de salle à durée courte | Création de jetons de salle | D R P | `mbolo/<env>/webrtc/` | 90 j | RT | 1 |
+| `WEBRTC_TURN_SHARED_SECRET` | Serveur TURN | Plateforme | Identifiants TURN temporaires | Relais média | D R P | idem | 90 j | RT | 1 |
+
+## Messagerie patients
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `SMS_API_KEY_AGENT01` | SMS | **Agent 1** | Confirmations, liens de consultation | Envoi seul, gabarits approuvés, pas de lecture des historiques | D R P | `mbolo/<env>/sms/` | 90 j | RT | 1 |
+| `SMS_API_KEY_AGENT02` | SMS | **Agent 2** | Rappels d'observance et de rendez-vous | idem | D R P | idem | 90 j | RT | 2 |
+| `WHATSAPP_ACCESS_TOKEN_AGENT01` | WhatsApp Business | **Agent 1** | Conversation d'accueil | Numéro Mbolo uniquement, messages | D R P | `mbolo/<env>/whatsapp/` | 60 j (jeton système) | RT | 1 |
+| `WHATSAPP_ACCESS_TOKEN_AGENT02` | WhatsApp Business | **Agent 2** | Rappels, suivi | idem | D R P | idem | 60 j | RT | 2 |
+| `WHATSAPP_APP_SECRET` / `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | WhatsApp Business | Plateforme | Vérifier les notifications entrantes | Vérification uniquement | D R P | idem | 180 j | RT | 1 |
+| `EMAIL_API_KEY_AGENT01` / `_AGENT02` | E-mail transactionnel | **Agents 1, 2** | Confirmations, diaspora | Envoi seul, domaine vérifié | D R P | `mbolo/<env>/email/` | 90 j | RT | 1 / 2 |
+
+## Voix
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `VOICE_STT_API_KEY_AGENT01` | Reconnaissance vocale | **Agent 1** | Transcrire la parole du patient | Transcription seule ; **fournisseur à valider** (hébergement, pas de réutilisation pour entraînement) | D R P | `mbolo/<env>/voix/` | 90 j | RS | 1 |
+| `VOICE_TTS_API_KEY_AGENT01` | Synthèse vocale | **Agent 1** | Lire les messages à voix haute | Synthèse seule | D R P | idem | 90 j | RT | 1 |
+
+## Dossier médical (FHIR)
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `FHIR_CLIENT_ID_PLATFORM` / `_SECRET_PLATFORM` | Serveur FHIR | Plateforme | Service dossier-fhir | Selon rôle de l'utilisateur authentifié (SMART on FHIR) | D R P | `mbolo/<env>/fhir/` | 90 j | RS | 0 |
+| `FHIR_CLIENT_ID_AGENT01` / `_SECRET_AGENT01` | Serveur FHIR | **Agent 1** | Créer et compléter le dossier du patient en cours d'interaction | Écriture : Patient, Observation, Condition, AllergyIntolerance, Encounter, Consent, QuestionnaireResponse ; **lecture limitée au patient de la session** | D R P | idem | 90 j | RS | 0 (fictif) / 1 |
+| `FHIR_CLIENT_ID_AGENT02` / `_SECRET_AGENT02` | Serveur FHIR | **Agent 2** | Lire ordonnances et rendez-vous, créer des rappels | Lecture : MedicationRequest, Appointment, ServiceRequest, CarePlan ; écriture : Communication, AdverseEvent (brouillon) | D R P | idem | 90 j | RS | 2 |
+| `FHIR_CLIENT_ID_AGENT04` / `_SECRET_AGENT04` | Serveur FHIR | **Agent 4** | Audit qualité | **Lecture seule d'une vue pseudonymisée**, aucune ressource Patient identifiante | R P | idem | 90 j | RS | 1 |
+
+## Base de données et stockage
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `DB_USER` / `DB_PASSWORD` | Base applicative | Plateforme | Données applicatives hors dossier médical | Un utilisateur par service ; secrets dynamiques si le coffre le permet | D R P | `mbolo/<env>/base-donnees/` | 30 j ou dynamique | RT | 0 |
+| `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | Stockage objet chiffré | Plateforme | Documents médicaux (photos d'ordonnances, résultats) | Un seul compartiment, pas de listing public | D R P | `mbolo/<env>/stockage/` | 90 j | RT | 0 |
+| `STORAGE_KMS_KEY_REFERENCE` | KMS | Plateforme | Référence de la clé de chiffrement (pas la clé elle-même) | Chiffrer / déchiffrer | D R P | idem | rotation annuelle de la clé KMS | RS | 0 |
+
+## Pharmacies et laboratoires
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `PHARMACY_PARTNER_API_KEY_AGENT02` | Intégration pharmacies partenaires | **Agent 2** | Vérifier les stocks, déposer une ordonnance **signée** | Stocks en lecture ; dépôt d'ordonnance signée ; aucune modification d'ordonnance | D R P | `mbolo/<env>/pharmacies-labos/` | 90 j (une clé par partenaire) | RP | 2 |
+| `LAB_PARTNER_API_KEY_AGENT02` | Intégration laboratoires | **Agent 2** | Transmettre une demande signée, suivre un résultat | Dépôt de demande signée, lecture du statut | D R P | idem | 90 j | RP | 3 |
+
+## Recrutement
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `CRM_API_TOKEN_AGENT03` | CRM | **Agent 3** | Suivi du pipeline | Écriture limitée aux fiches prospects ; **pas d'envoi de messages**, pas d'export massif | D R P | `mbolo/<env>/recrutement/` | 90 j | RR | 1 |
+| `PRO_REGISTRY_API_KEY_AGENT03` | Annuaires professionnels publics (API) | **Agent 3** | Pré-vérification d'inscription | Lecture seule, conditions d'utilisation vérifiées | D R P | idem | 180 j | RR | 1 |
+
+## Formation
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `LMS_API_TOKEN_AGENT05` | Plateforme de formation | **Agent 5** | Parcours, quiz, attestations | Contenus en brouillon ; publication réservée à un médecin relecteur | D R P | `mbolo/<env>/formation/` | 90 j | RA | 3 |
+| `MENTORING_VIDEO_API_KEY` / `_SECRET` | Visioconférence de mentorat | Plateforme (Académie) | Salles de mentorat | Création de salles | D R P | idem | 90 j | RA | 3 |
+
+## Salle de contrôle (Agent 6)
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `GIT_READONLY_TOKEN_PILOTE` | Dépôt Git | **Agent 6** | Lire code et historique | Lecture seule | P | `mbolo/prod/salle-de-controle/` | 90 j | RS | 0 |
+| `GIT_PR_TOKEN_PILOTE` | Dépôt Git | **Agent 6** (niveau 3) | Créer une branche, ouvrir une demande de revue | Branches `pilote/*` uniquement ; **aucun droit de fusion**, `main` protégée | P | idem | 90 j | RS | 0 |
+| `TASKS_API_TOKEN_PILOTE` | Gestionnaire de tâches | **Agent 6** | Lire et créer des tickets | Lecture + création de tickets (niveau 4 si validé) | P | idem | 90 j | PP | 0 |
+| `SENTRY_AUTH_TOKEN_READONLY` | Sentry | **Agent 6** | Lire les erreurs | Lecture seule ; données personnelles filtrées côté Sentry | P | idem | 90 j | RT | 1 |
+| `GRAFANA_API_TOKEN_VIEWER` | Grafana | **Agent 6** | Lire métriques et SLO | Rôle Viewer | P | idem | 90 j | RT | 1 |
+| `SECURITY_SCANNER_TOKEN_READONLY` | Scanners de sécurité | **Agent 6** | Lire les résultats ; relancer un scan si niveau 4 validé | Lecture (+ relance de scan) | P | idem | 90 j | RS | 0 |
+| `SLACK_BOT_TOKEN_PILOTE` | Slack (ADR-0006) | **Agent 6** | Alertes, briefs, fiches | Écriture seule dans les canaux de la salle de contrôle ; pas de lecture des messages privés | P | idem | 90 j | PP | 0 |
+| `ONCALL_INTEGRATION_URL_PILOTE` | Grafana OnCall (ADR-0006) | **Agent 6** | Déclencher l'astreinte (appel / SMS) pour les alertes critiques | Création d'alerte uniquement | P | idem | 90 j | RS | 0 |
+
+## Feature flags
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `UNLEASH_BACKEND_TOKEN` | Unleash (ADR-0007) | Plateforme | Évaluer les flags | Jeton backend, évaluation seule | D R P | `mbolo/<env>/feature-flags/` | 90 j | RT | 0 |
+| `UNLEASH_READONLY_TOKEN_PILOTE` | Unleash | **Agent 6** | Lire l'état des flags | **Lecture seule** — jamais d'activation | P | idem | 90 j | RT | 0 |
+
+## Coffre-fort
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` / `_CLIENT_SECRET` | Infisical (ADR-0005) | **Infrastructure uniquement** | Identité machine pour lire les secrets d'un service | Une politique par service, lecture des seuls chemins du service | D R P | Fourni par l'orchestrateur d'infrastructure, jamais stocké | 30 j ou identité de charge de travail (OIDC) | RS | 0 |
+
+## Hors inventaire
+
+- **`ANTHROPIC_API_KEY`** : exclue à la demande du porteur de projet. Voir `README.md` §2.
+
+## Journal des modifications de l'inventaire
+
+| Date | Modification | Validée par |
+|---|---|---|
+| 2026-09-26 | Création initiale (vague 0) | En attente — responsable sécurité à nommer |
+| 2026-09-26 | Outils choisis (D-0002) : Infisical, Slack + Grafana OnCall, Unleash ; variables renommées en conséquence | En attente — responsable sécurité à nommer |
