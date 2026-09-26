@@ -32,6 +32,12 @@ importers:
 
   platform/packages/journal-securise: {}
 
+  platform/services/dossier-fhir:
+    devDependencies:
+      '@types/fhir':
+        specifier: ^0.0.41
+        version: 0.0.41
+
 packages:
 
   '@esbuild/aix-ppc64@0.28.2':
@@ -404,6 +410,9 @@ packages:
 
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
+
+  '@types/fhir@0.0.41':
+    resolution: {integrity: sha512-MAQAFufNZBZ6V0F94Nhknmmh/E3iMXFK4n/L8RkSNjKtOJnvaAJERivNOj35VVx9VCQBJbE0BHSzikfBahoRhA==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -1256,6 +1265,8 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.9': {}
+
+  '@types/fhir@0.0.41': {}
 
   '@types/json-schema@7.0.15': {}
 

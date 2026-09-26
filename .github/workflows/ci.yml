@@ -59,3 +59,24 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+  fhir:
+    name: FHIR (profils, exemples fictifs, garde-fous)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Cache du validateur et des paquets FHIR
+        uses: actions/cache@v4
+        with:
+          path: |
+            platform/services/dossier-fhir/.cache
+            ~/.fhir/packages
+          key: fhir-${{ hashFiles('platform/services/dossier-fhir/ig/sushi-config.yaml') }}
+      - run: bash platform/services/dossier-fhir/scripts/valider-ig.sh

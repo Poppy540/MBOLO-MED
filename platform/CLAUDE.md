@@ -11,7 +11,7 @@
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
 | `apps/backoffice` | Administration interne (rôles habilités, journalisé) | 0–1 |
 | `services/identite` | Comptes, authentification (MFA pros), rôles, consentements | 0 |
-| `services/dossier-fhir` | Seul service qui stocke les données de santé (serveur FHIR R4, ADR-0001) | 0 |
+| `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
 | `services/teleconsultation` | Salles WebRTC, jetons courts, repli audio (ADR-0002) | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |

@@ -53,3 +53,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# dossier-fhir : sorties générées et cache du validateur
+platform/services/dossier-fhir/ig/fsh-generated/
+platform/services/dossier-fhir/.cache/

@@ -1,0 +1,24 @@
+{
+  "name": "@mbolo/dossier-fhir",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dossier médical FHIR R4 de Mbolo Santé : profils (FSH), règles de validation, constructeurs et jeu de données fictif.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "ig:valider": "bash scripts/valider-ig.sh"
+  },
+  "devDependencies": {
+    "@types/fhir": "^0.0.41"
+  }
+}

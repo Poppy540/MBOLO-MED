@@ -75,6 +75,7 @@ pnpm install                                         # installer les dépendance
 pnpm verifier                                        # format + lint + types + tests + conformité des skills
 pnpm test                                            # tests unitaires (Vitest)
 python3 scripts/verifier_skills.py .                 # conformité des 88 skills (aussi exécuté en CI)
+pnpm --filter @mbolo/dossier-fhir ig:valider         # profils FHIR + validateur officiel HL7 (Java 17+, réseau HL7)
 # À compléter : tests Playwright/Gherkin, lancement local de la plateforme (Docker Compose).
 ```
 

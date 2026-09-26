@@ -1,0 +1,8 @@
+# Guide d'implémentation FHIR de Mbolo Santé (profils, terminologies, exemples FICTIFS).
+# Compilé par SUSHI (FHIR Shorthand). URL canonique provisoire : domaine .example à remplacer
+# quand le domaine définitif sera choisi.
+canonical: https://mbolo-sante.example/fhir
+status: draft
+version: 0.1.0
+fhirVersion: 4.0.1
+FSHOnly: true
