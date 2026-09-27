@@ -1,6 +1,6 @@
-import type { Appointment, Bundle } from 'fhir/r4.js';
+import type { Appointment, Bundle, Schedule, Slot } from 'fhir/r4.js';
 import { describe, expect, it } from 'vitest';
-import { DepotRendezVousFhir } from './depot-fhir.js';
+import { DepotCreneauxFhir, DepotRendezVousFhir } from './depot-fhir.js';
 
 // Données FICTIVES. Faux serveur FHIR : enregistre les requêtes et renvoie des réponses préparées.
 const BASE = 'http://fhir.fictif.example/fhir';
@@ -119,5 +119,73 @@ describe('DepotRendezVousFhir — annulation', () => {
     await expect(
       depot.annuler('rdv-fictif-1', 'professionnel', '2026-09-30T17:00:00.000Z'),
     ).rejects.toMatchObject({ statut: 409 });
+  });
+});
+
+describe('DepotCreneauxFhir', () => {
+  const agenda: Schedule = {
+    resourceType: 'Schedule',
+    id: 'agenda-fictif-1',
+    active: true,
+    actor: [{ reference: 'Practitioner/prac-fictif-001' }],
+  };
+  const slot = (statut: Slot['status'], version = '1'): Slot => ({
+    resourceType: 'Slot',
+    id: 'creneau-fictif-1',
+    meta: { versionId: version },
+    schedule: { reference: 'Schedule/agenda-fictif-1' },
+    status: statut,
+    start: '2026-10-01T08:00:00Z',
+    end: '2026-10-01T08:20:00Z',
+  });
+  const lot = (...r: (Schedule | Slot)[]): Bundle => ({
+    resourceType: 'Bundle',
+    type: 'searchset',
+    entry: r.map((resource) => ({ resource })),
+  });
+
+  it('crée l’agenda du professionnel s’il n’existe pas, puis des créneaux libres sans texte', async () => {
+    const s = fauxServeur([json(lot()), json(agenda, 201), json(slot('free'), 201)]);
+    const depot = new DepotCreneauxFhir({ base: BASE, fetch: s.fetch }, 'dev');
+    const [c] = await depot.publier('prac-fictif-001', [
+      { debut: '2026-10-01T08:00:00Z', dureeMinutes: 20 },
+    ]);
+    expect(c).toMatchObject({ praticienId: 'prac-fictif-001', statut: 'libre', dureeMinutes: 20 });
+    expect(s.requetes[0]?.url).toContain('Schedule?actor=Practitioner%2Fprac-fictif-001');
+    const envoye = JSON.parse(String(s.requetes[2]?.init.body)) as Slot;
+    expect(envoye).toMatchObject({
+      status: 'free',
+      schedule: { reference: 'Schedule/agenda-fictif-1' },
+    });
+    expect(envoye.comment).toBeUndefined();
+    expect(envoye.meta?.tag?.[0]?.code).toBe('fictif');
+  });
+
+  it('réserve avec verrou optimiste ; une réservation concurrente est refusée (409)', async () => {
+    const s = fauxServeur([json(slot('free', '4')), json(slot('busy', '5')), json(agenda)]);
+    const depot = new DepotCreneauxFhir({ base: BASE, fetch: s.fetch }, 'dev');
+    expect((await depot.reserver('creneau-fictif-1')).statut).toBe('reserve');
+    expect((s.requetes[1]?.init.headers as Record<string, string>)['if-match']).toBe('W/"4"');
+
+    const concurrent = fauxServeur([json(slot('free', '4')), json({}, 412)]);
+    const depot2 = new DepotCreneauxFhir({ base: BASE, fetch: concurrent.fetch }, 'dev');
+    await expect(depot2.reserver('creneau-fictif-1')).rejects.toMatchObject({ statut: 409 });
+
+    const dejaPris = fauxServeur([json(slot('busy'))]);
+    const depot3 = new DepotCreneauxFhir({ base: BASE, fetch: dejaPris.fetch }, 'dev');
+    await expect(depot3.reserver('creneau-fictif-1')).rejects.toMatchObject({ statut: 409 });
+  });
+
+  it('écarte un créneau d’un autre agenda renvoyé par la recherche', async () => {
+    const etranger = { ...slot('free'), id: 'autre', schedule: { reference: 'Schedule/autre' } };
+    const s = fauxServeur([json(lot(agenda)), json(lot(slot('free'), etranger))]);
+    const depot = new DepotCreneauxFhir({ base: BASE, fetch: s.fetch }, 'dev');
+    const liste = await depot.duPraticien(
+      'prac-fictif-001',
+      '2026-10-01T00:00:00Z',
+      '2026-10-02T00:00:00Z',
+    );
+    expect(liste.map((c) => c.id)).toEqual(['creneau-fictif-1']);
+    expect(s.requetes[1]?.url).toContain('start=ge2026-10-01T00%3A00%3A00Z');
   });
 });

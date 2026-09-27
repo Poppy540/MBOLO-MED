@@ -3,7 +3,8 @@
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
-import { DepotRendezVousFhir } from './depot-fhir.js';
+import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
+import { DepotCreneauxFhir, DepotRendezVousFhir } from './depot-fhir.js';
 import {
   type DepotRendezVous,
   DepotRendezVousMemoire,
@@ -34,6 +35,7 @@ if (env['MBOLO_ENV'] === 'prod') {
 // Rendez-vous dans le dossier médical (Appointment), via la passerelle et un compte de service
 // limité aux rendez-vous. Sans FHIR_BASE_URL : en mémoire (développement seulement).
 let depot: DepotRendezVous;
+let creneaux: DepotCreneaux;
 const fhir = env['FHIR_BASE_URL'];
 if (fhir) {
   const secretService = env['TELECONSULTATION_SERVICE_CLIENT_SECRET'];
@@ -49,9 +51,11 @@ if (fhir) {
     secret: secretService,
   });
   depot = new DepotRendezVousFhir({ base: fhir, entetes }, 'dev');
+  creneaux = new DepotCreneauxFhir({ base: fhir, entetes }, 'dev');
   journal.info('rendez-vous enregistrés dans le dossier FHIR (passerelle authentifiée)');
 } else {
   depot = new DepotRendezVousMemoire();
+  creneaux = new DepotCreneauxMemoire();
   journal.avertissement('FHIR_BASE_URL absent : rendez-vous en mémoire (perdus à l’arrêt).');
 }
 
@@ -70,7 +74,12 @@ const app = creerServeur({
     emetteur,
     audience: env['TELECONSULTATION_AUDIENCE'] ?? 'mbolo-teleconsultation-api',
   }),
-  service: new ServiceTeleconsultation(depot, new SalleLiveKit({ url, cle, secret }), drapeaux),
+  service: new ServiceTeleconsultation(
+    depot,
+    creneaux,
+    new SalleLiveKit({ url, cle, secret }),
+    drapeaux,
+  ),
   journal,
 });
 const port = Number(env['PORT'] ?? '3003');

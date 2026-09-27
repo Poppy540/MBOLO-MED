@@ -60,12 +60,44 @@ Usage: #example
 * name.family = "Test"
 * name.given = "Médecin"
 
+Instance: fictif-agenda-0001
+InstanceOf: MboloAgenda
+Title: "[FICTIF] Agenda de téléconsultation du médecin test"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* active = true
+* serviceType = MboloModeConsultationCS#video
+* actor = Reference(fictif-praticien-0001)
+
+Instance: fictif-creneau-0001
+InstanceOf: MboloCreneau
+Title: "[FICTIF] Créneau réservé"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* schedule = Reference(fictif-agenda-0001)
+* status = #busy
+* serviceType = MboloModeConsultationCS#video
+* start = "2026-10-01T09:00:00+01:00"
+* end = "2026-10-01T09:20:00+01:00"
+
+Instance: fictif-creneau-0002
+InstanceOf: MboloCreneau
+Title: "[FICTIF] Créneau libre"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* schedule = Reference(fictif-agenda-0001)
+* status = #free
+* serviceType = MboloModeConsultationCS#video
+* start = "2026-10-01T09:20:00+01:00"
+* end = "2026-10-01T09:40:00+01:00"
+
 Instance: fictif-rendez-vous-0001
 InstanceOf: MboloRendezVous
 Title: "[FICTIF] Téléconsultation vidéo prévue"
 Usage: #example
 * meta.tag = MboloMarqueurCS#fictif
 * status = #booked
+* slot = Reference(fictif-creneau-0001)
 * serviceType = MboloModeConsultationCS#video
 * start = "2026-10-01T09:00:00+01:00"
 * end = "2026-10-01T09:20:00+01:00"

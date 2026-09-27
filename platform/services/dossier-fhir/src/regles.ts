@@ -4,6 +4,8 @@
 // Le serveur FHIR et le validateur officiel restent la référence (CI : job « FHIR »).
 import type {
   Appointment,
+  Schedule,
+  Slot,
   CodeableConcept,
   Condition,
   Consent,
@@ -171,6 +173,39 @@ export function verifierAppointment(a: Appointment): Violation[] {
   return v;
 }
 
+const estVideo = (codes: CodeableConcept[] | undefined) => {
+  const c = (codes ?? []).flatMap((s) => s.coding ?? []);
+  return c.length === 1 && c[0]?.system === SYSTEMES.modeConsultation;
+};
+
+export function verifierSchedule(s: Schedule): Violation[] {
+  const v: Violation[] = [];
+  const acteurs = s.actor ?? [];
+  if (acteurs.length !== 1 || !acteurs[0]?.reference?.startsWith('Practitioner/')) {
+    v.push({ regle: 'mbolo-agenda-1', message: 'Un agenda appartient à un seul professionnel.' });
+  }
+  if (s.active === undefined)
+    v.push({ regle: 'mbolo-agenda.active', message: 'Statut actif obligatoire.' });
+  if (!estVideo(s.serviceType))
+    v.push({ regle: 'mbolo-agenda.serviceType', message: 'Mode de consultation obligatoire.' });
+  if (s.comment) v.push({ regle: 'mbolo-agenda.comment', message: 'Aucun texte libre.' });
+  return v;
+}
+
+export function verifierSlot(s: Slot): Violation[] {
+  const v: Violation[] = [];
+  if (s.comment) {
+    v.push({ regle: 'mbolo-creneau-1', message: 'Un créneau ne contient aucun texte libre.' });
+  }
+  if (!s.schedule?.reference?.startsWith('Schedule/'))
+    v.push({ regle: 'mbolo-creneau.schedule', message: 'Agenda obligatoire.' });
+  if (!estVideo(s.serviceType))
+    v.push({ regle: 'mbolo-creneau.serviceType', message: 'Mode de consultation obligatoire.' });
+  if (new Date(s.end).getTime() <= new Date(s.start).getTime())
+    v.push({ regle: 'mbolo-creneau-2', message: 'La fin doit suivre le début.' });
+  return v;
+}
+
 /** Principe n°4 : hors production, toute donnée doit porter le marqueur « fictif ». */
 export function verifierMarqueurFictif(r: FhirResource, env: Environnement): Violation[] {
   if (env === 'prod') return [];
@@ -198,6 +233,10 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierProvenance(r);
       case 'Appointment':
         return verifierAppointment(r);
+      case 'Schedule':
+        return verifierSchedule(r);
+      case 'Slot':
+        return verifierSlot(r);
       default:
         return [];
     }

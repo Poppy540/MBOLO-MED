@@ -60,8 +60,9 @@ Jitsi reste l'option de repli si l'on veut une visioconférence de secours très
 - Test e2e : deux navigateurs avec micro simulé se connectent à un vrai LiveKit 1.12.0 et s'entendent.
 - PR L : rendez-vous enregistrés dans le dossier (FHIR `Appointment`, profil `mbolo-rendez-vous` sans motif ni texte libre), via la passerelle, avec un compte de service limité à `system/Appointment.crus`.
 - PR M : annulation par le patient ou le professionnel ; rendez-vous conservé avec qui et quand (code, extension `date-annulation`), sans motif ; salle fermée.
+- PR N : créneaux publiés par les professionnels (FHIR `Schedule` et `Slot`, sans texte libre) ; le patient réserve un créneau libre, avec verrou contre la double réservation ; l'annulation libère le créneau.
 - Reste à faire avant la vague 1 :
-  - report, créneaux et notifications ;
+  - report et notifications ;
   - applications patient et professionnel ;
   - repli audio automatique côté application ;
   - TURN et hébergement HDS ;

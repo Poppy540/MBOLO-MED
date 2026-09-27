@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { expect, type Browser } from '@playwright/test';
+import { creneauVideo } from '@mbolo/dossier-fhir';
 import { FHIR_URL, TELECONSULTATION_URL, WEBRTC_URL } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 
@@ -49,17 +50,105 @@ async function appeler(
   monde.reponse = { statut: r.status, corps: (await r.json()) as Record<string, unknown> };
 }
 
+/**
+ * Créneau libre du professionnel, qui commence dans 5 minutes : préparé directement dans le serveur
+ * FHIR de test (agenda créé par la préparation globale), comme s'il avait été publié plus tôt.
+ */
+async function creneauImminent(praticien: string): Promise<string> {
+  const r = await fetch(`${FHIR_URL}/Slot`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/fhir+json', prefer: 'return=representation' },
+    body: JSON.stringify(
+      creneauVideo({
+        agendaId: `agenda-${praticien}`,
+        debut: new Date(Date.now() + 5 * 60_000).toISOString(),
+        dureeMinutes: 20,
+        env: 'dev',
+      }),
+    ),
+  });
+  expect(r.status).toBe(201);
+  return ((await r.json()) as { id: string }).id;
+}
+
+async function reserver(monde: Monde, identifiant: string, creneauId: string): Promise<void> {
+  await appeler(monde, 'POST', '/rendez-vous', monde.jetons.get(identifiant), { creneauId });
+  if (monde.reponse?.statut === 201) monde.rendezVousId = String(monde.reponse.corps['id']);
+}
+
 When(
   '{string} demande un rendez-vous vidéo avec {string} maintenant',
   async ({ monde }, identifiant: string, praticien: string) => {
-    await appeler(monde, 'POST', '/rendez-vous', monde.jetons.get(identifiant), {
-      praticienId: praticien,
-      debut: new Date().toISOString(),
-      dureeMinutes: 20,
-    });
-    if (monde.reponse?.statut === 201) monde.rendezVousId = String(monde.reponse.corps['id']);
+    const creneauId = await creneauImminent(praticien);
+    monde.creneaux = [creneauId];
+    await reserver(monde, identifiant, creneauId);
   },
 );
+
+When(
+  '{string} publie {int} créneaux de {int} minutes dans {int} jours',
+  async ({ monde }, identifiant: string, nombre: number, duree: number, jours: number) => {
+    const debut = new Date(Date.now() + jours * 24 * 3_600_000);
+    debut.setUTCSeconds(0, 0);
+    await appeler(monde, 'POST', '/creneaux', monde.jetons.get(identifiant), {
+      debut: debut.toISOString(),
+      dureeMinutes: duree,
+      nombre,
+    });
+    if (monde.reponse?.statut === 201) {
+      monde.creneaux = (monde.reponse.corps['creneaux'] as { id: string }[]).map((c) => c.id);
+    }
+  },
+);
+
+Then('les créneaux sont publiés', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(201);
+  expect(monde.creneaux?.length).toBeGreaterThan(0);
+});
+
+Then('la publication est refusée car les créneaux se chevauchent', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(409);
+});
+
+async function creneauxLibres(monde: Monde, identifiant: string, praticien: string) {
+  await appeler(monde, 'GET', `/praticiens/${praticien}/creneaux`, monde.jetons.get(identifiant));
+  expect(monde.reponse?.statut).toBe(200);
+  return (monde.reponse?.corps['creneaux'] as { id: string }[]).map((c) => c.id);
+}
+
+Then(
+  '{string} voit ces créneaux libres chez {string}',
+  async ({ monde }, identifiant: string, praticien: string) => {
+    const libres = await creneauxLibres(monde, identifiant, praticien);
+    for (const id of monde.creneaux ?? []) expect(libres).toContain(id);
+  },
+);
+
+Then(
+  '{string} ne voit plus ce créneau chez {string}',
+  async ({ monde }, identifiant: string, praticien: string) => {
+    expect(await creneauxLibres(monde, identifiant, praticien)).not.toContain(monde.creneaux?.[0]);
+  },
+);
+
+When('{string} réserve le premier de ces créneaux', async ({ monde }, identifiant: string) => {
+  await reserver(monde, identifiant, monde.creneaux?.[0] ?? '');
+});
+
+When(
+  '{string} réserve le créneau {string}',
+  async ({ monde }, identifiant: string, creneauId: string) => {
+    await reserver(monde, identifiant, creneauId);
+  },
+);
+
+Then('la réservation est refusée car le créneau est introuvable', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(404);
+});
+
+Then("la réservation est refusée car le créneau n'est plus disponible", ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(409);
+});
 
 Then('le rendez-vous est enregistré', ({ monde }) => {
   expect(monde.reponse?.statut).toBe(201);
@@ -97,10 +186,6 @@ Then(
     expect(ids).toContain(monde.rendezVousId);
   },
 );
-
-Then('le rendez-vous est refusé par le dossier médical', ({ monde }) => {
-  expect(monde.reponse?.statut).toBe(422);
-});
 
 When(
   '{string} rejoint la téléconsultation',

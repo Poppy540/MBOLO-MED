@@ -6,7 +6,7 @@ Dossier médical de Mbolo Santé au format **HL7 FHIR R4** (ADR-0001). **Seul se
 
 | Élément | Rôle |
 |---|---|
-| `ig/` | Guide d'implémentation en FHIR Shorthand : profils `MboloPatient`, `MboloConsent`, `MboloCondition`, `MboloProvenance`, `MboloRendezVous` (téléconsultation, sans motif), extensions `mode-recueil` et `date-annulation`, terminologies (catégories de consentement, mode de consultation, auteur d'annulation, marqueur `fictif`), exemples **fictifs** |
+| `ig/` | Guide d'implémentation en FHIR Shorthand : profils `MboloPatient`, `MboloConsent`, `MboloCondition`, `MboloProvenance`, `MboloRendezVous` (téléconsultation, sans motif), `MboloAgenda` et `MboloCreneau` (créneaux, sans texte libre), extensions `mode-recueil` et `date-annulation`, terminologies (catégories de consentement, mode de consultation, auteur d'annulation, marqueur `fictif`), exemples **fictifs** |
 | `src/` | Paquet `@mbolo/dossier-fhir` : règles de validation appliquées avant envoi au serveur, constructeurs de ressources conformes, jeu de données fictif |
 | `tests/invalides/` | Ressources qui **doivent** être rejetées (garde-fous) |
 | `scripts/valider-ig.sh` | Compilation (SUSHI) + validation par le validateur officiel HL7 (exécuté en CI) |

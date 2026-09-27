@@ -1,0 +1,30 @@
+{
+  "resourceType": "Slot",
+  "id": "fictif-invalide-7",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-creneau"],
+    "tag": [
+      {
+        "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur",
+        "code": "fictif"
+      }
+    ]
+  },
+  "schedule": {
+    "reference": "Schedule/fictif-agenda-0001"
+  },
+  "status": "free",
+  "serviceType": [
+    {
+      "coding": [
+        {
+          "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-mode-consultation",
+          "code": "video"
+        }
+      ]
+    }
+  ],
+  "start": "2026-10-01T10:00:00+01:00",
+  "end": "2026-10-01T10:20:00+01:00",
+  "comment": "[FICTIF] réservé pour une patiente diabétique : interdit"
+}

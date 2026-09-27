@@ -10,3 +10,4 @@ Chacune viole une règle des profils Mbolo Santé. Le script `scripts/valider-ig
 | `consent-proche-sans-beneficiaire.json` | `mbolo-consent-1` : consentement de partage sans bénéficiaire désigné | `mbolo-consent-1` |
 | `rendez-vous-avec-motif.json` | `mbolo-rdv-1` : motif médical dans un rendez-vous (minimisation) | `mbolo-rdv-1` |
 | `rendez-vous-annule-sans-auteur.json` | `mbolo-rdv-4` : annulation avec un motif en texte libre, sans auteur codé ni date | `mbolo-rdv-4` |
+| `creneau-avec-commentaire.json` | `mbolo-creneau-1` : texte libre (ici une information de santé) dans un créneau | `mbolo-creneau-1` |

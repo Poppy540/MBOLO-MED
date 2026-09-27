@@ -304,7 +304,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Appointment.crus",
+            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

@@ -4,16 +4,23 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 
 ## Règles
 
-- Un **patient** demande un rendez-vous vidéo avec un professionnel : `POST /rendez-vous` (`praticienId`, `debut`, `dureeMinutes` de 5 à 120). Le rendez-vous ne contient **aucune donnée de santé** : ni motif, ni symptôme.
-- **Rendez-vous dans le dossier médical** : ressource FHIR `Appointment` (profil `mbolo-rendez-vous`), écrite **via la passerelle** avec le compte de service `mbolo-teleconsultation-service`, limité à `system/Appointment.crus`. Le service lui-même ne garde rien.
+- **Créneaux** : le **professionnel** publie ses créneaux, `POST /creneaux` (`debut`, `dureeMinutes` de 5 à 120, `nombre` de 1 à 16 créneaux consécutifs).
+  - Les créneaux doivent être à venir et ne pas chevaucher ceux déjà publiés (sinon 409).
+  - Ils sont enregistrés dans le dossier : agenda FHIR `Schedule` (profil `mbolo-agenda`, un seul professionnel) et `Slot` (profil `mbolo-creneau`, **aucun texte libre**).
+- `GET /praticiens/:id/creneaux` : le **patient** voit les créneaux **libres** du professionnel dans les 14 prochains jours.
+- **Réservation** : le **patient** réserve un créneau libre et à venir, `POST /rendez-vous` (`creneauId`).
+  - Le créneau passe à « réservé » avec un **verrou optimiste** : deux patients ne peuvent pas réserver le même créneau (409).
+  - Si le dossier refuse ensuite le rendez-vous, le créneau redevient libre.
+  - Le rendez-vous ne contient **aucune donnée de santé** : ni motif, ni symptôme.
+- **Rendez-vous dans le dossier médical** : ressource FHIR `Appointment` (profil `mbolo-rendez-vous`), écrite **via la passerelle** avec le compte de service `mbolo-teleconsultation-service`, limité à `system/Appointment.crus system/Schedule.crus system/Slot.crus`. Le service lui-même ne garde rien.
   - Le profil **interdit tout motif, pièce jointe ou texte libre** (invariant `mbolo-rdv-1`) et impose **un patient et un professionnel** (`mbolo-rdv-2`).
-  - Un professionnel inconnu du dossier est refusé (422).
+  - Le rendez-vous garde la référence de son créneau (`Appointment.slot`).
   - Un rendez-vous dont le statut n'est plus `booked` (annulé dans le dossier) ferme la salle.
 - **Annulation** : `POST /rendez-vous/:id/annulation`, par le patient ou le professionnel du rendez-vous.
   - Un tiers reçoit un 404, sans apprendre que le rendez-vous existe.
   - Refusée (409) si le rendez-vous est déjà annulé ou terminé, ou s'il a changé entre-temps (verrou optimiste).
   - Le rendez-vous est **conservé** dans le dossier (`cancelled`), avec **qui** a annulé (code `patient` ou `professionnel`) et **quand** (extension `date-annulation`). **Aucun motif** n'est demandé ni conservé (invariant `mbolo-rdv-4`).
-  - La salle se ferme aussitôt.
+  - La salle se ferme aussitôt et le créneau à venir **redevient libre**.
   - Pas de condition de flag : si la fonction est désactivée, chacun peut encore annuler ses rendez-vous.
 - `GET /rendez-vous` : le patient voit ses rendez-vous, le professionnel les siens (recherche sans cache, chaque résultat revérifié).
 - `POST /rendez-vous/:id/salle` renvoie l'adresse LiveKit et un **jeton de salle** aux conditions suivantes :
@@ -68,7 +75,7 @@ En CI, le binaire LiveKit **1.12.0** est téléchargé depuis les versions GitHu
 
 ## Reste à faire avant la vague 1
 
-- Report d'un rendez-vous ; créneaux proposés par les professionnels ; notification de l'annulation à l'autre participant.
+- Report d'un rendez-vous vers un autre créneau ; retrait d'un créneau libre par le professionnel ; notification de l'annulation à l'autre participant.
 - Applications patient et professionnel, avec le **repli audio automatique** quand la qualité baisse.
 - TURN et hébergement HDS, au plus près du Gabon.
 - **Test terrain** en 3G/4G, avec des seuils à fixer par le porteur de projet.

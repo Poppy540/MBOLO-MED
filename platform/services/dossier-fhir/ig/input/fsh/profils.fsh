@@ -113,3 +113,51 @@ Description: "Rendez-vous entre un patient et un professionnel de santé (ADR-00
 * participant 2..2 MS
 * participant.actor 1..1 MS
 * participant.actor only Reference(MboloPatient or Practitioner)
+* slot 0..1 MS
+* slot only Reference(MboloCreneau)
+
+Invariant: mbolo-agenda-1
+Description: "Un agenda de téléconsultation appartient à un seul professionnel de santé."
+Expression: "actor.count() = 1 and actor.reference.startsWith('Practitioner/')"
+Severity: #error
+
+Invariant: mbolo-creneau-1
+Description: "Minimisation : un créneau ne contient aucun commentaire ni texte libre."
+Expression: "comment.empty()"
+Severity: #error
+
+Invariant: mbolo-creneau-2
+Description: "La fin d'un créneau est postérieure à son début."
+Expression: "end > start"
+Severity: #error
+
+Profile: MboloAgenda
+Parent: Schedule
+Id: mbolo-agenda
+Title: "Agenda de téléconsultation Mbolo Santé"
+Description: "Agenda d'un professionnel de santé, qui regroupe les créneaux qu'il publie."
+* ^status = #draft
+* ^experimental = true
+* obeys mbolo-agenda-1
+* active 1..1 MS
+* serviceType 1..1 MS
+* serviceType from MboloModeConsultationVS (required)
+* actor MS
+* actor only Reference(Practitioner)
+* comment 0..0
+
+Profile: MboloCreneau
+Parent: Slot
+Id: mbolo-creneau
+Title: "Créneau de téléconsultation Mbolo Santé"
+Description: "Plage publiée par un professionnel, libre (free) ou réservée (busy). Jamais de texte libre."
+* ^status = #draft
+* ^experimental = true
+* obeys mbolo-creneau-1 and mbolo-creneau-2
+* schedule MS
+* schedule only Reference(MboloAgenda)
+* status MS
+* serviceType 1..1 MS
+* serviceType from MboloModeConsultationVS (required)
+* start MS
+* end MS

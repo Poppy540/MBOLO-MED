@@ -9,6 +9,8 @@ export const PROFILS = {
   condition: `${CANONIQUE}/StructureDefinition/mbolo-condition`,
   provenance: `${CANONIQUE}/StructureDefinition/mbolo-provenance`,
   rendezVous: `${CANONIQUE}/StructureDefinition/mbolo-rendez-vous`,
+  agenda: `${CANONIQUE}/StructureDefinition/mbolo-agenda`,
+  creneau: `${CANONIQUE}/StructureDefinition/mbolo-creneau`,
 } as const;
 
 export const SYSTEMES = {

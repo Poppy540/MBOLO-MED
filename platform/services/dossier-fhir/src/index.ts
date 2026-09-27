@@ -1,8 +1,10 @@
 export * from './constantes.js';
 export {
+  agendaVideo,
   annulerRendezVous,
   conditionDeclaree,
   consentement,
+  creneauVideo,
   evenementAccesDossier,
   provenanceAgent,
   rendezVousVideo,
@@ -12,6 +14,7 @@ export {
 export type {
   OptionsConditionDeclaree,
   OptionsConsentement,
+  OptionsCreneau,
   OptionsEvenementAcces,
   OptionsRevueBrisDeGlace,
   OptionsProvenanceAgent,
@@ -25,5 +28,7 @@ export {
   verifierConsent,
   verifierMarqueurFictif,
   verifierProvenance,
+  verifierSchedule,
+  verifierSlot,
 } from './regles.js';
 export type { Environnement, Violation } from './regles.js';

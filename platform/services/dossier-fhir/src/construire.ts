@@ -1,7 +1,15 @@
 // Constructeurs de ressources conformes aux profils Mbolo Santé.
 // Ils rendent impossible, par construction, les écarts les plus graves (ex. un agent IA qui
 // enregistrerait un diagnostic confirmé).
-import type { Appointment, AuditEvent, Condition, Consent, Provenance } from 'fhir/r4.js';
+import type {
+  Appointment,
+  AuditEvent,
+  Condition,
+  Consent,
+  Provenance,
+  Schedule,
+  Slot,
+} from 'fhir/r4.js';
 import {
   type AuteurAnnulation,
   EXTENSION_DATE_ANNULATION,
@@ -239,6 +247,8 @@ export interface OptionsRendezVous {
   /** Début (ISO 8601). */
   debut: string;
   dureeMinutes: number;
+  /** Créneau réservé (Slot) dont découle le rendez-vous. */
+  creneauId?: string;
   env: Environnement;
 }
 
@@ -252,6 +262,7 @@ export function rendezVousVideo(o: OptionsRendezVous): Appointment {
     resourceType: 'Appointment',
     meta: meta(PROFILS.rendezVous, o.env),
     status: 'booked',
+    ...(o.creneauId ? { slot: [{ reference: `Slot/${o.creneauId}` }] } : {}),
     serviceType: [{ coding: [{ system: SYSTEMES.modeConsultation, code: 'video' }] }],
     start: debut.toISOString(),
     end: new Date(debut.getTime() + o.dureeMinutes * 60_000).toISOString(),
@@ -284,5 +295,40 @@ export function annulerRendezVous(
     participant: a.participant.map((p) =>
       p.actor?.reference?.startsWith(prefixe) ? { ...p, status: 'declined' } : p,
     ),
+  };
+}
+
+const video = () => [{ coding: [{ system: SYSTEMES.modeConsultation, code: 'video' }] }];
+
+/** Agenda de téléconsultation d'un professionnel (profil mbolo-agenda). */
+export function agendaVideo(o: { praticienId: string; env: Environnement }): Schedule {
+  return {
+    resourceType: 'Schedule',
+    meta: meta(PROFILS.agenda, o.env),
+    active: true,
+    serviceType: video(),
+    actor: [{ reference: `Practitioner/${o.praticienId}` }],
+  };
+}
+
+export interface OptionsCreneau {
+  agendaId: string;
+  /** Début (ISO 8601). */
+  debut: string;
+  dureeMinutes: number;
+  env: Environnement;
+}
+
+/** Créneau libre publié par un professionnel (profil mbolo-creneau), sans aucun texte libre. */
+export function creneauVideo(o: OptionsCreneau): Slot {
+  const debut = new Date(o.debut);
+  return {
+    resourceType: 'Slot',
+    meta: meta(PROFILS.creneau, o.env),
+    schedule: { reference: `Schedule/${o.agendaId}` },
+    status: 'free',
+    serviceType: video(),
+    start: debut.toISOString(),
+    end: new Date(debut.getTime() + o.dureeMinutes * 60_000).toISOString(),
   };
 }
