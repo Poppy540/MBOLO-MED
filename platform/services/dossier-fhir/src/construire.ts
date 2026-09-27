@@ -1,7 +1,7 @@
 // Constructeurs de ressources conformes aux profils Mbolo Santé.
 // Ils rendent impossible, par construction, les écarts les plus graves (ex. un agent IA qui
 // enregistrerait un diagnostic confirmé).
-import type { AuditEvent, Condition, Consent, Provenance } from 'fhir/r4.js';
+import type { Appointment, AuditEvent, Condition, Consent, Provenance } from 'fhir/r4.js';
 import {
   EXTENSION_MODE_RECUEIL,
   type ConclusionRevue,
@@ -227,6 +227,36 @@ export function revueBrisDeGlace(o: OptionsRevueBrisDeGlace): AuditEvent {
           ? { detail: [{ type: 'commentaire-revue', valueString: o.commentaire }] }
           : {}),
       },
+    ],
+  };
+}
+
+export interface OptionsRendezVous {
+  patientId: string;
+  praticienId: string;
+  /** Début (ISO 8601). */
+  debut: string;
+  dureeMinutes: number;
+  env: Environnement;
+}
+
+/**
+ * Rendez-vous de téléconsultation vidéo (profil mbolo-rendez-vous) : un patient, un professionnel,
+ * un créneau. Jamais de motif ni de commentaire (invariant mbolo-rdv-1, minimisation).
+ */
+export function rendezVousVideo(o: OptionsRendezVous): Appointment {
+  const debut = new Date(o.debut);
+  return {
+    resourceType: 'Appointment',
+    meta: meta(PROFILS.rendezVous, o.env),
+    status: 'booked',
+    serviceType: [{ coding: [{ system: SYSTEMES.modeConsultation, code: 'video' }] }],
+    start: debut.toISOString(),
+    end: new Date(debut.getTime() + o.dureeMinutes * 60_000).toISOString(),
+    minutesDuration: o.dureeMinutes,
+    participant: [
+      { actor: { reference: `Patient/${o.patientId}` }, status: 'accepted' },
+      { actor: { reference: `Practitioner/${o.praticienId}` }, status: 'accepted' },
     ],
   };
 }

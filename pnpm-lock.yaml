@@ -90,6 +90,9 @@ importers:
 
   platform/services/teleconsultation:
     dependencies:
+      '@mbolo/dossier-fhir':
+        specifier: workspace:*
+        version: link:../dossier-fhir
       '@mbolo/drapeaux':
         specifier: workspace:*
         version: link:../../packages/drapeaux
@@ -106,6 +109,9 @@ importers:
         specifier: ^2.19.1
         version: 2.19.1
     devDependencies:
+      '@types/fhir':
+        specifier: ^0.0.41
+        version: 0.0.41
       jose:
         specifier: ^6.2.12
         version: 6.2.12

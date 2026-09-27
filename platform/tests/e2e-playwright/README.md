@@ -27,13 +27,13 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 
 ```bash
 # 1. Keycloak et HAPI FHIR locaux (mot de passe administrateur choisi localement, jamais commité)
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… docker compose -f platform/services/identite/docker-compose.yml up -d
+KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… TELECONSULTATION_SERVICE_CLIENT_SECRET=… docker compose -f platform/services/identite/docker-compose.yml up -d
 docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d
 UNLEASH_DB_PASSWORD=… UNLEASH_ADMIN_TOKEN='*:*.…' UNLEASH_BACKEND_TOKEN='default:development.…' docker compose -f platform/services/feature-flags/docker-compose.yml up -d
 # 2. Construire les services puis lancer les scénarios (Playwright démarre lui-même le service identite)
 pnpm build
 LIVEKIT_KEYS="<clé>: <secret>" livekit-server --config platform/services/teleconsultation/livekit/config-local.yaml &
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… WEBRTC_API_KEY=<clé> WEBRTC_API_SECRET=<secret> pnpm e2e
+KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… TELECONSULTATION_SERVICE_CLIENT_SECRET=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… WEBRTC_API_KEY=<clé> WEBRTC_API_SECRET=<secret> pnpm e2e
 ```
 
 Variables facultatives : `KEYCLOAK_URL` (défaut `http://127.0.0.1:8081`), `FHIR_AMONT_URL` (HAPI, défaut `http://127.0.0.1:8080/fhir`), `PASSERELLE_URL` (défaut `http://127.0.0.1:3002`) et `IDENTITE_URL` (défaut `http://127.0.0.1:3001`).

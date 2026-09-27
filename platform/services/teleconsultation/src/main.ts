@@ -1,9 +1,14 @@
 // Démarrage du service de téléconsultation (prototype, ADR-0011). Secrets : clé et secret d'API
 // LiveKit (WEBRTC_API_KEY, WEBRTC_API_SECRET), depuis le coffre-fort, jamais le dépôt.
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { creerVerificateur } from '@mbolo/identite';
+import { creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
-import { DepotRendezVousMemoire, ServiceTeleconsultation } from './rendez-vous.js';
+import { DepotRendezVousFhir } from './depot-fhir.js';
+import {
+  type DepotRendezVous,
+  DepotRendezVousMemoire,
+  ServiceTeleconsultation,
+} from './rendez-vous.js';
 import { SalleLiveKit } from './salle-livekit.js';
 import { creerServeur } from './serveur.js';
 
@@ -21,9 +26,33 @@ if (!emetteur || !url || !cle || !secret) {
   process.exit(1);
 }
 if (env['MBOLO_ENV'] === 'prod') {
-  // Prototype : rendez-vous en mémoire, test terrain à faire (ADR-0011).
+  // Prototype : test terrain LiveKit à faire (ADR-0011), hébergement et avis juridique en attente.
   journal.erreur('Prototype : le service ne démarre pas en production.');
   process.exit(1);
+}
+
+// Rendez-vous dans le dossier médical (Appointment), via la passerelle et un compte de service
+// limité aux rendez-vous. Sans FHIR_BASE_URL : en mémoire (développement seulement).
+let depot: DepotRendezVous;
+const fhir = env['FHIR_BASE_URL'];
+if (fhir) {
+  const secretService = env['TELECONSULTATION_SERVICE_CLIENT_SECRET'];
+  if (!secretService) {
+    journal.erreur(
+      'TELECONSULTATION_SERVICE_CLIENT_SECRET manquant : accès au dossier impossible.',
+    );
+    process.exit(1);
+  }
+  const entetes = creerFournisseurJeton({
+    emetteur,
+    client: env['TELECONSULTATION_SERVICE_CLIENT_ID'] ?? 'mbolo-teleconsultation-service',
+    secret: secretService,
+  });
+  depot = new DepotRendezVousFhir({ base: fhir, entetes }, 'dev');
+  journal.info('rendez-vous enregistrés dans le dossier FHIR (passerelle authentifiée)');
+} else {
+  depot = new DepotRendezVousMemoire();
+  journal.avertissement('FHIR_BASE_URL absent : rendez-vous en mémoire (perdus à l’arrêt).');
 }
 
 const drapeaux =
@@ -41,11 +70,7 @@ const app = creerServeur({
     emetteur,
     audience: env['TELECONSULTATION_AUDIENCE'] ?? 'mbolo-teleconsultation-api',
   }),
-  service: new ServiceTeleconsultation(
-    new DepotRendezVousMemoire(),
-    new SalleLiveKit({ url, cle, secret }),
-    drapeaux,
-  ),
+  service: new ServiceTeleconsultation(depot, new SalleLiveKit({ url, cle, secret }), drapeaux),
   journal,
 });
 const port = Number(env['PORT'] ?? '3003');

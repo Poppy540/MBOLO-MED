@@ -1,6 +1,6 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
 // Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
-// IDENTITE_SERVICE_CLIENT_SECRET identique à celui donné à Keycloak, et un Unleash local
+// IDENTITE_SERVICE_CLIENT_SECRET et TELECONSULTATION_SERVICE_CLIENT_SECRET identiques à ceux donnés à Keycloak, et un Unleash local
 // (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), et un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
@@ -74,6 +74,9 @@ export default defineConfig({
       env: {
         KEYCLOAK_ISSUER: EMETTEUR,
         WEBRTC_SERVER_URL: WEBRTC_URL,
+        FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
+        TELECONSULTATION_SERVICE_CLIENT_SECRET:
+          process.env['TELECONSULTATION_SERVICE_CLIENT_SECRET'] ?? '',
         WEBRTC_API_KEY: process.env['WEBRTC_API_KEY'] ?? '',
         WEBRTC_API_SECRET: process.env['WEBRTC_API_SECRET'] ?? '',
         UNLEASH_API_URL: UNLEASH_URL,

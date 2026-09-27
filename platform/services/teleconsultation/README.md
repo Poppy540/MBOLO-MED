@@ -1,11 +1,15 @@
 # Service `teleconsultation` (prototype)
 
-Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le flag **`teleconsultation.video`** (vague 1, désactivé par défaut). **Prototype** : rendez-vous en mémoire, le service refuse de démarrer en production.
+Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le flag **`teleconsultation.video`** (vague 1, désactivé par défaut). **Prototype** : le service refuse de démarrer en production (test terrain à faire).
 
 ## Règles
 
 - Un **patient** demande un rendez-vous vidéo avec un professionnel : `POST /rendez-vous` (`praticienId`, `debut`, `dureeMinutes` de 5 à 120). Le rendez-vous ne contient **aucune donnée de santé** : ni motif, ni symptôme.
-- `GET /rendez-vous` : le patient voit ses rendez-vous, le professionnel les siens.
+- **Rendez-vous dans le dossier médical** : ressource FHIR `Appointment` (profil `mbolo-rendez-vous`), écrite **via la passerelle** avec le compte de service `mbolo-teleconsultation-service`, limité à `system/Appointment.crus`. Le service lui-même ne garde rien.
+  - Le profil **interdit tout motif, pièce jointe ou texte libre** (invariant `mbolo-rdv-1`) et impose **un patient et un professionnel** (`mbolo-rdv-2`).
+  - Un professionnel inconnu du dossier est refusé (422).
+  - Un rendez-vous dont le statut n'est plus `booked` (annulé dans le dossier) ferme la salle.
+- `GET /rendez-vous` : le patient voit ses rendez-vous, le professionnel les siens (recherche sans cache, chaque résultat revérifié).
 - `POST /rendez-vous/:id/salle` renvoie l'adresse LiveKit et un **jeton de salle** aux conditions suivantes :
   - l'utilisateur est le **patient** ou le **professionnel** de ce rendez-vous. Sinon **404**, sans révéler que le rendez-vous existe ;
   - l'heure est comprise entre **15 min avant le début et 30 min après la fin prévue**. Sinon 409 ;
@@ -25,6 +29,8 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 | `WEBRTC_SERVER_URL` | Adresse LiveKit pour les clients (ex. `wss://visio.mbolo-sante.example`) |
 | `WEBRTC_API_KEY`, `WEBRTC_API_SECRET` | Clé d'API LiveKit, depuis le coffre-fort (`secrets/templates/webrtc.env.example`) |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Feature flags ; sans eux, la fonction est désactivée |
+| `FHIR_BASE_URL` | Adresse de la passerelle du dossier (ex. `https://passerelle.mbolo-sante.example/fhir`) ; sans elle, rendez-vous **en mémoire** (développement seulement) |
+| `TELECONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-teleconsultation-service`), `TELECONSULTATION_SERVICE_CLIENT_SECRET` | Compte de service pour la passerelle, secret depuis le coffre-fort |
 
 ## Serveur LiveKit local
 
@@ -42,16 +48,19 @@ En CI, le binaire LiveKit **1.12.0** est téléchargé depuis les versions GitHu
   - participants autorisés et refus (404) ;
   - fenêtre horaire ;
   - flag ;
-  - contenu du jeton LiveKit (salle, durée, aucun droit d'enregistrement).
+  - contenu du jeton LiveKit (salle, durée, aucun droit d'enregistrement) ;
+  - dépôt FHIR : `Appointment` conforme et sans motif, annulation qui ferme la salle, résultat étranger écarté, refus 422.
 - **E2E** (`features-gherkin/teleconsultation/visio.feature`) :
   - le patient et le médecin rejoignent la salle depuis **deux navigateurs** (micro simulé) et **s'entendent** ;
   - un autre patient ou un infirmier ne peut pas entrer ;
   - la fonction est refusée hors cohorte ;
-  - 401 sans jeton.
+  - 401 sans jeton ;
+  - le rendez-vous est dans le dossier (sans motif, marqué fictif) et chacun des deux participants le retrouve ;
+  - un professionnel inconnu du dossier est refusé.
 
 ## Reste à faire avant la vague 1
 
-- Rendez-vous stockés dans le dossier (FHIR `Appointment`, via la passerelle et un compte de service).
+- Annulation et report d'un rendez-vous ; créneaux proposés par les professionnels.
 - Applications patient et professionnel, avec le **repli audio automatique** quand la qualité baisse.
 - TURN et hébergement HDS, au plus près du Gabon.
 - **Test terrain** en 3G/4G, avec des seuils à fixer par le porteur de projet.

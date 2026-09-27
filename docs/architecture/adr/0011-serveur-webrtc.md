@@ -58,15 +58,16 @@ Jitsi reste l'option de repli si l'on veut une visioconférence de secours très
 ## Prototype (PR K)
 - Service `teleconsultation` : rendez-vous demandé par le patient ; jeton de salle réservé au patient et au professionnel du rendez-vous, de 15 min avant le début à 30 min après la fin prévue ; salle de 2 participants, jeton de 10 min sans droit d'enregistrer ; flag `teleconsultation.video`.
 - Test e2e : deux navigateurs avec micro simulé se connectent à un vrai LiveKit 1.12.0 et s'entendent.
+- PR L : rendez-vous enregistrés dans le dossier (FHIR `Appointment`, profil `mbolo-rendez-vous` sans motif ni texte libre), via la passerelle, avec un compte de service limité à `system/Appointment.crus`.
 - Reste à faire avant la vague 1 :
-  - rendez-vous stockés dans le dossier (FHIR `Appointment`, via la passerelle) ;
+  - annulation, report et créneaux ;
   - applications patient et professionnel ;
   - repli audio automatique côté application ;
   - TURN et hébergement HDS ;
   - test terrain.
 
 ## Conséquences
-- Nouveau service `platform/services/teleconsultation` : rendez-vous, jetons de salle et événements de qualité, sans aucune donnée de santé.
+- Nouveau service `platform/services/teleconsultation` : rendez-vous (conservés dans le dossier FHIR, jamais dans le service), jetons de salle et événements de qualité.
 - Nouveaux secrets dans l'inventaire : clé et secret d'API LiveKit, secret TURN (`WEBRTC_*`, déjà prévus dans `secrets/inventaire-cles.md`).
 - Budget de données par consultation et temps de bascule audio suivis en supervision (skill `supervision-slo`).
 

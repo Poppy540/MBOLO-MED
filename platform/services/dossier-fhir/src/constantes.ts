@@ -8,6 +8,7 @@ export const PROFILS = {
   consent: `${CANONIQUE}/StructureDefinition/mbolo-consent`,
   condition: `${CANONIQUE}/StructureDefinition/mbolo-condition`,
   provenance: `${CANONIQUE}/StructureDefinition/mbolo-provenance`,
+  rendezVous: `${CANONIQUE}/StructureDefinition/mbolo-rendez-vous`,
 } as const;
 
 export const SYSTEMES = {
@@ -28,6 +29,7 @@ export const SYSTEMES = {
   motifDecision: `${CANONIQUE}/CodeSystem/mbolo-motif-acces`,
   role: `${CANONIQUE}/CodeSystem/mbolo-role`,
   sousTypeAudit: `${CANONIQUE}/CodeSystem/mbolo-audit`,
+  modeConsultation: `${CANONIQUE}/CodeSystem/mbolo-mode-consultation`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;

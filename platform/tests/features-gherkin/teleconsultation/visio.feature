@@ -1,5 +1,5 @@
 # language: fr
-# Données FICTIVES uniquement ; micro simulé ; aucune consultation enregistrée. Règle : ADR-0011.
+# Données FICTIVES uniquement ; micro simulé ; aucune consultation enregistrée. Règles : ADR-0010, ADR-0011.
 @teleconsultation @vague1
 Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
   Afin de consulter un médecin depuis son téléphone
@@ -15,6 +15,20 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Et que "medecin-fictif-01" rejoint la téléconsultation
     Alors "patient-fictif-01" entend "Professionnel de santé"
     Et "medecin-fictif-01" entend "Patient"
+
+  Scénario: Le rendez-vous est enregistré dans le dossier médical, sans aucun motif
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Alors le rendez-vous est enregistré
+    Et le dossier médical contient ce rendez-vous entre "pat-fictif-001" et "prac-fictif-001", sans motif
+    Et "patient-fictif-01" retrouve ce rendez-vous dans ses rendez-vous
+    Et "medecin-fictif-01" retrouve ce rendez-vous dans ses rendez-vous
+
+  Scénario: Un rendez-vous avec un professionnel inconnu du dossier est refusé
+    Étant donné que "patient-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-999" maintenant
+    Alors le rendez-vous est refusé par le dossier médical
 
   Scénario: Personne d'autre ne peut entrer dans la salle du rendez-vous
     Étant donné que "patient-fictif-01" est connecté

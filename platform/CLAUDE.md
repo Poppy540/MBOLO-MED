@@ -13,7 +13,7 @@
 | `services/identite` | Keycloak (royaume `mbolo`), vérification des jetons, décision d'accès au dossier, API de consentement stockée dans le dossier FHIR, bris de glace, MFA (ADR-0009) — voir son README | 0 |
 | `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
 | `services/passerelle-fhir` | Seul point d'entrée des services vers le dossier FHIR : jetons de service, permissions SMART, validation des écritures (ADR-0010) — voir son README | 0 |
-| `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous, jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
+| `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
 | `services/notifications` | SMS, WhatsApp, e-mail — gabarits approuvés | 1 |
