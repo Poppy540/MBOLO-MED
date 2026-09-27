@@ -14,6 +14,15 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
 
 Les erreurs sont affichées en phrases simples, sans jargon.
 
+## Hors ligne et économie de données
+
+- **Service worker** (`public/sw.js`, identique dans les deux applications, source dans `@mbolo/client-web`) :
+  - les fichiers de l'application (noms uniques par version) sont servis **depuis le téléphone** après la première visite : moins de données consommées ;
+  - la page est demandée au réseau d'abord, puis servie depuis le téléphone s'il n'y en a pas ;
+  - **l'API et la connexion (Keycloak) ne sont jamais mises en cache** (données personnelles, jetons).
+- **Dernière liste de rendez-vous connue** : gardée sur le téléphone réduite à l'identifiant, l'horaire et la durée (ni professionnel, ni patient, ni motif), affichée sans réseau avec sa date de mise à jour, **effacée à la déconnexion**.
+- Service worker actif seulement dans l'application construite (`pnpm build`), pas en développement.
+
 ## Déploiement dans un autre pays
 
 Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur. Variables de construction :
@@ -29,7 +38,7 @@ L'API de téléconsultation est servie sous `/api/teleconsultation` (même origi
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **9,9 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **10,3 Ko**.
 
 ## Lancer
 
@@ -43,10 +52,11 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
 - **Unitaires** : défi PKCE (vecteur de la RFC 7636), état et code à usage unique, messages d'erreur, dates selon le pays, décision de repli audio.
 - **E2E** (`features-gherkin/teleconsultation/application-patient.feature`), vrai navigateur :
   - connexion par le formulaire Keycloak, réservation d'un créneau puis annulation ;
-  - rejoindre la consultation, voir la vidéo du professionnel, passer en audio seulement.
+  - rejoindre la consultation, voir la vidéo du professionnel, passer en audio seulement ;
+  - sans réseau, l'application rouvre et affiche les rendez-vous connus (rien d'autre n'est gardé).
 
 ## Reste à faire
 
-- Service worker (hors ligne, cache), traduction en langues locales, messages vocaux.
+- Traduction en langues locales, messages vocaux.
 - Annuaire des professionnels ; report depuis l'application.
 - Validation des écrans avec le pilote conception (skill `ux-contexte-gabonais`) et test terrain sur téléphone réel.

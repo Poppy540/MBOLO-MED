@@ -5,8 +5,8 @@
 ## Structure
 | Dossier | Rôle | Vague d'activation |
 |---|---|---|
-| `apps/patient` | Prototype PWA (Preact + Vite, 9,9 Ko à l'ouverture) : connexion PKCE, rendez-vous, créneaux, visio avec repli audio ; pays paramétrable — voir son README | 1 |
-| `apps/professionnel` | Prototype PWA (10,6 Ko à l'ouverture) : connexion avec double authentification, créneaux, rendez-vous, report, annulation, visio — voir son README | 1 |
+| `apps/patient` | Prototype PWA (Preact + Vite, 10,3 Ko à l'ouverture) : connexion PKCE, rendez-vous, créneaux, visio avec repli audio, hors ligne ; pays paramétrable — voir son README | 1 |
+| `apps/professionnel` | Prototype PWA (11,0 Ko à l'ouverture, hors ligne) : connexion avec double authentification, créneaux, rendez-vous, report, annulation, visio — voir son README | 1 |
 | `apps/pharmacie` | Espace des pharmacies partenaires (ordonnances, stocks) | 2 |
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
 | `apps/backoffice` | Administration interne (rôles habilités, journalisé) | 0–1 |

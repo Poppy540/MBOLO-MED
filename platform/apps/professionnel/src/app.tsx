@@ -6,6 +6,10 @@ import {
   Consultation,
   demarrerConnexion,
   ErreurApi,
+  estHorsLigne,
+  oublierRendezVous,
+  RendezVousHorsLigne,
+  retenirRendezVous,
   quand as formater,
   terminerConnexion,
   urlDeconnexion,
@@ -68,7 +72,13 @@ export function App() {
           <span aria-hidden="true">🩺</span> Mbolo Santé Pro
         </h1>
         {jeton && (
-          <button class="lien" onClick={() => location.assign(urlDeconnexion(connexion()))}>
+          <button
+            class="lien"
+            onClick={() => {
+              oublierRendezVous(localStorage);
+              location.assign(urlDeconnexion(connexion()));
+            }}
+          >
             Se déconnecter
           </button>
         )}
@@ -96,6 +106,12 @@ export function App() {
       )}
       {attente ? (
         <p aria-live="polite">Chargement…</p>
+      ) : ecran.nom === 'accueil' && !navigator.onLine ? (
+        <RendezVousHorsLigne
+          stockage={localStorage}
+          fuseau={CONFIG.fuseau}
+          langue={CONFIG.langue}
+        />
       ) : ecran.nom === 'accueil' ? (
         <section>
           <p>Espace des professionnels de santé.</p>
@@ -131,17 +147,26 @@ function MesRendezVous(p: {
   signaler: (e: unknown) => void;
 }) {
   const [liste, setListe] = useState<RendezVous[]>();
+  const [horsLigne, setHorsLigne] = useState(false);
   const charger = () =>
     api
       .mesRendezVous()
-      .then((l) =>
-        setListe(
-          l.filter((r) => r.statut === 'prevu').sort((a, b) => a.debut.localeCompare(b.debut)),
-        ),
-      )
-      .catch(p.signaler);
+      .then((l) => {
+        const prevus = l
+          .filter((r) => r.statut === 'prevu')
+          .sort((a, b) => a.debut.localeCompare(b.debut));
+        retenirRendezVous(localStorage, prevus);
+        setHorsLigne(false);
+        setListe(prevus);
+      })
+      .catch((e: unknown) => (estHorsLigne(e) ? setHorsLigne(true) : p.signaler(e)));
   useEffect(() => void charger(), []);
 
+  if (horsLigne) {
+    return (
+      <RendezVousHorsLigne stockage={localStorage} fuseau={CONFIG.fuseau} langue={CONFIG.langue} />
+    );
+  }
   return (
     <section>
       <h2>Rendez-vous à venir</h2>

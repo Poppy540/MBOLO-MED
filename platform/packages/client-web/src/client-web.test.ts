@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { creerRequete, ErreurApi } from './api.js';
 import { defiPkce, demarrerConnexion, terminerConnexion, type Memoire } from './auth.js';
 import { quand, versInstant } from './format.js';
+import { oublierRendezVous, rendezVousRetenus, retenirRendezVous } from './hors-ligne.js';
 import { DecisionRepli } from './repli.js';
 
 // Données FICTIVES.
@@ -100,5 +102,59 @@ describe('repli audio automatique', () => {
     expect(e.observer('good', 3_000)).toBe(false);
     expect(e.observer('poor', 6_000)).toBe(false);
     expect(new DecisionRepli().observer('lost', 0)).toBe(true);
+  });
+});
+
+describe('hors ligne', () => {
+  const stockage = () => {
+    const m = new Map<string, string>();
+    return {
+      getItem: (c: string) => m.get(c) ?? null,
+      setItem: (c: string, v: string) => void m.set(c, v),
+      removeItem: (c: string) => void m.delete(c),
+      brut: () => [...m.values()].join(''),
+    };
+  };
+
+  it('ne garde que l’identifiant, l’horaire et la durée ; oublie à la déconnexion', () => {
+    const s = stockage();
+    const avecExtras = {
+      id: 'rdv-fictif-1',
+      debut: '2026-10-01T08:00:00Z',
+      dureeMinutes: 20,
+      praticienId: 'prac-fictif-001',
+      patientId: 'pat-fictif-001',
+    };
+    retenirRendezVous(s, [avecExtras], new Date('2026-09-30T10:00:00Z'));
+    expect(rendezVousRetenus(s)).toEqual({
+      date: '2026-09-30T10:00:00.000Z',
+      liste: [{ id: 'rdv-fictif-1', debut: '2026-10-01T08:00:00Z', dureeMinutes: 20 }],
+    });
+    expect(s.brut()).not.toContain('fictif-00');
+    oublierRendezVous(s);
+    expect(rendezVousRetenus(s)).toBeUndefined();
+  });
+
+  it('un stockage indisponible (navigation privée) ne casse rien', () => {
+    const plein = {
+      getItem: () => {
+        throw new Error('interdit');
+      },
+      setItem: () => {
+        throw new Error('plein');
+      },
+      removeItem: () => undefined,
+    };
+    expect(() => retenirRendezVous(plein, [])).not.toThrow();
+    expect(rendezVousRetenus(plein)).toBeUndefined();
+  });
+
+  it('le service worker est le même dans les deux applications et ne met jamais l’API en cache', () => {
+    const lire = (chemin: string) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
+    const source = lire('./sw.js');
+    expect(lire('../../../apps/patient/public/sw.js')).toBe(source);
+    expect(lire('../../../apps/professionnel/public/sw.js')).toBe(source);
+    expect(source).toContain("url.pathname.startsWith('/api/')) return;");
+    expect(source).toContain('url.origin !== self.location.origin) return;');
   });
 });
