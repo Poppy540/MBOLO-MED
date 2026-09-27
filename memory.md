@@ -21,7 +21,8 @@
 - **PR G fusionnée** ([PR n°8](https://github.com/Poppy540/MBOLO-MED/pull/8)) : passerelle du dossier `passerelle-fhir` (ADR-0010, proposée), jetons de service, permissions SMART (`mbolo_scopes`).
 - **PR H fusionnée** ([PR n°9](https://github.com/Poppy540/MBOLO-MED/pull/9)) : feature flags `@mbolo/drapeaux` (OpenFeature + Unleash 7), registre `docs/deploiement/flags.md`, flag `consentement.proche`.
 - **PR I fusionnée** ([PR n°10](https://github.com/Poppy540/MBOLO-MED/pull/10)) : journal des accès (`AuditEvent`, aucun accès sans trace, traces immuables, historique visible par le patient).
-- **PR J en cours :** revue humaine des bris de glace — rôle `revue-acces` (MFA, aucun accès clinique), liste à revoir et retards (délai `REVUE_BRIS_DE_GLACE_DELAI_HEURES`, 24 h proposé), conclusion tracée, pas d'auto-revue ; 34 scénarios e2e.
+- **PR J fusionnée** ([PR n°11](https://github.com/Poppy540/MBOLO-MED/pull/11)) : revue humaine des bris de glace (rôle `revue-acces`, retards, conclusion tracée, pas d'auto-revue) ; 34 scénarios e2e.
+- **Vague 1 — téléconsultation :** ADR-0011 proposée (LiveKit recommandé face à Jitsi), en attente de la décision du porteur de projet ; prototype et test terrain ensuite.
 - **Protection de `main` à vérifier** : les PR E, F et H ont été fusionnées avant la fin de la CI (contrôles obligatoires non appliqués ou contournés par l'administrateur).
 - **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub, HAPI depuis la couche de l'image Docker Hub (`app/main.war`, Java 21) ; Unleash 7 via npm sur un Postgres 16 local (port 5433) ; pas de démon Docker ; script de relance dans le dossier de travail.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
@@ -72,7 +73,8 @@
 2. Qui compose le **comité médical**, qui est **directeur médical de garde**, qui est **responsable sécurité** ? Qui reçoit le rôle **`revue-acces`** (revue des bris de glace) et sous quel **délai** (24 h proposé) ?
 3. Liste fermée des **actions de niveau 4** autorisées à l'Agent 6 ?
 4. Valider le **contenu des vagues** et fixer les seuils chiffrés des critères de passage.
-5. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
+5. **Serveur de téléconsultation** : LiveKit (recommandé) ou Jitsi ? (ADR-0011)
+6. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
 
 ## 5. Leçons apprises
 
