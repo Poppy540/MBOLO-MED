@@ -90,6 +90,9 @@ importers:
 
   platform/services/consultation:
     dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
       '@mbolo/dossier-fhir':
         specifier: workspace:*
         version: link:../dossier-fhir
@@ -149,6 +152,9 @@ importers:
 
   platform/services/identite:
     dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
       '@mbolo/dossier-fhir':
         specifier: workspace:*
         version: link:../dossier-fhir
@@ -171,6 +177,9 @@ importers:
 
   platform/services/invitations:
     dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
       '@mbolo/base-donnees':
         specifier: workspace:*
         version: link:../../packages/base-donnees
@@ -189,6 +198,9 @@ importers:
 
   platform/services/notifications:
     dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
       '@mbolo/dossier-fhir':
         specifier: workspace:*
         version: link:../dossier-fhir
@@ -211,6 +223,9 @@ importers:
 
   platform/services/passerelle-fhir:
     dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
       '@mbolo/dossier-fhir':
         specifier: workspace:*
         version: link:../dossier-fhir

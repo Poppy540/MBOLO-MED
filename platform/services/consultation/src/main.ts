@@ -31,7 +31,8 @@ const entetes = creerFournisseurJeton({
   client: env['CONSULTATION_SERVICE_CLIENT_ID'] ?? 'mbolo-consultation-service',
   secret,
 });
-const app = creerServeur({
+const app = await creerServeur({
+  limiteParMinute: Number(env['CONSULTATION_LIMITE_PAR_MINUTE'] ?? '300'),
   verifierJeton: creerVerificateur({
     emetteur,
     audience: env['CONSULTATION_AUDIENCE'] ?? 'mbolo-consultation-api',

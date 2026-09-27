@@ -1,5 +1,6 @@
 // API de consultation clinique. Toute requête (hors /sante) exige un jeton Keycloak valide ; le
 // même jeton est présenté au service identite pour la décision d'accès au dossier.
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
 import type { Journal } from '@mbolo/journal-securise';
@@ -11,17 +12,21 @@ class ErreurAuthentification extends Error {}
 const ID = { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } as const;
 const TEXTE = { type: 'string', maxLength: 4000 } as const;
 
-export function creerServeur(o: {
+export async function creerServeur(o: {
   verifierJeton: VerifierJeton;
   service: ServiceConsultation;
   journal: Journal;
-}): FastifyInstance {
+  /** Appels permis par adresse et par minute (défaut : 300). */
+  limiteParMinute?: number;
+}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
     bodyLimit: 32 * 1024,
     // Un champ inconnu est refusé, pas silencieusement retiré.
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Toutes les routes sont limitées ; enregistré avant elles.
+  await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
 
   const authentifier = async (
     req: FastifyRequest,
@@ -37,6 +42,9 @@ export function creerServeur(o: {
   };
 
   app.setErrorHandler((err, _req, reply) => {
+    if ((err as { statusCode?: number }).statusCode === 429) {
+      return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
+    }
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }

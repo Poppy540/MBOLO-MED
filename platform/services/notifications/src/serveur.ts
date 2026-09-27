@@ -1,4 +1,5 @@
 // API du service de notifications : réservée aux services autorisés (jeton de service).
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Journal } from '@mbolo/journal-securise';
 import { IDENTIFIANTS_GABARITS, type Gabarit } from './gabarits.js';
@@ -7,19 +8,23 @@ import type { CanalSimule, Destinataire, ServiceNotifications } from './notifica
 
 class ErreurAuthentification extends Error {}
 
-export function creerServeur(o: {
+export async function creerServeur(o: {
   verifierAppelant: VerifierAppelant;
   service: ServiceNotifications;
   journal: Journal;
   /** Canal simulé : sa boîte est consultable (développement et tests uniquement). */
   simulation?: CanalSimule;
-}): FastifyInstance {
+  /** Appels permis par adresse et par minute (défaut : 600). */
+  limiteParMinute?: number;
+}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
     bodyLimit: 4 * 1024,
     // Un champ inconnu (ex. un texte libre) est refusé, pas silencieusement retiré.
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Toutes les routes sont limitées ; enregistré avant elles.
+  await app.register(rateLimit, { max: o.limiteParMinute ?? 600, timeWindow: '1 minute' });
 
   const authentifier = async (req: FastifyRequest): Promise<string> => {
     const entete = req.headers.authorization;
@@ -32,6 +37,9 @@ export function creerServeur(o: {
   };
 
   app.setErrorHandler((err, _req, reply) => {
+    if ((err as { statusCode?: number }).statusCode === 429) {
+      return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
+    }
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }

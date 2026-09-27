@@ -1,6 +1,7 @@
 // API des invitations. Création, liste et révocation : rôle gestion-invitations uniquement (humain,
 // double authentification). Vérification d'un code : publique, mais limitée en nombre d'essais.
 // Inscription (ADR-0014) : contrôle et utilisation d'un code par l'extension Keycloak seulement.
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
 import type { Journal } from '@mbolo/journal-securise';
@@ -13,7 +14,7 @@ class ErreurInterdite extends Error {}
 
 export const ROLE_GESTION = 'gestion-invitations';
 
-export function creerServeur(o: {
+export async function creerServeur(o: {
   verifierJeton: VerifierJeton;
   service: ServiceInvitations;
   limiteur: Limiteur;
@@ -22,13 +23,17 @@ export function creerServeur(o: {
   verifierService?: VerifierService;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
-}): FastifyInstance {
+  /** Appels permis par adresse et par minute (défaut : 300). */
+  limiteParMinute?: number;
+}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
     bodyLimit: 2 * 1024,
     trustProxy: o.trustProxy ?? false,
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Toutes les routes sont limitées ; enregistré avant elles.
+  await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
 
   const gestionnaire = async (req: FastifyRequest): Promise<Utilisateur> => {
     const entete = req.headers.authorization;
@@ -47,6 +52,9 @@ export function creerServeur(o: {
   };
 
   app.setErrorHandler((err, _req, reply) => {
+    if ((err as { statusCode?: number }).statusCode === 429) {
+      return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
+    }
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }

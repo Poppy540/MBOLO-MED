@@ -64,7 +64,8 @@ if (unleashUrl && unleashJeton) {
   journal.avertissement('Unleash non configuré : toutes les fonctions nouvelles sont désactivées.');
 }
 
-const app = creerServeur({
+const app = await creerServeur({
+  limiteParMinute: Number(process.env['IDENTITE_LIMITE_PAR_MINUTE'] ?? '300'),
   verifierJeton: creerVerificateur({ emetteur, audience }),
   consentements: new ServiceConsentements(depot, env, drapeaux),
   depot,

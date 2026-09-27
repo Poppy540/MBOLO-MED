@@ -39,7 +39,10 @@ beforeAll(async () => {
       .sign(privateKey);
 });
 
-const app = (journalAcces: JournalAcces = new JournalAccesMemoire()) => {
+const app = async (
+  journalAcces: JournalAcces = new JournalAccesMemoire(),
+  limiteParMinute?: number,
+) => {
   const depot = new DepotMemoire();
   return creerServeur({
     verifierJeton: creerVerificateur({
@@ -53,6 +56,7 @@ const app = (journalAcces: JournalAcces = new JournalAccesMemoire()) => {
     revue: new ServiceRevue(journalAcces, 'dev', 24),
     env: 'dev',
     journal,
+    ...(limiteParMinute ? { limiteParMinute } : {}),
   });
 };
 
@@ -67,12 +71,12 @@ const jetonMedecin = () =>
 
 describe('API identité', () => {
   it('GET /sante sans authentification', async () => {
-    const r = await app().inject({ method: 'GET', url: '/sante' });
+    const r = await (await app()).inject({ method: 'GET', url: '/sante' });
     expect(r.statusCode).toBe(200);
   });
 
   it('401 sans jeton, avec un jeton d’un autre émetteur, ou un jeton altéré', async () => {
-    const a = app();
+    const a = await app();
     expect(
       (await a.inject({ method: 'GET', url: '/patients/fictif-patient-0001/consentements' }))
         .statusCode,
@@ -103,7 +107,7 @@ describe('API identité', () => {
   });
 
   it('parcours complet : consentement de partage, accès du médecin, révocation, refus', async () => {
-    const a = app();
+    const a = await app();
     const patient = { authorization: `Bearer ${await jetonPatient()}` };
     const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
 
@@ -157,7 +161,7 @@ describe('API identité', () => {
   });
 
   it('le médecin ne peut ni lire ni créer les consentements de la patiente (403)', async () => {
-    const a = app();
+    const a = await app();
     const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
     expect(
       (
@@ -178,7 +182,7 @@ describe('API identité', () => {
   });
 
   it('refuse une catégorie inventée (400) et un partage sans bénéficiaire (422)', async () => {
-    const a = app();
+    const a = await app();
     const patient = { authorization: `Bearer ${await jetonPatient()}` };
     const inconnue = await a.inject({
       method: 'POST',
@@ -198,7 +202,9 @@ describe('API identité', () => {
 
   it('bris de glace : accordé, journalisé en avertissement pour revue humaine', async () => {
     lignes.length = 0;
-    const r = await app().inject({
+    const r = await (
+      await app()
+    ).inject({
       method: 'POST',
       url: '/acces/dossier',
       headers: { authorization: `Bearer ${await jetonMedecin()}` },
@@ -216,7 +222,9 @@ describe('API identité', () => {
   it('le journal ne contient jamais le texte de consentement ni de jeton', async () => {
     lignes.length = 0;
     const jeton = await jetonPatient();
-    await app().inject({
+    await (
+      await app()
+    ).inject({
       method: 'POST',
       url: '/patients/fictif-patient-0001/consentements',
       headers: { authorization: `Bearer ${jeton}` },
@@ -242,7 +250,7 @@ describe('API identité', () => {
       }
     }
     const depot = new DepotEnPanne();
-    const serveur = creerServeur({
+    const serveur = await creerServeur({
       verifierJeton: creerVerificateur({
         emetteur: EMETTEUR,
         audience: AUDIENCE,
@@ -277,7 +285,7 @@ describe('API identité', () => {
 
   it('trace chaque décision dans le dossier ; le patient voit l’historique, le médecin non', async () => {
     const journalAcces = new JournalAccesMemoire();
-    const a = app(journalAcces);
+    const a = await app(journalAcces);
     const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
     const patient = { authorization: `Bearer ${await jetonPatient()}` };
     const refus = await a.inject({
@@ -329,7 +337,7 @@ describe('API identité', () => {
       parPatient: async () => [],
       parSousType: async () => [],
     };
-    const a = app(enPanne);
+    const a = await app(enPanne);
     const accordable = await a.inject({
       method: 'POST',
       url: '/acces/dossier',
@@ -345,5 +353,16 @@ describe('API identité', () => {
     });
     expect(refus.statusCode).toBe(200);
     expect(refus.json()).toMatchObject({ autorise: false });
+  });
+});
+
+describe('limites d’appels', () => {
+  it('au-delà de la limite par minute, répond 429 avec un message simple', async () => {
+    const a = await app(new JournalAccesMemoire(), 2);
+    expect((await a.inject({ method: 'GET', url: '/sante' })).statusCode).toBe(200);
+    expect((await a.inject({ method: 'GET', url: '/sante' })).statusCode).toBe(200);
+    const r = await a.inject({ method: 'GET', url: '/sante' });
+    expect(r.statusCode).toBe(429);
+    expect(r.json()).toEqual({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
   });
 });
