@@ -1,7 +1,7 @@
 // Démarrage du service de téléconsultation (prototype, ADR-0011). Secrets : clé et secret d'API
 // LiveKit (WEBRTC_API_KEY, WEBRTC_API_SECRET), depuis le coffre-fort, jamais le dépôt.
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
+import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
 import { AnnuaireFhir, AnnuaireMemoire, type Annuaire } from './annuaire.js';
@@ -46,17 +46,17 @@ let annuaire: Annuaire = new AnnuaireMemoire();
 let identites: Identites = new IdentitesMemoire();
 const fhir = env['FHIR_BASE_URL'];
 if (fhir) {
-  const secretService = env['TELECONSULTATION_SERVICE_CLIENT_SECRET'];
-  if (!secretService) {
+  const authService = authentificationDepuis(env, 'TELECONSULTATION');
+  if (!authService) {
     journal.erreur(
-      'TELECONSULTATION_SERVICE_CLIENT_SECRET manquant : accès au dossier impossible.',
+      'compte de service : clé privée TELECONSULTATION_SERVICE_CLE_PRIVEE (ou, pendant la bascule, secret TELECONSULTATION_SERVICE_CLIENT_SECRET) manquante : accès au dossier impossible.',
     );
     process.exit(1);
   }
   const entetes = creerFournisseurJeton({
     emetteur,
     client: env['TELECONSULTATION_SERVICE_CLIENT_ID'] ?? 'mbolo-teleconsultation-service',
-    secret: secretService,
+    authentification: authService,
   });
   depot = new DepotRendezVousFhir({ base: fhir, entetes }, 'dev');
   creneaux = new DepotCreneauxFhir({ base: fhir, entetes }, 'dev');

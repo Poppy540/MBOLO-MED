@@ -282,6 +282,9 @@ importers:
       '@mbolo/dossier-fhir':
         specifier: workspace:*
         version: link:../../services/dossier-fhir
+      '@mbolo/identite':
+        specifier: workspace:*
+        version: link:../../services/identite
       '@playwright/test':
         specifier: 1.56.1
         version: 1.56.1

@@ -1,6 +1,6 @@
 // Démarrage du service de notifications (ADR-0012). Secret du compte de service
-// (NOTIFICATIONS_SERVICE_CLIENT_SECRET) depuis le coffre-fort, jamais le dépôt.
-import { creerFournisseurJeton } from '@mbolo/identite';
+// (clé privée NOTIFICATIONS_SERVICE_CLE_PRIVEE, ADR-0016) depuis le coffre-fort, jamais le dépôt.
+import { authentificationDepuis, creerFournisseurJeton } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { PAYS_PAR_DEFAUT, verifierPays, type Pays } from './gabarits.js';
 import { ContactsFhir } from './dossier.js';
@@ -12,11 +12,11 @@ const journal = creerJournal({ service: 'notifications' });
 const env = process.env;
 const emetteur = env['KEYCLOAK_ISSUER'];
 const fhir = env['FHIR_BASE_URL'];
-const secret = env['NOTIFICATIONS_SERVICE_CLIENT_SECRET'];
+const authentification = authentificationDepuis(env, 'NOTIFICATIONS');
 
-if (!emetteur || !fhir || !secret) {
+if (!emetteur || !fhir || !authentification) {
   journal.erreur(
-    'KEYCLOAK_ISSUER, FHIR_BASE_URL et NOTIFICATIONS_SERVICE_CLIENT_SECRET sont obligatoires.',
+    'KEYCLOAK_ISSUER, FHIR_BASE_URL et NOTIFICATIONS_SERVICE_CLE_PRIVEE (ou le secret pendant la bascule) sont obligatoires.',
   );
   process.exit(1);
 }
@@ -41,7 +41,7 @@ try {
 const entetes = creerFournisseurJeton({
   emetteur,
   client: env['NOTIFICATIONS_SERVICE_CLIENT_ID'] ?? 'mbolo-notifications-service',
-  secret,
+  authentification,
 });
 const canal = new CanalSimule();
 const app = await creerServeur({

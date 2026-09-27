@@ -1,5 +1,5 @@
 # Keycloak local pour le développement — COMPTES FICTIFS UNIQUEMENT.
-# Lancement : KC_BOOTSTRAP_ADMIN_PASSWORD=<local> IDENTITE_SERVICE_CLIENT_SECRET=<local> TELECONSULTATION_SERVICE_CLIENT_SECRET=<local> NOTIFICATIONS_SERVICE_CLIENT_SECRET=<local> CONSULTATION_SERVICE_CLIENT_SECRET=<local> DOCUMENTS_SERVICE_CLIENT_SECRET=<local> docker compose -f platform/services/identite/docker-compose.yml up -d
+# Lancement : KC_BOOTSTRAP_ADMIN_PASSWORD=<local> <PREFIXE>_SERVICE_CERTIFICAT=<certificat> (5 comptes de service, voir scripts/cles-services-test.sh) docker compose -f platform/services/identite/docker-compose.yml up -d
 # Le mot de passe administrateur n'est jamais écrit dans le dépôt : il est lu dans l'environnement du poste.
 # Console : http://127.0.0.1:8081 (accessible uniquement depuis la machine locale).
 services:
@@ -12,13 +12,13 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?Définir KC_BOOTSTRAP_ADMIN_PASSWORD dans l'environnement local}
-      # Secret du compte de service de identite, injecté dans le royaume à l'import (${…} dans realm-mbolo.json).
-      IDENTITE_SERVICE_CLIENT_SECRET: ${IDENTITE_SERVICE_CLIENT_SECRET:?Définir IDENTITE_SERVICE_CLIENT_SECRET dans l'environnement local}
-      # Obligatoire : sans valeur, Keycloak garderait le texte « ${…} » comme secret (devinable).
-      TELECONSULTATION_SERVICE_CLIENT_SECRET: ${TELECONSULTATION_SERVICE_CLIENT_SECRET:?Définir TELECONSULTATION_SERVICE_CLIENT_SECRET dans l'environnement local}
-      NOTIFICATIONS_SERVICE_CLIENT_SECRET: ${NOTIFICATIONS_SERVICE_CLIENT_SECRET:?Définir NOTIFICATIONS_SERVICE_CLIENT_SECRET dans l'environnement local}
-      CONSULTATION_SERVICE_CLIENT_SECRET: ${CONSULTATION_SERVICE_CLIENT_SECRET:?Définir CONSULTATION_SERVICE_CLIENT_SECRET dans l'environnement local}
-      DOCUMENTS_SERVICE_CLIENT_SECRET: ${DOCUMENTS_SERVICE_CLIENT_SECRET:?Définir DOCUMENTS_SERVICE_CLIENT_SECRET dans l'environnement local}
+      # Certificats publics des comptes de service (private_key_jwt, ADR-0016), injectés dans le royaume à
+      # l'import. Obligatoires : sans valeur, Keycloak garderait le texte « ${…} ». Aucune clé privée ici.
+      IDENTITE_SERVICE_CERTIFICAT: ${IDENTITE_SERVICE_CERTIFICAT:?Définir IDENTITE_SERVICE_CERTIFICAT dans l'environnement local}
+      TELECONSULTATION_SERVICE_CERTIFICAT: ${TELECONSULTATION_SERVICE_CERTIFICAT:?Définir TELECONSULTATION_SERVICE_CERTIFICAT dans l'environnement local}
+      NOTIFICATIONS_SERVICE_CERTIFICAT: ${NOTIFICATIONS_SERVICE_CERTIFICAT:?Définir NOTIFICATIONS_SERVICE_CERTIFICAT dans l'environnement local}
+      CONSULTATION_SERVICE_CERTIFICAT: ${CONSULTATION_SERVICE_CERTIFICAT:?Définir CONSULTATION_SERVICE_CERTIFICAT dans l'environnement local}
+      DOCUMENTS_SERVICE_CERTIFICAT: ${DOCUMENTS_SERVICE_CERTIFICAT:?Définir DOCUMENTS_SERVICE_CERTIFICAT dans l'environnement local}
       # Extension d'inscription (ADR-0014) : adresse du service des invitations, vue depuis le conteneur.
       KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL: ${INVITATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3006/}
       # Identité saisie après l'inscription : dossier créé par la passerelle (ADR-0014).

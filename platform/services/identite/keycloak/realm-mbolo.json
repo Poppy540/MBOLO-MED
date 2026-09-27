@@ -287,8 +287,7 @@
       "name": "Compte de service du service identité (dossier : consentements et journal des accès)",
       "enabled": true,
       "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${IDENTITE_SERVICE_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-jwt",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -297,7 +296,10 @@
       "defaultClientScopes": ["basic"],
       "optionalClientScopes": [],
       "attributes": {
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "use.jwks.url": "false",
+        "jwt.credential.certificate": "${IDENTITE_SERVICE_CERTIFICAT}",
+        "token.endpoint.auth.signing.alg": "RS256"
       },
       "protocolMappers": [
         {
@@ -331,8 +333,7 @@
       "name": "Compte de service du service téléconsultation (dossier : rendez-vous uniquement)",
       "enabled": true,
       "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${TELECONSULTATION_SERVICE_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-jwt",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -341,7 +342,10 @@
       "defaultClientScopes": ["basic"],
       "optionalClientScopes": [],
       "attributes": {
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "use.jwks.url": "false",
+        "jwt.credential.certificate": "${TELECONSULTATION_SERVICE_CERTIFICAT}",
+        "token.endpoint.auth.signing.alg": "RS256"
       },
       "protocolMappers": [
         {
@@ -406,8 +410,7 @@
       "name": "Compte de service du service notifications (dossier : numéro de téléphone et consentement aux rappels)",
       "enabled": true,
       "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${NOTIFICATIONS_SERVICE_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-jwt",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -416,7 +419,10 @@
       "defaultClientScopes": ["basic"],
       "optionalClientScopes": [],
       "attributes": {
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "use.jwks.url": "false",
+        "jwt.credential.certificate": "${NOTIFICATIONS_SERVICE_CERTIFICAT}",
+        "token.endpoint.auth.signing.alg": "RS256"
       },
       "protocolMappers": [
         {
@@ -485,8 +491,7 @@
       "name": "Compte de service du service documents (dossier : identité déclarée et statut du patient, charte C-IDENTITE ; modification du statut et du numéro seulement ; traces des photos consultées)",
       "enabled": true,
       "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${DOCUMENTS_SERVICE_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-jwt",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -495,7 +500,10 @@
       "defaultClientScopes": ["basic"],
       "optionalClientScopes": [],
       "attributes": {
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "use.jwks.url": "false",
+        "jwt.credential.certificate": "${DOCUMENTS_SERVICE_CERTIFICAT}",
+        "token.endpoint.auth.signing.alg": "RS256"
       },
       "protocolMappers": [
         {
@@ -557,8 +565,7 @@
       "name": "Compte de service de la consultation clinique (dossier : problèmes, comptes-rendus, rendez-vous en lecture)",
       "enabled": true,
       "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${CONSULTATION_SERVICE_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-jwt",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -567,7 +574,10 @@
       "defaultClientScopes": ["basic"],
       "optionalClientScopes": [],
       "attributes": {
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "use.jwks.url": "false",
+        "jwt.credential.certificate": "${CONSULTATION_SERVICE_CERTIFICAT}",
+        "token.endpoint.auth.signing.alg": "RS256"
       },
       "protocolMappers": [
         {

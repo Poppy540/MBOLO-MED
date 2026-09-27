@@ -1,6 +1,7 @@
 // Étapes « passerelle du dossier » : seul un jeton de service avec la bonne permission ouvre le dossier.
 // Données FICTIVES uniquement.
 import { expect } from '@playwright/test';
+import { creerFournisseurJeton } from '@mbolo/identite';
 import {
   CLIENT_SERVICE_IDENTITE,
   CLIENT_SERVICE_NOTIFICATIONS,
@@ -10,37 +11,73 @@ import {
 } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 
-/** Comptes de service de test : client Keycloak et variable qui porte son secret (jamais écrit). */
+/**
+ * Comptes de service de test : client Keycloak et variable qui porte sa clé privée (jamais écrite),
+ * comme les vrais services (private_key_jwt, ADR-0016).
+ */
 const SERVICES = {
-  identité: { client: CLIENT_SERVICE_IDENTITE, variable: 'IDENTITE_SERVICE_CLIENT_SECRET' },
+  identité: { client: CLIENT_SERVICE_IDENTITE, variable: 'IDENTITE_SERVICE_CLE_PRIVEE' },
   téléconsultation: {
     client: CLIENT_SERVICE_TELECONSULTATION,
-    variable: 'TELECONSULTATION_SERVICE_CLIENT_SECRET',
+    variable: 'TELECONSULTATION_SERVICE_CLE_PRIVEE',
   },
   notifications: {
     client: CLIENT_SERVICE_NOTIFICATIONS,
-    variable: 'NOTIFICATIONS_SERVICE_CLIENT_SECRET',
+    variable: 'NOTIFICATIONS_SERVICE_CLE_PRIVEE',
   },
 } as const;
 type NomService = keyof typeof SERVICES;
 
 export async function jetonService(nom: NomService): Promise<string> {
   const { client, variable } = SERVICES[nom];
-  const secret = process.env[variable];
-  if (!secret) throw new Error(`${variable} manquant (Keycloak de test).`);
+  const clePrivee = process.env[variable];
+  if (!clePrivee) throw new Error(`${variable} manquant (Keycloak de test).`);
+  const entetes = await creerFournisseurJeton({
+    emetteur: EMETTEUR,
+    client,
+    authentification: { clePrivee },
+  })();
+  const jeton = entetes['authorization']?.replace(/^Bearer /, '') ?? '';
+  expect(jeton).not.toBe('');
+  return jeton;
+}
+
+const JETON_SERVICE = 'service identité';
+
+// ── Authentification des services auprès de Keycloak (ADR-0016) ──────────────
+const CLIENT_DOCUMENTS = 'mbolo-documents-service';
+let refusKeycloak: number | undefined;
+
+When('le service documents demande un jeton avec un secret', async () => {
+  // Secret fictif construit à l'exécution : seul le mode d'authentification est testé.
   const r = await fetch(`${EMETTEUR}/protocol/openid-connect/token`, {
     method: 'POST',
     body: new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: client,
-      client_secret: secret,
+      client_id: CLIENT_DOCUMENTS,
+      client_secret: ['secret', 'fictif', 'e2e'].join('-'),
     }),
   });
-  expect(r.status).toBe(200);
-  return ((await r.json()) as { access_token: string }).access_token;
-}
+  refusKeycloak = r.status;
+});
 
-const JETON_SERVICE = 'service identité';
+When('le service documents signe sa demande de jeton avec la clé du service identité', async () => {
+  const autre = process.env['IDENTITE_SERVICE_CLE_PRIVEE'];
+  if (!autre) throw new Error('IDENTITE_SERVICE_CLE_PRIVEE manquant (Keycloak de test).');
+  refusKeycloak = await creerFournisseurJeton({
+    emetteur: EMETTEUR,
+    client: CLIENT_DOCUMENTS,
+    authentification: { clePrivee: autre },
+  })().then(
+    () => 200,
+    () => 401,
+  );
+});
+
+Then('Keycloak refuse de lui délivrer un jeton', () => {
+  expect(refusKeycloak).toBeGreaterThanOrEqual(400);
+  refusKeycloak = undefined;
+});
 
 Given('le service identité a obtenu son jeton de service', async ({ monde }) => {
   monde.jetons.set(JETON_SERVICE, await jetonService('identité'));

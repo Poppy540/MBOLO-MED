@@ -65,3 +65,12 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Alors le dossier répond avec le statut 200
     Quand le service notifications demande "Condition?patient=Patient/pat-fictif-001" au dossier
     Alors le dossier répond avec le statut 403
+
+  # Authentification des services par clé privée (private_key_jwt, ADR-0016) : aucun secret partagé.
+  Scénario: Un service ne peut pas obtenir de jeton avec un secret partagé
+    Quand le service documents demande un jeton avec un secret
+    Alors Keycloak refuse de lui délivrer un jeton
+
+  Scénario: Un service ne peut pas signer sa demande avec la clé d'un autre service
+    Quand le service documents signe sa demande de jeton avec la clé du service identité
+    Alors Keycloak refuse de lui délivrer un jeton

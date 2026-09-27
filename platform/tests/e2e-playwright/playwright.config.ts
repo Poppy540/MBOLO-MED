@@ -1,10 +1,10 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
 // Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
-// IDENTITE_SERVICE_CLIENT_SECRET, TELECONSULTATION_SERVICE_CLIENT_SECRET et NOTIFICATIONS_SERVICE_CLIENT_SECRET et CONSULTATION_SERVICE_CLIENT_SECRET identiques à ceux donnés à Keycloak, et un Unleash local
+// les clés privées des comptes de service (<PREFIXE>_SERVICE_CLE_PRIVEE) dont Keycloak a reçu les certificats (scripts/cles-services-test.sh, ADR-0016), et un Unleash local
 // (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET), et un
 // PostgreSQL de test pour les invitations (INVITATIONS_DATABASE_URL, INVITATIONS_MIGRATION_DATABASE_URL,
 // INVITATIONS_CLE_EMPREINTE) et les documents (DOCUMENTS_DATABASE_URL, DOCUMENTS_MIGRATION_DATABASE_URL,
-// DOCUMENTS_CLE_MAITRE, DOCUMENTS_SERVICE_CLIENT_SECRET), et un S3 de test (MBOLO_TEST_S3_*).
+// DOCUMENTS_CLE_MAITRE), et un S3 de test (MBOLO_TEST_S3_*).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 import {
@@ -74,7 +74,7 @@ export default defineConfig({
       env: {
         KEYCLOAK_ISSUER: EMETTEUR,
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
-        IDENTITE_SERVICE_CLIENT_SECRET: process.env['IDENTITE_SERVICE_CLIENT_SECRET'] ?? '',
+        IDENTITE_SERVICE_CLE_PRIVEE: process.env['IDENTITE_SERVICE_CLE_PRIVEE'] ?? '',
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',
@@ -90,8 +90,8 @@ export default defineConfig({
         KEYCLOAK_ISSUER: EMETTEUR,
         WEBRTC_SERVER_URL: WEBRTC_URL,
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
-        TELECONSULTATION_SERVICE_CLIENT_SECRET:
-          process.env['TELECONSULTATION_SERVICE_CLIENT_SECRET'] ?? '',
+        TELECONSULTATION_SERVICE_CLE_PRIVEE:
+          process.env['TELECONSULTATION_SERVICE_CLE_PRIVEE'] ?? '',
         NOTIFICATIONS_URL,
         WEBRTC_API_KEY: process.env['WEBRTC_API_KEY'] ?? '',
         WEBRTC_API_SECRET: process.env['WEBRTC_API_SECRET'] ?? '',
@@ -110,7 +110,7 @@ export default defineConfig({
         KEYCLOAK_ISSUER: EMETTEUR,
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
         IDENTITE_URL,
-        CONSULTATION_SERVICE_CLIENT_SECRET: process.env['CONSULTATION_SERVICE_CLIENT_SECRET'] ?? '',
+        CONSULTATION_SERVICE_CLE_PRIVEE: process.env['CONSULTATION_SERVICE_CLE_PRIVEE'] ?? '',
         PORT: new URL(CONSULTATION_URL).port,
         MBOLO_ENV: 'dev',
       },
@@ -122,8 +122,7 @@ export default defineConfig({
       env: {
         KEYCLOAK_ISSUER: EMETTEUR,
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
-        NOTIFICATIONS_SERVICE_CLIENT_SECRET:
-          process.env['NOTIFICATIONS_SERVICE_CLIENT_SECRET'] ?? '',
+        NOTIFICATIONS_SERVICE_CLE_PRIVEE: process.env['NOTIFICATIONS_SERVICE_CLE_PRIVEE'] ?? '',
         PORT: new URL(NOTIFICATIONS_URL).port,
         MBOLO_ENV: 'dev',
       },
@@ -153,7 +152,7 @@ export default defineConfig({
       env: {
         KEYCLOAK_ISSUER: EMETTEUR,
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
-        DOCUMENTS_SERVICE_CLIENT_SECRET: process.env['DOCUMENTS_SERVICE_CLIENT_SECRET'] ?? '',
+        DOCUMENTS_SERVICE_CLE_PRIVEE: process.env['DOCUMENTS_SERVICE_CLE_PRIVEE'] ?? '',
         DOCUMENTS_DATABASE_URL: process.env['DOCUMENTS_DATABASE_URL'] ?? '',
         DOCUMENTS_MIGRATION_DATABASE_URL: process.env['DOCUMENTS_MIGRATION_DATABASE_URL'] ?? '',
         DOCUMENTS_CLE_MAITRE: process.env['DOCUMENTS_CLE_MAITRE'] ?? '',
