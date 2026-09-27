@@ -17,6 +17,7 @@
 | [0011](adr/0011-serveur-webrtc.md) | Serveur de téléconsultation vidéo : LiveKit | Acceptée (prototype et test terrain à venir) |
 | [0012](adr/0012-notifications.md) | Service de notifications (SMS, WhatsApp), gabarits approuvés | Proposée (fournisseur à choisir) |
 | [0013](adr/0013-base-de-donnees-services.md) | Base de données des services (hors dossier médical), premier usage : codes d'invitation | Acceptée |
+| [0014](adr/0014-inscription-patient.md) | Inscription d'un patient avec un code d'invitation (extension Keycloak, identité vérifiée) | Acceptée (vérification à préciser) |
 
 ## Vue d'ensemble (cible, à détailler)
 
