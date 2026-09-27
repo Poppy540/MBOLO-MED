@@ -7,3 +7,4 @@ Chacune viole une règle des profils Mbolo Santé. Le script `scripts/valider-ig
 | `condition-confirmee-par-patient.json` | `mbolo-cond-1` : diagnostic confirmé posé par quelqu'un d'autre qu'un professionnel (principe n°1) | `mbolo-cond-1` |
 | `condition-sans-statut.json` | `verificationStatus` obligatoire | `verificationStatus` |
 | `consent-categorie-inconnue.json` | catégorie hors du jeu de valeurs Mbolo (consentement groupé interdit) | `TOUT-ACCEPTER` |
+| `consent-proche-sans-beneficiaire.json` | `mbolo-consent-1` : consentement de partage sans bénéficiaire désigné | `mbolo-consent-1` |

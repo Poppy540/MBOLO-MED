@@ -12,6 +12,7 @@
 | [0006](adr/0006-messagerie-salle-de-controle.md) | Messagerie de la salle de contrôle : Slack + astreinte | Acceptée |
 | [0007](adr/0007-feature-flags-unleash.md) | Feature flags : Unleash (OpenFeature) | Acceptée |
 | [0008](adr/0008-socle-technique.md) | Socle technique : monorepo TypeScript, pnpm, CI GitHub Actions | Acceptée |
+| [0009](adr/0009-identite-controle-acces.md) | Identité (Keycloak), contrôle d'accès au dossier, consentements, bris de glace | Proposée |
 
 ## Vue d'ensemble (cible, à détailler)
 

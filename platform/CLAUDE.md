@@ -1,6 +1,6 @@
 # Plateforme Mbolo Santé — contexte local
 
-> **Vague 0 : squelette uniquement, aucun code applicatif.** Le développement se fera module par module, selon les vagues (`docs/deploiement/vagues.md`) et les ADR (`docs/architecture/`).
+> **Vague 0 : premiers services (`dossier-fhir`, `identite`) ; le reste est un squelette.** Le développement se fera module par module, selon les vagues (`docs/deploiement/vagues.md`) et les ADR (`docs/architecture/`).
 
 ## Structure
 | Dossier | Rôle | Vague d'activation |
@@ -10,7 +10,7 @@
 | `apps/pharmacie` | Espace des pharmacies partenaires (ordonnances, stocks) | 2 |
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
 | `apps/backoffice` | Administration interne (rôles habilités, journalisé) | 0–1 |
-| `services/identite` | Comptes, authentification (MFA pros), rôles, consentements | 0 |
+| `services/identite` | Keycloak (royaume `mbolo`), vérification des jetons, décision d'accès au dossier, API de consentement, bris de glace (ADR-0009) — voir son README | 0 |
 | `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
 | `services/teleconsultation` | Salles WebRTC, jetons courts, repli audio (ADR-0002) | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |

@@ -1,0 +1,15 @@
+# Keycloak local pour le développement — COMPTES FICTIFS UNIQUEMENT.
+# Lancement : KC_BOOTSTRAP_ADMIN_PASSWORD=<mot de passe local> docker compose -f platform/services/identite/docker-compose.yml up -d
+# Le mot de passe administrateur n'est jamais écrit dans le dépôt : il est lu dans l'environnement du poste.
+# Console : http://127.0.0.1:8081 (accessible uniquement depuis la machine locale).
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?Définir KC_BOOTSTRAP_ADMIN_PASSWORD dans l'environnement local}
+    volumes:
+      - ./keycloak/realm-mbolo.json:/opt/keycloak/data/import/realm-mbolo.json:ro

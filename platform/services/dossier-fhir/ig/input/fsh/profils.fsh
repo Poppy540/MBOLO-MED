@@ -5,6 +5,11 @@ Description: "Principe n°1 : un diagnostic confirmé, ou un diagnostic de consu
 Expression: "(verificationStatus.coding.where(code = 'confirmed').exists() or category.coding.where(code = 'encounter-diagnosis').exists()) implies asserter.reference.startsWith('Practitioner')"
 Severity: #error
 
+Invariant: mbolo-consent-1
+Description: "Un consentement de partage (C-PARTAGE-PRO, C-PROCHE) doit désigner son bénéficiaire (provision.actor) : on consent toujours à un partage avec quelqu'un de précis."
+Expression: "category.coding.where(code = 'C-PARTAGE-PRO' or code = 'C-PROCHE').exists() implies provision.actor.exists()"
+Severity: #error
+
 Profile: MboloPatient
 Parent: Patient
 Id: mbolo-patient
@@ -27,6 +32,7 @@ Title: "Consentement Mbolo Santé"
 Description: "Un consentement explicite, spécifique à un usage, horodaté et révocable (skill recueil-consentement)."
 * ^status = #draft
 * ^experimental = true
+* obeys mbolo-consent-1
 * extension contains ModeRecueil named modeRecueil 0..1 MS
 * status MS
 * category 1..1 MS

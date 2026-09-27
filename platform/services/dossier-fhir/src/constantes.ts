@@ -21,6 +21,7 @@ export const SYSTEMES = {
   consentScope: 'http://terminology.hl7.org/CodeSystem/consentscope',
   actReason: 'http://terminology.hl7.org/CodeSystem/v3-ActReason',
   provenanceType: 'http://terminology.hl7.org/CodeSystem/provenance-participant-type',
+  participationType: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;
@@ -43,3 +44,9 @@ export const MARQUEUR_FICTIF = {
   code: 'fictif',
   display: 'Donnée fictive',
 };
+
+/** Catégories de partage : le consentement doit désigner son bénéficiaire (provision.actor). */
+export const CATEGORIES_AVEC_BENEFICIAIRE: readonly CategorieConsentement[] = [
+  'C-PARTAGE-PRO',
+  'C-PROCHE',
+];

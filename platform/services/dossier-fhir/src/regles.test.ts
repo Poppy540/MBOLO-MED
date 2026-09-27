@@ -125,6 +125,31 @@ describe('Consent', () => {
     expect(regles(verifierConsent(groupe))).toContain('mbolo-consent.category');
   });
 
+  it('mbolo-consent-1 : un partage avec un proche doit désigner son bénéficiaire', () => {
+    const sansBeneficiaire = consentement({
+      patientId: 'fictif-patient-0001',
+      categorie: 'C-PROCHE',
+      mode: 'texte',
+      date: '2026-09-26T10:15:00+01:00',
+      versionTexte: 'C-PROCHE v0.1 (fr)',
+      accepte: true,
+      env: 'dev',
+    });
+    expect(regles(verifierConsent(sansBeneficiaire))).toContain('mbolo-consent-1');
+
+    const avecBeneficiaire = consentement({
+      patientId: 'fictif-patient-0001',
+      categorie: 'C-PROCHE',
+      mode: 'texte',
+      date: '2026-09-26T10:15:00+01:00',
+      versionTexte: 'C-PROCHE v0.1 (fr)',
+      accepte: true,
+      env: 'dev',
+      beneficiaire: 'RelatedPerson/fictif-proche-0001',
+    });
+    expect(verifierConsent(avecBeneficiaire)).toEqual([]);
+  });
+
   it('exige la version du texte présenté', () => {
     const sansTexte: Consent = { ...base() };
     delete sansTexte.policyRule;
