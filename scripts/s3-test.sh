@@ -21,13 +21,19 @@ chmod 600 "$CONFIG"
 printf '{"identities":[{"name":"mbolo-test","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List","Tagging","Admin"]}]}\n' \
   "$CLE" "$SECRET" > "$CONFIG"
 
+# Appel direct de `weed` : le script d'entrée de l'image passe à l'utilisateur `seaweed`, qui ne
+# peut pas lire le fichier de clés (chmod 600, propriété du runner). Mêmes options qu'en local.
 docker run -d --name mbolo-s3-test -p 127.0.0.1:8333:8333 \
-  -v "$CONFIG:/etc/seaweedfs/s3.json:ro" \
-  chrislusf/seaweedfs:4.47 server -dir=/data \
+  -v "$CONFIG:/etc/seaweedfs/s3.json:ro" --entrypoint /usr/bin/weed \
+  chrislusf/seaweedfs:4.47 server -dir=/data -ip=127.0.0.1 -ip.bind=0.0.0.0 \
   -volume.max=100 -master.volumeSizeLimitMB=64 -master.volumePreallocate=false \
   -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json > /dev/null
 # Sans authentification, le service répond 403 : il est prêt.
-timeout 90 bash -c 'until [ "$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8333)" = "403" ]; do sleep 2; done'
+if ! timeout 90 bash -c 'until [ "$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8333)" = "403" ]; do sleep 2; done'; then
+  echo "Le stockage S3 de test ne répond pas ; journal du conteneur :" >&2
+  docker logs --tail 50 mbolo-s3-test >&2 || true
+  exit 1
+fi
 
 {
   echo "MBOLO_TEST_S3_URL=http://127.0.0.1:8333"
