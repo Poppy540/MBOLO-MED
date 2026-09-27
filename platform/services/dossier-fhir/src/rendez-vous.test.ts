@@ -1,6 +1,12 @@
 import type { Appointment } from 'fhir/r4.js';
 import { describe, expect, it } from 'vitest';
-import { agendaVideo, annulerRendezVous, creneauVideo, rendezVousVideo } from './construire.js';
+import {
+  agendaVideo,
+  annulerRendezVous,
+  creneauVideo,
+  rendezVousVideo,
+  reporterRendezVous,
+} from './construire.js';
 import { valider, verifierAppointment, verifierSchedule, verifierSlot } from './regles.js';
 
 // Toutes les données sont FICTIVES.
@@ -120,5 +126,26 @@ describe('Schedule et Slot — agenda et créneaux', () => {
     });
     expect(a.slot).toEqual([{ reference: 'Slot/fictif-creneau-0001' }]);
     expect(valider(a, 'dev')).toEqual([]);
+  });
+});
+
+describe('Appointment — report', () => {
+  it('garde le rendez-vous et ses participants, change la plage et le créneau', () => {
+    const a = { ...rdv(), id: 'rdv-fictif-1' };
+    const b = reporterRendezVous(a, {
+      creneauId: 'fictif-creneau-0002',
+      debut: '2026-10-02T09:00:00Z',
+      dureeMinutes: 30,
+    });
+    expect(valider(b, 'dev')).toEqual([]);
+    expect(b).toMatchObject({
+      id: 'rdv-fictif-1',
+      status: 'booked',
+      start: '2026-10-02T09:00:00.000Z',
+      end: '2026-10-02T09:30:00.000Z',
+      minutesDuration: 30,
+      slot: [{ reference: 'Slot/fictif-creneau-0002' }],
+    });
+    expect(b.participant).toEqual(a.participant);
   });
 });

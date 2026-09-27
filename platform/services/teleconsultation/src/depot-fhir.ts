@@ -6,6 +6,7 @@ import {
   agendaVideo,
   annulerRendezVous,
   creneauVideo,
+  reporterRendezVous,
   type AuteurAnnulation,
   AUTEURS_ANNULATION,
   EXTENSION_DATE_ANNULATION,
@@ -122,6 +123,26 @@ export class DepotRendezVousFhir extends ClientFhir implements DepotRendezVous {
     return versRendezVous(DepotRendezVousFhir.appointment(await r.json()));
   }
 
+  async reporter(
+    id: string,
+    c: { creneauId: string; debut: string; dureeMinutes: number },
+  ): Promise<RendezVous> {
+    const a = await this.lireAppointment(id);
+    if (!a?.id) throw new ErreurDepot('Rendez-vous introuvable dans le dossier médical.', 409);
+    const version = a.meta?.versionId;
+    const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(a.id)}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': TYPE_FHIR,
+        prefer: 'return=representation',
+        ...(version ? { 'if-match': `W/"${version}"` } : {}),
+      },
+      body: JSON.stringify(reporterRendezVous(a, c)),
+    });
+    if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
+    return versRendezVous(DepotRendezVousFhir.appointment(await r.json()));
+  }
+
   /** Recherche sans cache ; chaque résultat est revérifié (le participant doit bien être celui demandé). */
   private async parParticipant(parametre: 'patient' | 'practitioner', reference: string) {
     const trouves = await this.rechercher(
@@ -201,7 +222,8 @@ export class DepotCreneauxFhir extends ClientFhir implements DepotCreneaux {
       praticienId: await this.titulaire(agendaId),
       debut: new Date(s.start).toISOString(),
       dureeMinutes: Math.round((new Date(s.end).getTime() - new Date(s.start).getTime()) / 60_000),
-      statut: s.status === 'free' ? 'libre' : 'reserve',
+      statut:
+        s.status === 'free' ? 'libre' : s.status === 'busy-unavailable' ? 'retire' : 'reserve',
     };
   }
 
@@ -271,7 +293,7 @@ export class DepotCreneauxFhir extends ClientFhir implements DepotCreneaux {
     if (!s?.id) throw new ErreurCreneau('Créneau introuvable.', 404);
     if (s.status !== de) {
       throw new ErreurCreneau(
-        vers === 'busy' ? 'Créneau déjà réservé.' : 'Créneau non réservé.',
+        vers === 'busy' ? 'Créneau déjà réservé.' : 'Créneau dans un autre état.',
         409,
       );
     }
@@ -298,5 +320,10 @@ export class DepotCreneauxFhir extends ClientFhir implements DepotCreneaux {
 
   async liberer(id: string): Promise<void> {
     await this.changerStatut(id, 'busy', 'free');
+  }
+
+  /** Retrait : « busy-unavailable », le créneau reste dans l'agenda mais n'est plus proposé. */
+  retirer(id: string): Promise<Creneau> {
+    return this.changerStatut(id, 'free', 'busy-unavailable');
   }
 }

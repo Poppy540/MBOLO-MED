@@ -29,6 +29,11 @@ export interface DepotRendezVous {
   pourPraticien(praticienId: string): Promise<RendezVous[]>;
   /** Annule en conservant le rendez-vous ; refusé (409) s'il a changé entre-temps. */
   annuler(id: string, par: AuteurAnnulation, date: string): Promise<RendezVous>;
+  /** Change la plage et le créneau ; refusé (409) si le rendez-vous a changé entre-temps. */
+  reporter(
+    id: string,
+    c: Pick<Creneau, 'debut' | 'dureeMinutes'> & { creneauId: string },
+  ): Promise<RendezVous>;
 }
 
 /** Dépôt en mémoire — prototype, données fictives uniquement (le service refuse la production). */
@@ -55,6 +60,21 @@ export class DepotRendezVousMemoire implements DepotRendezVous {
     const annule: RendezVous = { ...r, statut: 'annule', annulation: { par, date } };
     this.donnees.set(id, annule);
     return annule;
+  }
+  async reporter(
+    id: string,
+    c: Pick<Creneau, 'debut' | 'dureeMinutes'> & { creneauId: string },
+  ): Promise<RendezVous> {
+    const r = this.donnees.get(id);
+    if (!r) throw new ErreurTeleconsultation('Rendez-vous introuvable.', 404);
+    const reporte: RendezVous = {
+      ...r,
+      debut: new Date(c.debut).toISOString(),
+      dureeMinutes: c.dureeMinutes,
+      creneauId: c.creneauId,
+    };
+    this.donnees.set(id, reporte);
+    return reporte;
   }
 }
 
@@ -139,6 +159,7 @@ export class ServiceTeleconsultation {
       new Date(fin).toISOString(),
     );
     const chevauche = existants.some((c) => {
+      if (c.statut === 'retire') return false;
       const t = new Date(c.debut).getTime();
       return t < fin && t + c.dureeMinutes * 60_000 > debut;
     });
@@ -193,6 +214,80 @@ export class ServiceTeleconsultation {
     } catch (e) {
       // Rendez-vous refusé : le créneau redevient libre.
       await this.creneaux.liberer(c.id).catch(() => undefined);
+      throw e;
+    }
+  }
+
+  /**
+   * Report vers un autre créneau libre du même professionnel, par l'un des deux participants,
+   * avant le début du rendez-vous. Le nouveau créneau est bloqué d'abord (verrou) ; si la mise à
+   * jour du rendez-vous échoue, il est rendu. L'ancien créneau est ensuite libéré.
+   */
+  async reporter(
+    u: Utilisateur,
+    rendezVousId: string,
+    d: { creneauId: string },
+  ): Promise<RendezVous> {
+    const { r } = await this.participant(u, rendezVousId);
+    await this.exigerFonction(u);
+    const maintenant = this.maintenant().getTime();
+    if (r.statut !== 'prevu') throw new ErreurTeleconsultation('Rendez-vous annulé.', 409);
+    if (new Date(r.debut).getTime() <= maintenant) {
+      throw new ErreurTeleconsultation('Un rendez-vous commencé ne peut plus être reporté.', 409);
+    }
+    const c = await this.creneaux.lire(d.creneauId);
+    if (!c) throw new ErreurTeleconsultation('Créneau introuvable.', 404);
+    if (c.praticienId !== r.praticienId) {
+      throw new ErreurTeleconsultation(
+        'Le nouveau créneau doit être chez le même professionnel.',
+        409,
+      );
+    }
+    if (c.id === r.creneauId || c.statut !== 'libre' || new Date(c.debut).getTime() <= maintenant) {
+      throw new ErreurTeleconsultation('Créneau non disponible.', 409);
+    }
+    try {
+      await this.creneaux.reserver(c.id);
+    } catch (e) {
+      if (e instanceof ErreurCreneau) throw new ErreurTeleconsultation(e.message, e.statut);
+      throw e;
+    }
+    let reporte: RendezVous;
+    try {
+      reporte = await this.depot.reporter(r.id, {
+        creneauId: c.id,
+        debut: c.debut,
+        dureeMinutes: c.dureeMinutes,
+      });
+    } catch (e) {
+      await this.creneaux.liberer(c.id).catch(() => undefined);
+      throw e;
+    }
+    // Si la libération échoue, l'ancien créneau reste réservé : jamais de double réservation.
+    if (r.creneauId) await this.creneaux.liberer(r.creneauId).catch(() => undefined);
+    return reporte;
+  }
+
+  /** Le professionnel retire un de ses créneaux libres (un créneau réservé : annuler d'abord). */
+  async retirerCreneau(u: Utilisateur, creneauId: string): Promise<Creneau> {
+    if (!u.roles.includes('professionnel') || !u.practitionerId) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    const c = await this.creneaux.lire(creneauId);
+    // Même réponse si le créneau n'existe pas ou appartient à un autre professionnel.
+    if (!c || c.praticienId !== u.practitionerId) {
+      throw new ErreurTeleconsultation('Créneau introuvable.', 404);
+    }
+    if (c.statut !== 'libre') {
+      throw new ErreurTeleconsultation(
+        'Seul un créneau libre peut être retiré ; annulez d’abord le rendez-vous.',
+        409,
+      );
+    }
+    try {
+      return await this.creneaux.retirer(c.id);
+    } catch (e) {
+      if (e instanceof ErreurCreneau) throw new ErreurTeleconsultation(e.message, e.statut);
       throw e;
     }
   }

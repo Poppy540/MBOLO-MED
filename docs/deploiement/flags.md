@@ -16,7 +16,7 @@
 | Flag | Vague | Branché | Dépend de | Prérequis avant activation | Retour arrière |
 |---|---|---|---|---|---|
 | `consentement.proche` | 2 | Oui (`identite`) | — | Parcours de consentement des proches validé (skill `consentement-proches-diaspora`), avis juridique sur l'accès des proches, tests e2e au vert | Désactiver le flag : plus aucun **nouveau** partage. Les consentements déjà donnés restent valables jusqu'à révocation par le patient. |
-| `teleconsultation.video` | 1 | Oui (`teleconsultation`, prototype) | — | Test terrain réseau mobile (ADR-0011), applications patient et professionnel | Désactiver : plus de nouveau rendez-vous ni d'entrée en salle ; les salles en cours se ferment à leur expiration ; **l'annulation reste possible** (pas de rendez-vous fantôme) |
+| `teleconsultation.video` | 1 | Oui (`teleconsultation`, prototype) | — | Test terrain réseau mobile (ADR-0011), applications patient et professionnel | Désactiver : plus de nouveau rendez-vous ni d'entrée en salle ; les salles en cours se ferment à leur expiration ; **l'annulation et le retrait de créneaux restent possibles** (pas de rendez-vous fantôme) |
 | `paiement.mobile-money` | 1 | Non | — | Contrat agrégateur, recette des paiements | Désactiver : paiement indisponible, consultations non facturées bloquées |
 | `agent01.accueil` | 1 | Non | `teleconsultation.video` | Skills de l'Agent 1 en statut `complet` (3 cas de test au vert, dont refus et escalade), validation du comité médical | Désactiver : accueil par un humain uniquement |
 

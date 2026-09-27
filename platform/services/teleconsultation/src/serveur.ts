@@ -141,5 +141,39 @@ export function creerServeur(o: {
     },
   );
 
+  app.post<{ Params: { id: string }; Body: { creneauId: string } }>(
+    '/rendez-vous/:id/report',
+    {
+      schema: {
+        params: { type: 'object', properties: { id: ID }, required: ['id'] },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['creneauId'],
+          properties: { creneauId: ID },
+        },
+      },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const r = await o.service.reporter(u, req.params.id, req.body);
+      o.journal.info('rendez-vous reporté', { sujet: u.sujet, rendezVousId: r.id });
+      return r;
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/creneaux/:id/retrait',
+    {
+      schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const c = await o.service.retirerCreneau(u, req.params.id);
+      o.journal.info('créneau retiré', { sujet: u.sujet, creneauId: c.id });
+      return c;
+    },
+  );
+
   return app;
 }

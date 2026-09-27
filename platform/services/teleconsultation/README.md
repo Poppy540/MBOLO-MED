@@ -16,6 +16,11 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
   - Le profil **interdit tout motif, pièce jointe ou texte libre** (invariant `mbolo-rdv-1`) et impose **un patient et un professionnel** (`mbolo-rdv-2`).
   - Le rendez-vous garde la référence de son créneau (`Appointment.slot`).
   - Un rendez-vous dont le statut n'est plus `booked` (annulé dans le dossier) ferme la salle.
+- **Report** : `POST /rendez-vous/:id/report` (`creneauId`), par le patient ou le professionnel du rendez-vous, avant son début.
+  - Le nouveau créneau doit être libre, à venir et **chez le même professionnel** (sinon 409). Un tiers reçoit un 404.
+  - Ordre : le nouveau créneau est bloqué (verrou), puis le rendez-vous est mis à jour (verrou), puis l'ancien créneau est libéré. Si la mise à jour échoue, le nouveau créneau est rendu.
+  - Même rendez-vous (même identifiant, mêmes participants) : l'historique des versions reste dans le dossier.
+- **Retrait d'un créneau** : `POST /creneaux/:id/retrait`, par le professionnel titulaire. Seul un créneau **libre** se retire (sinon 409 : annuler d'abord le rendez-vous) ; il passe à `busy-unavailable`, reste dans l'agenda mais n'est plus proposé, et la plage peut être republiée. Le créneau d'un autre professionnel : 404. Comme l'annulation, le retrait ne dépend pas du flag.
 - **Annulation** : `POST /rendez-vous/:id/annulation`, par le patient ou le professionnel du rendez-vous.
   - Un tiers reçoit un 404, sans apprendre que le rendez-vous existe.
   - Refusée (409) si le rendez-vous est déjà annulé ou terminé, ou s'il a changé entre-temps (verrou optimiste).
@@ -75,7 +80,7 @@ En CI, le binaire LiveKit **1.12.0** est téléchargé depuis les versions GitHu
 
 ## Reste à faire avant la vague 1
 
-- Report d'un rendez-vous vers un autre créneau ; retrait d'un créneau libre par le professionnel ; notification de l'annulation à l'autre participant.
+- Notification de l'annulation et du report à l'autre participant (service `notifications`).
 - Applications patient et professionnel, avec le **repli audio automatique** quand la qualité baisse.
 - TURN et hébergement HDS, au plus près du Gabon.
 - **Test terrain** en 3G/4G, avec des seuils à fixer par le porteur de projet.

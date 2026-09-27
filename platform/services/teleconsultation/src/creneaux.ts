@@ -8,7 +8,8 @@ export interface Creneau {
   /** Début (ISO 8601). */
   debut: string;
   dureeMinutes: number;
-  statut: 'libre' | 'reserve';
+  /** « retire » : retiré par le professionnel, plus proposé ni réservable. */
+  statut: 'libre' | 'reserve' | 'retire';
 }
 
 export interface Plage {
@@ -23,8 +24,10 @@ export interface DepotCreneaux {
   lire(id: string): Promise<Creneau | undefined>;
   /** Libre → réservé ; refusé (409) s'il n'est plus libre ou a changé entre-temps. */
   reserver(id: string): Promise<Creneau>;
-  /** Réservé → libre (après une annulation). */
+  /** Réservé → libre (après une annulation ou un report). */
   liberer(id: string): Promise<void>;
+  /** Libre → retiré ; refusé (409) s'il n'est plus libre. */
+  retirer(id: string): Promise<Creneau>;
 }
 
 export class ErreurCreneau extends Error {
@@ -74,6 +77,15 @@ export class DepotCreneauxMemoire implements DepotCreneaux {
   }
   async liberer(id: string): Promise<void> {
     const c = this.donnees.get(id);
-    if (c) this.donnees.set(id, { ...c, statut: 'libre' });
+    if (c?.statut === 'reserve') this.donnees.set(id, { ...c, statut: 'libre' });
+  }
+  async retirer(id: string): Promise<Creneau> {
+    const c = this.donnees.get(id);
+    if (!c) throw new ErreurCreneau('Créneau introuvable.', 404);
+    if (c.statut !== 'libre')
+      throw new ErreurCreneau('Seul un créneau libre peut être retiré.', 409);
+    const retire: Creneau = { ...c, statut: 'retire' };
+    this.donnees.set(id, retire);
+    return retire;
   }
 }

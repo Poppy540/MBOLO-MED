@@ -85,3 +85,25 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Quand "medecin-fictif-01" annule ce rendez-vous
     Alors le rendez-vous est annulé
     Et le dossier médical conserve ce rendez-vous annulé par "professionnel", sans motif
+
+  Scénario: Le patient reporte son rendez-vous sur un autre créneau du même médecin
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "medecin-fictif-01" publie 1 créneaux de 20 minutes dans 3 jours
+    Et que "patient-fictif-01" reporte ce rendez-vous sur le premier de ces créneaux
+    Alors le rendez-vous est reporté
+    Et le dossier médical rattache ce rendez-vous au nouveau créneau
+    Et "patient-fictif-01" ne voit plus ce créneau chez "prac-fictif-001"
+    Et "patient-fictif-01" voit de nouveau le créneau initial chez "prac-fictif-001"
+
+  Scénario: Le médecin retire un créneau libre, mais pas un créneau réservé
+    Étant donné que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" est connecté
+    Quand "medecin-fictif-01" publie 2 créneaux de 20 minutes dans 4 jours
+    Et que "medecin-fictif-01" retire le premier de ces créneaux
+    Alors le créneau est retiré
+    Et "patient-fictif-01" ne voit plus ce créneau chez "prac-fictif-001"
+    Quand "patient-fictif-01" réserve le dernier de ces créneaux
+    Et que "medecin-fictif-01" retire le dernier de ces créneaux
+    Alors le retrait est refusé car le créneau est réservé

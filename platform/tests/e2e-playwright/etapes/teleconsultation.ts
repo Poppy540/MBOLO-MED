@@ -81,6 +81,7 @@ When(
   async ({ monde }, identifiant: string, praticien: string) => {
     const creneauId = await creneauImminent(praticien);
     monde.creneaux = [creneauId];
+    monde.creneauInitial = creneauId;
     await reserver(monde, identifiant, creneauId);
   },
 );
@@ -307,3 +308,70 @@ Then(
     expect(Date.now() - new Date(date ?? 0).getTime()).toBeLessThan(5 * 60_000);
   },
 );
+
+const dernier = (monde: Monde): string => monde.creneaux?.at(-1) ?? '';
+
+When('{string} réserve le dernier de ces créneaux', async ({ monde }, identifiant: string) => {
+  await reserver(monde, identifiant, dernier(monde));
+});
+
+When(
+  '{string} reporte ce rendez-vous sur le premier de ces créneaux',
+  async ({ monde }, identifiant: string) => {
+    await appeler(
+      monde,
+      'POST',
+      `/rendez-vous/${monde.rendezVousId ?? ''}/report`,
+      monde.jetons.get(identifiant),
+      { creneauId: monde.creneaux?.[0] ?? '' },
+    );
+  },
+);
+
+Then('le rendez-vous est reporté', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  expect(monde.reponse?.corps['creneauId']).toBe(monde.creneaux?.[0]);
+  expect(monde.reponse?.corps['id']).toBe(monde.rendezVousId);
+});
+
+Then('le dossier médical rattache ce rendez-vous au nouveau créneau', async ({ monde }) => {
+  const r = await fetch(`${FHIR_URL}/Appointment/${monde.rendezVousId ?? ''}`, {
+    headers: { accept: 'application/fhir+json', 'cache-control': 'no-cache' },
+  });
+  const a = (await r.json()) as { status: string; slot?: { reference?: string }[] };
+  expect(a.status).toBe('booked');
+  expect(a.slot?.[0]?.reference).toBe(`Slot/${monde.creneaux?.[0] ?? ''}`);
+});
+
+Then(
+  '{string} voit de nouveau le créneau initial chez {string}',
+  async ({ monde }, identifiant: string, praticien: string) => {
+    expect(await creneauxLibres(monde, identifiant, praticien)).toContain(monde.creneauInitial);
+  },
+);
+
+async function retirer(monde: Monde, identifiant: string, creneauId: string): Promise<void> {
+  await appeler(monde, 'POST', `/creneaux/${creneauId}/retrait`, monde.jetons.get(identifiant));
+}
+
+When('{string} retire le premier de ces créneaux', async ({ monde }, identifiant: string) => {
+  await retirer(monde, identifiant, monde.creneaux?.[0] ?? '');
+});
+
+When('{string} retire le dernier de ces créneaux', async ({ monde }, identifiant: string) => {
+  await retirer(monde, identifiant, dernier(monde));
+});
+
+Then('le créneau est retiré', async ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  expect(monde.reponse?.corps['statut']).toBe('retire');
+  // Conservé dans le dossier, mais plus proposé.
+  const r = await fetch(`${FHIR_URL}/Slot/${monde.creneaux?.[0] ?? ''}`, {
+    headers: { accept: 'application/fhir+json', 'cache-control': 'no-cache' },
+  });
+  expect(((await r.json()) as { status: string }).status).toBe('busy-unavailable');
+});
+
+Then('le retrait est refusé car le créneau est réservé', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(409);
+});

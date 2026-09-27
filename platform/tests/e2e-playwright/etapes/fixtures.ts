@@ -18,6 +18,8 @@ export interface Monde {
   rendezVousId?: string;
   /** Créneaux publiés ou préparés pendant le scénario (identifiants). */
   creneaux?: string[];
+  /** Créneau du rendez-vous avant un report. */
+  creneauInitial?: string;
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }
