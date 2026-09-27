@@ -6,7 +6,7 @@
 | Dossier | Rôle | Vague d'activation |
 |---|---|---|
 | `apps/patient` | Prototype PWA (Preact + Vite, 9,9 Ko à l'ouverture) : connexion PKCE, rendez-vous, créneaux, visio avec repli audio ; pays paramétrable — voir son README | 1 |
-| `apps/professionnel` | Espace des professionnels (consultation, dossier, ordonnance) | 1 |
+| `apps/professionnel` | Prototype PWA (10,6 Ko à l'ouverture) : connexion avec double authentification, créneaux, rendez-vous, report, annulation, visio — voir son README | 1 |
 | `apps/pharmacie` | Espace des pharmacies partenaires (ordonnances, stocks) | 2 |
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
 | `apps/backoffice` | Administration interne (rôles habilités, journalisé) | 0–1 |
@@ -20,6 +20,7 @@
 | `services/feature-flags` | Unleash local (`docker-compose.yml`, flags fictifs) ; activation par ville, spécialité, type d'utilisateur (ADR-0003, ADR-0007) | 0 |
 | `packages/drapeaux` | Feature flags via OpenFeature + Unleash : catalogue désactivé par défaut, dépendances, refus en cas d'erreur — registre `docs/deploiement/flags.md` | 0 |
 | `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |
+| `packages/client-web` | Briques communes des applications web : connexion PKCE, appels d'API, dates par pays, visio LiveKit avec repli audio | 1 |
 | `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`), par domaine (`identite/`…) | 0 |
 | `tests/e2e-playwright` | `@mbolo/e2e` : étapes Playwright (playwright-bdd), comptes fictifs, Keycloak, HAPI FHIR, passerelle, Unleash et LiveKit réels — `pnpm e2e`, voir son README | 0 |
 

@@ -1,6 +1,6 @@
 # Application patient (prototype)
 
-PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact + Vite, en français, gros boutons, pictogrammes, peu de texte.
+PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact + Vite, en français, gros boutons, pictogrammes, peu de texte. Briques communes (connexion, dates, visio) dans `@mbolo/client-web`.
 
 ## Parcours
 
@@ -35,7 +35,7 @@ L'API de téléconsultation est servie sous `/api/teleconsultation` (même origi
 
 ```bash
 pnpm --filter @mbolo/app-patient build
-pnpm --filter @mbolo/app-patient preview   # http://localhost:5174 (le port 5173 sert aux tests e2e)
+pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 5173 et 5174 servent aux tests e2e)
 ```
 
 ## Tests

@@ -280,6 +280,23 @@ export class ServiceTeleconsultation {
     return reporte;
   }
 
+  /**
+   * Le professionnel voit ses créneaux à venir (libres et réservés, 14 jours). Pas de condition de
+   * flag : après un retour arrière, il doit pouvoir retrouver et retirer ses créneaux.
+   */
+  async mesCreneaux(u: Utilisateur): Promise<Creneau[]> {
+    if (!u.roles.includes('professionnel') || !u.practitionerId) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    const t = this.maintenant().getTime();
+    const tous = await this.creneaux.duPraticien(
+      u.practitionerId,
+      new Date(t).toISOString(),
+      new Date(t + HORIZON_MS).toISOString(),
+    );
+    return tous.filter((c) => c.statut !== 'retire').sort((x, y) => x.debut.localeCompare(y.debut));
+  }
+
   /** Le professionnel retire un de ses créneaux libres (un créneau réservé : annuler d'abord). */
   async retirerCreneau(u: Utilisateur, creneauId: string): Promise<Creneau> {
     if (!u.roles.includes('professionnel') || !u.practitionerId) {

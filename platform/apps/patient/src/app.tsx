@@ -1,11 +1,16 @@
 // Application patient : connexion, mes rendez-vous, créneaux libres, téléconsultation.
 // Écrans simples, gros boutons, peu de texte, pictogrammes (faible littératie, petits écrans).
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { creerApi, ErreurApi, type Creneau, type RendezVous } from './api.js';
-import { demarrerConnexion, terminerConnexion, urlDeconnexion } from './auth.js';
+import { useEffect, useState } from 'preact/hooks';
+import {
+  Consultation,
+  demarrerConnexion,
+  ErreurApi,
+  quand as formater,
+  terminerConnexion,
+  urlDeconnexion,
+} from '@mbolo/client-web';
+import { creerApi, type Creneau, type RendezVous } from './api.js';
 import { CONFIG } from './config.js';
-import { quand as formater } from './format.js';
-import type { EtatVisio, Visio } from './visio.js';
 
 const connexion = () => ({
   emetteur: CONFIG.emetteur,
@@ -97,7 +102,8 @@ export function App() {
         />
       ) : (
         <Consultation
-          rendezVous={ecran.rendezVous}
+          salle={() => api.salle(ecran.rendezVous.id)}
+          autre="Professionnel de santé"
           retour={() => setEcran({ nom: 'rendez-vous' })}
           signaler={signaler}
         />
@@ -234,72 +240,6 @@ function Creneaux(p: {
         </ul>
       )}
       <button onClick={() => p.retour()}>Retour</button>
-    </section>
-  );
-}
-
-function Consultation(p: {
-  rendezVous: RendezVous;
-  retour: () => void;
-  signaler: (e: unknown) => void;
-}) {
-  const conteneur = useRef<HTMLDivElement>(null);
-  const visio = useRef<Visio>();
-  const [etat, setEtat] = useState<EtatVisio>();
-
-  useEffect(() => {
-    let fini = false;
-    void (async () => {
-      try {
-        const acces = await api.salle(p.rendezVous.id);
-        const { rejoindre } = await import('./visio.js');
-        if (fini || !conteneur.current) return;
-        visio.current = await rejoindre(acces, conteneur.current, setEtat);
-      } catch (e) {
-        p.signaler(
-          e instanceof DOMException && e.name === 'NotAllowedError'
-            ? new ErreurApi(0, 'Autorisez le micro pour la consultation, puis réessayez.')
-            : e,
-        );
-        p.retour();
-      }
-    })();
-    return () => {
-      fini = true;
-      void visio.current?.quitter();
-    };
-  }, []);
-
-  return (
-    <section>
-      <h2>
-        <span aria-hidden="true">📹</span> Téléconsultation
-      </h2>
-      <p aria-live="polite" data-etat-visio="">
-        {!etat?.connecte
-          ? 'Connexion…'
-          : etat.professionnelPresent
-            ? 'Professionnel de santé connecté.'
-            : 'En attente du professionnel de santé…'}
-      </p>
-      {etat?.audioSeulement && (
-        <p class="message" role="status" data-audio-seulement="">
-          {etat.repliAutomatique
-            ? 'Réseau faible : audio seulement pour garder la communication.'
-            : 'Audio seulement.'}
-        </p>
-      )}
-      <div ref={conteneur} class="medias" />
-      {etat?.connecte && (
-        <div class="actions">
-          <button onClick={() => void visio.current?.audioSeulement(!etat.audioSeulement)}>
-            {etat.audioSeulement ? '🎥 Réactiver la vidéo' : '🔈 Audio seulement'}
-          </button>
-          <button class="danger" onClick={p.retour}>
-            <span aria-hidden="true">📞</span> Raccrocher
-          </button>
-        </div>
-      )}
     </section>
   );
 }

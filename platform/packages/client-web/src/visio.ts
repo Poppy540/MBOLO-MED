@@ -1,12 +1,13 @@
 // Téléconsultation vidéo LiveKit, chargée seulement au moment de rejoindre (économie de données).
+// Commune aux applications patient et professionnel.
 // Vidéo en basse définition, flux adaptatif ; repli audio automatique ou choisi par le patient.
 import type { AccesSalle } from './api.js';
 import { DecisionRepli, type Qualite } from './repli.js';
 
 export interface EtatVisio {
   connecte: boolean;
-  /** Le professionnel de santé est dans la salle. */
-  professionnelPresent: boolean;
+  /** L'autre participant (patient ou professionnel) est dans la salle. */
+  autrePresent: boolean;
   audioSeulement: boolean;
   /** Le repli audio a été décidé automatiquement (réseau faible). */
   repliAutomatique: boolean;
@@ -30,7 +31,7 @@ export async function rejoindre(
   });
   const etat: EtatVisio = {
     connecte: false,
-    professionnelPresent: false,
+    autrePresent: false,
     audioSeulement: false,
     repliAutomatique: false,
   };
@@ -71,11 +72,11 @@ export async function rejoindre(
       if (etat.audioSeulement && pub.kind === lk.Track.Kind.Video) pub.setSubscribed(false);
     })
     .on(lk.RoomEvent.ParticipantConnected, () => {
-      etat.professionnelPresent = room.remoteParticipants.size > 0;
+      etat.autrePresent = room.remoteParticipants.size > 0;
       publier();
     })
     .on(lk.RoomEvent.ParticipantDisconnected, () => {
-      etat.professionnelPresent = room.remoteParticipants.size > 0;
+      etat.autrePresent = room.remoteParticipants.size > 0;
       publier();
     })
     .on(lk.RoomEvent.ConnectionQualityChanged, (q, participant) => {
@@ -103,7 +104,7 @@ export async function rejoindre(
   await room.connect(acces.url, acces.jeton);
   for (const piste of pistes) await room.localParticipant.publishTrack(piste);
   etat.connecte = true;
-  etat.professionnelPresent = room.remoteParticipants.size > 0;
+  etat.autrePresent = room.remoteParticipants.size > 0;
   publier();
 
   return {

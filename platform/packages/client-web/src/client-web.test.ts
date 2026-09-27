@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { creerApi, ErreurApi } from './api.js';
+import { creerRequete, ErreurApi } from './api.js';
 import { defiPkce, demarrerConnexion, terminerConnexion, type Memoire } from './auth.js';
-import { quand } from './format.js';
+import { quand, versInstant } from './format.js';
 import { DecisionRepli } from './repli.js';
 
 // Données FICTIVES.
 const P = {
   emetteur: 'https://auth.fictif.example/realms/mbolo',
   client: 'mbolo-app-patient',
-  retour: 'http://localhost:5174/',
+  retour: 'http://localhost:5180/',
 };
 const memoire = (): Memoire => {
   const m = new Map<string, string>();
@@ -62,8 +62,8 @@ describe('API', () => {
       entetes.push(init.headers ?? {});
       return new Response('{}', { status: 403 });
     }) as typeof fetch;
-    const api = creerApi('/api', () => 'jeton-fictif', appeler);
-    const e = await api.mesRendezVous().catch((x: unknown) => x);
+    const requete = creerRequete('/api', () => 'jeton-fictif', appeler);
+    const e = await requete('GET', '/rendez-vous').catch((x: unknown) => x);
     expect(e).toBeInstanceOf(ErreurApi);
     expect((e as ErreurApi).message).toContain('pas encore ouverte');
     expect(entetes[0]).toMatchObject({ authorization: 'Bearer jeton-fictif' });
@@ -75,6 +75,17 @@ describe('dates', () => {
     expect(quand('2026-10-01T08:00:00Z', 'Africa/Libreville', 'fr-FR')).toBe('jeu. 01/10 à 09:00');
     // Autre pays (ex. Sénégal, UTC+0) : même code, autre configuration.
     expect(quand('2026-10-01T08:00:00Z', 'Africa/Dakar', 'fr-FR')).toBe('jeu. 01/10 à 08:00');
+  });
+
+  it('convertit une date et une heure saisies dans le fuseau du pays en instant', () => {
+    expect(versInstant('2026-10-01', '09:00', 'Africa/Libreville')).toBe(
+      '2026-10-01T08:00:00.000Z',
+    );
+    expect(versInstant('2026-10-01', '09:00', 'Africa/Dakar')).toBe('2026-10-01T09:00:00.000Z');
+    // Pays avec heure d'été (ex. diaspora en France) : été puis hiver.
+    expect(versInstant('2026-07-01', '09:00', 'Europe/Paris')).toBe('2026-07-01T07:00:00.000Z');
+    expect(versInstant('2026-12-01', '09:00', 'Europe/Paris')).toBe('2026-12-01T08:00:00.000Z');
+    expect(() => versInstant('2026-13', '9h', 'Africa/Libreville')).toThrow();
   });
 });
 

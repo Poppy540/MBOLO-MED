@@ -46,4 +46,4 @@ En CI, le job **E2E** démarre Keycloak et HAPI FHIR par `docker compose`. Le mo
 2. Réutiliser les étapes de `etapes/`, ou en ajouter (une phrase = une étape, sans logique cachée).
 3. Données fictives uniquement (skill `e2e-playwright-gherkin`).
 
-**Application patient** : servie par `vite preview` sur `http://localhost:5174` (`APP_PATIENT_URL`). Le port 5173 reste l'adresse de retour factice utilisée par les étapes de connexion : une vraie application sur ce port consommerait les codes d'autorisation des tests.
+**Applications** : servies par `vite preview`, patient sur `http://localhost:5180` (`APP_PATIENT_URL`) et professionnel sur `http://localhost:5181` (`APP_PRO_URL`). Les ports 5173 et 5174 restent les adresses de retour factices des étapes de connexion (clients patient et professionnel) : une vraie application sur ces ports consommerait les codes d'autorisation des tests.

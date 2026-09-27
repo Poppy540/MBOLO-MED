@@ -1,5 +1,5 @@
-// Application patient (PWA faible débit). Port 5174 : le 5173 sert de faux retour de connexion
-// aux tests e2e. L'API de téléconsultation est servie sous /api/teleconsultation (même origine).
+// Application patient (PWA faible débit). Port 5180 : les ports 5173 et 5174 servent de faux
+// retours de connexion aux tests e2e. L'API de téléconsultation est servie sous /api/teleconsultation (même origine).
 import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
 
@@ -14,8 +14,8 @@ const proxy = {
 
 export default defineConfig({
   plugins: [preact()],
-  server: { host: 'localhost', port: 5174, strictPort: true, proxy },
-  preview: { host: 'localhost', port: 5174, strictPort: true, proxy },
+  server: { host: 'localhost', port: 5180, strictPort: true, proxy },
+  preview: { host: 'localhost', port: 5180, strictPort: true, proxy },
   // La bibliothèque vidéo (LiveKit) est volumineuse mais chargée à part, seulement pour rejoindre
   // une consultation ; le budget de l'ouverture est contrôlé par scripts/budget.mjs.
   build: { sourcemap: false, assetsInlineLimit: 0, chunkSizeWarningLimit: 700 },

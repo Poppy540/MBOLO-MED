@@ -75,6 +75,11 @@ export function creerServeur(o: {
     },
   );
 
+  app.get('/creneaux', async (req) => {
+    const u = await authentifier(req);
+    return { creneaux: await o.service.mesCreneaux(u) };
+  });
+
   app.get<{ Params: { id: string } }>(
     '/praticiens/:id/creneaux',
     {
