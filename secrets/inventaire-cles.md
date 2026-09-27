@@ -65,6 +65,7 @@
 | `KEYCLOAK_ISSUER` | Keycloak (ADR-0009) | Plateforme | URL de l'émetteur des jetons (pas un secret, suivie pour cohérence) | — | D R P | `mbolo/<env>/identite/` | — | RS | 0 |
 | `IDENTITE_AUDIENCE` | Service identite | Plateforme | Audience attendue dans les jetons | — | D R P | idem | — | RS | 0 |
 | `IDENTITE_SERVICE_CLIENT_SECRET` | Keycloak (ADR-0010) | Plateforme (identite) | Obtenir un jeton de service pour la passerelle du dossier | **Consentements uniquement** (`system/Consent.crus`, jamais de suppression) ; injecté dans le royaume à l'import | D R P | `mbolo/<env>/identite/` | 90 j (réimport ou changement dans la console, puis redémarrage de identite) | RS | 0 |
+| `TELECONSULTATION_SERVICE_CLIENT_SECRET` | Keycloak (ADR-0010, ADR-0011) | Plateforme (teleconsultation) | Obtenir un jeton de service pour la passerelle du dossier | **Rendez-vous uniquement** (`system/Appointment.crus`, jamais de suppression) ; injecté dans le royaume à l'import | D R P | `mbolo/<env>/webrtc/` | 90 j (réimport ou changement dans la console, puis redémarrage de teleconsultation) | RS | 1 |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD` | Keycloak | **Infrastructure uniquement** | Compte d'administration initial | À désactiver après création d'un administrateur nominatif avec MFA | D R P | idem | après chaque usage | RS | 0 |
 
 ## Base de données et stockage
@@ -137,3 +138,4 @@
 | 2026-09-27 | `FHIR_BASE_URL` inventoriée (utilisée aussi par `identite`) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Compte de service `IDENTITE_SERVICE_CLIENT_SECRET` et variables de la passerelle (ADR-0010) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Jeton d'administration et base d'Unleash pour les tests (ADR-0007) | En attente — responsable sécurité à nommer |
+| 2026-09-27 | Compte de service `TELECONSULTATION_SERVICE_CLIENT_SECRET` (rendez-vous dans le dossier, PR L) | En attente — responsable sécurité à nommer |

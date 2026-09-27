@@ -50,3 +50,20 @@ Description: "Marqueurs posés dans meta.tag. Toute donnée hors production port
 * ^caseSensitive = true
 * ^experimental = true
 * #fictif "Donnée fictive" "Donnée inventée pour le développement, les tests ou la formation. Ne concerne aucune personne réelle."
+
+CodeSystem: MboloModeConsultationCS
+Id: mbolo-mode-consultation
+Title: "Mode de consultation Mbolo Santé"
+Description: "Canal prévu pour une téléconsultation (ADR-0002, ADR-0011)."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #video "Vidéo" "Téléconsultation vidéo, avec repli audio si le réseau est insuffisant."
+
+ValueSet: MboloModeConsultationVS
+Id: mbolo-mode-consultation
+Title: "Modes de consultation Mbolo Santé"
+Description: "Tous les modes de consultation Mbolo Santé."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloModeConsultationCS

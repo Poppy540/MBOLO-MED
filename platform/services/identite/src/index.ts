@@ -10,6 +10,7 @@ export {
   ServiceConsentements,
 } from './consentements.js';
 export type { DemandeConsentement, DepotConsentements } from './consentements.js';
+export { ClientFhir, TYPE_FHIR } from './client-fhir.js';
 export { DepotFhir, ErreurDepot } from './depot-fhir.js';
 export type { OptionsDepotFhir } from './depot-fhir.js';
 export { ErreurJetonService, creerFournisseurJeton } from './jeton-service.js';

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { expect, type Browser } from '@playwright/test';
-import { TELECONSULTATION_URL, WEBRTC_URL } from '../configuration.js';
+import { FHIR_URL, TELECONSULTATION_URL, WEBRTC_URL } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 
 // Bundle navigateur du client LiveKit, lu depuis le paquet installé (hors champ « exports »).
@@ -63,6 +63,43 @@ When(
 
 Then('le rendez-vous est enregistré', ({ monde }) => {
   expect(monde.reponse?.statut).toBe(201);
+});
+
+// Lecture directe du serveur FHIR de test (hors passerelle) pour vérifier ce qui a été écrit.
+Then(
+  'le dossier médical contient ce rendez-vous entre {string} et {string}, sans motif',
+  async ({ monde }, patient: string, praticien: string) => {
+    const r = await fetch(`${FHIR_URL}/Appointment/${monde.rendezVousId ?? ''}`, {
+      headers: { accept: 'application/fhir+json', 'cache-control': 'no-cache' },
+    });
+    expect(r.status).toBe(200);
+    const a = (await r.json()) as Record<string, unknown> & {
+      participant: { actor?: { reference?: string } }[];
+      meta?: { tag?: { code?: string }[] };
+    };
+    expect(a['status']).toBe('booked');
+    expect(a.participant.map((p) => p.actor?.reference).sort()).toEqual(
+      [`Patient/${patient}`, `Practitioner/${praticien}`].sort(),
+    );
+    for (const champ of ['reasonCode', 'reasonReference', 'description', 'comment']) {
+      expect(a[champ]).toBeUndefined();
+    }
+    expect(a.meta?.tag?.some((t) => t.code === 'fictif')).toBe(true);
+  },
+);
+
+Then(
+  '{string} retrouve ce rendez-vous dans ses rendez-vous',
+  async ({ monde }, identifiant: string) => {
+    await appeler(monde, 'GET', '/rendez-vous', monde.jetons.get(identifiant));
+    expect(monde.reponse?.statut).toBe(200);
+    const ids = (monde.reponse?.corps['rendezVous'] as { id: string }[]).map((r) => r.id);
+    expect(ids).toContain(monde.rendezVousId);
+  },
+);
+
+Then('le rendez-vous est refusé par le dossier médical', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(422);
 });
 
 When(

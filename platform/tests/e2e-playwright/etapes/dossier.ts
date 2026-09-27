@@ -1,17 +1,33 @@
 // Étapes « passerelle du dossier » : seul un jeton de service avec la bonne permission ouvre le dossier.
 // Données FICTIVES uniquement.
 import { expect } from '@playwright/test';
-import { CLIENT_SERVICE_IDENTITE, EMETTEUR, PASSERELLE_URL } from '../configuration.js';
+import {
+  CLIENT_SERVICE_IDENTITE,
+  CLIENT_SERVICE_TELECONSULTATION,
+  EMETTEUR,
+  PASSERELLE_URL,
+} from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 
-async function jetonService(): Promise<string> {
-  const secret = process.env['IDENTITE_SERVICE_CLIENT_SECRET'];
-  if (!secret) throw new Error('IDENTITE_SERVICE_CLIENT_SECRET manquant (Keycloak de test).');
+/** Comptes de service de test : client Keycloak et variable qui porte son secret (jamais écrit). */
+const SERVICES = {
+  identité: { client: CLIENT_SERVICE_IDENTITE, variable: 'IDENTITE_SERVICE_CLIENT_SECRET' },
+  téléconsultation: {
+    client: CLIENT_SERVICE_TELECONSULTATION,
+    variable: 'TELECONSULTATION_SERVICE_CLIENT_SECRET',
+  },
+} as const;
+type NomService = keyof typeof SERVICES;
+
+async function jetonService(nom: NomService): Promise<string> {
+  const { client, variable } = SERVICES[nom];
+  const secret = process.env[variable];
+  if (!secret) throw new Error(`${variable} manquant (Keycloak de test).`);
   const r = await fetch(`${EMETTEUR}/protocol/openid-connect/token`, {
     method: 'POST',
     body: new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: CLIENT_SERVICE_IDENTITE,
+      client_id: client,
       client_secret: secret,
     }),
   });
@@ -22,7 +38,11 @@ async function jetonService(): Promise<string> {
 const JETON_SERVICE = 'service identité';
 
 Given('le service identité a obtenu son jeton de service', async ({ monde }) => {
-  monde.jetons.set(JETON_SERVICE, await jetonService());
+  monde.jetons.set(JETON_SERVICE, await jetonService('identité'));
+});
+
+Given('le service téléconsultation a obtenu son jeton de service', async ({ monde }) => {
+  monde.jetons.set('service téléconsultation', await jetonService('téléconsultation'));
 });
 
 async function appelerDossier(
@@ -58,6 +78,13 @@ When(
 When('le service identité demande {string} au dossier', async ({ monde }, chemin: string) => {
   await appelerDossier(monde, 'GET', chemin, monde.jetons.get(JETON_SERVICE));
 });
+
+When(
+  'le service téléconsultation demande {string} au dossier',
+  async ({ monde }, chemin: string) => {
+    await appelerDossier(monde, 'GET', chemin, monde.jetons.get('service téléconsultation'));
+  },
+);
 
 When(
   'le service identité tente de supprimer {string} du dossier',

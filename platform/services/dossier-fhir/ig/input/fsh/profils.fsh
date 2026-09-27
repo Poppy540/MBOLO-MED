@@ -72,3 +72,36 @@ Description: "Qui a écrit quoi, quand, et à partir de quelle source. Obligatoi
 * agent 1..* MS
 * agent.type 1..1 MS
 * agent.who MS
+
+Invariant: mbolo-rdv-1
+Description: "Minimisation : un rendez-vous de téléconsultation ne contient aucun motif, symptôme ni commentaire. Ces informations restent dans le dossier, sous consentement."
+Expression: "reasonCode.empty() and reasonReference.empty() and supportingInformation.empty() and description.empty() and comment.empty() and patientInstruction.empty()"
+Severity: #error
+
+Invariant: mbolo-rdv-2
+Description: "Un rendez-vous de téléconsultation réunit exactement un patient et un professionnel de santé."
+Expression: "participant.where(actor.reference.startsWith('Patient/')).count() = 1 and participant.where(actor.reference.startsWith('Practitioner/')).count() = 1"
+Severity: #error
+
+Invariant: mbolo-rdv-3
+Description: "La fin d'un rendez-vous est postérieure à son début."
+Expression: "end > start"
+Severity: #error
+
+Profile: MboloRendezVous
+Parent: Appointment
+Id: mbolo-rendez-vous
+Title: "Rendez-vous de téléconsultation Mbolo Santé"
+Description: "Rendez-vous entre un patient et un professionnel de santé (ADR-0011), sans motif médical (minimisation)."
+* ^status = #draft
+* ^experimental = true
+* obeys mbolo-rdv-1 and mbolo-rdv-2 and mbolo-rdv-3
+* status MS
+* serviceType 1..1 MS
+* serviceType from MboloModeConsultationVS (required)
+* start 1..1 MS
+* end 1..1 MS
+* minutesDuration 1..1 MS
+* participant 2..2 MS
+* participant.actor 1..1 MS
+* participant.actor only Reference(MboloPatient or Practitioner)

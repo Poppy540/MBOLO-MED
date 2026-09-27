@@ -1,6 +1,6 @@
 // API du service de téléconsultation. Toute requête (hors /sante) exige un jeton Keycloak valide.
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import type { VerifierJeton, Utilisateur } from '@mbolo/identite';
+import { ErreurDepot, type VerifierJeton, type Utilisateur } from '@mbolo/identite';
 import type { Journal } from '@mbolo/journal-securise';
 import { ErreurTeleconsultation, type ServiceTeleconsultation } from './rendez-vous.js';
 
@@ -30,6 +30,10 @@ export function creerServeur(o: {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurTeleconsultation) {
+      return reply.code(err.statut).send({ erreur: err.message });
+    }
+    if (err instanceof ErreurDepot) {
+      if (err.statut === 503) o.journal.erreur('dossier médical indisponible', { err });
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if ((err as { validation?: unknown }).validation) {

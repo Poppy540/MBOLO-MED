@@ -21,6 +21,7 @@ Tout le reste est refusé : `DELETE`, `_history`, `$opérations`, transactions e
 | Client Keycloak | Service | Permissions |
 |---|---|---|
 | `mbolo-identite-service` | `identite` (consentements, journal des accès) | `system/Consent.crus system/AuditEvent.cs` |
+| `mbolo-teleconsultation-service` | `teleconsultation` (rendez-vous) | `system/Appointment.crus` |
 
 Ajouter un client (ex. agent IA) : un client confidentiel dans `keycloak/realm-mbolo.json` avec le secret en `${VARIABLE}`, une audience `mbolo-dossier-fhir` et une revendication `mbolo_scopes` **minimale**. Le responsable sécurité revoit chaque ajout.
 

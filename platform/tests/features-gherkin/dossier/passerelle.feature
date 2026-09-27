@@ -41,3 +41,12 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Étant donné que le service identité a obtenu son jeton de service
     Quand le service identité tente de modifier la trace d'accès "1"
     Alors le dossier répond avec le statut 403
+
+  Scénario: Le service téléconsultation ne lit que les rendez-vous
+    Étant donné que le service téléconsultation a obtenu son jeton de service
+    Quand le service téléconsultation demande "Appointment?patient=Patient/pat-fictif-001" au dossier
+    Alors le dossier répond avec le statut 200
+    Quand le service téléconsultation demande "Consent?patient=Patient/pat-fictif-001" au dossier
+    Alors le dossier répond avec le statut 403
+    Quand le service téléconsultation demande "Patient/pat-fictif-001" au dossier
+    Alors le dossier répond avec le statut 403

@@ -1,0 +1,29 @@
+{
+  "resourceType": "Appointment",
+  "id": "fictif-invalide-5",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-rendez-vous"],
+    "tag": [
+      { "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur", "code": "fictif" }
+    ]
+  },
+  "status": "booked",
+  "serviceType": [
+    {
+      "coding": [
+        {
+          "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-mode-consultation",
+          "code": "video"
+        }
+      ]
+    }
+  ],
+  "reasonCode": [{ "text": "[FICTIF] motif médical : interdit dans un rendez-vous" }],
+  "start": "2026-10-01T09:00:00+01:00",
+  "end": "2026-10-01T09:20:00+01:00",
+  "minutesDuration": 20,
+  "participant": [
+    { "actor": { "reference": "Patient/fictif-patient-0001" }, "status": "accepted" },
+    { "actor": { "reference": "Practitioner/fictif-praticien-0001" }, "status": "accepted" }
+  ]
+}

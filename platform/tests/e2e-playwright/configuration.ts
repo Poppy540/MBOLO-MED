@@ -10,6 +10,7 @@ export const FHIR_URL = process.env['FHIR_AMONT_URL'] ?? 'http://127.0.0.1:8080/
 /** Passerelle du dossier : seul point d'entrée des services vers le dossier. */
 export const PASSERELLE_URL = process.env['PASSERELLE_URL'] ?? 'http://127.0.0.1:3002';
 export const CLIENT_SERVICE_IDENTITE = 'mbolo-identite-service';
+export const CLIENT_SERVICE_TELECONSULTATION = 'mbolo-teleconsultation-service';
 /** Service de téléconsultation et serveur LiveKit de test (ADR-0011). */
 export const TELECONSULTATION_URL = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
 export const WEBRTC_URL = process.env['WEBRTC_SERVER_URL'] ?? 'ws://127.0.0.1:7880';

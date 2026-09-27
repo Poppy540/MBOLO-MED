@@ -3,6 +3,7 @@
 // les erreurs au plus tôt, notamment dans les outils utilisés par les agents IA.
 // Le serveur FHIR et le validateur officiel restent la référence (CI : job « FHIR »).
 import type {
+  Appointment,
   CodeableConcept,
   Condition,
   Consent,
@@ -110,6 +111,48 @@ export function verifierProvenance(p: Provenance): Violation[] {
   return v;
 }
 
+export function verifierAppointment(a: Appointment): Violation[] {
+  const v: Violation[] = [];
+  if (
+    a.reasonCode?.length ||
+    a.reasonReference?.length ||
+    a.supportingInformation?.length ||
+    a.description ||
+    a.comment ||
+    a.patientInstruction
+  ) {
+    v.push({
+      regle: 'mbolo-rdv-1',
+      message: 'Un rendez-vous ne contient ni motif, ni pièce, ni texte libre (minimisation).',
+    });
+  }
+  const acteurs = (a.participant ?? []).map((p) => p.actor?.reference ?? '');
+  const patients = acteurs.filter((r) => r.startsWith('Patient/')).length;
+  const praticiens = acteurs.filter((r) => r.startsWith('Practitioner/')).length;
+  if (acteurs.length !== 2 || patients !== 1 || praticiens !== 1) {
+    v.push({
+      regle: 'mbolo-rdv-2',
+      message: 'Exactement un patient et un professionnel de santé.',
+    });
+  }
+  const codes = (a.serviceType ?? []).flatMap((s) => s.coding ?? []);
+  if (codes.length !== 1 || codes[0]?.system !== SYSTEMES.modeConsultation) {
+    v.push({
+      regle: 'mbolo-rendez-vous.serviceType',
+      message: 'Mode de consultation obligatoire.',
+    });
+  }
+  if (!a.start || !a.end || !a.minutesDuration) {
+    v.push({
+      regle: 'mbolo-rendez-vous.creneau',
+      message: 'Début, fin et durée obligatoires.',
+    });
+  } else if (new Date(a.end).getTime() <= new Date(a.start).getTime()) {
+    v.push({ regle: 'mbolo-rdv-3', message: 'La fin doit suivre le début.' });
+  }
+  return v;
+}
+
 /** Principe n°4 : hors production, toute donnée doit porter le marqueur « fictif ». */
 export function verifierMarqueurFictif(r: FhirResource, env: Environnement): Violation[] {
   if (env === 'prod') return [];
@@ -135,6 +178,8 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierConsent(r);
       case 'Provenance':
         return verifierProvenance(r);
+      case 'Appointment':
+        return verifierAppointment(r);
       default:
         return [];
     }

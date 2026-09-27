@@ -85,6 +85,27 @@ describe('royaume mbolo', () => {
     ).toBe('system/Consent.crus system/AuditEvent.cs');
   });
 
+  it('compte de service teleconsultation : rendez-vous uniquement, jamais de suppression', () => {
+    const c = royaume.clients.find((x) => x.clientId === 'mbolo-teleconsultation-service');
+    expect(c).toMatchObject({
+      publicClient: false,
+      serviceAccountsEnabled: true,
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+    });
+    expect(c?.secret).toBe('${TELECONSULTATION_SERVICE_CLIENT_SECRET}');
+    const mappeurs = c?.protocolMappers ?? [];
+    expect(
+      mappeurs.find((m) => m.protocolMapper === 'oidc-audience-mapper')?.config[
+        'included.client.audience'
+      ],
+    ).toBe('mbolo-dossier-fhir');
+    // Aucun accès aux consentements, au journal ni aux données cliniques.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
+    ).toBe('system/Appointment.crus');
+  });
+
   it('aucun client ne contient de secret en clair', () => {
     for (const c of royaume.clients) {
       if (c.secret !== undefined) expect(c.secret).toMatch(/^\$\{[A-Z_]+\}$/);

@@ -4,6 +4,7 @@ export {
   consentement,
   evenementAccesDossier,
   provenanceAgent,
+  rendezVousVideo,
   revoquer,
   revueBrisDeGlace,
 } from './construire.js';
@@ -13,10 +14,12 @@ export type {
   OptionsEvenementAcces,
   OptionsRevueBrisDeGlace,
   OptionsProvenanceAgent,
+  OptionsRendezVous,
 } from './construire.js';
 export { jeuFictif } from './donnees-fictives.js';
 export {
   valider,
+  verifierAppointment,
   verifierCondition,
   verifierConsent,
   verifierMarqueurFictif,
