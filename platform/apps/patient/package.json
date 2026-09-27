@@ -1,0 +1,22 @@
+{
+  "name": "@mbolo/app-patient",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Application patient de Mbolo Santé (PWA, faible débit) : connexion, créneaux, rendez-vous et téléconsultation vidéo avec repli audio.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/budget.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "livekit-client": "^2.22.3",
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "vite": "^8.3.1"
+  }
+}

@@ -25,6 +25,8 @@ window.rejoindre = async (url, jeton) => {
   window.salle = salle;
   await salle.connect(url, jeton);
   await salle.localParticipant.setMicrophoneEnabled(true);
+  // Caméra simulée : permet de vérifier l'affichage vidéo et le repli audio côté application.
+  await salle.localParticipant.setCameraEnabled(true);
   return salle.state;
 };
 window.distants = () => [...window.salle.remoteParticipants.values()].map((p) => ({
@@ -200,7 +202,7 @@ When(
     );
     expect(monde.reponse?.statut).toBe(200);
     expect(monde.reponse?.corps['url']).toBe(WEBRTC_URL);
-    const contexte = await browser.newContext({ permissions: ['microphone'] });
+    const contexte = await browser.newContext({ permissions: ['microphone', 'camera'] });
     const page = await contexte.newPage();
     await page.route(`${ORIGINE}/**`, (route) =>
       route.request().url().endsWith('/livekit-client.umd.js')

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b6e4f" />
+    <title>Mbolo Santé</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icone.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --vert: #0b6e4f;
+        --rouge: #b3261e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          18px/1.5 system-ui,
+          sans-serif;
+        background: #f6f7f5;
+        color: #1b1b1b;
+      }
+      main {
+        max-width: 36rem;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0;
+        color: var(--vert);
+      }
+      h2 {
+        font-size: 1.2rem;
+      }
+      button {
+        min-height: 48px;
+        font: inherit;
+        padding: 8px 16px;
+        margin: 4px 4px 4px 0;
+        border-radius: 8px;
+        border: 2px solid var(--vert);
+        background: #fff;
+        color: var(--vert);
+      }
+      button.principal {
+        background: var(--vert);
+        color: #fff;
+      }
+      button.danger {
+        border-color: var(--rouge);
+        background: var(--rouge);
+        color: #fff;
+      }
+      button.lien {
+        border: none;
+        min-height: 40px;
+        text-decoration: underline;
+      }
+      .liste {
+        list-style: none;
+        padding: 0;
+      }
+      .liste li {
+        background: #fff;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+      }
+      .message {
+        background: #fff4e5;
+        border-left: 4px solid #e8a33d;
+        padding: 8px 12px;
+      }
+      .medias video {
+        width: 100%;
+        max-height: 50vh;
+        background: #000;
+        border-radius: 8px;
+      }
+      .medias audio {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>Activez JavaScript pour utiliser Mbolo Santé.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
