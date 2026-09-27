@@ -298,6 +298,24 @@ export function annulerRendezVous(
   };
 }
 
+/**
+ * Report vers un autre créneau du même professionnel : même rendez-vous (identifiant conservé,
+ * historique des versions dans le dossier), nouvelle plage et nouvelle référence de créneau.
+ */
+export function reporterRendezVous(
+  a: Appointment,
+  c: { creneauId: string; debut: string; dureeMinutes: number },
+): Appointment {
+  const debut = new Date(c.debut);
+  return {
+    ...a,
+    slot: [{ reference: `Slot/${c.creneauId}` }],
+    start: debut.toISOString(),
+    end: new Date(debut.getTime() + c.dureeMinutes * 60_000).toISOString(),
+    minutesDuration: c.dureeMinutes,
+  };
+}
+
 const video = () => [{ coding: [{ system: SYSTEMES.modeConsultation, code: 'video' }] }];
 
 /** Agenda de téléconsultation d'un professionnel (profil mbolo-agenda). */

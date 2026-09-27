@@ -60,7 +60,7 @@ async function monter(heure = '2026-09-27T09:00:00Z') {
   );
   const [c] = await creneaux.publier('prac-fictif-001', [{ debut: DEBUT, dureeMinutes: 20 }]);
   if (!c) throw new Error('créneau non publié');
-  return { service, s, creneaux, c, etat };
+  return { service, s, depot, creneaux, c, etat };
 }
 
 describe('créneaux', () => {
@@ -254,5 +254,98 @@ describe('annulation', () => {
     });
     const sansFlag = await prevu('2026-09-27T09:00:00Z', false);
     expect((await sansFlag.service.annuler(patient, sansFlag.r.id)).statut).toBe('annule');
+  });
+});
+
+describe('report', () => {
+  const prevu = async () => {
+    const m = await monter('2026-09-27T09:00:00Z');
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    const [nouveau] = await m.service.publier(medecin, {
+      debut: '2026-09-28T10:00:00Z',
+      dureeMinutes: 30,
+      nombre: 1,
+    });
+    if (!nouveau) throw new Error('créneau non publié');
+    return { ...m, r, nouveau };
+  };
+
+  it('le patient reporte : même rendez-vous, nouvelle plage ; l’ancien créneau se libère', async () => {
+    const { service, r, c, nouveau, creneaux } = await prevu();
+    const reporte = await service.reporter(patient, r.id, { creneauId: nouveau.id });
+    expect(reporte).toMatchObject({
+      id: r.id,
+      statut: 'prevu',
+      debut: '2026-09-28T10:00:00.000Z',
+      dureeMinutes: 30,
+      creneauId: nouveau.id,
+    });
+    expect((await creneaux.lire(c.id))?.statut).toBe('libre');
+    expect((await creneaux.lire(nouveau.id))?.statut).toBe('reserve');
+  });
+
+  it('le médecin peut reporter ; un tiers reçoit 404 sans rien apprendre', async () => {
+    const { service, r, nouveau } = await prevu();
+    for (const u of [autrePatient, autreMedecin, pharmacien]) {
+      await expect(service.reporter(u, r.id, { creneauId: nouveau.id })).rejects.toMatchObject({
+        statut: 404,
+        message: 'Rendez-vous introuvable.',
+      });
+    }
+    expect((await service.reporter(medecin, r.id, { creneauId: nouveau.id })).creneauId).toBe(
+      nouveau.id,
+    );
+  });
+
+  it('refuse un créneau d’un autre professionnel, déjà pris, ou un rendez-vous commencé', async () => {
+    const { service, r, nouveau, creneaux, etat } = await prevu();
+    const [ailleurs] = await creneaux.publier('prac-fictif-002', [
+      { debut: '2026-09-28T11:00:00Z', dureeMinutes: 20 },
+    ]);
+    await expect(
+      service.reporter(patient, r.id, { creneauId: ailleurs?.id ?? '' }),
+    ).rejects.toMatchObject({ statut: 409 });
+    await creneaux.reserver(nouveau.id);
+    await expect(service.reporter(patient, r.id, { creneauId: nouveau.id })).rejects.toMatchObject({
+      statut: 409,
+    });
+    etat.heure = '2026-09-27T10:05:00Z';
+    await expect(service.reporter(patient, r.id, { creneauId: nouveau.id })).rejects.toMatchObject({
+      statut: 409,
+    });
+  });
+
+  it('si le dossier refuse le report, le nouveau créneau est rendu et l’ancien reste réservé', async () => {
+    const { service, r, c, nouveau, creneaux, depot } = await prevu();
+    depot.reporter = async () => {
+      throw new Error('dossier indisponible');
+    };
+    await expect(service.reporter(patient, r.id, { creneauId: nouveau.id })).rejects.toThrow();
+    expect((await creneaux.lire(nouveau.id))?.statut).toBe('libre');
+    expect((await creneaux.lire(c.id))?.statut).toBe('reserve');
+  });
+});
+
+describe('retrait d’un créneau', () => {
+  it('le professionnel retire un créneau libre : il n’est plus proposé, la plage se republie', async () => {
+    const { service, c } = await monter();
+    expect((await service.retirerCreneau(medecin, c.id)).statut).toBe('retire');
+    expect(await service.creneauxLibres(patient, 'prac-fictif-001')).toEqual([]);
+    await expect(service.demander(patient, { creneauId: c.id })).rejects.toMatchObject({
+      statut: 409,
+    });
+    await expect(
+      service.publier(medecin, { debut: DEBUT, dureeMinutes: 20, nombre: 1 }),
+    ).resolves.toHaveLength(1);
+  });
+
+  it('refuse un créneau réservé (409) et le créneau d’un autre (404)', async () => {
+    const { service, c } = await monter();
+    await expect(service.retirerCreneau(autreMedecin, c.id)).rejects.toMatchObject({
+      statut: 404,
+    });
+    await expect(service.retirerCreneau(patient, c.id)).rejects.toMatchObject({ statut: 403 });
+    await service.demander(patient, { creneauId: c.id });
+    await expect(service.retirerCreneau(medecin, c.id)).rejects.toMatchObject({ statut: 409 });
   });
 });

@@ -189,3 +189,24 @@ describe('DepotCreneauxFhir', () => {
     expect(s.requetes[1]?.url).toContain('start=ge2026-10-01T00%3A00%3A00Z');
   });
 });
+
+describe('DepotRendezVousFhir — report', () => {
+  it('met à jour plage et créneau avec verrou optimiste, sans toucher aux participants', async () => {
+    const lu = { ...rdv(), meta: { versionId: '2' }, slot: [{ reference: 'Slot/ancien' }] };
+    const s = fauxServeur([json(lu), json({ ...lu, slot: [{ reference: 'Slot/nouveau' }] })]);
+    const depot = new DepotRendezVousFhir({ base: BASE, fetch: s.fetch }, 'dev');
+    await depot.reporter('rdv-fictif-1', {
+      creneauId: 'nouveau',
+      debut: '2026-10-02T09:00:00Z',
+      dureeMinutes: 30,
+    });
+    expect((s.requetes[1]?.init.headers as Record<string, string>)['if-match']).toBe('W/"2"');
+    const envoye = JSON.parse(String(s.requetes[1]?.init.body)) as Appointment;
+    expect(envoye).toMatchObject({
+      start: '2026-10-02T09:00:00.000Z',
+      minutesDuration: 30,
+      slot: [{ reference: 'Slot/nouveau' }],
+      participant: lu.participant,
+    });
+  });
+});

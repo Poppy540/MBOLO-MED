@@ -8,6 +8,7 @@ export {
   evenementAccesDossier,
   provenanceAgent,
   rendezVousVideo,
+  reporterRendezVous,
   revoquer,
   revueBrisDeGlace,
 } from './construire.js';

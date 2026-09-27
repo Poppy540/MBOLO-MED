@@ -61,8 +61,9 @@ Jitsi reste l'option de repli si l'on veut une visioconférence de secours très
 - PR L : rendez-vous enregistrés dans le dossier (FHIR `Appointment`, profil `mbolo-rendez-vous` sans motif ni texte libre), via la passerelle, avec un compte de service limité à `system/Appointment.crus`.
 - PR M : annulation par le patient ou le professionnel ; rendez-vous conservé avec qui et quand (code, extension `date-annulation`), sans motif ; salle fermée.
 - PR N : créneaux publiés par les professionnels (FHIR `Schedule` et `Slot`, sans texte libre) ; le patient réserve un créneau libre, avec verrou contre la double réservation ; l'annulation libère le créneau.
+- PR O : report vers un autre créneau du même professionnel (même rendez-vous, verrous, ancien créneau libéré) ; retrait d'un créneau libre (`busy-unavailable`).
 - Reste à faire avant la vague 1 :
-  - report et notifications ;
+  - notifications ;
   - applications patient et professionnel ;
   - repli audio automatique côté application ;
   - TURN et hébergement HDS ;
