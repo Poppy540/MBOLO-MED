@@ -3,6 +3,7 @@
 import { expect } from '@playwright/test';
 import {
   CLIENT_SERVICE_IDENTITE,
+  CLIENT_SERVICE_NOTIFICATIONS,
   CLIENT_SERVICE_TELECONSULTATION,
   EMETTEUR,
   PASSERELLE_URL,
@@ -15,6 +16,10 @@ const SERVICES = {
   téléconsultation: {
     client: CLIENT_SERVICE_TELECONSULTATION,
     variable: 'TELECONSULTATION_SERVICE_CLIENT_SECRET',
+  },
+  notifications: {
+    client: CLIENT_SERVICE_NOTIFICATIONS,
+    variable: 'NOTIFICATIONS_SERVICE_CLIENT_SECRET',
   },
 } as const;
 type NomService = keyof typeof SERVICES;
@@ -43,6 +48,24 @@ Given('le service identité a obtenu son jeton de service', async ({ monde }) =>
 
 Given('le service téléconsultation a obtenu son jeton de service', async ({ monde }) => {
   monde.jetons.set('service téléconsultation', await jetonService('téléconsultation'));
+});
+
+Given('le service notifications a obtenu son jeton de service', async ({ monde }) => {
+  monde.jetons.set('service notifications', await jetonService('notifications'));
+});
+
+When('le service notifications demande {string} au dossier', async ({ monde }, chemin: string) => {
+  await appelerDossier(monde, 'GET', chemin, monde.jetons.get('service notifications'));
+});
+
+Then('le dossier ne renvoie que le numéro de téléphone', ({ monde }) => {
+  const corps = monde.reponse?.corps ?? {};
+  expect(corps['telecom']).toBeDefined();
+  // Ni nom, ni date de naissance, ni autre élément que type, identifiant et métadonnées.
+  expect(Object.keys(corps).sort()).toEqual(
+    ['id', 'meta', 'resourceType', 'telecom'].filter((k) => k in corps).sort(),
+  );
+  expect(corps['name']).toBeUndefined();
 });
 
 async function appelerDossier(

@@ -120,6 +120,10 @@ describe('royaume mbolo', () => {
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
     ).toBe('system/Patient.r system/Practitioner.r system/Consent.s');
+    // Minimisation appliquée par la passerelle : seul le numéro sort du dossier.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
+    ).toBe('Patient.telecom Practitioner.telecom');
     // Seul le service de téléconsultation peut appeler les notifications.
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])

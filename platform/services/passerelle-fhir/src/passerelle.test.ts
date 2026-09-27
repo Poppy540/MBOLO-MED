@@ -172,6 +172,46 @@ describe('passerelle du dossier', () => {
     expect(r.body).not.toContain(AMONT);
   });
 
+  it('minimisation : un client restreint ne reçoit que les éléments autorisés, quoi qu’il demande', async () => {
+    const patient = {
+      resourceType: 'Patient',
+      id: 'pat-fictif-001',
+      name: [{ text: '[FICTIF] Patiente Test' }],
+      birthDate: '1990-01-01',
+      telecom: [{ system: 'phone', value: '+241 00 00 00 00' }],
+    };
+    const jeton = await signer({
+      azp: 'mbolo-notifications-service',
+      mbolo_scopes: 'system/Patient.rs',
+      mbolo_elements: 'Patient.telecom',
+    });
+    const lecture = passerelle(() => new Response(JSON.stringify(patient), { status: 200 }));
+    const r = await lecture.app.inject({
+      method: 'GET',
+      url: '/fhir/Patient/pat-fictif-001?_elements=name',
+      headers: await auth(jeton),
+    });
+    expect(r.statusCode).toBe(200);
+    expect(lecture.appels[0]?.url).toBe(`${AMONT}/Patient/pat-fictif-001?_elements=telecom`);
+    expect(r.json()).toEqual({
+      resourceType: 'Patient',
+      id: 'pat-fictif-001',
+      telecom: patient.telecom,
+    });
+
+    const bundle = { resourceType: 'Bundle', type: 'searchset', entry: [{ resource: patient }] };
+    const recherche = passerelle(() => new Response(JSON.stringify(bundle), { status: 200 }));
+    const s = await recherche.app.inject({
+      method: 'GET',
+      url: '/fhir/Patient?_id=pat-fictif-001&_elements=name,birthDate',
+      headers: await auth(jeton),
+    });
+    expect(recherche.appels[0]?.url).toBe(`${AMONT}/Patient?_id=pat-fictif-001&_elements=telecom`);
+    expect(s.body).not.toContain('Patiente Test');
+    expect(s.body).not.toContain('1990-01-01');
+    expect(s.body).toContain('+241 00 00 00 00');
+  });
+
   it('bloque une réponse qui contient des ressources hors du périmètre du client', async () => {
     const bundle = {
       resourceType: 'Bundle',

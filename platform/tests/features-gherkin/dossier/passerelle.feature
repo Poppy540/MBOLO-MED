@@ -50,3 +50,15 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Alors le dossier répond avec le statut 403
     Quand le service téléconsultation demande "Patient/pat-fictif-001" au dossier
     Alors le dossier répond avec le statut 403
+
+  Scénario: Le service notifications ne lit que le numéro de téléphone
+    Étant donné que le service notifications a obtenu son jeton de service
+    Quand le service notifications demande "Patient/pat-fictif-001" au dossier
+    Alors le dossier répond avec le statut 200
+    Et le dossier ne renvoie que le numéro de téléphone
+    Quand le service notifications demande "Patient/pat-fictif-001?_elements=name" au dossier
+    Alors le dossier ne renvoie que le numéro de téléphone
+    Quand le service notifications demande "Consent?patient=Patient/pat-fictif-001" au dossier
+    Alors le dossier répond avec le statut 200
+    Quand le service notifications demande "Condition?patient=Patient/pat-fictif-001" au dossier
+    Alors le dossier répond avec le statut 403
