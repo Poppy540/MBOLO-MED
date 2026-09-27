@@ -88,6 +88,8 @@ jobs:
       - run: pnpm typecheck
       - name: PostgreSQL de test (base des services, ADR-0013)
         run: bash scripts/postgres-test.sh
+      - name: Stockage S3 de test (documents chiffrés, ADR-0015)
+        run: bash scripts/s3-test.sh
       - run: pnpm test
 
   fhir:
