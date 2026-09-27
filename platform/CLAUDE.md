@@ -1,6 +1,6 @@
 # Plateforme Mbolo Santé — contexte local
 
-> **Vague 0 : premiers services (`dossier-fhir`, `identite`) ; le reste est un squelette.** Le développement se fera module par module, selon les vagues (`docs/deploiement/vagues.md`) et les ADR (`docs/architecture/`).
+> **Vague 0 : premiers services (`dossier-fhir`, `identite`) et premiers tests e2e ; le reste est un squelette.** Le développement se fera module par module, selon les vagues (`docs/deploiement/vagues.md`) et les ADR (`docs/architecture/`).
 
 ## Structure
 | Dossier | Rôle | Vague d'activation |
@@ -18,8 +18,8 @@
 | `services/notifications` | SMS, WhatsApp, e-mail — gabarits approuvés | 1 |
 | `services/feature-flags` | Activation par ville, spécialité, type d'utilisateur (ADR-0003) | 0 |
 | `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |
-| `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`) | 0 |
-| `tests/e2e-playwright` | Étapes Playwright, personas fictifs, profils réseau | 0 |
+| `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`), par domaine (`identite/`…) | 0 |
+| `tests/e2e-playwright` | `@mbolo/e2e` : étapes Playwright (playwright-bdd), comptes fictifs, Keycloak réel — `pnpm e2e`, voir son README | 0 |
 
 ## Règles locales
 - Socle : TypeScript strict, pnpm, ESLint, Prettier, Vitest (ADR-0008). Avant de pousser : `pnpm verifier`.

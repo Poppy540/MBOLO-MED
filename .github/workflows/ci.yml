@@ -81,3 +81,31 @@ jobs:
             ~/.fhir/packages
           key: fhir-${{ hashFiles('platform/services/dossier-fhir/ig/sushi-config.yaml') }}
       - run: bash platform/services/dossier-fhir/scripts/valider-ig.sh
+
+  e2e:
+    name: E2E (Keycloak + identité, comptes fictifs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Navigateur Chromium pour Playwright
+        run: pnpm --filter @mbolo/e2e exec playwright install --with-deps chromium
+      - name: Mot de passe administrateur Keycloak éphémère (généré, masqué, jamais conservé)
+        run: |
+          MDP="$(openssl rand -hex 24)"
+          echo "::add-mask::$MDP"
+          echo "KC_BOOTSTRAP_ADMIN_PASSWORD=$MDP" >> "$GITHUB_ENV"
+      - name: Démarrer Keycloak (royaume mbolo)
+        run: docker compose -f platform/services/identite/docker-compose.yml up -d
+      - name: Attendre Keycloak
+        run: timeout 180 bash -c 'until curl -sf http://127.0.0.1:8081/realms/mbolo/.well-known/openid-configuration > /dev/null; do sleep 3; done'
+      - run: pnpm e2e
+      - name: Journaux Keycloak en cas d'échec
+        if: failure()
+        run: docker compose -f platform/services/identite/docker-compose.yml logs --tail 200

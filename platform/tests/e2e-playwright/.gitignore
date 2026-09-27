@@ -1,0 +1,4 @@
+# Fichiers générés par playwright-bdd et rapports Playwright
+.features-gen/
+test-results/
+playwright-report/
