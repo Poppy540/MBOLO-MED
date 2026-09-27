@@ -10,19 +10,32 @@ Description: "Un consentement de partage (C-PARTAGE-PRO, C-PROCHE) doit désigne
 Expression: "category.coding.where(code = 'C-PARTAGE-PRO' or code = 'C-PROCHE').exists() implies provision.actor.exists()"
 Severity: #error
 
+Invariant: mbolo-pat-1
+Description: "Le patient a un nom et au moins un prénom (le professionnel doit savoir qui il soigne, ADR-0014)."
+Expression: "name.where(family.exists() and given.exists()).exists()"
+Severity: #error
+
+Invariant: mbolo-pat-2
+Description: "Une identité vérifiée repose sur un identifiant typé : numéro d'assurance maladie nationale (Gabon : CNAMGS) ou numéro provisoire Mbolo (ADR-0014)."
+Expression: "extension.where(url = 'https://mbolo-sante.example/fhir/StructureDefinition/statut-identite' and value = 'verifiee').exists() implies identifier.where(type.coding.where(system = 'https://mbolo-sante.example/fhir/CodeSystem/mbolo-type-identifiant-patient').exists()).exists()"
+Severity: #error
+
 Profile: MboloPatient
 Parent: Patient
 Id: mbolo-patient
 Title: "Patient Mbolo Santé"
-Description: "Patient avec le minimum d'informations nécessaires (minimisation)."
+Description: "Patient avec le minimum d'informations nécessaires aux soins (minimisation, ADR-0014) : nom, prénom, date de naissance, sexe facultatif, téléphone, identifiant et statut de la vérification d'identité."
 * ^status = #draft
 * ^experimental = true
-* identifier 1..* MS
+* obeys mbolo-pat-1 and mbolo-pat-2
+* extension contains StatutIdentite named statutIdentite 1..1 MS
+* identifier MS
 * identifier.system 1..1
 * identifier.value 1..1
+* identifier.type from MboloTypeIdentifiantPatientVS (extensible)
 * name 1..* MS
 * gender MS
-* birthDate MS
+* birthDate 1..1 MS
 * telecom MS
 
 Profile: MboloConsent

@@ -1,0 +1,18 @@
+{
+  "resourceType": "Patient",
+  "id": "fictif-invalide-10",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-patient"],
+    "tag": [
+      { "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur", "code": "fictif" }
+    ]
+  },
+  "extension": [
+    {
+      "url": "https://mbolo-sante.example/fhir/StructureDefinition/statut-identite",
+      "valueCode": "verifiee"
+    }
+  ],
+  "name": [{ "family": "Test", "given": ["Patient E"] }],
+  "birthDate": "1990-01-01"
+}

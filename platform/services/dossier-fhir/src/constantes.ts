@@ -36,10 +36,24 @@ export const SYSTEMES = {
   annulation: `${CANONIQUE}/CodeSystem/mbolo-annulation`,
   typeDocument: `${CANONIQUE}/CodeSystem/mbolo-type-document`,
   sectionCompteRendu: `${CANONIQUE}/CodeSystem/mbolo-section-compte-rendu`,
+  typeIdentifiantPatient: `${CANONIQUE}/CodeSystem/mbolo-type-identifiant-patient`,
+  statutIdentite: `${CANONIQUE}/CodeSystem/mbolo-statut-identite`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;
 export const EXTENSION_DATE_ANNULATION = `${CANONIQUE}/StructureDefinition/date-annulation`;
+export const EXTENSION_STATUT_IDENTITE = `${CANONIQUE}/StructureDefinition/statut-identite`;
+
+/**
+ * Types d'identifiant du patient (ADR-0014). Le système (URI) de chaque identifiant dépend du pays
+ * et vient de la configuration du déploiement (Gabon : CNAMGS pour l'assurance maladie).
+ */
+export const TYPES_IDENTIFIANT_PATIENT = ['assurance-maladie', 'provisoire'] as const;
+export type TypeIdentifiantPatient = (typeof TYPES_IDENTIFIANT_PATIENT)[number];
+
+/** Vérification d'identité par un humain habilité ; aucune consultation avant « verifiee ». */
+export const STATUTS_IDENTITE = ['a-verifier', 'verifiee', 'refusee'] as const;
+export type StatutIdentite = (typeof STATUTS_IDENTITE)[number];
 
 /** Qui peut annuler un rendez-vous (code, jamais de motif en texte libre). */
 export const AUTEURS_ANNULATION = ['patient', 'professionnel'] as const;

@@ -11,6 +11,7 @@ import type {
   Condition,
   Consent,
   FhirResource,
+  Patient,
   Provenance,
   Reference,
 } from 'fhir/r4.js';
@@ -18,6 +19,8 @@ import {
   AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
   EXTENSION_DATE_ANNULATION,
+  EXTENSION_STATUT_IDENTITE,
+  STATUTS_IDENTITE,
   SECTIONS_COMPTE_RENDU,
   CATEGORIES_CONSENTEMENT,
   MARQUEUR_FICTIF,
@@ -242,6 +245,40 @@ export function verifierComposition(c: Composition): Violation[] {
   return v;
 }
 
+/** Profil mbolo-patient (ADR-0014) : identité minimale et statut de vérification. */
+export function verifierPatient(p: Patient): Violation[] {
+  const v: Violation[] = [];
+  if (!(p.name ?? []).some((n) => n.family && (n.given ?? []).length > 0)) {
+    v.push({ regle: 'mbolo-pat-1', message: 'Nom et prénom obligatoires.' });
+  }
+  if (!p.birthDate || !/^\d{4}-\d{2}-\d{2}$/.test(p.birthDate)) {
+    v.push({
+      regle: 'mbolo-patient.birthDate',
+      message: 'Date de naissance obligatoire (AAAA-MM-JJ).',
+    });
+  } else if (new Date(`${p.birthDate}T00:00:00Z`).getTime() > Date.now()) {
+    v.push({ regle: 'mbolo-patient.birthDate', message: 'Date de naissance dans le futur.' });
+  }
+  const statuts = (p.extension ?? []).filter((e) => e.url === EXTENSION_STATUT_IDENTITE);
+  const statut = statuts[0]?.valueCode;
+  if (statuts.length !== 1 || !(STATUTS_IDENTITE as readonly string[]).includes(statut ?? '')) {
+    v.push({
+      regle: 'mbolo-patient.statutIdentite',
+      message: 'Un et un seul statut de vérification d’identité connu.',
+    });
+  }
+  const identifiantType = (p.identifier ?? []).some((i) =>
+    (i.type?.coding ?? []).some((c) => c.system === SYSTEMES.typeIdentifiantPatient),
+  );
+  if (statut === 'verifiee' && !identifiantType) {
+    v.push({
+      regle: 'mbolo-pat-2',
+      message: 'Une identité vérifiée exige un numéro d’assurance maladie ou provisoire.',
+    });
+  }
+  return v;
+}
+
 /** Principe n°4 : hors production, toute donnée doit porter le marqueur « fictif ». */
 export function verifierMarqueurFictif(r: FhirResource, env: Environnement): Violation[] {
   if (env === 'prod') return [];
@@ -275,6 +312,8 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierSlot(r);
       case 'Composition':
         return verifierComposition(r);
+      case 'Patient':
+        return verifierPatient(r);
       default:
         return [];
     }

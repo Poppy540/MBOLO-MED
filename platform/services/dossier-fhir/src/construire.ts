@@ -7,6 +7,7 @@ import type {
   Composition,
   Condition,
   Consent,
+  Patient,
   Provenance,
   Schedule,
   Slot,
@@ -15,6 +16,9 @@ import {
   type AuteurAnnulation,
   EXTENSION_DATE_ANNULATION,
   EXTENSION_MODE_RECUEIL,
+  EXTENSION_STATUT_IDENTITE,
+  type StatutIdentite,
+  type TypeIdentifiantPatient,
   type ConclusionRevue,
   SECTIONS_COMPTE_RENDU,
   type SectionCompteRendu,
@@ -406,4 +410,62 @@ export function texteSection(c: Composition, s: SectionCompteRendu): string | un
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, '&');
+}
+
+export interface OptionsPatientInscrit {
+  nom: string;
+  prenom: string;
+  /** Date de naissance AAAA-MM-JJ. */
+  naissance: string;
+  sexe?: 'female' | 'male' | 'other' | 'unknown';
+  /** Téléphone mobile, au format international du pays. */
+  telephone?: string;
+  /** Numéro d'assurance maladie ou provisoire ; le système (URI) vient de la configuration du pays. */
+  identifiant?: { type: TypeIdentifiantPatient; systeme: string; valeur: string };
+  env: Environnement;
+}
+
+/**
+ * Patient qui vient de s'inscrire avec un code d'invitation (ADR-0014) : identité déclarée,
+ * statut « a-verifier ». Rien d'autre que le minimum nécessaire aux soins.
+ */
+export function patientInscrit(o: OptionsPatientInscrit): Patient {
+  return {
+    resourceType: 'Patient',
+    meta: meta(PROFILS.patient, o.env),
+    extension: [{ url: EXTENSION_STATUT_IDENTITE, valueCode: 'a-verifier' }],
+    ...(o.identifiant
+      ? {
+          identifier: [
+            {
+              system: o.identifiant.systeme,
+              type: {
+                coding: [{ system: SYSTEMES.typeIdentifiantPatient, code: o.identifiant.type }],
+              },
+              value: o.identifiant.valeur,
+            },
+          ],
+        }
+      : {}),
+    name: [{ family: o.nom, given: [o.prenom] }],
+    ...(o.sexe ? { gender: o.sexe } : {}),
+    birthDate: o.naissance,
+    ...(o.telephone ? { telecom: [{ system: 'phone', value: o.telephone, use: 'mobile' }] } : {}),
+  };
+}
+
+export function statutIdentite(p: Patient): StatutIdentite | undefined {
+  const code = p.extension?.find((e) => e.url === EXTENSION_STATUT_IDENTITE)?.valueCode;
+  return code === 'a-verifier' || code === 'verifiee' || code === 'refusee' ? code : undefined;
+}
+
+/** Nouveau statut, décidé par un humain habilité (la trace du contrôle va dans le journal). */
+export function changerStatutIdentite(p: Patient, statut: StatutIdentite): Patient {
+  return {
+    ...p,
+    extension: [
+      ...(p.extension ?? []).filter((e) => e.url !== EXTENSION_STATUT_IDENTITE),
+      { url: EXTENSION_STATUT_IDENTITE, valueCode: statut },
+    ],
+  };
 }
