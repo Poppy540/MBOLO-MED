@@ -2,6 +2,7 @@
 // (NOTIFICATIONS_SERVICE_CLIENT_SECRET) depuis le coffre-fort, jamais le dépôt.
 import { creerFournisseurJeton } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
+import { PAYS_PAR_DEFAUT, verifierPays, type Pays } from './gabarits.js';
 import { ContactsFhir } from './dossier.js';
 import { creerVerificateurAppelant } from './jeton.js';
 import { CanalSimule, ServiceNotifications } from './notifications.js';
@@ -25,6 +26,18 @@ if (env['MBOLO_ENV'] === 'prod') {
   process.exit(1);
 }
 
+// Pays déployé (le Gabon par défaut) : fuseau et langue des messages.
+const pays: Pays = {
+  fuseau: env['NOTIFICATIONS_FUSEAU'] ?? PAYS_PAR_DEFAUT.fuseau,
+  langue: env['NOTIFICATIONS_LANGUE'] ?? PAYS_PAR_DEFAUT.langue,
+};
+try {
+  verifierPays(pays);
+} catch (e) {
+  journal.erreur('pays de déploiement invalide', { err: e });
+  process.exit(1);
+}
+
 const entetes = creerFournisseurJeton({
   emetteur,
   client: env['NOTIFICATIONS_SERVICE_CLIENT_ID'] ?? 'mbolo-notifications-service',
@@ -40,10 +53,10 @@ const app = creerServeur({
       .map((x) => x.trim())
       .filter(Boolean),
   }),
-  service: new ServiceNotifications(new ContactsFhir({ base: fhir, entetes }), canal),
+  service: new ServiceNotifications(new ContactsFhir({ base: fhir, entetes }), canal, pays),
   journal,
   simulation: canal,
 });
 const port = Number(env['PORT'] ?? '3004');
 await app.listen({ host: '127.0.0.1', port });
-journal.info('service de notifications démarré (canal simulé)', { port });
+journal.info('service de notifications démarré (canal simulé)', { port, ...pays });

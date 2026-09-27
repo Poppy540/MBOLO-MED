@@ -32,6 +32,7 @@ Option 1.
 ## Conséquences
 - Nouveau service `platform/services/notifications`, nouveau compte de service `mbolo-notifications-service` (`NOTIFICATIONS_SERVICE_CLIENT_SECRET`).
 - La lecture de `Patient` et `Practitioner` est restreinte par la passerelle à l'élément `telecom` (revendication `mbolo_elements`, PR Q) : le service ne voit ni le nom, ni la date de naissance, ni aucun autre élément.
+- Gabarits organisés par langue, fuseau et langue paramétrables par déploiement (PR S) : le service est prêt pour d'autres pays que le Gabon.
 - Reste à décider : fournisseur SMS et WhatsApp, numéro ou nom d'expéditeur, relecture des gabarits, langues locales, horaires d'envoi (pas la nuit).
 
 Sources : skill `recueil-consentement` (catégorie C-RAPPELS) ; ADR-0009, ADR-0010, ADR-0011 ; principes n°3 et n°4 de `CLAUDE.md`.

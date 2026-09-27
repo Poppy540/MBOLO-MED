@@ -1,7 +1,7 @@
 // API du service de notifications : réservée aux services autorisés (jeton de service).
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Journal } from '@mbolo/journal-securise';
-import { GABARITS, type Gabarit } from './gabarits.js';
+import { IDENTIFIANTS_GABARITS, type Gabarit } from './gabarits.js';
 import type { VerifierAppelant } from './jeton.js';
 import type { CanalSimule, Destinataire, ServiceNotifications } from './notifications.js';
 
@@ -57,7 +57,7 @@ export function creerServeur(o: {
               type: 'string',
               pattern: '^(Patient|Practitioner)/[A-Za-z0-9\\-.]{1,64}$',
             },
-            gabarit: { type: 'string', enum: Object.keys(GABARITS) },
+            gabarit: { type: 'string', enum: [...IDENTIFIANTS_GABARITS] },
             instant: { type: 'string', format: 'date-time' },
           },
         },

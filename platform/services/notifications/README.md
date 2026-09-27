@@ -24,6 +24,16 @@ Prévient une personne par SMS ou WhatsApp (ADR-0012). **Canal simulé** tant qu
 | `NOTIFICATIONS_CLIENTS_AUTORISES` | Clients autorisés, séparés par des virgules (défaut `mbolo-teleconsultation-service`) |
 | `FHIR_BASE_URL` | Adresse de la passerelle du dossier |
 | `NOTIFICATIONS_SERVICE_CLIENT_ID` (défaut `mbolo-notifications-service`), `NOTIFICATIONS_SERVICE_CLIENT_SECRET` | Compte de service pour la passerelle, secret depuis le coffre-fort |
+| `NOTIFICATIONS_FUSEAU` (défaut `Africa/Libreville`) | Fuseau horaire des dates et heures des messages (IANA) |
+| `NOTIFICATIONS_LANGUE` (défaut `fr-FR`) | Langue des textes et formats (BCP 47) ; le service refuse de démarrer si cette langue n'a pas de gabarits approuvés |
+
+## Déploiement dans un autre pays
+
+Le Gabon est le premier pays ; rien de propre au pays n'est codé en dur :
+
+- **Fuseau et formats** : `NOTIFICATIONS_FUSEAU` et `NOTIFICATIONS_LANGUE`, vérifiés au démarrage.
+- **Nouvelle langue** : ajouter une entrée au `CATALOGUE` de `src/gabarits.ts`, avec **tous** les gabarits (un test le vérifie, ainsi que la longueur et l'absence de donnée de santé). Les textes sont relus par le porteur de projet, et si possible par un locuteur du pays, avant la production.
+- **À venir** : langue choisie par chaque patient (`Patient.communication`), plutôt qu'une langue par déploiement.
 
 ## Tests
 
