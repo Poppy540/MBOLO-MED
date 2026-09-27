@@ -1,7 +1,7 @@
 # ADR-0014 — Inscription d'un patient avec un code d'invitation
 
 - **Date :** 2026-09-27
-- **Statut :** acceptée (porteur de projet, 2026-09-27) ; modalités de la vérification d'identité à préciser
+- **Statut :** acceptée (porteur de projet, 2026-09-27) ; durée de conservation des photos et texte de la charte à valider avec l'avis juridique
 - **Décideurs :** porteur de projet
 
 ## Contexte
@@ -70,11 +70,21 @@ Conséquences :
 - Pas d'e-mail obligatoire.
 - L'identifiant de connexion est choisi par le patient ; ce n'est ni son nom ni son numéro.
 
-### Points à préciser avant de construire la vérification
-1. **« Prendre en photo »** : l'acte de naissance, le visage du patient, ou les deux ?
-2. **Patients avec CNAMGS** : la pièce d'identité est-elle vérifiée **à distance** (photo envoyée à l'inscription, contrôlée par un humain de Mbolo) ou **toujours en personne** par un professionnel ?
-3. **Qui vérifie** : tout professionnel de santé inscrit, ou un rôle dédié (`verification-identite`, avec double authentification) ?
-4. **Durée de conservation** des photos de documents (avis juridique) : supprimées après vérification, ou conservées comme preuve ?
+### Modalités de la vérification (porteur de projet, 2026-09-27)
+1. **Deux photos** : le document (pièce d'identité ou acte de naissance) **et** le visage du patient.
+2. **Patients avec CNAMGS** : vérification **à distance**. Les photos sont envoyées à l'inscription et contrôlées par une personne de Mbolo avant la première consultation.
+3. **Rôle dédié `verification-identite`** avec double authentification :
+   - aucun accès clinique ;
+   - jamais attribué à un agent IA ;
+   - chaque décision (acceptée, refusée, à refaire) est tracée : qui, quand, motif en cas de refus.
+4. **Conservation des photos comme preuve**, sous réserve de l'avis juridique (durée à fixer). Une **charte** précisant ces termes doit être **acceptée avant l'envoi des photos** :
+   - photos prises ;
+   - finalité ;
+   - qui y accède ;
+   - durée de conservation ;
+   - droits du patient.
+
+   Le texte de la charte est à rédiger et à valider par le porteur de projet et le juriste. Son acceptation est enregistrée (version, date).
 
 ## Conséquences
 - **Extension Keycloak en Java** :
@@ -83,7 +93,7 @@ Conséquences :
   - premier composant Java de la plateforme.
 - **Parcours en deux temps** :
   1. **L'inscription** (code, compte, dossier « identité à vérifier ») peut être construite dès maintenant.
-  2. **La vérification d'identité** (écran professionnel, photo, stockage chiffré, levée du blocage) suit, après réponse aux points à préciser.
+  2. **La vérification d'identité** (photos du document et du visage, charte acceptée, stockage chiffré, contrôle par le rôle `verification-identite`, levée du blocage) suit.
 - **Nouveaux éléments** :
   - profil FHIR `mbolo-patient` : identifiants, statut de vérification, marqué fictif hors production ;
   - compte de service de l'extension vers `invitations` ;

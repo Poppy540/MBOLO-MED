@@ -4,6 +4,7 @@ export {
   aleatoire,
   defiPkce,
   demarrerConnexion,
+  revendications,
   terminerConnexion,
   urlAutorisation,
   urlDeconnexion,

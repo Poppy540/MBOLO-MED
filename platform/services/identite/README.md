@@ -60,6 +60,23 @@ Les revendications `patient_id`, `practitioner_id`, `related_person_id` du jeton
 
 Le profil utilisateur qui l'impose (droits `edit: ["admin"]`) est **intégré au royaume** : il s'applique dès l'import, sans étape manuelle. La source lisible est `keycloak/profil-utilisateur.json`. Un test (`src/royaume.test.ts`) vérifie que le royaume en contient exactement la même version : toute modification se fait dans les deux fichiers.
 
+## Inscription avec un code d'invitation (ADR-0014)
+
+L'inscription passe par le **formulaire natif de Keycloak**, complété par l'extension `keycloak-extension/` (Java, SPI `form-action`, thème de connexion `mbolo`) :
+
+- **Champs demandés** : code d'invitation, identifiant et mot de passe. Ni nom ni e-mail : `email`, `firstName` et `lastName` sont réservés à l'administrateur dans le profil utilisateur. L'identité ira dans le dossier FHIR.
+- **Contrôle du code** : il est vérifié **après** les autres champs, par le service `invitations` (`POST /inscription/controle`). Les essais sont limités selon l'adresse du navigateur.
+- **Utilisation du code** : il est utilisé **à la création du compte** (`POST /inscription/utilisation`, atomique). Si le service refuse, la transaction est annulée et aucun compte n'est créé.
+- **Rôle attribué** : seul le rôle `patient` est donné (liste fermée). Aucun `patient_id` n'est posé : tant que l'identité n'est pas vérifiée, il n'y a ni dossier ni consultation, et l'application affiche « Votre compte est créé ».
+- **Mot de passe** : il ne quitte jamais Keycloak.
+- **Jeton de service** : l'extension signe elle-même un jeton de 60 s (audience `mbolo-invitations-api`, client `mbolo-keycloak-inscription`) avec la clé du royaume. Aucun secret supplémentaire n'est nécessaire.
+- **En cas de doute, on refuse** : service injoignable ou réponse inattendue entraînent un refus.
+
+### Construction et configuration
+- **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.
+- **Version de Keycloak** : épinglée à 26.7.4 (26.0.8 avait des failles hautes connues), identique dans `pom.xml` et `docker-compose.yml`. Toute montée de version se fait dans les deux fichiers, avec la suite e2e.
+- **Adresse du service des invitations** : variable `KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL`, par défaut `http://host.docker.internal:3006/` depuis le conteneur. Ce n'est pas un secret.
+
 ## MFA
 
 Obligatoire pour **professionnel, infirmier, pharmacien, administrateur**. Ces rôles incluent le rôle technique `mfa-requise`. Le flux de connexion `navigateur-mbolo` exige alors un code à usage unique (TOTP, 6 chiffres, 30 s, code non réutilisable). À la première connexion, Keycloak impose de configurer l'application d'authentification. Les patients et les proches n'ont pas de code à saisir.

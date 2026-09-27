@@ -9,6 +9,7 @@ import {
   oublierRendezVous,
   RendezVousHorsLigne,
   retenirRendezVous,
+  revendications,
   quand as formater,
   terminerConnexion,
   urlDeconnexion,
@@ -31,6 +32,7 @@ const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
 
 type Ecran =
   | { nom: 'accueil' }
+  | { nom: 'dossier-a-completer' }
   | { nom: 'rendez-vous' }
   | { nom: 'praticiens' }
   | { nom: 'creneaux'; praticienId: string }
@@ -52,7 +54,13 @@ export function App() {
         if (j) {
           jeton = j;
           history.replaceState(null, '', '/');
-          setEcran({ nom: 'rendez-vous' });
+          // Compte créé avec un code, identité pas encore vérifiée : pas de dossier, pas de
+          // consultation (ADR-0014).
+          setEcran(
+            revendications(j)['patient_id']
+              ? { nom: 'rendez-vous' }
+              : { nom: 'dossier-a-completer' },
+          );
         }
       })
       .catch(() => setMessage('La connexion a échoué. Réessayez.'))
@@ -94,6 +102,8 @@ export function App() {
         <p aria-live="polite">Chargement…</p>
       ) : ecran.nom === 'accueil' ? (
         <Accueil />
+      ) : ecran.nom === 'dossier-a-completer' ? (
+        <DossierACompleter />
       ) : ecran.nom === 'rendez-vous' ? (
         <MesRendezVous
           allerA={(e) => {
@@ -145,6 +155,30 @@ function Accueil() {
       >
         <span aria-hidden="true">🔑</span> Se connecter
       </button>
+      <button
+        onClick={async () =>
+          location.assign(await demarrerConnexion(connexion(), sessionStorage, true))
+        }
+      >
+        <span aria-hidden="true">✉️</span> J'ai un code d'invitation
+      </button>
+    </section>
+  );
+}
+
+function DossierACompleter() {
+  return (
+    <section>
+      <p>
+        <span aria-hidden="true">✅</span> Votre compte est créé.
+      </p>
+      <p>
+        Avant votre première consultation, votre identité doit être vérifiée. L'équipe Mbolo Santé
+        vous contactera.
+      </p>
+      <p>
+        <strong>En cas d'urgence, appelez les secours.</strong>
+      </p>
     </section>
   );
 }

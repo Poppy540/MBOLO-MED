@@ -34,3 +34,28 @@ Fonctionnalité: Accès sur invitation
     Étant donné que "gestionnaire-fictif-01" est connecté
     Quand "gestionnaire-fictif-01" demande l'accès au dossier "pat-fictif-001"
     Alors l'accès est refusé avec le motif "refus-role-sans-acces-clinique"
+
+  # Inscription (ADR-0014) : formulaire natif de Keycloak complété par l'extension Mbolo.
+  Scénario: Une personne invitée crée son compte patient avec son code
+    Étant donné que "gestionnaire-fictif-01" est connecté
+    Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
+    Quand une personne s'inscrit avec ce code
+    Alors son compte est créé avec le seul rôle patient, sans nom ni e-mail dans le jeton
+    Et son dossier reste à compléter avant toute consultation
+    Et le code n'est pas reconnu
+
+  Scénario: Un code déjà utilisé ne permet pas une seconde inscription
+    Étant donné que "gestionnaire-fictif-01" est connecté
+    Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
+    Et qu'une personne s'inscrit avec ce code
+    Quand une autre personne s'inscrit avec le même code
+    Alors l'inscription est refusée avec le message « Code non reconnu »
+
+  Scénario: Sans code valable, aucun compte n'est créé
+    Quand une personne s'inscrit avec le code "ZZZZ-ZZZZ"
+    Alors l'inscription est refusée avec le message « Code non reconnu »
+    Et aucun compte n'est créé pour cette personne
+
+  Scénario: Le formulaire d'inscription ne demande ni nom ni e-mail
+    Quand une personne ouvre le formulaire d'inscription
+    Alors le formulaire demande un code d'invitation, un identifiant et un mot de passe seulement

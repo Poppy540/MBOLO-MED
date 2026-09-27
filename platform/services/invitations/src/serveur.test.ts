@@ -37,6 +37,11 @@ function serveur(maxEssais = 10) {
     }),
     limiteur: new Limiteur(maxEssais, 60_000),
     journal: creerJournal({ service: 'invitations', ecrire: (l) => lignes.push(l) }),
+    // Jeton factice de l'extension Keycloak ; tout autre jeton est refusé.
+    verifierService: async (j) => {
+      if (j !== 'extension') throw new Error('jeton de service invalide');
+      return 'mbolo-keycloak-inscription';
+    },
   });
   return { app, lignes };
 }
@@ -131,5 +136,60 @@ describe('API des invitations', () => {
       headers: { authorization: 'Bearer medecin' },
     });
     expect(r.statusCode).toBe(403);
+  });
+});
+
+describe('inscription par l’extension Keycloak', () => {
+  const appel = (
+    app: ReturnType<typeof serveur>['app'],
+    chemin: string,
+    payload: Record<string, string>,
+    jeton = 'extension',
+  ) =>
+    app.inject({
+      method: 'POST',
+      url: `/inscription/${chemin}`,
+      headers: { authorization: `Bearer ${jeton}` },
+      payload,
+    });
+
+  it('contrôle puis utilise un code une seule fois, sans jamais le journaliser', async () => {
+    const { app, lignes } = serveur();
+    const { code } = (await creer(app, 'gestionnaire')).json<{ code: string }>();
+    const controle = await appel(app, 'controle', { code, adresse: '192.0.2.10' });
+    expect(controle.json()).toEqual({ valide: true });
+
+    const premiere = await appel(app, 'utilisation', { code, sujet: 'sujet-patient-fictif-1' });
+    expect(premiere.statusCode).toBe(200);
+    expect(premiere.json()).toEqual({ cohorte: 'ville-fictive' });
+    const seconde = await appel(app, 'utilisation', { code, sujet: 'sujet-patient-fictif-2' });
+    expect(seconde.statusCode).toBe(409);
+    expect((await appel(app, 'controle', { code, adresse: '192.0.2.10' })).json()).toEqual({
+      valide: false,
+    });
+    expect(lignes.join('\n')).not.toContain(code.replace('-', ''));
+  });
+
+  it('refuse un jeton d’utilisateur, même celui d’un gestionnaire', async () => {
+    const { app } = serveur();
+    for (const jeton of ['gestionnaire', 'medecin', 'inconnu']) {
+      const r = await appel(app, 'utilisation', { code: 'ABCD-EFGH', sujet: 'x' }, jeton);
+      expect(r.statusCode).toBe(401);
+    }
+  });
+
+  it('limite les essais par adresse du navigateur, pas par adresse de Keycloak', async () => {
+    const { app } = serveur(2);
+    const essai = (adresse: string) => appel(app, 'controle', { code: 'ZZZZ-ZZZZ', adresse });
+    expect((await essai('192.0.2.1')).statusCode).toBe(200);
+    expect((await essai('192.0.2.1')).statusCode).toBe(200);
+    expect((await essai('192.0.2.1')).statusCode).toBe(429);
+    expect((await essai('192.0.2.2')).statusCode).toBe(200);
+  });
+
+  it('refuse un identifiant de compte mal formé', async () => {
+    const { app } = serveur();
+    const r = await appel(app, 'utilisation', { code: 'ABCD-EFGH', sujet: 'x; drop' });
+    expect(r.statusCode).toBe(400);
   });
 });

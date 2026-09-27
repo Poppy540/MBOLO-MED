@@ -10,7 +10,7 @@
 | `apps/pharmacie` | Espace des pharmacies partenaires (ordonnances, stocks) | 2 |
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
 | `apps/backoffice` | Administration interne (rôles habilités, journalisé) | 0–1 |
-| `services/identite` | Keycloak (royaume `mbolo`), vérification des jetons, décision d'accès au dossier, API de consentement stockée dans le dossier FHIR, bris de glace, MFA (ADR-0009) — voir son README | 0 |
+| `services/identite` | Keycloak (royaume `mbolo`), vérification des jetons, décision d'accès au dossier, API de consentement stockée dans le dossier FHIR, bris de glace, MFA (ADR-0009) ; extension Java d'inscription avec code d'invitation (`keycloak-extension/`, ADR-0014) — voir son README | 0 |
 | `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
 | `services/passerelle-fhir` | Seul point d'entrée des services vers le dossier FHIR : jetons de service, permissions SMART, validation des écritures (ADR-0010) — voir son README | 0 |
 | `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |

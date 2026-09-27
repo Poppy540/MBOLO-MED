@@ -21,10 +21,15 @@ export interface ParametresConnexion {
   retour: string;
 }
 
+/**
+ * Adresse de la page de connexion Keycloak, ou de son formulaire d'inscription (code d'invitation,
+ * ADR-0014) : même PKCE, même retour.
+ */
 export async function urlAutorisation(
   p: ParametresConnexion,
   verificateur: string,
   etat: string,
+  inscription = false,
 ): Promise<string> {
   const q = new URLSearchParams({
     client_id: p.client,
@@ -35,7 +40,8 @@ export async function urlAutorisation(
     code_challenge: await defiPkce(verificateur),
     code_challenge_method: 'S256',
   });
-  return `${p.emetteur}/protocol/openid-connect/auth?${q.toString()}`;
+  const point = inscription ? 'registrations' : 'auth';
+  return `${p.emetteur}/protocol/openid-connect/${point}?${q.toString()}`;
 }
 
 /** Stockage de la tentative de connexion (le temps d'un aller-retour vers Keycloak). */
@@ -47,11 +53,34 @@ export interface Memoire {
 
 const CLE = 'mbolo.connexion';
 
-export async function demarrerConnexion(p: ParametresConnexion, m: Memoire): Promise<string> {
+export async function demarrerConnexion(
+  p: ParametresConnexion,
+  m: Memoire,
+  inscription = false,
+): Promise<string> {
   const verificateur = aleatoire();
   const etat = aleatoire(16);
   m.setItem(CLE, JSON.stringify({ verificateur, etat }));
-  return urlAutorisation(p, verificateur, etat);
+  return urlAutorisation(p, verificateur, etat, inscription);
+}
+
+/**
+ * Revendications d'un jeton, pour l'affichage seulement (jamais pour une décision d'accès : les
+ * services vérifient la signature). Un objet vide si le jeton est illisible.
+ */
+export function revendications(jeton: string): Record<string, unknown> {
+  try {
+    const partie = (jeton.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/');
+    const json = new TextDecoder().decode(
+      Uint8Array.from(atob(partie.padEnd(Math.ceil(partie.length / 4) * 4, '=')), (c) =>
+        c.charCodeAt(0),
+      ),
+    );
+    const r: unknown = JSON.parse(json);
+    return r && typeof r === 'object' ? (r as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

@@ -5,6 +5,7 @@ import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { creerEmpreinte } from './codes.js';
+import { creerVerificateurService } from './jeton-service.js';
 import { DepotPostgres } from './depot.js';
 import { Limiteur } from './limiteur.js';
 import { creerServeur } from './serveur.js';
@@ -85,7 +86,15 @@ const app = creerServeur({
   ),
   journal,
   trustProxy: env['INVITATIONS_TRUST_PROXY'] === 'true',
+  // Extension d'inscription de Keycloak (ADR-0014) : jetons signés par le royaume lui-même.
+  verifierService: creerVerificateurService({
+    emetteur,
+    audience: env['INVITATIONS_AUDIENCE'] ?? 'mbolo-invitations-api',
+    clientsAutorises: ['mbolo-keycloak-inscription'],
+  }),
 });
 const port = Number(env['PORT'] ?? '3006');
-await app.listen({ host: '127.0.0.1', port });
+// Par défaut, seulement la machine locale ; `INVITATIONS_HOST` permet à un Keycloak en conteneur de
+// joindre le service (CI).
+await app.listen({ host: env['INVITATIONS_HOST'] ?? '127.0.0.1', port });
 journal.info('service des invitations démarré', { port, cohortes });

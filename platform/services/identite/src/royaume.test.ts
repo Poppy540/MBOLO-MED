@@ -7,6 +7,9 @@ const lire = (fichier: string): unknown =>
 
 interface Royaume {
   browserFlow: string;
+  registrationAllowed: boolean;
+  registrationFlow: string;
+  loginTheme: string;
   roles: { realm: { name: string; composites?: { realm?: string[] } }[] };
   clients: {
     clientId: string;
@@ -168,6 +171,29 @@ describe('royaume mbolo', () => {
     expect(audiences('mbolo-app-patient')).not.toContain('mbolo-invitations-api');
     const agentIa = royaume.roles.realm.find((r) => r.name === 'agent-ia');
     expect(agentIa?.composites?.realm ?? []).not.toContain('gestion-invitations');
+  });
+
+  it("n'ouvre l'inscription qu'avec un code d'invitation, vérifié après les autres champs (ADR-0014)", () => {
+    expect(royaume.registrationAllowed).toBe(true);
+    expect(royaume.loginTheme).toBe('mbolo');
+    expect(royaume.registrationFlow).toBe('inscription-mbolo');
+    const formulaire = royaume.authenticationFlows.find(
+      (f) => f.alias === 'inscription-mbolo formulaire',
+    );
+    expect(formulaire?.authenticationExecutions.map((e) => e.authenticator)).toEqual([
+      'registration-user-creation',
+      'registration-password-action',
+      'mbolo-code-invitation',
+    ]);
+  });
+
+  it("ne demande ni nom ni e-mail à l'inscription : identité dans le dossier seulement", () => {
+    const profil = lire('profil-utilisateur.json') as {
+      attributes: { name: string; permissions: { edit: string[] } }[];
+    };
+    for (const nom of ['email', 'firstName', 'lastName']) {
+      expect(profil.attributes.find((a) => a.name === nom)?.permissions.edit).toEqual(['admin']);
+    }
   });
 
   it('aucun client ne contient de secret en clair', () => {

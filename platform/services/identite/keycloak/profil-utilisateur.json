@@ -15,24 +15,24 @@
         "email": {}
       },
       "permissions": {
-        "view": ["admin", "user"],
-        "edit": ["admin", "user"]
+        "view": ["admin"],
+        "edit": ["admin"]
       }
     },
     {
       "name": "firstName",
       "displayName": "${firstName}",
       "permissions": {
-        "view": ["admin", "user"],
-        "edit": ["admin", "user"]
+        "view": ["admin"],
+        "edit": ["admin"]
       }
     },
     {
       "name": "lastName",
       "displayName": "${lastName}",
       "permissions": {
-        "view": ["admin", "user"],
-        "edit": ["admin", "user"]
+        "view": ["admin"],
+        "edit": ["admin"]
       }
     },
     {
