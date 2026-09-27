@@ -9,6 +9,7 @@ import {
   FHIR_URL,
   IDENTITE_URL,
   PASSERELLE_URL,
+  APP_PATIENT_URL,
   NOTIFICATIONS_URL,
   TELECONSULTATION_URL,
   UNLEASH_URL,
@@ -100,6 +101,14 @@ export default defineConfig({
         PORT: new URL(NOTIFICATIONS_URL).port,
         MBOLO_ENV: 'dev',
       },
+    },
+    {
+      // Application patient construite par `pnpm build`, servie avec le relais vers l'API.
+      command: 'pnpm exec vite preview',
+      cwd: '../../apps/patient',
+      url: APP_PATIENT_URL,
+      reuseExistingServer: false,
+      env: { TELECONSULTATION_URL },
     },
   ],
 });

@@ -1,0 +1,26 @@
+# language: fr
+# Données FICTIVES uniquement ; micro et caméra simulés. Règles : ADR-0002, ADR-0011.
+@teleconsultation @vague1 @application
+Fonctionnalité: Application patient
+  Afin de consulter un médecin depuis mon téléphone, même avec un réseau faible
+  En tant que patient
+  Je veux me connecter, choisir un créneau, voir mes rendez-vous et rejoindre la consultation.
+
+  Scénario: Le patient se connecte, réserve un créneau puis l'annule
+    Étant donné un créneau libre de "prac-fictif-001" est publié dans 6 jours
+    Quand "patient-fictif-01" ouvre l’application patient pour "prac-fictif-001"
+    Et que le patient réserve ce créneau dans l’application
+    Alors l’application confirme le rendez-vous
+    Quand le patient annule ce rendez-vous dans l’application
+    Alors le rendez-vous disparaît de l’application
+
+  Scénario: Le patient rejoint la consultation depuis l'application et passe en audio seulement
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Quand "patient-fictif-01" ouvre l’application patient pour "prac-fictif-001"
+    Et que le patient rejoint ce rendez-vous dans l’application
+    Et que "medecin-fictif-01" rejoint la téléconsultation
+    Alors l’application indique que le professionnel de santé est connecté
+    Quand le patient passe en audio seulement
+    Alors l’application ne reçoit plus que le son

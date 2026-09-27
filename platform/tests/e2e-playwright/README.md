@@ -45,3 +45,5 @@ En CI, le job **E2E** démarre Keycloak et HAPI FHIR par `docker compose`. Le mo
 1. Écrire le scénario dans `platform/tests/features-gherkin/<domaine>/*.feature` (`# language: fr`). Couvrir le cas nominal, un cas dégradé et un cas de refus ou d'escalade.
 2. Réutiliser les étapes de `etapes/`, ou en ajouter (une phrase = une étape, sans logique cachée).
 3. Données fictives uniquement (skill `e2e-playwright-gherkin`).
+
+**Application patient** : servie par `vite preview` sur `http://localhost:5174` (`APP_PATIENT_URL`). Le port 5173 reste l'adresse de retour factice utilisée par les étapes de connexion : une vraie application sur ce port consommerait les codes d'autorisation des tests.

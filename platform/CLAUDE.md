@@ -5,7 +5,7 @@
 ## Structure
 | Dossier | Rôle | Vague d'activation |
 |---|---|---|
-| `apps/patient` | Application patient (PWA mobile, faible débit, vocal, pictogrammes) | 1 |
+| `apps/patient` | Prototype PWA (Preact + Vite, 9,9 Ko à l'ouverture) : connexion PKCE, rendez-vous, créneaux, visio avec repli audio ; pays paramétrable — voir son README | 1 |
 | `apps/professionnel` | Espace des professionnels (consultation, dossier, ordonnance) | 1 |
 | `apps/pharmacie` | Espace des pharmacies partenaires (ordonnances, stocks) | 2 |
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
