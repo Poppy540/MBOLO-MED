@@ -1,7 +1,7 @@
 # ADR-0014 — Inscription d'un patient avec un code d'invitation
 
 - **Date :** 2026-09-27
-- **Statut :** proposée (à valider par le porteur de projet)
+- **Statut :** acceptée (porteur de projet, 2026-09-27) ; modalités de la vérification d'identité à préciser
 - **Décideurs :** porteur de projet
 
 ## Contexte
@@ -31,46 +31,69 @@ Contraintes :
    - Création du `Patient` FHIR à faire dans l'extension ou juste après.
 3. **Création par un humain** (le gestionnaire crée le compte avec la personne) : simple, mais ne passe pas à l'échelle et fait connaître le mot de passe initial à un tiers.
 
-## Décision proposée
-**Option 1 pour la vague 1**, avec ces garde-fous. L'option 2 est à réévaluer avant la vague 2 (volume plus grand).
+## Décision (porteur de projet, 2026-09-27)
 
-### Garde-fous
-- **Compte de service `mbolo-inscription-service`** :
-  - seulement `manage-users` et `view-users` du royaume, aucun autre droit d'administration ;
-  - le code n'attribue **que** le rôle `patient` (liste fermée) ;
-  - un test e2e vérifie qu'une tentative d'attribuer un autre rôle est refusée par le service ;
-  - le royaume est vérifié par un test (aucun rôle composite ajouté au compte de service).
-- **Passerelle** : `system/Patient.c` uniquement pour ce compte, sans lecture ni modification des patients existants.
-- **Ordre et compensation** :
-  - le code est utilisé d'abord, de façon atomique ;
-  - si le dossier ou le compte ne peuvent pas être créés, le code est rendu utilisable ;
-  - un patient créé sans compte est marqué inactif (`Patient.active = false`), jamais supprimé.
-- **Mot de passe** :
-  - jamais journalisé, jamais stocké par le service, transmis directement à Keycloak ;
-  - politique de mot de passe définie dans Keycloak, paramétrable par déploiement.
-- **Essais limités** : même limite que la vérification des codes, par adresse.
-- **Aucune vérification d'identité en vague 1**, au-delà de l'invitation remise en main propre. À revoir avec l'avis juridique (identification des patients : pièce d'identité, numéro CNAMGS ?).
+### 1. Extension Keycloak (option 2)
+- L'inscription se fait dans le **formulaire natif de Keycloak**, complété par une extension (SPI Java) qui demande le code d'invitation.
+- Le **mot de passe ne quitte jamais Keycloak**, et aucun service de la plateforme n'a le droit de créer des comptes.
+- L'extension appelle le service `invitations`, avec un jeton de service, pour **utiliser** le code de façon atomique. Si le compte ne peut pas être créé, le code est rendu.
+- Le rôle `patient` est attribué par l'extension, et uniquement celui-là (liste fermée, vérifiée par test).
 
-### Données demandées à l'inscription (proposition)
+### 2. Remise du code par téléphone
+L'équipe communique le code par téléphone :
+- soit **au patient** lui-même ;
+- soit **au proche ou à l'aidant** qui l'aidera à créer son dossier. Le patient doit être présent et consentir ; le compte reste au nom du patient.
+
+### 3. Vérification d'identité dès la vague 1 (option B)
+Deux cas :
+- **Le patient a un numéro CNAMGS** : il le donne à l'inscription, avec sa pièce d'identité, qui est vérifiée.
+- **Il n'en a pas** : un **professionnel de santé** crée son dossier à partir de son **acte de naissance**, lui attribue un **numéro provisoire Mbolo** et prend une photo.
+
+Conséquences :
+- **Sans identité vérifiée, pas de consultation.** Le compte existe, mais le dossier est marqué « identité à vérifier » et la réservation reste fermée. Une urgence est toujours orientée vers les secours (principe n°2).
+- La vérification est faite **par un humain habilité**, jamais par une IA (principe n°1). Elle est **tracée** : qui, quand, quel type de document.
+- Les photos de documents sont des données très sensibles. Elles vont dans le **stockage chiffré** (`STORAGE_*`, ADR-0004), jamais dans la base des services, dans le jeton ni dans les journaux. Le dossier FHIR ne garde qu'une référence et le résultat de la vérification.
+- Le numéro CNAMGS et le numéro provisoire sont des **identifiants** du dossier (`Patient.identifier`), avec des systèmes d'identifiants **paramétrables par pays** (CNAMGS est propre au Gabon).
+- Le numéro CNAMGS est déclaratif tant qu'aucune interface avec la CNAMGS n'existe (convention visée en vague 4).
+
+### 4. Données demandées
 | Donnée | Où | Pourquoi |
 |---|---|---|
 | Nom et prénom | Dossier FHIR (`Patient.name`) | Le professionnel doit savoir qui il soigne |
 | Date de naissance | Dossier FHIR (`Patient.birthDate`) | Âge : indispensable à une consultation |
 | Sexe (facultatif, « ne souhaite pas répondre » possible) | Dossier FHIR (`Patient.gender`) | Utile au professionnel |
 | Téléphone mobile | Dossier FHIR (`Patient.telecom`) | Rappels et notifications (avec consentement `C-RAPPELS`) |
+| Numéro CNAMGS ou numéro provisoire Mbolo | Dossier FHIR (`Patient.identifier`) | Identification du patient |
+| Photo de la pièce d'identité ou de l'acte de naissance | Stockage chiffré, référencée par le dossier | Preuve de la vérification d'identité |
 | Identifiant de connexion et mot de passe | Keycloak seulement | Connexion |
 
-- Pas d'e-mail obligatoire : beaucoup de patients n'en ont pas.
-- L'identifiant de connexion est choisi par le patient. Ce n'est ni son nom ni son numéro, pour qu'il ne soit pas identifiant hors du dossier.
+- Pas d'e-mail obligatoire.
+- L'identifiant de connexion est choisi par le patient ; ce n'est ni son nom ni son numéro.
+
+### Points à préciser avant de construire la vérification
+1. **« Prendre en photo »** : l'acte de naissance, le visage du patient, ou les deux ?
+2. **Patients avec CNAMGS** : la pièce d'identité est-elle vérifiée **à distance** (photo envoyée à l'inscription, contrôlée par un humain de Mbolo) ou **toujours en personne** par un professionnel ?
+3. **Qui vérifie** : tout professionnel de santé inscrit, ou un rôle dédié (`verification-identite`, avec double authentification) ?
+4. **Durée de conservation** des photos de documents (avis juridique) : supprimées après vérification, ou conservées comme preuve ?
 
 ## Conséquences
-- Nouveaux éléments :
-  - compte de service Keycloak et secret `INSCRIPTION_SERVICE_CLIENT_SECRET` ;
-  - permission `system/Patient.c` sur la passerelle ;
-  - route publique `POST /inscriptions` ;
-  - écran « J'ai un code d'invitation » dans l'application patient.
-- Profil FHIR `mbolo-patient` à définir : champs obligatoires et invariant « marqué fictif hors production ».
-- À mettre à jour : registre des traitements (T8 étendu à l'inscription), AIPD, modèle de menaces (compte de service qui crée des comptes).
-- Risque principal : abus du compte de service. Il est couvert par la liste fermée de rôles, les tests de refus et le journal d'administration de Keycloak (`adminEventsEnabled`).
+- **Extension Keycloak en Java** :
+  - construite et testée en CI, livrée dans une image Keycloak dédiée ;
+  - à maintenir à chaque version de Keycloak ;
+  - premier composant Java de la plateforme.
+- **Parcours en deux temps** :
+  1. **L'inscription** (code, compte, dossier « identité à vérifier ») peut être construite dès maintenant.
+  2. **La vérification d'identité** (écran professionnel, photo, stockage chiffré, levée du blocage) suit, après réponse aux points à préciser.
+- **Nouveaux éléments** :
+  - profil FHIR `mbolo-patient` : identifiants, statut de vérification, marqué fictif hors production ;
+  - compte de service de l'extension vers `invitations` ;
+  - service de stockage chiffré des documents.
+- **À mettre à jour** :
+  - registre des traitements : vérification d'identité, photos de documents ;
+  - AIPD : données d'identité et documents, risque élevé ;
+  - modèle de menaces : extension Keycloak, stockage des documents.
+- **Risques** :
+  - fuite des photos de documents : chiffrement, accès restreint et journalisé, conservation minimale ;
+  - blocage de patients sans document : le parcours accompagné par un professionnel, avec l'acte de naissance, y répond.
 
 Sources : ADR-0009, ADR-0010, ADR-0013 ; documentation Keycloak, API d'administration et rôles `realm-management` — https://www.keycloak.org/docs/latest/server_admin/#_admin_permissions ; principes n°3, n°5 et n°7 de `CLAUDE.md`.
