@@ -37,15 +37,23 @@ fi
 echo "OK : exemples valides."
 
 # Une ressource invalide n'est considérée comme rejetée que si le validateur a réellement
-# produit un verdict d'échec (« FAILURE ») : un plantage du validateur ne compte pas comme un rejet.
-echo "== Les ressources invalides doivent être rejetées"
+# produit un verdict d'échec (« FAILURE ») ET que le rapport cite le motif attendu (fichier .attendu) :
+# un plantage du validateur, ou un rejet pour une autre raison, ne compte pas.
+echo "== Les ressources invalides doivent être rejetées, pour le bon motif"
 echec=0
 for f in tests/invalides/*.json; do
+  attendu_fichier="${f%.json}.attendu"
+  if [ ! -f "$attendu_fichier" ]; then
+    echo "ERREUR : $attendu_fichier manquant (motif de rejet attendu)."
+    echec=1
+    continue
+  fi
+  motif=$(head -n 1 "$attendu_fichier")
   executer_validateur "$f"
-  if grep -q "FAILURE" "$SORTIE"; then
-    echo "OK : $f rejetée."
+  if grep -q "FAILURE" "$SORTIE" && grep -q -- "$motif" "$SORTIE"; then
+    echo "OK : $f rejetée (motif : $motif)."
   else
-    echo "ERREUR : $f n'a pas été rejetée (ou le validateur n'a pas pu s'exécuter)."
+    echo "ERREUR : $f n'a pas été rejetée pour le motif attendu « $motif »."
     cat "$SORTIE"
     echec=1
   fi
