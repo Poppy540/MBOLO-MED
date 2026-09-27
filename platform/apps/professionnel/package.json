@@ -1,0 +1,22 @@
+{
+  "name": "@mbolo/app-professionnel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Espace des professionnels de santé de Mbolo Santé (PWA, faible débit) : créneaux, rendez-vous, report, annulation et téléconsultation vidéo avec repli audio.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/budget.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mbolo/client-web": "workspace:*",
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "vite": "^8.3.1"
+  }
+}

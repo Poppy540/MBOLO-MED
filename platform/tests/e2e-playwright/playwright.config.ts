@@ -10,6 +10,7 @@ import {
   IDENTITE_URL,
   PASSERELLE_URL,
   APP_PATIENT_URL,
+  APP_PRO_URL,
   NOTIFICATIONS_URL,
   TELECONSULTATION_URL,
   UNLEASH_URL,
@@ -26,6 +27,9 @@ export default defineConfig({
   testDir,
   // Scénarios dépendants du même dossier de test : exécution séquentielle.
   workers: 1,
+  // Une connexion par formulaire avec double authentification peut attendre la période OTP
+  // suivante (30 s : Keycloak refuse de réutiliser un code) ; deux par scénario restent possibles.
+  timeout: 90_000,
   fullyParallel: false,
   forbidOnly: !!process.env['CI'],
   retries: 0,
@@ -107,6 +111,13 @@ export default defineConfig({
       command: 'pnpm exec vite preview',
       cwd: '../../apps/patient',
       url: APP_PATIENT_URL,
+      reuseExistingServer: false,
+      env: { TELECONSULTATION_URL },
+    },
+    {
+      command: 'pnpm exec vite preview',
+      cwd: '../../apps/professionnel',
+      url: APP_PRO_URL,
       reuseExistingServer: false,
       env: { TELECONSULTATION_URL },
     },

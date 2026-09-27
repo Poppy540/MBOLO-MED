@@ -15,8 +15,12 @@ export const CLIENT_SERVICE_NOTIFICATIONS = 'mbolo-notifications-service';
 /** Service de téléconsultation et serveur LiveKit de test (ADR-0011). */
 export const TELECONSULTATION_URL = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
 export const NOTIFICATIONS_URL = process.env['NOTIFICATIONS_URL'] ?? 'http://127.0.0.1:3004';
-/** Application patient (vite preview). Le port 5173 reste le faux retour de connexion des tests. */
-export const APP_PATIENT_URL = process.env['APP_PATIENT_URL'] ?? 'http://localhost:5174';
+/**
+ * Applications (vite preview). Les ports 5173 et 5174 restent les faux retours de connexion des
+ * étapes de test (clients patient et professionnel) : une vraie application y consommerait leurs codes.
+ */
+export const APP_PATIENT_URL = process.env['APP_PATIENT_URL'] ?? 'http://localhost:5180';
+export const APP_PRO_URL = process.env['APP_PRO_URL'] ?? 'http://localhost:5181';
 export const WEBRTC_URL = process.env['WEBRTC_SERVER_URL'] ?? 'ws://127.0.0.1:7880';
 /** Unleash de test (feature flags, ADR-0007). */
 export const UNLEASH_URL = process.env['UNLEASH_API_URL'] ?? 'http://127.0.0.1:4242/api';

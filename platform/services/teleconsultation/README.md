@@ -7,6 +7,7 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 - **Créneaux** : le **professionnel** publie ses créneaux, `POST /creneaux` (`debut`, `dureeMinutes` de 5 à 120, `nombre` de 1 à 16 créneaux consécutifs).
   - Les créneaux doivent être à venir et ne pas chevaucher ceux déjà publiés (sinon 409).
   - Ils sont enregistrés dans le dossier : agenda FHIR `Schedule` (profil `mbolo-agenda`, un seul professionnel) et `Slot` (profil `mbolo-creneau`, **aucun texte libre**).
+- `GET /creneaux` : le **professionnel** voit ses créneaux à venir (libres et réservés, 14 jours). Sans condition de flag, pour pouvoir retirer ses créneaux après un retour arrière.
 - `GET /praticiens/:id/creneaux` : le **patient** voit les créneaux **libres** du professionnel dans les 14 prochains jours.
 - **Réservation** : le **patient** réserve un créneau libre et à venir, `POST /rendez-vous` (`creneauId`).
   - Le créneau passe à « réservé » avec un **verrou optimiste** : deux patients ne peuvent pas réserver le même créneau (409).

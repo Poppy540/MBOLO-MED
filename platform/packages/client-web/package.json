@@ -1,0 +1,18 @@
+{
+  "name": "@mbolo/client-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Briques communes des applications web de Mbolo Santé (patient, professionnel) : connexion PKCE, appels d'API, dates par pays, visio LiveKit avec repli audio.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "livekit-client": "^2.22.3",
+    "preact": "^10.29.8"
+  }
+}

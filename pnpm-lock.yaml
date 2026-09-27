@@ -32,9 +32,9 @@ importers:
 
   platform/apps/patient:
     dependencies:
-      livekit-client:
-        specifier: ^2.22.3
-        version: 2.22.3(@types/dom-mediacapture-record@1.0.22)
+      '@mbolo/client-web':
+        specifier: workspace:*
+        version: link:../../packages/client-web
       preact:
         specifier: ^10.29.8
         version: 10.29.8
@@ -45,6 +45,31 @@ importers:
       vite:
         specifier: ^8.3.1
         version: 8.3.1(@types/node@22.20.4)(esbuild@0.28.2)
+
+  platform/apps/professionnel:
+    dependencies:
+      '@mbolo/client-web':
+        specifier: workspace:*
+        version: link:../../packages/client-web
+      preact:
+        specifier: ^10.29.8
+        version: 10.29.8
+    devDependencies:
+      '@preact/preset-vite':
+        specifier: ^2.10.6
+        version: 2.10.6(@babel/core@7.29.7)(preact@10.29.8)(rollup@4.63.5)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2))
+      vite:
+        specifier: ^8.3.1
+        version: 8.3.1(@types/node@22.20.4)(esbuild@0.28.2)
+
+  platform/packages/client-web:
+    dependencies:
+      livekit-client:
+        specifier: ^2.22.3
+        version: 2.22.3(@types/dom-mediacapture-record@1.0.22)
+      preact:
+        specifier: ^10.29.8
+        version: 10.29.8
 
   platform/packages/drapeaux:
     dependencies:

@@ -392,3 +392,27 @@ describe('notification de l’autre participant', () => {
     ]);
   });
 });
+
+describe('créneaux du professionnel', () => {
+  it('le médecin voit ses créneaux libres et réservés, pas ceux retirés ni ceux d’un autre', async () => {
+    const { service, c, creneaux } = await monter();
+    await service.demander(patient, { creneauId: c.id });
+    const [libre, retire] = await service.publier(medecin, {
+      debut: '2026-09-28T10:00:00Z',
+      dureeMinutes: 20,
+      nombre: 2,
+    });
+    await service.retirerCreneau(medecin, retire?.id ?? '');
+    await creneaux.publier('prac-fictif-002', [
+      { debut: '2026-09-28T12:00:00Z', dureeMinutes: 20 },
+    ]);
+    const miens = await service.mesCreneaux(medecin);
+    expect(miens.map((x) => [x.id, x.statut])).toEqual([
+      [c.id, 'reserve'],
+      [libre?.id, 'libre'],
+    ]);
+    for (const u of [patient, pharmacien]) {
+      await expect(service.mesCreneaux(u)).rejects.toMatchObject({ statut: 403 });
+    }
+  });
+});
