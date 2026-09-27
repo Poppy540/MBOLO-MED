@@ -49,6 +49,19 @@ describe('masquer — données de santé et d’identification', () => {
     });
   });
 
+  it('garde les identifiants UUID lisibles, même quand ils commencent par des chiffres', () => {
+    // UUID fictifs : 8 chiffres en tête ressemblent à un téléphone, mais ne le sont pas.
+    const compte = '10644808-aa50-465b-9fad-1395adabe5e0';
+    const invitation = '12345678-1234-4234-8234-123456789012';
+    expect(masquerTexte(`compte ${compte}`)).toBe(`compte ${compte}`);
+    expect(masquerTexte(invitation)).toBe(invitation);
+    // Un téléphone à côté d'un UUID reste masqué ; un jeton porteur aussi, même en forme d'UUID.
+    expect(masquerTexte(`${compte} appelle le +241 00 00 00 00`)).toBe(
+      `${compte} appelle le ${MOTIF_MASQUE}`,
+    );
+    expect(masquerTexte(`Bearer ${compte}`)).toBe(MOTIF_MASQUE);
+  });
+
   it('masque les téléphones et e-mails présents dans des champs non prévus', () => {
     expect(masquer({ detail: 'rappeler le +241 00 00 00 00 ou test@example.invalid' })).toEqual({
       detail: `rappeler le ${MOTIF_MASQUE} ou ${MOTIF_MASQUE}`,
