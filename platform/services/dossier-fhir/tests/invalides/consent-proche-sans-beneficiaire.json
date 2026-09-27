@@ -1,0 +1,30 @@
+{
+  "resourceType": "Consent",
+  "id": "fictif-invalide-4",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-consent"],
+    "tag": [
+      { "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur", "code": "fictif" }
+    ]
+  },
+  "status": "active",
+  "scope": {
+    "coding": [
+      { "system": "http://terminology.hl7.org/CodeSystem/consentscope", "code": "patient-privacy" }
+    ]
+  },
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-consentement",
+          "code": "C-PROCHE"
+        }
+      ]
+    }
+  ],
+  "patient": { "reference": "Patient/fictif-patient-0001" },
+  "dateTime": "2026-09-26T10:15:00+01:00",
+  "policyRule": { "text": "[FICTIF] partage avec un proche sans dire lequel : interdit" },
+  "provision": { "type": "permit" }
+}

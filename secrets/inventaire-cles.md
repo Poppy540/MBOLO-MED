@@ -56,6 +56,14 @@
 | `FHIR_CLIENT_ID_AGENT02` / `_SECRET_AGENT02` | Serveur FHIR | **Agent 2** | Lire ordonnances et rendez-vous, créer des rappels | Lecture : MedicationRequest, Appointment, ServiceRequest, CarePlan ; écriture : Communication, AdverseEvent (brouillon) | D R P | idem | 90 j | RS | 2 |
 | `FHIR_CLIENT_ID_AGENT04` / `_SECRET_AGENT04` | Serveur FHIR | **Agent 4** | Audit qualité | **Lecture seule d'une vue pseudonymisée**, aucune ressource Patient identifiante | R P | idem | 90 j | RS | 1 |
 
+## Identité (Keycloak)
+
+| Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
+|---|---|---|---|---|---|---|---|---|---|
+| `KEYCLOAK_ISSUER` | Keycloak (ADR-0009) | Plateforme | URL de l'émetteur des jetons (pas un secret, suivie pour cohérence) | — | D R P | `mbolo/<env>/identite/` | — | RS | 0 |
+| `IDENTITE_AUDIENCE` | Service identite | Plateforme | Audience attendue dans les jetons | — | D R P | idem | — | RS | 0 |
+| `KC_BOOTSTRAP_ADMIN_PASSWORD` | Keycloak | **Infrastructure uniquement** | Compte d'administration initial | À désactiver après création d'un administrateur nominatif avec MFA | D R P | idem | après chaque usage | RS | 0 |
+
 ## Base de données et stockage
 
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
@@ -121,3 +129,4 @@
 |---|---|---|
 | 2026-09-26 | Création initiale (vague 0) | En attente — responsable sécurité à nommer |
 | 2026-09-26 | Outils choisis (D-0002) : Infisical, Slack + Grafana OnCall, Unleash ; variables renommées en conséquence | En attente — responsable sécurité à nommer |
+| 2026-09-27 | Ajout de la section Identité (Keycloak, ADR-0009) | En attente — responsable sécurité à nommer |

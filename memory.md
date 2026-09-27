@@ -1,13 +1,13 @@
 # Mémoire du projet — Mbolo Santé
 
 > Lue à chaque session. **Moins de 200 lignes. Aucun secret, aucune donnée personnelle.** Les détails vont dans `docs/`.
-> Dernière mise à jour : 2026-09-26.
+> Dernière mise à jour : 2026-09-27.
 
 ## 1. État actuel
 
 - **Vague en cours : 0 (fondations).** Aucun patient réel, aucune donnée réelle.
 - **Fait :**
-  - Étape 2 — sécurité : `.gitignore`, pre-commit + gitleaks, `.claude/settings.json`, `secrets/` (inventaire sans valeurs, 16 modèles `CHANGEME`).
+  - Étape 2 — sécurité : `.gitignore`, pre-commit + gitleaks, `.claude/settings.json`, `secrets/` (inventaire sans valeurs, 17 modèles `CHANGEME` dont `identite`).
   - Étape 3 — référence : `CLAUDE.md`, `memory.md`, `README.md`, `docs/deploiement/vagues.md`, squelettes de `docs/`.
   - Étape 4 — agents 1 à 5 : `CLAUDE.md`, `system-prompt.md`, `permissions.md`, 45 skills + `garde-fous-communs` (`agents/_commun/`), cas de test (option C).
   - Étape 5 — salle de contrôle : 7 sous-agents (`.claude/agents/`), 42 skills (`.claude/skills/`, dont 20 complets), modèles de fiche, brief, rapport, revue, décision ; registre des risques initial (12 risques).
@@ -15,8 +15,8 @@
   - Étape 7 — contrôle final : gitleaks (fichiers + historique) sans fuite ; hooks pre-commit au vert ; aucune clé Claude, aucun téléphone ou e-mail réel ; 88 skills conformes (frontmatter, exemples fictifs, limites, sources) ; principes repris mot pour mot.
 - **Bilan des skills :** 88 (46 plateforme dont `garde-fous-communs`, 42 salle de contrôle) — 24 `complet`, 64 `v1`. Chaque agent a des cas de refus ou d'escalade.
 - **Dépôt :** fondations fusionnées dans `main` via [PR n°1](https://github.com/Poppy540/MBOLO-MED/pull/1) ; `main` protégée (pull request obligatoire, force-push et suppression interdits).
-- **Développement vague 0 (petites PR) :** A outillage — fusionnée ([PR n°2](https://github.com/Poppy540/MBOLO-MED/pull/2)) ; **B `dossier-fhir` en cours** (profils FSH, règles, jeu fictif, validation HL7 en CI) ; puis C `identite` (Keycloak), D premiers e2e.
-- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org` bloqués → validation FHIR officielle uniquement en CI GitHub.
+- **Développement vague 0 (petites PR) :** A outillage — fusionnée ([PR n°2](https://github.com/Poppy540/MBOLO-MED/pull/2)) ; B `dossier-fhir` — fusionnée ([PR n°3](https://github.com/Poppy540/MBOLO-MED/pull/3)) ; **C `identite` en cours** (Keycloak, décision d'accès, API de consentement, bris de glace, invariant `mbolo-consent-1`) ; puis D premiers e2e.
+- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak non démarrable localement dans cet environnement.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 
 ## 2. Décisions validées
@@ -46,6 +46,7 @@
 | 2026-09-26 | Messagerie salle de contrôle : Slack + astreinte Grafana OnCall (appel / SMS) | D-0002, [ADR-0006](docs/architecture/adr/0006-messagerie-salle-de-controle.md) |
 | 2026-09-26 | Feature flags : Unleash via OpenFeature | D-0002, [ADR-0007](docs/architecture/adr/0007-feature-flags-unleash.md) |
 | 2026-09-26 | Socle : monorepo TypeScript (Node 22, pnpm), CI GitHub Actions ; identité via Keycloak (ADR à venir) | [ADR-0008](docs/architecture/adr/0008-socle-technique.md) |
+| 2026-09-27 | Identité Keycloak ; refus par défaut ; accès au dossier sur consentement FHIR révocable ; bris de glace avec motif et revue humaine (proposée, PR C) | [ADR-0009](docs/architecture/adr/0009-identite-controle-acces.md) |
 
 ## 3. Hypothèses en attente de confirmation
 
@@ -70,3 +71,4 @@
 
 - 2026-09-26 — Vérifier l'existence d'un dossier avant d'y écrire en série (un `cd` échoué a interrompu une création de fichiers ; rien n'a été écrit au mauvais endroit).
 - 2026-09-26 — gitleaks utilise le moteur RE2 : pas de lookahead dans les règles ; exclure les valeurs factices par l'allowlist.
+- 2026-09-27 — `@types/fhir` s'importe via `'fhir/r4.js'` en `NodeNext` ; les fausses clés de test se construisent à l'exécution pour ne pas déclencher gitleaks.

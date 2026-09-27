@@ -10,7 +10,12 @@ import type {
   Provenance,
   Reference,
 } from 'fhir/r4.js';
-import { CATEGORIES_CONSENTEMENT, MARQUEUR_FICTIF, SYSTEMES } from './constantes.js';
+import {
+  CATEGORIES_AVEC_BENEFICIAIRE,
+  CATEGORIES_CONSENTEMENT,
+  MARQUEUR_FICTIF,
+  SYSTEMES,
+} from './constantes.js';
 
 export interface Violation {
   regle: string;
@@ -83,6 +88,15 @@ export function verifierConsent(c: Consent): Violation[] {
     });
   if (!c.provision?.type)
     v.push({ regle: 'mbolo-consent.provision', message: 'Type (permit / deny) obligatoire.' });
+  const partage = codes.some((x) =>
+    (CATEGORIES_AVEC_BENEFICIAIRE as readonly string[]).includes(x.code ?? ''),
+  );
+  if (partage && !c.provision?.actor?.some((a) => a.reference?.reference)) {
+    v.push({
+      regle: 'mbolo-consent-1',
+      message: 'Un consentement de partage doit désigner son bénéficiaire (provision.actor).',
+    });
+  }
   return v;
 }
 

@@ -1,0 +1,30 @@
+{
+  "name": "@mbolo/identite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Service identité de Mbolo Santé : rôles, contrôle d'accès par patient, API de consentement, vérification des jetons Keycloak.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@mbolo/dossier-fhir": "workspace:*",
+    "@mbolo/journal-securise": "workspace:*",
+    "fastify": "^5.12.5",
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@types/fhir": "^0.0.41"
+  }
+}

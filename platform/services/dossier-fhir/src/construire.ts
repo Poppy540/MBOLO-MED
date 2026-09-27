@@ -56,6 +56,11 @@ export interface OptionsConsentement {
   versionTexte: string;
   accepte: boolean;
   env: Environnement;
+  /**
+   * Bénéficiaire du partage (ex. « Practitioner/… », « RelatedPerson/… »).
+   * Obligatoire pour C-PARTAGE-PRO et C-PROCHE (invariant mbolo-consent-1).
+   */
+  beneficiaire?: string;
 }
 
 export function consentement(o: OptionsConsentement): Consent {
@@ -72,6 +77,16 @@ export function consentement(o: OptionsConsentement): Consent {
     provision: {
       type: o.accepte ? 'permit' : 'deny',
       purpose: [{ system: SYSTEMES.actReason, code: 'TREAT' }],
+      ...(o.beneficiaire
+        ? {
+            actor: [
+              {
+                role: { coding: [{ system: SYSTEMES.participationType, code: 'IRCP' }] },
+                reference: { reference: o.beneficiaire },
+              },
+            ],
+          }
+        : {}),
     },
   };
 }

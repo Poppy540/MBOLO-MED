@@ -1,0 +1,29 @@
+// Rôles de Mbolo Santé (miroir des rôles de royaume Keycloak, keycloak/realm-mbolo.json).
+
+export const ROLES = [
+  'patient',
+  'proche',
+  'professionnel',
+  'infirmier',
+  'pharmacien',
+  'administrateur',
+  'agent-ia',
+] as const;
+export type Role = (typeof ROLES)[number];
+
+/**
+ * Utilisateur authentifié, tel que reconstruit à partir d'un jeton vérifié.
+ * Les identifiants FHIR (patientId, practitionerId, relatedPersonId) proviennent d'attributs
+ * Keycloak posés par un humain habilité, jamais d'une saisie de l'utilisateur.
+ */
+export interface Utilisateur {
+  sujet: string;
+  roles: readonly Role[];
+  patientId?: string;
+  practitionerId?: string;
+  relatedPersonId?: string;
+  /** Pour un agent IA : nom de l'agent et patient de la session en cours (et lui seul). */
+  agent?: { nom: string; patientSession: string };
+}
+
+export const estRole = (r: string): r is Role => (ROLES as readonly string[]).includes(r);

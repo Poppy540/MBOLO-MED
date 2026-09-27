@@ -1,0 +1,63 @@
+{
+  "attributes": [
+    {
+      "name": "username",
+      "displayName": "${username}",
+      "permissions": {
+        "view": ["admin", "user"],
+        "edit": ["admin", "user"]
+      }
+    },
+    {
+      "name": "email",
+      "displayName": "${email}",
+      "validations": {
+        "email": {}
+      },
+      "permissions": {
+        "view": ["admin", "user"],
+        "edit": ["admin", "user"]
+      }
+    },
+    {
+      "name": "firstName",
+      "displayName": "${firstName}",
+      "permissions": {
+        "view": ["admin", "user"],
+        "edit": ["admin", "user"]
+      }
+    },
+    {
+      "name": "lastName",
+      "displayName": "${lastName}",
+      "permissions": {
+        "view": ["admin", "user"],
+        "edit": ["admin", "user"]
+      }
+    },
+    {
+      "name": "patient_id",
+      "displayName": "Identifiant FHIR Patient",
+      "permissions": {
+        "view": ["admin"],
+        "edit": ["admin"]
+      }
+    },
+    {
+      "name": "practitioner_id",
+      "displayName": "Identifiant FHIR Practitioner",
+      "permissions": {
+        "view": ["admin"],
+        "edit": ["admin"]
+      }
+    },
+    {
+      "name": "related_person_id",
+      "displayName": "Identifiant FHIR RelatedPerson",
+      "permissions": {
+        "view": ["admin"],
+        "edit": ["admin"]
+      }
+    }
+  ]
+}
