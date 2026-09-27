@@ -1,6 +1,6 @@
 // Contexte partagé des scénarios : jetons obtenus par une vraie connexion Keycloak (PKCE S256).
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { expect, type Page, type Request } from '@playwright/test';
+import { expect, type BrowserContext, type Page, type Request } from '@playwright/test';
 import { test as base, createBdd } from 'playwright-bdd';
 import { APPLICATIONS, EMETTEUR, compte, motDePasse } from '../configuration.js';
 import { codeUnique, retenirSecret } from './totp.js';
@@ -15,6 +15,9 @@ export interface Monde {
   reponse?: Reponse;
   consentementId?: string;
   traceId?: string;
+  rendezVousId?: string;
+  /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
+  visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }
 
 const base64url = (b: Buffer): string => b.toString('base64url');
@@ -128,7 +131,9 @@ export function revendications(jeton: string): Record<string, unknown> {
 export const test = base.extend<{ monde: Monde }>({
   // eslint-disable-next-line no-empty-pattern
   monde: async ({}, use) => {
-    await use({ jetons: new Map() });
+    const monde: Monde = { jetons: new Map(), visio: new Map() };
+    await use(monde);
+    for (const { contexte } of monde.visio.values()) await contexte.close();
   },
 });
 

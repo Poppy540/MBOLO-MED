@@ -55,7 +55,17 @@ Jitsi reste l'option de repli si l'on veut une visioconférence de secours très
 3. **Hébergement** : serveur média et TURN chez l'hébergeur HDS retenu, au plus près du Gabon. Pour la latence depuis Libreville, voir la réserve de l'ADR-0004.
 4. **Aucun enregistrement** des consultations par défaut. Toute exception doit être décidée et encadrée : consentement, durée, stockage chiffré.
 
-## Conséquences si la recommandation est acceptée
+## Prototype (PR K)
+- Service `teleconsultation` : rendez-vous demandé par le patient ; jeton de salle réservé au patient et au professionnel du rendez-vous, de 15 min avant le début à 30 min après la fin prévue ; salle de 2 participants, jeton de 10 min sans droit d'enregistrer ; flag `teleconsultation.video`.
+- Test e2e : deux navigateurs avec micro simulé se connectent à un vrai LiveKit 1.12.0 et s'entendent.
+- Reste à faire avant la vague 1 :
+  - rendez-vous stockés dans le dossier (FHIR `Appointment`, via la passerelle) ;
+  - applications patient et professionnel ;
+  - repli audio automatique côté application ;
+  - TURN et hébergement HDS ;
+  - test terrain.
+
+## Conséquences
 - Nouveau service `platform/services/teleconsultation` : rendez-vous, jetons de salle et événements de qualité, sans aucune donnée de santé.
 - Nouveaux secrets dans l'inventaire : clé et secret d'API LiveKit, secret TURN (`WEBRTC_*`, déjà prévus dans `secrets/inventaire-cles.md`).
 - Budget de données par consultation et temps de bascule audio suivis en supervision (skill `supervision-slo`).

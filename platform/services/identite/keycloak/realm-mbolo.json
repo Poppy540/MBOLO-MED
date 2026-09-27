@@ -112,6 +112,16 @@
           }
         },
         {
+          "name": "audience-teleconsultation-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-teleconsultation-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "patient_id",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
@@ -169,6 +179,16 @@
           }
         },
         {
+          "name": "audience-teleconsultation-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-teleconsultation-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "practitioner_id",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
@@ -188,6 +208,13 @@
     {
       "clientId": "mbolo-identite-api",
       "name": "API identité (ressource)",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "mbolo-teleconsultation-api",
+      "name": "API téléconsultation (ressource)",
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false

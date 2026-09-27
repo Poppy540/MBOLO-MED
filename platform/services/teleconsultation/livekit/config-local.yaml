@@ -1,0 +1,14 @@
+# Serveur LiveKit local pour le développement et les tests e2e — AUCUNE DONNÉE RÉELLE (ADR-0011).
+# Les clés d'API ne sont jamais dans ce fichier : LIVEKIT_KEYS="<clé>: <secret>" dans l'environnement.
+# Écoute uniquement sur la machine locale ; aucun enregistrement (pas d'egress).
+port: 7880
+bind_addresses: ["127.0.0.1"]
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  node_ip: 127.0.0.1
+  use_external_ip: false
+room:
+  empty_timeout: 300
+logging:
+  level: info

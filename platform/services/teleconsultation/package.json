@@ -1,0 +1,31 @@
+{
+  "name": "@mbolo/teleconsultation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Téléconsultation vidéo de Mbolo Santé (ADR-0002, ADR-0011) : rendez-vous et jetons de salle LiveKit réservés aux deux participants, derrière le flag teleconsultation.video.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@mbolo/drapeaux": "workspace:*",
+    "@mbolo/identite": "workspace:*",
+    "@mbolo/journal-securise": "workspace:*",
+    "fastify": "^5.12.5",
+    "livekit-server-sdk": "^2.19.1"
+  },
+  "devDependencies": {
+    "jose": "^6.2.12"
+  }
+}
