@@ -16,7 +16,7 @@
 | `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
-| `services/notifications` | SMS, WhatsApp, e-mail — gabarits approuvés | 1 |
+| `services/notifications` | Prototype (ADR-0012) : gabarits fermés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier, canal simulé en attendant le fournisseur — voir son README | 1 |
 | `services/feature-flags` | Unleash local (`docker-compose.yml`, flags fictifs) ; activation par ville, spécialité, type d'utilisateur (ADR-0003, ADR-0007) | 0 |
 | `packages/drapeaux` | Feature flags via OpenFeature + Unleash : catalogue désactivé par défaut, dépendances, refus en cas d'erreur — registre `docs/deploiement/flags.md` | 0 |
 | `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |

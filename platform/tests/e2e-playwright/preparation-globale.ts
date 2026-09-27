@@ -41,6 +41,13 @@ async function preparerDossier(): Promise<void> {
         meta: { tag: [MARQUEUR_FICTIF] },
         ...(type === 'RelatedPerson' ? { patient: { reference: 'Patient/pat-fictif-001' } } : {}),
         name: [{ text: `${id} [FICTIF]` }],
+        // Numéros manifestement fictifs, distincts pour savoir qui est prévenu.
+        ...(type === 'Patient'
+          ? { telecom: [{ system: 'phone', value: '+241 00 00 00 01' }] }
+          : {}),
+        ...(type === 'Practitioner'
+          ? { telecom: [{ system: 'phone', value: '+241 00 00 00 02' }] }
+          : {}),
       }),
     });
     if (!r.ok)

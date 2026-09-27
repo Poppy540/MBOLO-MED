@@ -15,6 +15,7 @@
 | [0009](adr/0009-identite-controle-acces.md) | Identité (Keycloak), contrôle d'accès au dossier, consentements, bris de glace | Proposée |
 | [0010](adr/0010-passerelle-dossier.md) | Passerelle du dossier médical, comptes de service, permissions SMART | Proposée |
 | [0011](adr/0011-serveur-webrtc.md) | Serveur de téléconsultation vidéo : LiveKit | Acceptée (prototype et test terrain à venir) |
+| [0012](adr/0012-notifications.md) | Service de notifications (SMS, WhatsApp), gabarits approuvés | Proposée (fournisseur à choisir) |
 
 ## Vue d'ensemble (cible, à détailler)
 

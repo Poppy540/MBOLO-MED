@@ -1,6 +1,6 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
 // Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
-// IDENTITE_SERVICE_CLIENT_SECRET et TELECONSULTATION_SERVICE_CLIENT_SECRET identiques à ceux donnés à Keycloak, et un Unleash local
+// IDENTITE_SERVICE_CLIENT_SECRET, TELECONSULTATION_SERVICE_CLIENT_SECRET et NOTIFICATIONS_SERVICE_CLIENT_SECRET identiques à ceux donnés à Keycloak, et un Unleash local
 // (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), et un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
@@ -9,6 +9,7 @@ import {
   FHIR_URL,
   IDENTITE_URL,
   PASSERELLE_URL,
+  NOTIFICATIONS_URL,
   TELECONSULTATION_URL,
   UNLEASH_URL,
   WEBRTC_URL,
@@ -77,12 +78,26 @@ export default defineConfig({
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
         TELECONSULTATION_SERVICE_CLIENT_SECRET:
           process.env['TELECONSULTATION_SERVICE_CLIENT_SECRET'] ?? '',
+        NOTIFICATIONS_URL,
         WEBRTC_API_KEY: process.env['WEBRTC_API_KEY'] ?? '',
         WEBRTC_API_SECRET: process.env['WEBRTC_API_SECRET'] ?? '',
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',
         PORT: new URL(TELECONSULTATION_URL).port,
+        MBOLO_ENV: 'dev',
+      },
+    },
+    {
+      command: 'node ../../services/notifications/dist/main.js',
+      url: `${NOTIFICATIONS_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
+        NOTIFICATIONS_SERVICE_CLIENT_SECRET:
+          process.env['NOTIFICATIONS_SERVICE_CLIENT_SECRET'] ?? '',
+        PORT: new URL(NOTIFICATIONS_URL).port,
         MBOLO_ENV: 'dev',
       },
     },

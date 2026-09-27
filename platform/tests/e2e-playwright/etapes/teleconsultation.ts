@@ -5,7 +5,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { expect, type Browser } from '@playwright/test';
 import { creneauVideo } from '@mbolo/dossier-fhir';
-import { FHIR_URL, TELECONSULTATION_URL, WEBRTC_URL } from '../configuration.js';
+import { FHIR_URL, NOTIFICATIONS_URL, TELECONSULTATION_URL, WEBRTC_URL } from '../configuration.js';
+import { jetonService } from './dossier.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 
 // Bundle navigateur du client LiveKit, lu depuis le paquet installé (hors champ « exports »).
@@ -374,4 +375,37 @@ Then('le créneau est retiré', async ({ monde }) => {
 
 Then('le retrait est refusé car le créneau est réservé', ({ monde }) => {
   expect(monde.reponse?.statut).toBe(409);
+});
+
+/** Boîte du canal simulé des notifications (lue avec le jeton du service de téléconsultation). */
+async function boite(): Promise<{ telephone: string; texte: string; date: string }[]> {
+  const r = await fetch(`${NOTIFICATIONS_URL}/simulation/boite`, {
+    headers: { authorization: `Bearer ${await jetonService('téléconsultation')}` },
+  });
+  expect(r.status).toBe(200);
+  return ((await r.json()) as { messages: { telephone: string; texte: string; date: string }[] })
+    .messages;
+}
+
+Given('la boîte des notifications simulées est relevée', async ({ monde }) => {
+  monde.depuis = new Date().toISOString();
+});
+
+Then(
+  'le numéro {string} reçoit le message {string}',
+  async ({ monde }, telephone: string, extrait: string) => {
+    const recus = (await boite()).filter(
+      (m) => m.telephone === telephone && m.date >= (monde.depuis ?? ''),
+    );
+    expect(recus.map((m) => m.texte).join('\n')).toContain(extrait);
+    // Aucune donnée de santé ni nom du professionnel dans un SMS.
+    for (const m of recus) expect(m.texte).not.toMatch(/prac-|pat-|Dr|motif/i);
+  },
+);
+
+Then('le numéro {string} ne reçoit aucun message', async ({ monde }, telephone: string) => {
+  const recus = (await boite()).filter(
+    (m) => m.telephone === telephone && m.date >= (monde.depuis ?? ''),
+  );
+  expect(recus).toEqual([]);
 });

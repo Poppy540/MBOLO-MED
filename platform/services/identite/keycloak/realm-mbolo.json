@@ -299,12 +299,73 @@
           }
         },
         {
+          "name": "audience-notifications",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-notifications",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "permissions-smart",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
             "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "mbolo-notifications",
+      "name": "API notifications (ressource, ADR-0012)",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "mbolo-notifications-service",
+      "name": "Compte de service du service notifications (dossier : numéro de téléphone et consentement aux rappels)",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${NOTIFICATIONS_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": false,
+      "defaultClientScopes": ["basic"],
+      "optionalClientScopes": [],
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-dossier-fhir",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-dossier-fhir",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "permissions-smart",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_scopes",
+            "claim.value": "system/Patient.r system/Practitioner.r system/Consent.s",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

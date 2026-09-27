@@ -5,6 +5,7 @@ import { creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
 import { DepotCreneauxFhir, DepotRendezVousFhir } from './depot-fhir.js';
+import { aucunNotificateur, type Notificateur, NotificateurHttp } from './notificateur.js';
 import {
   type DepotRendezVous,
   DepotRendezVousMemoire,
@@ -36,6 +37,8 @@ if (env['MBOLO_ENV'] === 'prod') {
 // limité aux rendez-vous. Sans FHIR_BASE_URL : en mémoire (développement seulement).
 let depot: DepotRendezVous;
 let creneaux: DepotCreneaux;
+// Notifications (ADR-0012) : même jeton de service, audience mbolo-notifications.
+let notificateur: Notificateur = aucunNotificateur;
 const fhir = env['FHIR_BASE_URL'];
 if (fhir) {
   const secretService = env['TELECONSULTATION_SERVICE_CLIENT_SECRET'];
@@ -53,6 +56,9 @@ if (fhir) {
   depot = new DepotRendezVousFhir({ base: fhir, entetes }, 'dev');
   creneaux = new DepotCreneauxFhir({ base: fhir, entetes }, 'dev');
   journal.info('rendez-vous enregistrés dans le dossier FHIR (passerelle authentifiée)');
+  if (env['NOTIFICATIONS_URL']) {
+    notificateur = new NotificateurHttp({ url: env['NOTIFICATIONS_URL'], entetes, journal });
+  }
 } else {
   depot = new DepotRendezVousMemoire();
   creneaux = new DepotCreneauxMemoire();
@@ -79,6 +85,8 @@ const app = creerServeur({
     creneaux,
     new SalleLiveKit({ url, cle, secret }),
     drapeaux,
+    () => new Date(),
+    notificateur,
   ),
   journal,
 });

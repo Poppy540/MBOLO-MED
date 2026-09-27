@@ -107,3 +107,23 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Quand "patient-fictif-01" réserve le dernier de ces créneaux
     Et que "medecin-fictif-01" retire le dernier de ces créneaux
     Alors le retrait est refusé car le créneau est réservé
+
+  Scénario: Le médecin est prévenu, sans donnée de santé, quand le patient annule
+    Étant donné que "patient-fictif-01" est connecté
+    Et que la boîte des notifications simulées est relevée
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "patient-fictif-01" annule ce rendez-vous
+    Alors le numéro "+241 00 00 00 02" reçoit le message "est annulé"
+
+  Scénario: Le patient n'est prévenu que s'il a accepté les rappels
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que la boîte des notifications simulées est relevée
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "medecin-fictif-01" annule ce rendez-vous
+    Alors le numéro "+241 00 00 00 01" ne reçoit aucun message
+    Quand "patient-fictif-01" accepte de recevoir les rappels
+    Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "medecin-fictif-01" publie 1 créneaux de 20 minutes dans 5 jours
+    Et que "medecin-fictif-01" reporte ce rendez-vous sur le premier de ces créneaux
+    Alors le numéro "+241 00 00 00 01" reçoit le message "est déplacé au"

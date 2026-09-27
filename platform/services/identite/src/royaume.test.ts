@@ -106,6 +106,29 @@ describe('royaume mbolo', () => {
     ).toBe('system/Appointment.crus system/Schedule.crus system/Slot.crus');
   });
 
+  it('compte de service notifications : lecture du contact et du consentement seulement', () => {
+    const c = royaume.clients.find((x) => x.clientId === 'mbolo-notifications-service');
+    expect(c).toMatchObject({
+      publicClient: false,
+      serviceAccountsEnabled: true,
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+    });
+    expect(c?.secret).toBe('${NOTIFICATIONS_SERVICE_CLIENT_SECRET}');
+    const mappeurs = c?.protocolMappers ?? [];
+    // Lecture par identifiant (r) et recherche de consentements (s) : aucune écriture.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
+    ).toBe('system/Patient.r system/Practitioner.r system/Consent.s');
+    // Seul le service de téléconsultation peut appeler les notifications.
+    const audiences = (id: string) =>
+      (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
+        .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
+        .map((m) => m.config['included.client.audience']);
+    expect(audiences('mbolo-teleconsultation-service')).toContain('mbolo-notifications');
+    expect(audiences('mbolo-identite-service')).not.toContain('mbolo-notifications');
+  });
+
   it('aucun client ne contient de secret en clair', () => {
     for (const c of royaume.clients) {
       if (c.secret !== undefined) expect(c.secret).toMatch(/^\$\{[A-Z_]+\}$/);

@@ -62,8 +62,9 @@ Jitsi reste l'option de repli si l'on veut une visioconférence de secours très
 - PR M : annulation par le patient ou le professionnel ; rendez-vous conservé avec qui et quand (code, extension `date-annulation`), sans motif ; salle fermée.
 - PR N : créneaux publiés par les professionnels (FHIR `Schedule` et `Slot`, sans texte libre) ; le patient réserve un créneau libre, avec verrou contre la double réservation ; l'annulation libère le créneau.
 - PR O : report vers un autre créneau du même professionnel (même rendez-vous, verrous, ancien créneau libéré) ; retrait d'un créneau libre (`busy-unavailable`).
+- PR P : l'autre participant est prévenu d'une annulation ou d'un report (service `notifications`, ADR-0012, canal simulé).
 - Reste à faire avant la vague 1 :
-  - notifications ;
+  - fournisseur de notifications ;
   - applications patient et professionnel ;
   - repli audio automatique côté application ;
   - TURN et hébergement HDS ;
