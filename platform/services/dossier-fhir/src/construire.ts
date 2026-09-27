@@ -148,6 +148,8 @@ export interface OptionsEvenementAcces {
   brisDeGlace?: { justification: string };
   /** Service qui a pris la décision (ex. identite). */
   source: string;
+  /** Précisions sans donnée de santé, ex. le document d'identité consulté (ADR-0015). */
+  details?: { type: string; valeur: string }[];
   date: string;
   env: Environnement;
 }
@@ -192,10 +194,18 @@ export function evenementAccesDossier(o: OptionsEvenementAcces): AuditEvent {
       {
         what: { reference: `Patient/${o.patientId}` },
         type: { system: SYSTEMES.auditEntiteType, code: '1', display: 'Person' },
-        ...(o.brisDeGlace
+        ...(o.brisDeGlace || o.details?.length
           ? {
               detail: [
-                { type: 'justification-bris-de-glace', valueString: o.brisDeGlace.justification },
+                ...(o.brisDeGlace
+                  ? [
+                      {
+                        type: 'justification-bris-de-glace',
+                        valueString: o.brisDeGlace.justification,
+                      },
+                    ]
+                  : []),
+                ...(o.details ?? []).map((d) => ({ type: d.type, valueString: d.valeur })),
               ],
             }
           : {}),

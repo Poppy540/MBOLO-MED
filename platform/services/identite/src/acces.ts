@@ -106,7 +106,8 @@ export function deciderAccesDossier(
     u.roles.includes('pharmacien') ||
     u.roles.includes('administrateur') ||
     u.roles.includes('revue-acces') ||
-    u.roles.includes('gestion-invitations')
+    u.roles.includes('gestion-invitations') ||
+    u.roles.includes('verification-identite')
   ) {
     return refus('refus-role-sans-acces-clinique');
   }

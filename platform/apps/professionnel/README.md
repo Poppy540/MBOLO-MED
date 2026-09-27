@@ -1,6 +1,6 @@
 # Espace professionnel (prototype)
 
-PWA légère (Preact + Vite, **12,0 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
+PWA légère (Preact + Vite, **12,4 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
 
 ## Parcours
 
@@ -9,6 +9,7 @@ PWA légère (Preact + Vite, **12,0 Ko** compressés à l'ouverture) pour les pr
 3. **Mes créneaux** : publier 1 à 16 créneaux consécutifs (date et heure **au fuseau du pays déployé**, durée 15, 20 ou 30 min) ; liste des créneaux libres et réservés sur 14 jours ; « Retirer » un créneau libre.
 4. **Dossier et compte-rendu** : depuis un rendez-vous, « Dossier » affiche les problèmes de santé et les comptes-rendus **si le patient a partagé son dossier** (sinon un message clair, et un **accès d'urgence** avec motif obligatoire, signalé et revu). Le professionnel rédige le compte-rendu (motif, observations, conclusion, conduite à tenir) ; aucune suggestion automatique.
 5. **Téléconsultation** : même écran que le patient (vidéo 216p, repli audio automatique ou choisi).
+6. **Vérifications à faire** (rôle `verification-identite`, ADR-0015 ; écran chargé à la demande, 2 Ko) : liste des patients à vérifier, identité déclarée et photos côte à côte (gardées en mémoire le temps de l'écran seulement ; **chaque ouverture est enregistrée dans le dossier du patient**), puis décision « vérifiée » (numéro d'assurance maladie ou provisoire), « refusée » (motif de la liste) ou « à refaire ». Un compte qui n'a que ce rôle arrive directement sur cet écran.
 
 Aucune donnée de santé n'est affichée ici : le dossier du patient s'ouvre par ses consentements (service `identite`).
 
@@ -23,7 +24,7 @@ Aucune donnée de santé n'est affichée ici : le dossier du patient s'ouvre par
 
 ## Déploiement dans un autre pays
 
-Mêmes variables que l'application patient (`VITE_KEYCLOAK_ISSUER`, `VITE_KEYCLOAK_CLIENT`, défaut `mbolo-app-pro`, `VITE_FUSEAU`, `VITE_LANGUE`). L'heure saisie est convertie en instant selon `VITE_FUSEAU`, heure d'été comprise.
+Mêmes variables que l'application patient (`VITE_KEYCLOAK_ISSUER`, `VITE_KEYCLOAK_CLIENT`, défaut `mbolo-app-pro`, `VITE_FUSEAU`, `VITE_LANGUE`, `VITE_NOM_ASSURANCE`). L'heure saisie est convertie en instant selon `VITE_FUSEAU`, heure d'été comprise.
 
 ## Lancer
 

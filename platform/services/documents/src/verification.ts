@@ -14,7 +14,7 @@ import type { DocumentDepose, ServiceDocuments } from './service.js';
 export class ErreurVerification extends Error {
   constructor(
     message: string,
-    readonly statut: 403 | 409,
+    readonly statut: 403 | 409 | 422,
   ) {
     super(message);
   }

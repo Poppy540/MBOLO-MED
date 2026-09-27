@@ -48,7 +48,13 @@ async function preparerDossier(): Promise<void> {
         id,
         meta: { tag: [MARQUEUR_FICTIF] },
         ...(type === 'RelatedPerson' ? { patient: { reference: 'Patient/pat-fictif-001' } } : {}),
-        name: [{ text: `${id} [FICTIF]` }],
+        // Patients conformes au profil mbolo-patient (nom et prénom) : leur identité peut être modifiée
+        // par la passerelle, qui valide la ressource complète (ADR-0015).
+        name: [
+          type === 'Patient'
+            ? { family: 'Fictif', given: [id], text: `${id} [FICTIF]` }
+            : { text: `${id} [FICTIF]` },
+        ],
         // Numéros manifestement fictifs, distincts pour savoir qui est prévenu.
         // Patients déjà vérifiés (ADR-0014) : identité contrôlée, numéro d'assurance fictif.
         ...(type === 'Patient'

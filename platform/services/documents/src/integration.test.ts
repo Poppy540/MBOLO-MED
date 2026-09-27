@@ -104,6 +104,43 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
       expect(await service.duPatient(autre)).toHaveLength(2);
     });
 
+    it('patients en attente de décision, puis décision enregistrée (sans texte libre)', async () => {
+      const depot = new DepotPostgres(execution);
+      const autre = `pat-fictif-att-${randomBytes(4).toString('hex')}`;
+      const deposer = (type: string) =>
+        service.deposer({ patientId: autre, type, octets: jpeg(), versionCharte: '0.1' });
+      await deposer('acte-naissance');
+      const enAttente = async () => (await depot.enAttente(1000)).map((e) => e.patientId);
+      // Il manque encore la photo du visage.
+      expect(await enAttente()).not.toContain(autre);
+      await deposer('visage');
+      expect(await enAttente()).toContain(autre);
+      horloge = new Date(horloge.getTime() + 60_000);
+      await depot.enregistrerDecision({
+        id: randomUUID(),
+        patientId: autre,
+        verificateur: 'u-verificateur-fictif',
+        resultat: 'refusee',
+        motif: 'photo-illisible',
+        decideLe: horloge,
+      });
+      expect(await enAttente()).not.toContain(autre);
+      expect(await depot.derniereDecision(autre)).toMatchObject({
+        resultat: 'refusee',
+        motif: 'photo-illisible',
+      });
+      // Un refus sans motif est rejeté par la base elle-même.
+      await expect(
+        depot.enregistrerDecision({
+          id: randomUUID(),
+          patientId: autre,
+          verificateur: 'u-verificateur-fictif',
+          resultat: 'refusee',
+          decideLe: horloge,
+        }),
+      ).rejects.toThrow();
+    });
+
     it('le service ne peut supprimer aucune ligne de la base', async () => {
       await expect(execution`delete from documents.documents`).rejects.toThrow(/permission/);
     });

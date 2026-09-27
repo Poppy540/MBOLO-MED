@@ -146,17 +146,20 @@ describe('agent IA', () => {
 });
 
 describe('rôles sans accès clinique', () => {
-  it.each(['pharmacien', 'administrateur', 'revue-acces', 'gestion-invitations'] as const)(
-    '%s : toujours refusé',
-    (role) => {
-      const u: Utilisateur = { sujet: 'x', roles: [role], practitionerId: 'fictif-medecin-0001' };
-      expect(
-        deciderAccesDossier(u, { patientId: P1 }, [
-          cons('C-PARTAGE-PRO', 'Practitioner/fictif-medecin-0001'),
-        ]).motif,
-      ).toBe('refus-role-sans-acces-clinique');
-    },
-  );
+  it.each([
+    'pharmacien',
+    'administrateur',
+    'revue-acces',
+    'gestion-invitations',
+    'verification-identite',
+  ] as const)('%s : toujours refusé', (role) => {
+    const u: Utilisateur = { sujet: 'x', roles: [role], practitionerId: 'fictif-medecin-0001' };
+    expect(
+      deciderAccesDossier(u, { patientId: P1 }, [
+        cons('C-PARTAGE-PRO', 'Practitioner/fictif-medecin-0001'),
+      ]).motif,
+    ).toBe('refus-role-sans-acces-clinique');
+  });
   it('utilisateur sans rôle : refus par défaut', () => {
     expect(deciderAccesDossier({ sujet: 'x', roles: [] }, { patientId: P1 }, []).motif).toBe(
       'refus-par-defaut',

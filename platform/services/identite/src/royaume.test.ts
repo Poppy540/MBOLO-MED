@@ -11,7 +11,7 @@ interface Royaume {
   registrationAllowed: boolean;
   registrationFlow: string;
   loginTheme: string;
-  roles: { realm: { name: string; composites?: { realm?: string[] } }[] };
+  roles: { realm: { name: string; description?: string; composites?: { realm?: string[] } }[] };
   clients: {
     clientId: string;
     defaultClientScopes?: string[];
@@ -42,9 +42,16 @@ describe('royaume mbolo', () => {
     'administrateur',
     'revue-acces',
     'gestion-invitations',
+    'verification-identite',
   ])('impose la double authentification au rôle %s', (nom) => {
     const role = royaume.roles.realm.find((r) => r.name === nom);
     expect(role?.composites?.realm).toContain('mfa-requise');
+  });
+
+  it('garde les descriptions des rôles sous la limite de Keycloak (255 caractères)', () => {
+    for (const r of royaume.roles.realm) {
+      expect(r.description?.length ?? 0, r.name).toBeLessThanOrEqual(255);
+    }
   });
 
   it("n'impose pas la double authentification aux patients et proches", () => {
@@ -121,7 +128,7 @@ describe('royaume mbolo', () => {
     ).toBe('Practitioner.name Practitioner.qualification Patient.extension');
   });
 
-  it('compte de service documents : statut d’identité et charte, en lecture seule (ADR-0015)', () => {
+  it('compte de service documents : identité déclarée, charte, statut et numéro seulement (ADR-0015)', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-documents-service');
     expect(c).toMatchObject({
       publicClient: false,
@@ -133,18 +140,24 @@ describe('royaume mbolo', () => {
     const mappeurs = c?.protocolMappers ?? [];
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Patient.r system/Consent.s');
-    // Du patient, seul le statut de vérification d'identité sort de la passerelle.
+    ).toBe('system/Patient.ru system/Consent.s system/AuditEvent.c');
+    // Du patient, seuls l'identité déclarée et son statut sortent de la passerelle (pour la
+    // comparer aux photos) ; seuls le statut et le numéro peuvent être modifiés.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
-    ).toBe('Patient.extension');
-    // Les photos sont déposées avec le jeton de l'application patient, jamais de l'espace pro.
+    ).toBe('Patient.extension Patient.identifier Patient.name Patient.birthDate');
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements_modifiables')?.config[
+        'claim.value'
+      ],
+    ).toBe('Patient.extension Patient.identifier');
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
         .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
         .map((m) => m.config['included.client.audience']);
     expect(audiences('mbolo-app-patient')).toContain('mbolo-documents-api');
-    expect(audiences('mbolo-app-pro')).not.toContain('mbolo-documents-api');
+    // L'espace professionnel l'appelle aussi : écran du vérificateur (rôle verification-identite).
+    expect(audiences('mbolo-app-pro')).toContain('mbolo-documents-api');
   });
 
   it('compte de service notifications : lecture du contact et du consentement seulement', () => {

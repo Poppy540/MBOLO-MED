@@ -2,9 +2,11 @@
 // photos déposées au service documents. Photos GÉNÉRÉES (aplats de couleur) : jamais de vraie personne.
 import { deflateSync } from 'node:zlib';
 import { expect, type Browser, type Page } from '@playwright/test';
-import { SYSTEMES } from '@mbolo/dossier-fhir';
+import { connecter } from '@mbolo/base-donnees';
+import { EXTENSION_STATUT_IDENTITE, SYSTEMES } from '@mbolo/dossier-fhir';
 import {
   APP_PATIENT_URL,
+  APP_PRO_URL,
   DOCUMENTS_URL,
   FHIR_URL,
   IDENTITE_URL,
@@ -218,3 +220,193 @@ Then(
     expect(monde.reponse?.corps['erreur']).toBe(message);
   },
 );
+
+// ── Vérification par une personne habilitée ───────────────────────────────────
+
+const PRO = 'espace professionnel';
+
+const pagePro = (monde: Monde): Page => {
+  const p = monde.visio.get(PRO)?.page;
+  if (!p) throw new Error('L’espace professionnel n’est pas ouvert dans ce scénario.');
+  return p;
+};
+
+/** Remet l'identité du patient « à vérifier » et retire ses photos (clé détruite, jamais supprimées). */
+async function remettreAVerifier(patient: string): Promise<void> {
+  const r = await fetch(`${FHIR_URL}/Patient/${patient}`, {
+    headers: { 'cache-control': 'no-cache' },
+  });
+  const p = (await r.json()) as Record<string, unknown> & { extension?: { url: string }[] };
+  const m = await fetch(`${FHIR_URL}/Patient/${patient}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/fhir+json' },
+    body: JSON.stringify({
+      ...p,
+      extension: [
+        ...(p.extension ?? []).filter((e) => e.url !== EXTENSION_STATUT_IDENTITE),
+        { url: EXTENSION_STATUT_IDENTITE, valueCode: 'a-verifier' },
+      ],
+    }),
+  });
+  expect(m.ok).toBe(true);
+  const url = process.env['DOCUMENTS_MIGRATION_DATABASE_URL'];
+  if (!url || !/@(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)) {
+    throw new Error('DOCUMENTS_MIGRATION_DATABASE_URL (base locale de test) manquant.');
+  }
+  const sql = connecter({ url, application: 'e2e-etapes', production: false, max: 1 });
+  try {
+    await sql`
+      update documents.documents set cle_enveloppee = null, supprime_le = now()
+       where patient_id = ${patient} and supprime_le is null`;
+  } finally {
+    await sql.end();
+  }
+}
+
+Given("{string} a envoyé ses deux photos d'identité", async ({ monde }, identifiant: string) => {
+  await remettreAVerifier(patientId(identifiant));
+  const accord = await fetch(`${IDENTITE_URL}/patients/${patientId(identifiant)}/consentements`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${jeton(monde, identifiant)}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      categorie: 'C-IDENTITE',
+      mode: 'texte',
+      versionTexte: VERSION_CHARTE,
+      accepte: true,
+    }),
+  });
+  expect(accord.status).toBe(201);
+  await envoyer(monde, identifiant, 'piece-identite', pngFictif(40, 90, 160), 'image/png');
+  expect(monde.reponse?.statut).toBe(201);
+  await envoyer(monde, identifiant, 'visage', pngFictif(200, 150, 120), 'image/png');
+  expect(monde.reponse?.statut).toBe(201);
+});
+
+When(
+  '{string} ouvre les vérifications à faire dans l’espace professionnel',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    const contexte = await browser.newContext();
+    const p = await contexte.newPage();
+    monde.visio.set(PRO, { contexte, page: p });
+    await p.goto(`${APP_PRO_URL}/`);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await saisirIdentifiants(p, identifiant, true);
+    await expect(p.getByRole('heading', { name: 'Vérifications à faire' })).toBeVisible();
+  },
+);
+
+When(
+  'la vérificatrice ouvre le dossier de {string} et voit ses deux photos',
+  async ({ monde }, identifiant: string) => {
+    const p = pagePro(monde);
+    await p.locator(`button[data-patient="${patientId(identifiant)}"]`).click();
+    await expect(p.getByRole('heading', { name: 'Identité déclarée' })).toBeVisible();
+    const photos = p.getByRole('img', { name: /^Photo/ });
+    await expect(photos).toHaveCount(2);
+    // Les photos sont réellement affichées (déchiffrées et décodées par le navigateur).
+    for (const img of await photos.all()) {
+      await expect
+        .poll(() => img.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+    }
+  },
+);
+
+When(
+  "la vérificatrice confirme l'identité avec le numéro provisoire {string}",
+  async ({ monde }, numero: string) => {
+    const p = pagePro(monde);
+    await p.getByLabel('Identité vérifiée').check();
+    await p.getByLabel('Numéro provisoire').check();
+    await p.getByLabel('Numéro', { exact: true }).fill(numero);
+    await p.getByRole('button', { name: 'Enregistrer la décision' }).click();
+    await expect(p.getByRole('alert')).toHaveText('Décision enregistrée.');
+  },
+);
+
+Then(
+  'le dossier de {string} indique une identité vérifiée avec le numéro {string}',
+  // eslint-disable-next-line no-empty-pattern -- aucun élément du contexte n'est utilisé
+  async ({}, identifiant: string, numero: string) => {
+    const r = await fetch(`${FHIR_URL}/Patient/${patientId(identifiant)}`, {
+      headers: { 'cache-control': 'no-cache' },
+    });
+    const p = (await r.json()) as {
+      extension?: { url: string; valueCode?: string }[];
+      identifier?: { value?: string; type?: { coding?: { code?: string }[] } }[];
+    };
+    expect(p.extension?.find((e) => e.url === EXTENSION_STATUT_IDENTITE)?.valueCode).toBe(
+      'verifiee',
+    );
+    expect(
+      p.identifier?.some((i) => i.value === numero && i.type?.coding?.[0]?.code === 'provisoire'),
+    ).toBe(true);
+  },
+);
+
+Then(
+  "l'historique des accès de {string} montre la consultation de ses photos",
+  async ({ monde }, identifiant: string) => {
+    const r = await fetch(`${IDENTITE_URL}/patients/${patientId(identifiant)}/acces`, {
+      headers: { authorization: `Bearer ${jeton(monde, identifiant)}` },
+    });
+    expect(r.status).toBe(200);
+    const { acces } = (await r.json()) as { acces: { motif?: string; roles: string[] }[] };
+    const verifications = acces.filter((a) => a.motif === 'verification-identite');
+    // L'identité déclarée et les deux photos : trois consultations au moins, par ce rôle.
+    expect(verifications.length).toBeGreaterThanOrEqual(3);
+    expect(verifications.every((a) => a.roles.includes('verification-identite'))).toBe(true);
+  },
+);
+
+async function decider(monde: Monde, identifiant: string, patient: string, corps: object) {
+  const r = await fetch(`${DOCUMENTS_URL}/verifications/${patientId(patient)}/decision`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${jeton(monde, identifiant)}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(corps),
+  });
+  monde.reponse = { statut: r.status, corps: (await r.json()) as Record<string, unknown> };
+}
+
+When(
+  '{string} décide « {word} » pour {string}',
+  async ({ monde }, identifiant: string, resultat: string, patient: string) => {
+    await decider(monde, identifiant, patient, { resultat });
+  },
+);
+
+Then('la décision est enregistrée', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(201);
+});
+
+Then('la décision est refusée avec le statut {int}', ({ monde }, statut: number) => {
+  expect(monde.reponse?.statut).toBe(statut);
+});
+
+Then(
+  "{string} n'a plus aucune photo envoyée et son identité reste à vérifier",
+  async ({ monde }, identifiant: string) => {
+    const r = await fetch(`${DOCUMENTS_URL}/verification`, {
+      headers: { authorization: `Bearer ${jeton(monde, identifiant)}` },
+    });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ statut: 'a-verifier', documents: [] });
+  },
+);
+
+When('{string} demande les vérifications à faire', async ({ monde }, identifiant: string) => {
+  const r = await fetch(`${DOCUMENTS_URL}/verifications`, {
+    headers: { authorization: `Bearer ${jeton(monde, identifiant)}` },
+  });
+  monde.reponse = { statut: r.status, corps: (await r.json()) as Record<string, unknown> };
+});
+
+Then('la demande de vérifications est interdite', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(403);
+});

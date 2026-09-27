@@ -24,8 +24,11 @@ Tout le reste est refusé : `DELETE`, `_history`, `$opérations`, transactions e
 | `mbolo-teleconsultation-service` | `teleconsultation` (rendez-vous, agendas, créneaux, annuaire) | `system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r` | `Practitioner.name Practitioner.qualification` |
 | `mbolo-consultation-service` | `consultation` (problèmes, comptes-rendus, rendez-vous en lecture) | `system/Condition.rs system/Composition.crs system/Appointment.r` | tous |
 | `mbolo-notifications-service` | `notifications` (numéro, consentement aux rappels) | `system/Patient.r system/Practitioner.r system/Consent.s` | `Patient.telecom Practitioner.telecom` |
+| `mbolo-documents-service` | `documents` (vérification d'identité, ADR-0015) | `system/Patient.ru system/Consent.s system/AuditEvent.c` | `Patient.extension Patient.identifier Patient.name Patient.birthDate` ; **modifiables** : `Patient.extension Patient.identifier` |
 
 **Minimisation par élément** : pour un type listé dans `mbolo_elements`, la passerelle impose `_elements` au serveur FHIR, puis **filtre elle-même la réponse** : lecture, recherche et pages suivantes. Seuls sortent `resourceType`, `id`, `meta` et les éléments autorisés, quels que soient les paramètres de la requête. Un type non listé n'est pas restreint.
+
+**Modification par élément** (`mbolo_elements_modifiables`) : pour un type restreint en lecture, une mise à jour (`PUT`) ne peut porter que sur les éléments modifiables du client ; tout autre élément envoyé est refusé (403). La passerelle relit la ressource actuelle, **ne remplace que ces éléments**, conserve tout le reste (que le client n'a jamais vu), valide la ressource complète avec les règles Mbolo, et l'écrit avec un verrou sur la version lue. Un client restreint sans éléments modifiables ne modifie rien.
 
 Ajouter un client (ex. agent IA) : un client confidentiel dans `keycloak/realm-mbolo.json` avec le secret en `${VARIABLE}`, une audience `mbolo-dossier-fhir`, une revendication `mbolo_scopes` **minimale** et, si le client n'a besoin que d'une partie d'une ressource, une revendication `mbolo_elements`. Le responsable sécurité revoit chaque ajout.
 

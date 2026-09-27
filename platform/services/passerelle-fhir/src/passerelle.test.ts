@@ -1,6 +1,11 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { consentement } from '@mbolo/dossier-fhir';
+import {
+  EXTENSION_STATUT_IDENTITE,
+  SYSTEMES,
+  consentement,
+  patientInscrit,
+} from '@mbolo/dossier-fhir';
 import type { Journal } from '@mbolo/journal-securise';
 import { creerVerificateur } from './jeton.js';
 import { creerPasserelle } from './passerelle.js';
@@ -33,6 +38,22 @@ beforeAll(async () => {
       .setIssuedAt()
       .setExpirationTime('5m')
       .sign(privateKey);
+});
+
+/** [FICTIF] Patient à vérifier, version 3 dans le dossier. */
+const patientVerifiable = () => ({
+  ...patientInscrit({
+    nom: 'Fictif',
+    prenom: 'Patiente',
+    naissance: '1990-01-01',
+    telephone: '+241 00 00 00 00',
+    env: 'dev',
+  }),
+  id: 'pat-fictif-001',
+  meta: {
+    ...patientInscrit({ nom: 'x', prenom: 'y', naissance: '1990-01-01', env: 'dev' }).meta,
+    versionId: '3',
+  },
 });
 
 interface Appel {
@@ -210,6 +231,97 @@ describe('passerelle du dossier', () => {
     expect(s.body).not.toContain('Patiente Test');
     expect(s.body).not.toContain('1990-01-01');
     expect(s.body).toContain('+241 00 00 00 00');
+  });
+
+  it('modification restreinte : seuls les éléments modifiables changent, le reste est conservé', async () => {
+    const actuel = patientVerifiable();
+    const envois: {
+      methode: string;
+      corps?: Record<string, unknown>;
+      entetes: Record<string, string>;
+    }[] = [];
+    const f = (async (_url: string | URL | Request, init?: RequestInit) => {
+      envois.push({
+        methode: init?.method ?? 'GET',
+        entetes: (init?.headers ?? {}) as Record<string, string>,
+        ...(init?.body ? { corps: JSON.parse(String(init.body)) as Record<string, unknown> } : {}),
+      });
+      return new Response(JSON.stringify(init?.body ? JSON.parse(String(init.body)) : actuel), {
+        status: 200,
+      });
+    }) as typeof fetch;
+    const app = creerPasserelle({
+      verifierJeton: creerVerificateur({
+        emetteur: EMETTEUR,
+        audience: 'mbolo-dossier-fhir',
+        cles: createLocalJWKSet(jwks),
+      }),
+      amont: AMONT,
+      publique: PUBLIQUE,
+      env: 'dev',
+      journal,
+      fetch: f,
+    });
+    const jeton = await signer({
+      azp: 'mbolo-documents-service',
+      mbolo_scopes: 'system/Patient.ru',
+      mbolo_elements: 'Patient.extension Patient.identifier Patient.name Patient.birthDate',
+      mbolo_elements_modifiables: 'Patient.extension Patient.identifier',
+    });
+    const statut = [{ url: EXTENSION_STATUT_IDENTITE, valueCode: 'verifiee' }];
+    const numero = [
+      {
+        system: 'https://mbolo-sante.example/fhir/identifiant/ga/provisoire',
+        type: { coding: [{ system: SYSTEMES.typeIdentifiantPatient, code: 'provisoire' }] },
+        value: 'FICTIF-PROV-0001',
+      },
+    ];
+    const r = await app.inject({
+      method: 'PUT',
+      url: '/fhir/Patient/pat-fictif-001',
+      headers: { ...(await auth(jeton)), 'content-type': 'application/fhir+json' },
+      payload: {
+        resourceType: 'Patient',
+        id: 'pat-fictif-001',
+        extension: statut,
+        identifier: numero,
+      },
+    });
+    expect(r.statusCode).toBe(200);
+    const ecriture = envois.find((e) => e.methode === 'PUT');
+    // Nom, naissance et téléphone conservés ; statut et numéro remplacés ; verrou sur la version lue.
+    expect(ecriture?.corps).toMatchObject({
+      name: actuel.name,
+      birthDate: actuel.birthDate,
+      telecom: actuel.telecom,
+      extension: statut,
+      identifier: numero,
+    });
+    expect(ecriture?.entetes['if-match']).toBe('W/"3"');
+    // Le téléphone ne sort pas de la passerelle (non lisible par ce client).
+    expect(r.body).not.toContain('+241 00 00 00 00');
+
+    const nom = await app.inject({
+      method: 'PUT',
+      url: '/fhir/Patient/pat-fictif-001',
+      headers: { ...(await auth(jeton)), 'content-type': 'application/fhir+json' },
+      payload: { resourceType: 'Patient', id: 'pat-fictif-001', name: [{ family: 'Autre' }] },
+    });
+    expect(nom.statusCode).toBe(403);
+    // Un client restreint sans éléments modifiables ne modifie rien.
+    const lecteur = await signer({
+      azp: 'mbolo-teleconsultation-service',
+      mbolo_scopes: 'system/Patient.ru',
+      mbolo_elements: 'Patient.extension',
+    });
+    const refus = await app.inject({
+      method: 'PUT',
+      url: '/fhir/Patient/pat-fictif-001',
+      headers: { ...(await auth(lecteur)), 'content-type': 'application/fhir+json' },
+      payload: { resourceType: 'Patient', id: 'pat-fictif-001', extension: statut },
+    });
+    expect(refus.statusCode).toBe(403);
+    expect(envois.filter((e) => e.methode === 'PUT')).toHaveLength(1);
   });
 
   it('bloque une réponse qui contient des ressources hors du périmètre du client', async () => {

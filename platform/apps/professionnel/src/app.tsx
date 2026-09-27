@@ -1,6 +1,7 @@
 // Espace professionnel : connexion (double authentification), rendez-vous, créneaux,
 // report, annulation, téléconsultation. Aucune donnée de santé affichée ici : le dossier du
 // patient s'ouvre par ses consentements (service identite).
+import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import {
   Consultation,
@@ -10,6 +11,7 @@ import {
   oublierRendezVous,
   RendezVousHorsLigne,
   retenirRendezVous,
+  revendications,
   quand as formater,
   terminerConnexion,
   urlDeconnexion,
@@ -41,7 +43,16 @@ type Ecran =
   | { nom: 'creneaux' }
   | { nom: 'report'; rendezVous: RendezVous }
   | { nom: 'dossier'; rendezVous: RendezVous }
-  | { nom: 'visio'; rendezVous: RendezVous };
+  | { nom: 'visio'; rendezVous: RendezVous }
+  | { nom: 'verifications' };
+
+/** Rôles du compte connecté (jeton Keycloak) : l'affichage suit, le service décide. */
+const roles = (): string[] => {
+  const r = jeton ? revendications(jeton)['realm_access'] : undefined;
+  return (r as { roles?: string[] } | undefined)?.roles ?? [];
+};
+const estVerificateur = () => roles().includes('verification-identite');
+const estSoignant = () => roles().some((r) => r === 'professionnel' || r === 'infirmier');
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -54,7 +65,9 @@ export function App() {
         if (j) {
           jeton = j;
           history.replaceState(null, '', '/');
-          setEcran({ nom: 'rendez-vous' });
+          setEcran(
+            estVerificateur() && !estSoignant() ? { nom: 'verifications' } : { nom: 'rendez-vous' },
+          );
         }
       })
       .catch(() => setMessage('La connexion a échoué. Réessayez.'))
@@ -91,22 +104,37 @@ export function App() {
           </button>
         )}
       </header>
-      {jeton && (ecran.nom === 'rendez-vous' || ecran.nom === 'creneaux') && (
-        <nav class="actions">
-          <button
-            class={ecran.nom === 'rendez-vous' ? 'principal' : ''}
-            onClick={() => allerA({ nom: 'rendez-vous' })}
-          >
-            <span aria-hidden="true">📅</span> Rendez-vous
-          </button>
-          <button
-            class={ecran.nom === 'creneaux' ? 'principal' : ''}
-            onClick={() => allerA({ nom: 'creneaux' })}
-          >
-            <span aria-hidden="true">🕒</span> Mes créneaux
-          </button>
-        </nav>
-      )}
+      {jeton &&
+        (ecran.nom === 'rendez-vous' ||
+          ecran.nom === 'creneaux' ||
+          ecran.nom === 'verifications') && (
+          <nav class="actions">
+            {(estSoignant() || !estVerificateur()) && (
+              <>
+                <button
+                  class={ecran.nom === 'rendez-vous' ? 'principal' : ''}
+                  onClick={() => allerA({ nom: 'rendez-vous' })}
+                >
+                  <span aria-hidden="true">📅</span> Rendez-vous
+                </button>
+                <button
+                  class={ecran.nom === 'creneaux' ? 'principal' : ''}
+                  onClick={() => allerA({ nom: 'creneaux' })}
+                >
+                  <span aria-hidden="true">🕒</span> Mes créneaux
+                </button>
+              </>
+            )}
+            {estVerificateur() && (
+              <button
+                class={ecran.nom === 'verifications' ? 'principal' : ''}
+                onClick={() => allerA({ nom: 'verifications' })}
+              >
+                <span aria-hidden="true">🪪</span> Vérifications
+              </button>
+            )}
+          </nav>
+        )}
       {message && (
         <p class="message" role="alert">
           {message}
@@ -138,6 +166,8 @@ export function App() {
         <MesCreneaux signaler={signaler} />
       ) : ecran.nom === 'dossier' ? (
         <DossierPatient rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
+      ) : ecran.nom === 'verifications' ? (
+        <EcranVerifications signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'report' ? (
         <Report rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : (
@@ -149,6 +179,22 @@ export function App() {
         />
       )}
     </main>
+  );
+}
+
+/** Écran chargé à la demande : il ne pèse rien à l'ouverture de l'espace professionnel. */
+function EcranVerifications(p: { signaler: (m: string) => void }) {
+  type Props = { jeton: string; quand: (iso: string) => string; signaler: (m: string) => void };
+  const [Ecran, setEcran] = useState<ComponentType<Props>>();
+  useEffect(() => {
+    import('./verifications.js')
+      .then((m) => setEcran(() => m.Verifications))
+      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+  }, []);
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
   );
 }
 

@@ -9,10 +9,12 @@ import { creerJournal } from '@mbolo/journal-securise';
 import { CleMaitreLocale } from './chiffrement.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
+import { DossierFhir } from './dossier.js';
 import { creerServeur, LIMITES_PAR_DEFAUT } from './serveur.js';
 import { ServiceDocuments } from './service.js';
 import { StockageS3 } from './stockage.js';
 import { ServiceVerification } from './verification.js';
+import { ServiceVerificateur } from './verificateur.js';
 
 const journal = creerJournal({ service: 'documents' });
 const env = process.env;
@@ -87,10 +89,11 @@ try {
   process.exit(1);
 }
 
+const depot = new DepotPostgres(connecter({ url: urlBase, application: 'documents', production }));
 let documents: ServiceDocuments;
 try {
   documents = new ServiceDocuments(
-    new DepotPostgres(connecter({ url: urlBase, application: 'documents', production })),
+    depot,
     stockage,
     new CleMaitreLocale(lire('DOCUMENTS_CLE_MAITRE')),
     {
@@ -115,14 +118,24 @@ const drapeaux =
       })
     : await drapeauxFixes();
 
-const conditions = new ConditionsFhir({
+const acces = {
   base: lire('FHIR_BASE_URL'),
   entetes: creerFournisseurJeton({
     emetteur,
     client: env['DOCUMENTS_SERVICE_CLIENT_ID'] ?? 'mbolo-documents-service',
     secret: lire('DOCUMENTS_SERVICE_CLIENT_SECRET'),
   }),
-});
+};
+const conditions = new ConditionsFhir(acces);
+// Système (URI) des numéros : dépend du pays déployé (Gabon : CNAMGS) [FICTIF par défaut en dev].
+const systemes = {
+  'assurance-maladie':
+    env['DOCUMENTS_SYSTEME_ASSURANCE'] ??
+    'https://mbolo-sante.example/fhir/identifiant/ga/assurance-maladie',
+  provisoire:
+    env['DOCUMENTS_SYSTEME_PROVISOIRE'] ??
+    'https://mbolo-sante.example/fhir/identifiant/ga/provisoire',
+};
 
 const app = await creerServeur({
   verifierJeton: creerVerificateur({
@@ -135,6 +148,10 @@ const app = await creerServeur({
     drapeaux,
     env['DOCUMENTS_VERSION_CHARTE'] ?? '0.1',
   ),
+  verificateur: new ServiceVerificateur(documents, depot, new DossierFhir(acces), {
+    systemes,
+    env: 'dev',
+  }),
   journal,
   limites: {
     parMinute: Number(env['DOCUMENTS_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),
