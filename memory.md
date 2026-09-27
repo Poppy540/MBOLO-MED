@@ -15,7 +15,8 @@
   - Étape 7 — contrôle final : gitleaks (fichiers + historique) sans fuite ; hooks pre-commit au vert ; aucune clé Claude, aucun téléphone ou e-mail réel ; 88 skills conformes (frontmatter, exemples fictifs, limites, sources) ; principes repris mot pour mot.
 - **Bilan des skills :** 88 (46 plateforme dont `garde-fous-communs`, 42 salle de contrôle) — 24 `complet`, 64 `v1`. Chaque agent a des cas de refus ou d'escalade.
 - **Dépôt :** fondations fusionnées dans `main` via [PR n°1](https://github.com/Poppy540/MBOLO-MED/pull/1) ; `main` protégée (pull request obligatoire, force-push et suppression interdits).
-- **En cours :** développement vague 0 en petites PR — A outillage (monorepo TypeScript/pnpm, CI, `@mbolo/journal-securise`) ; puis B `dossier-fhir` (HAPI FHIR, données fictives), C `identite` (Keycloak), D premiers e2e.
+- **Développement vague 0 (petites PR) :** A outillage — fusionnée ([PR n°2](https://github.com/Poppy540/MBOLO-MED/pull/2)) ; **B `dossier-fhir` en cours** (profils FSH, règles, jeu fictif, validation HL7 en CI) ; puis C `identite` (Keycloak), D premiers e2e.
+- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org` bloqués → validation FHIR officielle uniquement en CI GitHub.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 
 ## 2. Décisions validées
