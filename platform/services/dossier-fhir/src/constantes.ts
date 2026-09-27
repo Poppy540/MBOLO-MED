@@ -9,6 +9,8 @@ export const PROFILS = {
   condition: `${CANONIQUE}/StructureDefinition/mbolo-condition`,
   provenance: `${CANONIQUE}/StructureDefinition/mbolo-provenance`,
   rendezVous: `${CANONIQUE}/StructureDefinition/mbolo-rendez-vous`,
+  agenda: `${CANONIQUE}/StructureDefinition/mbolo-agenda`,
+  creneau: `${CANONIQUE}/StructureDefinition/mbolo-creneau`,
 } as const;
 
 export const SYSTEMES = {
@@ -30,9 +32,15 @@ export const SYSTEMES = {
   role: `${CANONIQUE}/CodeSystem/mbolo-role`,
   sousTypeAudit: `${CANONIQUE}/CodeSystem/mbolo-audit`,
   modeConsultation: `${CANONIQUE}/CodeSystem/mbolo-mode-consultation`,
+  annulation: `${CANONIQUE}/CodeSystem/mbolo-annulation`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;
+export const EXTENSION_DATE_ANNULATION = `${CANONIQUE}/StructureDefinition/date-annulation`;
+
+/** Qui peut annuler un rendez-vous (code, jamais de motif en texte libre). */
+export const AUTEURS_ANNULATION = ['patient', 'professionnel'] as const;
+export type AuteurAnnulation = (typeof AUTEURS_ANNULATION)[number];
 
 export const CATEGORIES_CONSENTEMENT = [
   'C-SOINS',

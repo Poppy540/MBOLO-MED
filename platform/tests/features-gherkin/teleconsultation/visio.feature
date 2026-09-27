@@ -25,10 +25,25 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Et "patient-fictif-01" retrouve ce rendez-vous dans ses rendez-vous
     Et "medecin-fictif-01" retrouve ce rendez-vous dans ses rendez-vous
 
-  Scénario: Un rendez-vous avec un professionnel inconnu du dossier est refusé
+  Scénario: Le médecin publie ses créneaux et le patient en réserve un
+    Étant donné que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" est connecté
+    Quand "medecin-fictif-01" publie 2 créneaux de 20 minutes dans 2 jours
+    Alors les créneaux sont publiés
+    Et "patient-fictif-01" voit ces créneaux libres chez "prac-fictif-001"
+    Quand "patient-fictif-01" réserve le premier de ces créneaux
+    Alors le rendez-vous est enregistré
+    Et le dossier médical contient ce rendez-vous entre "pat-fictif-001" et "prac-fictif-001", sans motif
+    Et "patient-fictif-01" ne voit plus ce créneau chez "prac-fictif-001"
+    Quand "patient-fictif-01" réserve le premier de ces créneaux
+    Alors la réservation est refusée car le créneau n'est plus disponible
+    Quand "medecin-fictif-01" publie 1 créneaux de 20 minutes dans 2 jours
+    Alors la publication est refusée car les créneaux se chevauchent
+
+  Scénario: Un créneau inconnu ne peut pas être réservé
     Étant donné que "patient-fictif-01" est connecté
-    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-999" maintenant
-    Alors le rendez-vous est refusé par le dossier médical
+    Quand "patient-fictif-01" réserve le créneau "creneau-fictif-inconnu"
+    Alors la réservation est refusée car le créneau est introuvable
 
   Scénario: Personne d'autre ne peut entrer dans la salle du rendez-vous
     Étant donné que "patient-fictif-01" est connecté
@@ -48,3 +63,25 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
   Scénario: Le service exige une authentification
     Étant donné qu'aucun jeton n'est présenté au service de téléconsultation
     Alors le service de téléconsultation exige une authentification
+
+  Scénario: Le patient annule son rendez-vous : la salle se ferme, le créneau se libère et le dossier garde la trace
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "patient-fictif-01" annule ce rendez-vous
+    Alors le rendez-vous est annulé
+    Et le dossier médical conserve ce rendez-vous annulé par "patient", sans motif
+    Et "patient-fictif-01" voit ces créneaux libres chez "prac-fictif-001"
+    Quand "medecin-fictif-01" demande à entrer dans la salle de ce rendez-vous
+    Alors la salle est fermée pour ce rendez-vous
+
+  Scénario: Le médecin annule le rendez-vous ; personne d'autre ne le peut
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "patient-fictif-02" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "patient-fictif-02" annule ce rendez-vous
+    Alors l'annulation est refusée car le rendez-vous est introuvable
+    Quand "medecin-fictif-01" annule ce rendez-vous
+    Alors le rendez-vous est annulé
+    Et le dossier médical conserve ce rendez-vous annulé par "professionnel", sans motif

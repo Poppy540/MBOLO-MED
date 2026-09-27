@@ -1,7 +1,7 @@
 // Préparation du Keycloak de test : comptes FICTIFS. Le profil utilisateur (attributs réservés à
 // l'administrateur) est déjà dans le royaume importé : il n'est pas réappliqué ici, pour le vérifier. N'agit que sur un Keycloak local ou de CI, jamais sur un environnement réel.
 import { randomBytes } from 'node:crypto';
-import { MARQUEUR_FICTIF } from '@mbolo/dossier-fhir';
+import { agendaVideo, MARQUEUR_FICTIF } from '@mbolo/dossier-fhir';
 import {
   COMPTES,
   FHIR_URL,
@@ -45,6 +45,37 @@ async function preparerDossier(): Promise<void> {
     });
     if (!r.ok)
       throw new Error(`Serveur FHIR : création de ${type}/${id} impossible (${r.status}).`);
+  }
+  // Un agenda par professionnel fictif ; les créneaux des exécutions précédentes sont retirés
+  // (« entered-in-error », jamais supprimés) pour que les scénarios de publication soient reproductibles.
+  for (const { id } of RESSOURCES_FHIR.filter((x) => x.type === 'Practitioner')) {
+    const agenda = { ...agendaVideo({ praticienId: id, env: 'dev' }), id: `agenda-${id}` };
+    const r = await fetch(`${FHIR_URL}/Schedule/${agenda.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/fhir+json' },
+      body: JSON.stringify(agenda),
+    });
+    if (!r.ok) throw new Error(`Serveur FHIR : agenda de ${id} impossible (${r.status}).`);
+    const agendas = (await (
+      await fetch(`${FHIR_URL}/Schedule?actor=Practitioner/${id}&_count=100`, {
+        headers: { 'cache-control': 'no-cache' },
+      })
+    ).json()) as { entry?: { resource: { id: string } }[] };
+    for (const { resource: a } of agendas.entry ?? []) {
+      const lot = (await (
+        await fetch(`${FHIR_URL}/Slot?schedule=Schedule/${a.id}&status=free,busy&_count=500`, {
+          headers: { 'cache-control': 'no-cache' },
+        })
+      ).json()) as { entry?: { resource: { id: string } }[] };
+      for (const { resource } of lot.entry ?? []) {
+        const m = await fetch(`${FHIR_URL}/Slot/${resource.id}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/fhir+json' },
+          body: JSON.stringify({ ...resource, status: 'entered-in-error' }),
+        });
+        if (!m.ok) throw new Error(`Serveur FHIR : retrait de Slot/${resource.id} impossible.`);
+      }
+    }
   }
   // Scénarios indépendants des exécutions précédentes : les consentements encore actifs des patients
   // fictifs sont révoqués (jamais supprimés, comme dans le dossier réel).

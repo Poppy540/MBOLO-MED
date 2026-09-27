@@ -4,6 +4,8 @@
 // Le serveur FHIR et le validateur officiel restent la référence (CI : job « FHIR »).
 import type {
   Appointment,
+  Schedule,
+  Slot,
   CodeableConcept,
   Condition,
   Consent,
@@ -12,7 +14,9 @@ import type {
   Reference,
 } from 'fhir/r4.js';
 import {
+  AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
+  EXTENSION_DATE_ANNULATION,
   CATEGORIES_CONSENTEMENT,
   MARQUEUR_FICTIF,
   SYSTEMES,
@@ -135,6 +139,22 @@ export function verifierAppointment(a: Appointment): Violation[] {
       message: 'Exactement un patient et un professionnel de santé.',
     });
   }
+  if (a.status === 'cancelled') {
+    const auteur = a.cancelationReason?.coding ?? [];
+    const valide =
+      auteur.length === 1 &&
+      auteur[0]?.system === SYSTEMES.annulation &&
+      (AUTEURS_ANNULATION as readonly string[]).includes(auteur[0].code ?? '');
+    const date = (a.extension ?? []).some(
+      (e) => e.url === EXTENSION_DATE_ANNULATION && !!e.valueDateTime,
+    );
+    if (!valide || a.cancelationReason?.text || !date) {
+      v.push({
+        regle: 'mbolo-rdv-4',
+        message: 'Une annulation indique qui a annulé (code, sans texte libre) et quand.',
+      });
+    }
+  }
   const codes = (a.serviceType ?? []).flatMap((s) => s.coding ?? []);
   if (codes.length !== 1 || codes[0]?.system !== SYSTEMES.modeConsultation) {
     v.push({
@@ -150,6 +170,39 @@ export function verifierAppointment(a: Appointment): Violation[] {
   } else if (new Date(a.end).getTime() <= new Date(a.start).getTime()) {
     v.push({ regle: 'mbolo-rdv-3', message: 'La fin doit suivre le début.' });
   }
+  return v;
+}
+
+const estVideo = (codes: CodeableConcept[] | undefined) => {
+  const c = (codes ?? []).flatMap((s) => s.coding ?? []);
+  return c.length === 1 && c[0]?.system === SYSTEMES.modeConsultation;
+};
+
+export function verifierSchedule(s: Schedule): Violation[] {
+  const v: Violation[] = [];
+  const acteurs = s.actor ?? [];
+  if (acteurs.length !== 1 || !acteurs[0]?.reference?.startsWith('Practitioner/')) {
+    v.push({ regle: 'mbolo-agenda-1', message: 'Un agenda appartient à un seul professionnel.' });
+  }
+  if (s.active === undefined)
+    v.push({ regle: 'mbolo-agenda.active', message: 'Statut actif obligatoire.' });
+  if (!estVideo(s.serviceType))
+    v.push({ regle: 'mbolo-agenda.serviceType', message: 'Mode de consultation obligatoire.' });
+  if (s.comment) v.push({ regle: 'mbolo-agenda.comment', message: 'Aucun texte libre.' });
+  return v;
+}
+
+export function verifierSlot(s: Slot): Violation[] {
+  const v: Violation[] = [];
+  if (s.comment) {
+    v.push({ regle: 'mbolo-creneau-1', message: 'Un créneau ne contient aucun texte libre.' });
+  }
+  if (!s.schedule?.reference?.startsWith('Schedule/'))
+    v.push({ regle: 'mbolo-creneau.schedule', message: 'Agenda obligatoire.' });
+  if (!estVideo(s.serviceType))
+    v.push({ regle: 'mbolo-creneau.serviceType', message: 'Mode de consultation obligatoire.' });
+  if (new Date(s.end).getTime() <= new Date(s.start).getTime())
+    v.push({ regle: 'mbolo-creneau-2', message: 'La fin doit suivre le début.' });
   return v;
 }
 
@@ -180,6 +233,10 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierProvenance(r);
       case 'Appointment':
         return verifierAppointment(r);
+      case 'Schedule':
+        return verifierSchedule(r);
+      case 'Slot':
+        return verifierSlot(r);
       default:
         return [];
     }

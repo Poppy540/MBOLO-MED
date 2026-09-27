@@ -16,6 +16,8 @@ export interface Monde {
   consentementId?: string;
   traceId?: string;
   rendezVousId?: string;
+  /** Créneaux publiés ou préparés pendant le scénario (identifiants). */
+  creneaux?: string[];
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }

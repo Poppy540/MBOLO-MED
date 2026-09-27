@@ -85,7 +85,7 @@ describe('royaume mbolo', () => {
     ).toBe('system/Consent.crus system/AuditEvent.cs');
   });
 
-  it('compte de service teleconsultation : rendez-vous uniquement, jamais de suppression', () => {
+  it('compte de service teleconsultation : rendez-vous et agendas uniquement, jamais de suppression', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-teleconsultation-service');
     expect(c).toMatchObject({
       publicClient: false,
@@ -103,7 +103,7 @@ describe('royaume mbolo', () => {
     // Aucun accès aux consentements, au journal ni aux données cliniques.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Appointment.crus');
+    ).toBe('system/Appointment.crus system/Schedule.crus system/Slot.crus');
   });
 
   it('aucun client ne contient de secret en clair', () => {

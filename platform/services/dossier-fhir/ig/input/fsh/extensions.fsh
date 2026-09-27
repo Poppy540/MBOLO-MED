@@ -7,3 +7,12 @@ Description: "Canal par lequel le patient a exprimé son consentement (texte, vo
 * value[x] only code
 * valueCode 1..1
 * valueCode from MboloModeRecueilVS (required)
+
+Extension: DateAnnulation
+Id: date-annulation
+Title: "Date d'annulation du rendez-vous"
+Description: "Moment où le rendez-vous a été annulé (qui a annulé : cancelationReason)."
+* ^context[0].type = #element
+* ^context[0].expression = "Appointment"
+* value[x] only dateTime
+* valueDateTime 1..1

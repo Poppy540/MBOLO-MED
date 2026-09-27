@@ -2,7 +2,12 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type VerifierJeton, type Utilisateur } from '@mbolo/identite';
 import type { Journal } from '@mbolo/journal-securise';
-import { ErreurTeleconsultation, type ServiceTeleconsultation } from './rendez-vous.js';
+import { ErreurCreneau } from './creneaux.js';
+import {
+  CRENEAUX_MAX,
+  ErreurTeleconsultation,
+  type ServiceTeleconsultation,
+} from './rendez-vous.js';
 
 class ErreurAuthentification extends Error {}
 
@@ -29,7 +34,7 @@ export function creerServeur(o: {
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
-    if (err instanceof ErreurTeleconsultation) {
+    if (err instanceof ErreurTeleconsultation || err instanceof ErreurCreneau) {
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if (err instanceof ErreurDepot) {
@@ -45,19 +50,51 @@ export function creerServeur(o: {
 
   app.get('/sante', async () => ({ statut: 'ok' }));
 
-  app.post<{ Body: { praticienId: string; debut: string; dureeMinutes: number } }>(
+  // Le professionnel publie des créneaux consécutifs (aucun texte libre).
+  app.post<{ Body: { debut: string; dureeMinutes: number; nombre: number } }>(
+    '/creneaux',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['debut', 'dureeMinutes', 'nombre'],
+          properties: {
+            debut: { type: 'string', format: 'date-time' },
+            dureeMinutes: { type: 'integer', minimum: 5, maximum: 120 },
+            nombre: { type: 'integer', minimum: 1, maximum: CRENEAUX_MAX },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const u = await authentifier(req);
+      const creneaux = await o.service.publier(u, req.body);
+      o.journal.info('créneaux publiés', { sujet: u.sujet, nombre: creneaux.length });
+      return reply.code(201).send({ creneaux });
+    },
+  );
+
+  app.get<{ Params: { id: string } }>(
+    '/praticiens/:id/creneaux',
+    {
+      schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      return { creneaux: await o.service.creneauxLibres(u, req.params.id) };
+    },
+  );
+
+  app.post<{ Body: { creneauId: string } }>(
     '/rendez-vous',
     {
       schema: {
         body: {
           type: 'object',
           additionalProperties: false,
-          required: ['praticienId', 'debut', 'dureeMinutes'],
-          properties: {
-            praticienId: ID,
-            debut: { type: 'string', format: 'date-time' },
-            dureeMinutes: { type: 'integer', minimum: 5, maximum: 120 },
-          },
+          required: ['creneauId'],
+          properties: { creneauId: ID },
         },
       },
     },
@@ -88,6 +125,19 @@ export function creerServeur(o: {
         rendezVousId: req.params.id,
       });
       return acces;
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/rendez-vous/:id/annulation',
+    {
+      schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const r = await o.service.annuler(u, req.params.id);
+      o.journal.info('rendez-vous annulé', { sujet: u.sujet, rendezVousId: r.id });
+      return r;
     },
   );
 
