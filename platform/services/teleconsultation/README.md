@@ -49,6 +49,15 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 - **Consultation par l'application** : `GET /identite` renvoie `{ statut }` (`a-verifier`, `verifiee`, `refusee` ou `inconnu`), pour le patient connecté seulement.
 - **Sans dossier FHIR** (mode mémoire), aucune identité n'est connue : aucune réservation.
 
+## Limites d'appels
+
+Toutes les routes sont limitées par adresse (`@fastify/rate-limit`, module officiel de Fastify), pour protéger le service et le dossier médical contre la saturation.
+- **Limite générale** : `TELECONSULTATION_LIMITE_PAR_MINUTE`, par défaut 300 appels par minute.
+- **Route `/identite`**, plus stricte car elle interroge le dossier à chaque appel : `TELECONSULTATION_LIMITE_IDENTITE_PAR_MINUTE`, par défaut 30.
+- **Au-delà** : réponse 429, « Trop de requêtes. Réessayez dans une minute. »
+- **Derrière un proxy de confiance** : `TELECONSULTATION_TRUST_PROXY=true`, pour limiter selon l'adresse réelle du client.
+- **À faire** : étendre ces limites aux autres services.
+
 ## Configuration
 
 | Variable | Rôle |

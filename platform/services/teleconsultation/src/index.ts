@@ -11,6 +11,7 @@ export { aucunNotificateur, NotificateurHttp } from './notificateur.js';
 export type { EvenementRendezVous, Notificateur } from './notificateur.js';
 export { SalleLiveKit } from './salle-livekit.js';
 export type { OptionsLiveKit } from './salle-livekit.js';
-export { creerServeur } from './serveur.js';
+export { LIMITES_PAR_DEFAUT, creerServeur } from './serveur.js';
+export type { Limites } from './serveur.js';
 export { AnnuaireFhir, AnnuaireMemoire, versFiche } from './annuaire.js';
 export type { Annuaire, Fiche } from './annuaire.js';

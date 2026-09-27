@@ -107,4 +107,5 @@
 - 2026-09-27 — Dependabot lit mal les étiquettes Docker à suffixe (`hapiproject/hapi:v8.12.0-1`) : il a proposé v8.0.0, une version ancienne. Toujours vérifier la dernière étiquette réelle avant de fusionner une PR d'image.
 - 2026-09-27 — Unleash 8 : code sous AGPLv3 (images Docker officielles sous Apache 2.0) ; le paquet npm est en modules ES (`import * as unleash`).
 - 2026-09-27 — Keycloak : déclarer `requiredActions` dans un royaume importé supprime les actions non déclarées (dont `CONFIGURE_TOTP`) : toujours lister les actions par défaut.
+- 2026-09-27 — CodeQL (`js/missing-rate-limiting`) ne reconnaît que les limiteurs de bibliothèques connues : `@fastify/rate-limit` (enregistré avec `await` avant les routes). À étendre aux autres services.
 - 2026-09-27 — `@types/fhir` s'importe via `'fhir/r4.js'` en `NodeNext` ; les fausses clés de test se construisent à l'exécution pour ne pas déclencher gitleaks.

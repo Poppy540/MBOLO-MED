@@ -14,7 +14,7 @@ import {
   ServiceTeleconsultation,
 } from './rendez-vous.js';
 import { SalleLiveKit } from './salle-livekit.js';
-import { creerServeur } from './serveur.js';
+import { creerServeur, LIMITES_PAR_DEFAUT } from './serveur.js';
 
 const journal = creerJournal({ service: 'teleconsultation' });
 const env = process.env;
@@ -82,7 +82,7 @@ const drapeaux =
       })
     : await drapeauxFixes();
 
-const app = creerServeur({
+const app = await creerServeur({
   verifierJeton: creerVerificateur({
     emetteur,
     audience: env['TELECONSULTATION_AUDIENCE'] ?? 'mbolo-teleconsultation-api',
@@ -98,6 +98,13 @@ const app = creerServeur({
     identites,
   ),
   journal,
+  limites: {
+    parMinute: Number(env['TELECONSULTATION_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),
+    identiteParMinute: Number(
+      env['TELECONSULTATION_LIMITE_IDENTITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.identiteParMinute,
+    ),
+  },
+  trustProxy: env['TELECONSULTATION_TRUST_PROXY'] === 'true',
 });
 const port = Number(env['PORT'] ?? '3003');
 await app.listen({ host: '127.0.0.1', port });

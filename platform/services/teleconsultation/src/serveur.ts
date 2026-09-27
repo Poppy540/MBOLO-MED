@@ -1,4 +1,5 @@
 // API du service de téléconsultation. Toute requête (hors /sante) exige un jeton Keycloak valide.
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type VerifierJeton, type Utilisateur } from '@mbolo/identite';
 import type { Journal } from '@mbolo/journal-securise';
@@ -13,12 +14,27 @@ class ErreurAuthentification extends Error {}
 
 const ID = { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } as const;
 
-export function creerServeur(o: {
+/** Limites d'appels par adresse et par minute (protection contre la saturation du dossier). */
+export interface Limites {
+  parMinute: number;
+  /** Statut d'identité : lu dans le dossier à chaque appel, donc plus strict. */
+  identiteParMinute: number;
+}
+
+export const LIMITES_PAR_DEFAUT: Limites = { parMinute: 300, identiteParMinute: 30 };
+
+export async function creerServeur(o: {
   verifierJeton: VerifierJeton;
   service: ServiceTeleconsultation;
   journal: Journal;
-}): FastifyInstance {
-  const app = Fastify({ logger: false, bodyLimit: 8 * 1024 });
+  limites?: Limites;
+  /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
+  trustProxy?: boolean;
+}): Promise<FastifyInstance> {
+  const app = Fastify({ logger: false, bodyLimit: 8 * 1024, trustProxy: o.trustProxy ?? false });
+  const limites = o.limites ?? LIMITES_PAR_DEFAUT;
+  // Toutes les routes sont limitées ; enregistré avant elles.
+  await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });
 
   const authentifier = async (req: FastifyRequest): Promise<Utilisateur> => {
     const entete = req.headers.authorization;
@@ -33,6 +49,9 @@ export function creerServeur(o: {
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
+    }
+    if ((err as { statusCode?: number }).statusCode === 429) {
+      return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
     }
     if (err instanceof ErreurTeleconsultation || err instanceof ErreurCreneau) {
       return reply.code(err.statut).send({ erreur: err.message });
@@ -117,9 +136,11 @@ export function creerServeur(o: {
   );
 
   // Statut de la vérification d'identité du patient (ADR-0014), sans aucune donnée d'identité.
-  app.get('/identite', async (req) => ({
-    statut: await o.service.statutIdentite(await authentifier(req)),
-  }));
+  app.get(
+    '/identite',
+    { config: { rateLimit: { max: limites.identiteParMinute, timeWindow: '1 minute' } } },
+    async (req) => ({ statut: await o.service.statutIdentite(await authentifier(req)) }),
+  );
 
   app.get('/rendez-vous', async (req) => {
     const u = await authentifier(req);
