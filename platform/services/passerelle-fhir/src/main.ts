@@ -29,5 +29,7 @@ const app = creerPasserelle({
   env,
   journal,
 });
-await app.listen({ host: '127.0.0.1', port });
+// Par défaut, seulement la machine locale ; `PASSERELLE_HOST` permet à un Keycloak en conteneur de
+// joindre la passerelle (CI : création du dossier à l'inscription, ADR-0014).
+await app.listen({ host: process.env['PASSERELLE_HOST'] ?? '127.0.0.1', port });
 journal.info('passerelle du dossier démarrée', { port });

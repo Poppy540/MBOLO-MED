@@ -42,6 +42,22 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 - **Notifications** (ADR-0012) : après une annulation ou un report, l'**autre participant** est prévenu par le service `notifications` (`NOTIFICATIONS_URL`), avec le même jeton de service. Un échec est journalisé et ne bloque jamais l'action.
 - **Journal** : demande de rendez-vous et entrée en salle (compte, rendez-vous). Le jeton n'est jamais journalisé.
 
+## Identité vérifiée avant toute réservation (ADR-0014)
+
+- **Réservation** : `POST /rendez-vous` est refusée (403) tant que l'identité du patient n'est pas `verifiee`. Le statut est lu dans le dossier, sans cache.
+- **Minimisation** : le compte de service ne reçoit, du `Patient`, que l'extension de statut (`system/Patient.r` limité à `Patient.extension`). Jamais le nom, la date de naissance, le téléphone ni le numéro.
+- **Consultation par l'application** : `GET /identite` renvoie `{ statut }` (`a-verifier`, `verifiee`, `refusee` ou `inconnu`), pour le patient connecté seulement.
+- **Sans dossier FHIR** (mode mémoire), aucune identité n'est connue : aucune réservation.
+
+## Limites d'appels
+
+Toutes les routes sont limitées par adresse (`@fastify/rate-limit`, module officiel de Fastify), pour protéger le service et le dossier médical contre la saturation.
+- **Limite générale** : `TELECONSULTATION_LIMITE_PAR_MINUTE`, par défaut 300 appels par minute.
+- **Route `/identite`**, plus stricte car elle interroge le dossier à chaque appel : `TELECONSULTATION_LIMITE_IDENTITE_PAR_MINUTE`, par défaut 30.
+- **Au-delà** : réponse 429, « Trop de requêtes. Réessayez dans une minute. »
+- **Derrière un proxy de confiance** : `TELECONSULTATION_TRUST_PROXY=true`, pour limiter selon l'adresse réelle du client.
+- **À faire** : étendre ces limites aux autres services.
+
 ## Configuration
 
 | Variable | Rôle |

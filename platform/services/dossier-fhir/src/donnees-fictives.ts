@@ -1,22 +1,31 @@
 // Jeu de données 100 % FICTIF, marqué meta.tag = fictif. Aucune personne réelle.
 // Sert au développement local (chargement dans HAPI FHIR) et aux tests.
 import type { Bundle, FhirResource, Patient } from 'fhir/r4.js';
-import { MARQUEUR_FICTIF, PROFILS, SYSTEMES } from './constantes.js';
-import { conditionDeclaree, consentement, provenanceAgent } from './construire.js';
+import { MARQUEUR_FICTIF, SYSTEMES } from './constantes.js';
+import {
+  changerStatutIdentite,
+  conditionDeclaree,
+  consentement,
+  patientInscrit,
+  provenanceAgent,
+} from './construire.js';
 
 function patientFictif(numero: number, prenom: string, genre: Patient['gender']): Patient {
   const id = `fictif-patient-${String(numero).padStart(4, '0')}`;
-  return {
-    resourceType: 'Patient',
-    id,
-    meta: { profile: [PROFILS.patient], tag: [MARQUEUR_FICTIF] },
-    identifier: [
-      { system: SYSTEMES.identifiantPatient, value: `FICTIF-${String(numero).padStart(4, '0')}` },
-    ],
-    name: [{ family: 'Test', given: [prenom] }],
-    ...(genre ? { gender: genre } : {}),
-    telecom: [{ system: 'phone', value: '+241 00 00 00 00' }],
-  };
+  const p = patientInscrit({
+    nom: 'Test',
+    prenom,
+    naissance: `19${80 + numero}-01-01`,
+    ...(genre ? { sexe: genre } : {}),
+    telephone: '+241 00 00 00 00',
+    identifiant: {
+      type: 'assurance-maladie',
+      systeme: `${SYSTEMES.identifiantPatient}/assurance-maladie`,
+      valeur: `FICTIF-${String(numero).padStart(4, '0')}`,
+    },
+    env: 'dev',
+  });
+  return { ...changerStatutIdentite(p, 'verifiee'), id };
 }
 
 export function jeuFictif(): Bundle {

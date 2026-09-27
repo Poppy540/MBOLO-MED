@@ -10,7 +10,6 @@ import org.keycloak.authentication.FormAction;
 import org.keycloak.authentication.FormActionFactory;
 import org.keycloak.authentication.FormContext;
 import org.keycloak.authentication.ValidationContext;
-import org.keycloak.common.util.Time;
 import org.keycloak.events.Errors;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.AuthenticationExecutionModel.Requirement;
@@ -20,11 +19,7 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
-import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.representations.AccessToken;
-import org.keycloak.services.Urls;
-import org.keycloak.util.TokenUtil;
 
 /**
  * Étape du formulaire d'inscription (ADR-0014) : exige un code d'invitation, l'utilise une seule fois
@@ -37,9 +32,8 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
   public static final String CHAMP = "code_invitation";
   /** Seul rôle que l'inscription peut donner (liste fermée). */
   public static final String ROLE = "patient";
-  /** Audience et client des jetons de service présentés au service des invitations. */
+  /** Audience des jetons de service présentés au service des invitations. */
   public static final String AUDIENCE = "mbolo-invitations-api";
-  public static final String CLIENT = "mbolo-keycloak-inscription";
 
   private static final Logger JOURNAL = Logger.getLogger(CodeInvitationFormAction.class);
 
@@ -102,24 +96,8 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
     if (invitations == null) {
       return new ClientInvitations(URI.create("http://invitations.non.configure.invalid/"), () -> "");
     }
-    return new ClientInvitations(invitations, () -> jetonService(session, realm));
-  }
-
-  /**
-   * Jeton de service court (60 s) signé avec la clé du royaume : aucun secret supplémentaire, et
-   * seul du code exécuté dans Keycloak peut en produire un.
-   */
-  static String jetonService(KeycloakSession session, RealmModel realm) {
-    long maintenant = Time.currentTime();
-    AccessToken jeton = new AccessToken();
-    jeton.id(KeycloakModelUtils.generateId());
-    jeton.issuer(Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
-    jeton.audience(AUDIENCE);
-    jeton.issuedFor(CLIENT);
-    jeton.type(TokenUtil.TOKEN_TYPE_BEARER);
-    jeton.iat(maintenant);
-    jeton.exp(maintenant + 60);
-    return session.tokens().encode(jeton);
+    return new ClientInvitations(
+        invitations, () -> JetonService.emettre(session, realm, AUDIENCE, null));
   }
 
   @Override

@@ -2,6 +2,7 @@ import type { Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
 import { AnnuaireMemoire, versFiche } from './annuaire.js';
 import { DepotCreneauxMemoire } from './creneaux.js';
+import { IdentitesMemoire } from './identites.js';
 import {
   DepotRendezVousMemoire,
   ErreurTeleconsultation,
@@ -46,6 +47,15 @@ const salles = () => {
 
 const DEBUT = '2026-09-27T10:00:00.000Z';
 
+/** [FICTIF] Identités vérifiées des patients de test (ADR-0014). */
+const identitesVerifiees = () =>
+  new IdentitesMemoire(
+    new Map([
+      ['pat-fictif-001', 'verifiee'],
+      ['pat-fictif-002', 'verifiee'],
+    ]),
+  );
+
 /** Service monté avec une horloge réglable et un créneau libre de prac-fictif-001 à DEBUT. */
 async function monter(heure = '2026-09-27T09:00:00Z') {
   const s = salles();
@@ -64,11 +74,56 @@ async function monter(heure = '2026-09-27T09:00:00Z') {
         notifications.push({ destinataire, evenement, instant });
       },
     },
+    undefined,
+    identitesVerifiees(),
   );
   const [c] = await creneaux.publier('prac-fictif-001', [{ debut: DEBUT, dureeMinutes: 20 }]);
   if (!c) throw new Error('créneau non publié');
   return { service, s, depot, creneaux, c, etat, notifications };
 }
+
+describe('identité vérifiée avant toute réservation (ADR-0014)', () => {
+  const autre = (statut?: 'a-verifier' | 'refusee') =>
+    new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      new DepotCreneauxMemoire(),
+      salles().f,
+      { estActif: async () => true },
+      () => new Date('2026-09-27T09:00:00Z'),
+      undefined,
+      undefined,
+      new IdentitesMemoire(statut ? new Map([['pat-fictif-001', statut]]) : new Map()),
+    );
+
+  it.each([['a-verifier'], ['refusee'], [undefined]] as const)(
+    'refuse la réservation quand l’identité est %s',
+    async (statut) => {
+      const service = autre(statut);
+      await expect(
+        service.demander(patient, { creneauId: 'n-importe-lequel' }),
+      ).rejects.toMatchObject({
+        statut: 403,
+        message: expect.stringContaining('identité'),
+      });
+    },
+  );
+
+  it('indique au patient le statut de son identité, et à lui seul', async () => {
+    expect(await autre('a-verifier').statutIdentite(patient)).toBe('a-verifier');
+    expect(await autre().statutIdentite(patient)).toBe('inconnu');
+    const medecin: Utilisateur = { sujet: 'u-m', roles: ['professionnel'], practitionerId: 'p' };
+    await expect(autre('a-verifier').statutIdentite(medecin)).rejects.toMatchObject({
+      statut: 403,
+    });
+  });
+
+  it('accepte la réservation quand l’identité est vérifiée', async () => {
+    const { service, c } = await monter();
+    await expect(service.demander(patient, { creneauId: c.id })).resolves.toMatchObject({
+      statut: 'prevu',
+    });
+  });
+});
 
 describe('créneaux', () => {
   it('le médecin publie des créneaux consécutifs ; le patient voit les créneaux libres', async () => {
@@ -211,8 +266,13 @@ describe('téléconsultation', () => {
       salles().f,
       { estActif: async () => true },
       () => new Date('2026-09-27T09:00:00Z'),
+      undefined,
+      undefined,
+      identitesVerifiees(),
     );
-    await expect(enPanne.demander(patient, { creneauId: c.id })).rejects.toThrow();
+    await expect(enPanne.demander(patient, { creneauId: c.id })).rejects.toThrow(
+      'dossier indisponible',
+    );
     expect((await creneaux.lire(c.id))?.statut).toBe('libre');
     expect(await service.creneauxLibres(patient, 'prac-fictif-001')).toHaveLength(1);
   });

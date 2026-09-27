@@ -84,7 +84,7 @@ Conséquences :
    - durée de conservation ;
    - droits du patient.
 
-   Le texte de la charte est à rédiger et à valider par le porteur de projet et le juriste. Son acceptation est enregistrée (version, date).
+   Brouillon : [`docs/securite/charte-verification-identite.md`](../../securite/charte-verification-identite.md) (v0.1), à valider par le porteur de projet et le juriste. Son acceptation est enregistrée (version, date).
 
 ## Conséquences
 - **Extension Keycloak en Java** :
@@ -105,5 +105,12 @@ Conséquences :
 - **Risques** :
   - fuite des photos de documents : chiffrement, accès restreint et journalisé, conservation minimale ;
   - blocage de patients sans document : le parcours accompagné par un professionnel, avec l'acte de naissance, y répond.
+
+## Mise en œuvre de la saisie d'identité (PR AD)
+- **Action requise Keycloak `mbolo-identite-patient`** : elle s'affiche juste après l'inscription, pour tout compte `patient` sans `patient_id`.
+- **Champs demandés** : nom, prénom, date de naissance, sexe (facultatif), téléphone, numéro d'assurance maladie (facultatif).
+- **Création du dossier** : l'extension crée le `Patient` au statut `a-verifier` par la passerelle, avec un jeton de 60 s limité à `system/Patient.c`, puis pose `patient_id`. Aucun service de la plateforme ne modifie de compte, et l'identité ne reste pas dans Keycloak.
+- **Blocage des consultations** : la réservation est refusée tant que le statut n'est pas `verifiee`, et l'application affiche « identité à vérifier ». Le service de téléconsultation ne lit, du patient, que ce statut (`Patient.extension`).
+- **Paramètres par pays** : système du numéro d'assurance (Gabon : CNAMGS), environnement (marqueur `fictif` hors production), adresse de la passerelle. Ce sont des variables `KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_*`, et non des secrets.
 
 Sources : ADR-0009, ADR-0010, ADR-0013 ; documentation Keycloak, API d'administration et rôles `realm-management` — https://www.keycloak.org/docs/latest/server_admin/#_admin_permissions ; principes n°3, n°5 et n°7 de `CLAUDE.md`.

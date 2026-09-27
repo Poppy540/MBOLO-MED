@@ -5,7 +5,9 @@ InstanceOf: MboloPatient
 Title: "[FICTIF] Patiente Test A"
 Usage: #example
 * meta.tag = MboloMarqueurCS#fictif
-* identifier.system = "https://mbolo-sante.example/fhir/identifiant-patient"
+* extension[statutIdentite].valueCode = MboloStatutIdentiteCS#verifiee
+* identifier.system = "https://mbolo-sante.example/fhir/identifiant/ga/assurance-maladie"
+* identifier.type = MboloTypeIdentifiantPatientCS#assurance-maladie
 * identifier.value = "FICTIF-0001"
 * name.family = "Test"
 * name.given = "Patiente A"
@@ -13,6 +15,18 @@ Usage: #example
 * birthDate = "1990-01-01"
 * telecom.system = #phone
 * telecom.value = "+241 00 00 00 00"
+
+Instance: fictif-patient-a-verifier-0002
+InstanceOf: MboloPatient
+Title: "[FICTIF] Patient inscrit, identité à vérifier"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* extension[statutIdentite].valueCode = MboloStatutIdentiteCS#a-verifier
+* name.family = "Test"
+* name.given = "Patient B"
+* birthDate = "1985-06-15"
+* telecom.system = #phone
+* telecom.value = "+241 00 00 00 01"
 
 Instance: fictif-consent-soins-0001
 InstanceOf: MboloConsent

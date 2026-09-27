@@ -7,6 +7,7 @@ const lire = (fichier: string): unknown =>
 
 interface Royaume {
   browserFlow: string;
+  requiredActions: { alias: string; enabled: boolean }[];
   registrationAllowed: boolean;
   registrationFlow: string;
   loginTheme: string;
@@ -110,11 +111,14 @@ describe('royaume mbolo', () => {
     // Aucun accès aux consentements, au journal ni aux données cliniques.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r');
-    // Annuaire : du professionnel, seuls le nom et la qualification sortent de la passerelle.
+    ).toBe(
+      'system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.r',
+    );
+    // Annuaire : du professionnel, seuls le nom et la qualification sortent de la passerelle ;
+    // du patient, seulement le statut de vérification d'identité (extension, ADR-0014).
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
-    ).toBe('Practitioner.name Practitioner.qualification');
+    ).toBe('Practitioner.name Practitioner.qualification Patient.extension');
   });
 
   it('compte de service notifications : lecture du contact et du consentement seulement', () => {
@@ -185,6 +189,14 @@ describe('royaume mbolo', () => {
       'registration-password-action',
       'mbolo-code-invitation',
     ]);
+  });
+
+  it("demande l'identité juste après l'inscription, sans perdre les actions par défaut (ADR-0014)", () => {
+    const actives = royaume.requiredActions.filter((a) => a.enabled).map((a) => a.alias);
+    expect(actives).toContain('mbolo-identite-patient');
+    // Déclarer une action supprime celles qui ne le sont pas : la MFA en dépend.
+    expect(actives).toContain('CONFIGURE_TOTP');
+    expect(actives).toContain('UPDATE_PASSWORD');
   });
 
   it("ne demande ni nom ni e-mail à l'inscription : identité dans le dossier seulement", () => {

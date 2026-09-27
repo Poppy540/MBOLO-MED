@@ -5,6 +5,7 @@ import { creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
 import { AnnuaireFhir, AnnuaireMemoire, type Annuaire } from './annuaire.js';
+import { IdentitesFhir, IdentitesMemoire, type Identites } from './identites.js';
 import { DepotCreneauxFhir, DepotRendezVousFhir } from './depot-fhir.js';
 import { aucunNotificateur, type Notificateur, NotificateurHttp } from './notificateur.js';
 import {
@@ -13,7 +14,7 @@ import {
   ServiceTeleconsultation,
 } from './rendez-vous.js';
 import { SalleLiveKit } from './salle-livekit.js';
-import { creerServeur } from './serveur.js';
+import { creerServeur, LIMITES_PAR_DEFAUT } from './serveur.js';
 
 const journal = creerJournal({ service: 'teleconsultation' });
 const env = process.env;
@@ -41,6 +42,8 @@ let creneaux: DepotCreneaux;
 // Notifications (ADR-0012) : même jeton de service, audience mbolo-notifications.
 let notificateur: Notificateur = aucunNotificateur;
 let annuaire: Annuaire = new AnnuaireMemoire();
+// Sans dossier FHIR, aucune identité n'est connue : aucune réservation (ADR-0014).
+let identites: Identites = new IdentitesMemoire();
 const fhir = env['FHIR_BASE_URL'];
 if (fhir) {
   const secretService = env['TELECONSULTATION_SERVICE_CLIENT_SECRET'];
@@ -58,6 +61,7 @@ if (fhir) {
   depot = new DepotRendezVousFhir({ base: fhir, entetes }, 'dev');
   creneaux = new DepotCreneauxFhir({ base: fhir, entetes }, 'dev');
   annuaire = new AnnuaireFhir({ base: fhir, entetes });
+  identites = new IdentitesFhir({ base: fhir, entetes });
   journal.info('rendez-vous enregistrés dans le dossier FHIR (passerelle authentifiée)');
   if (env['NOTIFICATIONS_URL']) {
     notificateur = new NotificateurHttp({ url: env['NOTIFICATIONS_URL'], entetes, journal });
@@ -78,7 +82,7 @@ const drapeaux =
       })
     : await drapeauxFixes();
 
-const app = creerServeur({
+const app = await creerServeur({
   verifierJeton: creerVerificateur({
     emetteur,
     audience: env['TELECONSULTATION_AUDIENCE'] ?? 'mbolo-teleconsultation-api',
@@ -91,8 +95,16 @@ const app = creerServeur({
     () => new Date(),
     notificateur,
     annuaire,
+    identites,
   ),
   journal,
+  limites: {
+    parMinute: Number(env['TELECONSULTATION_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),
+    identiteParMinute: Number(
+      env['TELECONSULTATION_LIMITE_IDENTITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.identiteParMinute,
+    ),
+  },
+  trustProxy: env['TELECONSULTATION_TRUST_PROXY'] === 'true',
 });
 const port = Number(env['PORT'] ?? '3003');
 await app.listen({ host: '127.0.0.1', port });

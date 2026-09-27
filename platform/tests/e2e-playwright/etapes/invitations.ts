@@ -1,15 +1,19 @@
 // Étapes « accès sur invitation » (ADR-0013). Données FICTIVES uniquement.
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { expect, type Page, type Request } from '@playwright/test';
+import { EXTENSION_STATUT_IDENTITE } from '@mbolo/dossier-fhir';
 import {
   APP_PATIENT_URL,
   APPLICATIONS,
   COHORTE_TEST,
+  compte,
   EMETTEUR,
+  FHIR_URL,
   INVITATIONS_URL,
   KEYCLOAK_URL,
   PREFIXE_INSCRITS,
   ROYAUME,
+  TELECONSULTATION_URL,
 } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 
@@ -114,7 +118,27 @@ async function ouvrirInscription(page: Page): Promise<string> {
   return verificateur;
 }
 
-async function inscrire(page: Page, monde: Monde, code: string): Promise<void> {
+/** [FICTIF] Identité saisie après l'inscription (ADR-0014) ; aucun nom réel. */
+const IDENTITE_FICTIVE = {
+  nom: 'Test',
+  prenom: 'Inscrite',
+  naissance: '1995-02-03',
+  telephone: '+241 00 00 00 04',
+  numero_assurance: 'FICTIF-INSCR',
+};
+
+/** Formulaire « Mon identité » de Keycloak, affiché juste après l'inscription. */
+async function saisirIdentite(page: Page, naissance = IDENTITE_FICTIVE.naissance): Promise<void> {
+  await expect(page.locator('#kc-identite-form')).toBeVisible();
+  for (const [champ, valeur] of Object.entries({ ...IDENTITE_FICTIVE, naissance })) {
+    await page.locator(`#${champ}`).fill(valeur);
+  }
+  await page.locator('#sexe').selectOption('female');
+  await page.locator('#kc-identite-form [type=submit]').click();
+  await page.waitForLoadState().catch(() => undefined);
+}
+
+async function inscrire(page: Page, monde: Monde, code: string, naissance?: string): Promise<void> {
   const identifiant = `${PREFIXE_INSCRITS}${randomBytes(4).toString('hex')}`;
   const { clientId, redirection } = APPLICATIONS.patient;
   const verificateur = await ouvrirInscription(page);
@@ -131,6 +155,8 @@ async function inscrire(page: Page, monde: Monde, code: string): Promise<void> {
   await page.locator('#password-confirm').fill(motDePasse);
   await page.locator('#kc-register-form [type=submit]').click();
   await page.waitForLoadState().catch(() => undefined);
+  // Compte créé : Keycloak demande aussitôt l'identité, qui va dans le dossier.
+  if (await page.locator('#kc-identite-form').count()) await saisirIdentite(page, naissance);
   await page.waitForTimeout(500);
   page.off('request', surRequete);
   monde.inscription = { identifiant, page };
@@ -199,9 +225,39 @@ Then(
   },
 );
 
-Then('son dossier reste à compléter avant toute consultation', ({ monde }) => {
-  // Aucun dossier rattaché tant que l'identité n'est pas saisie et vérifiée (ADR-0014).
-  expect(revendications(monde.inscription?.jeton ?? '')).not.toHaveProperty('patient_id');
+Then('son dossier est créé avec une identité à vérifier', async ({ monde }) => {
+  const patientId = revendications(monde.inscription?.jeton ?? '')['patient_id'];
+  expect(patientId, 'compte rattaché à son dossier').toEqual(expect.any(String));
+  // Lecture directe du serveur de test (hors passerelle), pour vérifier ce qui est enregistré.
+  const r = await fetch(`${FHIR_URL}/Patient/${String(patientId)}`, {
+    headers: { 'cache-control': 'no-cache' },
+  });
+  expect(r.status).toBe(200);
+  const p = (await r.json()) as Record<string, unknown>;
+  expect(JSON.stringify(p['extension'])).toContain('a-verifier');
+  expect(p['birthDate']).toBe(IDENTITE_FICTIVE.naissance);
+  expect(JSON.stringify(p['name'])).toContain(IDENTITE_FICTIVE.prenom);
+  expect(JSON.stringify(p['meta'])).toContain('fictif');
+  // Le statut vu par le patient.
+  const s = await fetch(`${TELECONSULTATION_URL}/identite`, {
+    headers: { authorization: `Bearer ${monde.inscription?.jeton ?? ''}` },
+  });
+  expect(await s.json()).toEqual({ statut: 'a-verifier' });
+});
+
+When(
+  "une personne s'inscrit avec ce code en indiquant une naissance dans le futur",
+  async ({ page, monde }) => {
+    await inscrire(page, monde, monde.invitation?.code ?? '', '2999-01-01');
+  },
+);
+
+Then("le formulaire d'identité signale la date de naissance", async ({ monde }) => {
+  const page = monde.inscription?.page;
+  if (!page) throw new Error('inscription non tentée');
+  expect(monde.inscription?.jeton).toBeUndefined();
+  await expect(page.locator('#kc-identite-form')).toBeVisible();
+  await expect(page.getByText('Indiquez une date de naissance valable.')).toBeVisible();
 });
 
 Then("l'inscription est refusée avec le message « Code non reconnu »", async ({ monde }) => {
@@ -260,6 +316,8 @@ When(
     await page.locator('#password').fill(motDePasse);
     await page.locator('#password-confirm').fill(motDePasse);
     await page.locator('#kc-register-form [type=submit]').click();
+    await page.waitForLoadState().catch(() => undefined);
+    await saisirIdentite(page);
     monde.inscription = { identifiant, page };
   },
 );
@@ -277,3 +335,47 @@ Then(
     ).toHaveCount(0);
   },
 );
+
+// ── Réservation bloquée tant que l'identité n'est pas vérifiée (ADR-0014) ───
+
+When(
+  '{string} tente de réserver ce créneau alors que son identité est à vérifier',
+  async ({ monde }, identifiant: string) => {
+    const jeton = monde.jetons.get(identifiant);
+    if (!jeton) throw new Error(`${identifiant} n'est pas connecté.`);
+    const url = `${FHIR_URL}/Patient/${compte(identifiant).attributs['patient_id'] ?? ''}`;
+    const original = (await (
+      await fetch(url, { headers: { 'cache-control': 'no-cache' } })
+    ).json()) as Record<string, unknown>;
+    const ecrire = (corps: unknown) =>
+      fetch(url, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/fhir+json' },
+        body: JSON.stringify(corps),
+      });
+    // Le temps du scénario seulement : l'identité repasse « à vérifier », puis est rétablie.
+    expect(
+      (
+        await ecrire({
+          ...original,
+          extension: [{ url: EXTENSION_STATUT_IDENTITE, valueCode: 'a-verifier' }],
+        })
+      ).ok,
+    ).toBe(true);
+    try {
+      const r = await fetch(`${TELECONSULTATION_URL}/rendez-vous`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ creneauId: monde.creneaux?.[0] ?? '' }),
+      });
+      monde.reponse = { statut: r.status, corps: (await r.json()) as Record<string, unknown> };
+    } finally {
+      await ecrire(original);
+    }
+  },
+);
+
+Then("la réservation est refusée car son identité n'est pas vérifiée", ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(403);
+  expect(String(monde.reponse?.corps['erreur'])).toContain('identité doit être vérifiée');
+});

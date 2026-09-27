@@ -68,6 +68,15 @@ Then('le dossier ne renvoie que le numéro de téléphone', ({ monde }) => {
   expect(corps['name']).toBeUndefined();
 });
 
+Then("le dossier ne renvoie que le statut de vérification d'identité", ({ monde }) => {
+  const corps = monde.reponse?.corps ?? {};
+  expect(JSON.stringify(corps['extension'])).toContain('statut-identite');
+  // Ni nom, ni naissance, ni téléphone, ni numéro d'assurance (ADR-0014, minimisation).
+  expect(Object.keys(corps).sort()).toEqual(
+    ['extension', 'id', 'meta', 'resourceType'].filter((k) => k in corps).sort(),
+  );
+});
+
 async function appelerDossier(
   monde: Monde,
   methode: 'GET' | 'DELETE' | 'PUT',

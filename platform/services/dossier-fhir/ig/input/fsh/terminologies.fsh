@@ -114,3 +114,40 @@ Description: "Toutes les sections du compte-rendu."
 * ^status = #draft
 * ^experimental = true
 * include codes from system MboloSectionCompteRenduCS
+
+CodeSystem: MboloTypeIdentifiantPatientCS
+Id: mbolo-type-identifiant-patient
+Title: "Types d'identifiant du patient"
+Description: "Type d'identifiant d'un patient (ADR-0014). Le système de chaque identifiant (URI) dépend du pays et est paramétré par déploiement : au Gabon, le numéro d'assurance maladie nationale est celui de la CNAMGS."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #assurance-maladie "Numéro d'assurance maladie nationale" "Numéro attribué par l'organisme national d'assurance maladie (Gabon : CNAMGS)."
+* #provisoire "Numéro provisoire Mbolo" "Numéro attribué par un professionnel de santé de Mbolo Santé, à partir de l'acte de naissance, en l'absence de numéro d'assurance maladie."
+
+ValueSet: MboloTypeIdentifiantPatientVS
+Id: mbolo-type-identifiant-patient
+Title: "Types d'identifiant du patient"
+Description: "Types d'identifiant admis pour la vérification d'identité (ADR-0014)."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloTypeIdentifiantPatientCS
+
+CodeSystem: MboloStatutIdentiteCS
+Id: mbolo-statut-identite
+Title: "Statut de la vérification d'identité"
+Description: "Résultat de la vérification d'identité d'un patient par un humain habilité (rôle verification-identite, ADR-0014). Aucune consultation tant que l'identité n'est pas vérifiée."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #a-verifier "À vérifier" "Identité déclarée par le patient, pas encore contrôlée."
+* #verifiee "Vérifiée" "Identité contrôlée par un humain habilité, à partir du document et de la photo du visage."
+* #refusee "Refusée" "Le contrôle n'a pas permis de confirmer l'identité ; un nouveau contrôle est nécessaire."
+
+ValueSet: MboloStatutIdentiteVS
+Id: mbolo-statut-identite
+Title: "Statuts de la vérification d'identité"
+Description: "Statuts admis pour la vérification d'identité (ADR-0014)."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloStatutIdentiteCS

@@ -179,6 +179,7 @@ jobs:
         env:
           # Keycloak (conteneur) joint le service des invitations par la passerelle Docker.
           INVITATIONS_HOST: 0.0.0.0
+          PASSERELLE_HOST: 0.0.0.0
       - name: Journaux Keycloak, HAPI, Unleash et LiveKit en cas d'échec
         if: failure()
         run: |
