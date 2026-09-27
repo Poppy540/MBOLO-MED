@@ -18,6 +18,7 @@
 | [0012](adr/0012-notifications.md) | Service de notifications (SMS, WhatsApp), gabarits approuvés | Proposée (fournisseur à choisir) |
 | [0013](adr/0013-base-de-donnees-services.md) | Base de données des services (hors dossier médical), premier usage : codes d'invitation | Acceptée |
 | [0014](adr/0014-inscription-patient.md) | Inscription d'un patient avec un code d'invitation (extension Keycloak, identité vérifiée) | Acceptée (vérification à préciser) |
+| [0015](adr/0015-stockage-documents-verification-identite.md) | Stockage chiffré des documents et vérification d'identité | Proposée |
 
 ## Vue d'ensemble (cible, à détailler)
 
