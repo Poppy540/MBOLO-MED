@@ -146,7 +146,7 @@ describe('agent IA', () => {
 });
 
 describe('rôles sans accès clinique', () => {
-  it.each(['pharmacien', 'administrateur', 'revue-acces'] as const)(
+  it.each(['pharmacien', 'administrateur', 'revue-acces', 'gestion-invitations'] as const)(
     '%s : toujours refusé',
     (role) => {
       const u: Utilisateur = { sujet: 'x', roles: [role], practitionerId: 'fictif-medecin-0001' };

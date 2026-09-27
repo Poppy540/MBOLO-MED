@@ -31,13 +31,17 @@ describe('royaume mbolo', () => {
     expect(embarque).toEqual(lire('profil-utilisateur.json'));
   });
 
-  it.each(['professionnel', 'infirmier', 'pharmacien', 'administrateur', 'revue-acces'])(
-    'impose la double authentification au rôle %s',
-    (nom) => {
-      const role = royaume.roles.realm.find((r) => r.name === nom);
-      expect(role?.composites?.realm).toContain('mfa-requise');
-    },
-  );
+  it.each([
+    'professionnel',
+    'infirmier',
+    'pharmacien',
+    'administrateur',
+    'revue-acces',
+    'gestion-invitations',
+  ])('impose la double authentification au rôle %s', (nom) => {
+    const role = royaume.roles.realm.find((r) => r.name === nom);
+    expect(role?.composites?.realm).toContain('mfa-requise');
+  });
 
   it("n'impose pas la double authentification aux patients et proches", () => {
     for (const nom of ['patient', 'proche']) {
@@ -153,6 +157,17 @@ describe('royaume mbolo', () => {
         .map((m) => m.config['included.client.audience']);
     expect(audiences('mbolo-app-pro')).toContain('mbolo-consultation-api');
     expect(audiences('mbolo-app-patient')).not.toContain('mbolo-consultation-api');
+  });
+
+  it('invitations : seule l’application des professionnels appelle l’API, rôle jamais donné aux agents IA', () => {
+    const audiences = (id: string) =>
+      (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
+        .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
+        .map((m) => m.config['included.client.audience']);
+    expect(audiences('mbolo-app-pro')).toContain('mbolo-invitations-api');
+    expect(audiences('mbolo-app-patient')).not.toContain('mbolo-invitations-api');
+    const agentIa = royaume.roles.realm.find((r) => r.name === 'agent-ia');
+    expect(agentIa?.composites?.realm ?? []).not.toContain('gestion-invitations');
   });
 
   it('aucun client ne contient de secret en clair', () => {

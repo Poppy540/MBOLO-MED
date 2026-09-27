@@ -24,6 +24,8 @@ export interface Monde {
   depuis?: string;
   /** Conclusion du compte-rendu rédigé pendant le scénario (unique par exécution). */
   conclusion?: string;
+  /** Invitation créée pendant le scénario (le code n'existe que dans cette mémoire de test). */
+  invitation?: { id: string; code: string };
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }

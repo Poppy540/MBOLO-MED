@@ -1,7 +1,7 @@
 # ADR-0013 — Base de données des services (hors dossier médical)
 
 - **Date :** 2026-09-27
-- **Statut :** proposée (à valider par le porteur de projet)
+- **Statut :** acceptée (porteur de projet, 2026-09-27)
 - **Décideurs :** porteur de projet
 
 ## Contexte
@@ -25,12 +25,12 @@ Contraintes :
 3. **Redis ou une base clé-valeur** : pas de transactions riches ni de contraintes, et une persistance à configurer avec soin. Utile plus tard comme cache, pas comme source de vérité.
 4. **SQLite par service** : simple, mais incompatible avec plusieurs instances d'un service et avec une sauvegarde centralisée.
 
-## Décision proposée
+## Décision
 Option 1.
 - **PostgreSQL 16**, service géré de l'hébergeur retenu (ADR-0004). Chiffrement au repos, TLS obligatoire, sauvegardes quotidiennes chiffrées, restauration testée à chaque vague.
 - **Un schéma et un rôle par service** (`invitations`, `notifications`…). Le rôle ne peut écrire que dans son schéma ; il ne peut ni créer de rôle ni lire les autres schémas. Identifiants `DB_USER` / `DB_PASSWORD` par service, dans le coffre-fort (ADR-0005), idéalement dynamiques.
 - **Migrations SQL versionnées** (`platform/services/<service>/migrations/NNNN-titre.sql`), appliquées au démarrage par un rôle de migration distinct, jamais par le rôle d'exécution. Aucune migration destructrice sans ADR ni sauvegarde vérifiée.
-- **Paquet commun `@mbolo/base-donnees`** : connexion avec TLS, requêtes paramétrées uniquement (jamais de SQL construit par concaténation), transactions, migrations. Pilote Node : `postgres` (porsager) ou `pg`, **à installer avec l'accord du porteur de projet**.
+- **Paquet commun `@mbolo/base-donnees`** : connexion avec TLS, requêtes paramétrées uniquement (jamais de SQL construit par concaténation), transactions, migrations. Pilote Node : **`postgres`** (porsager) — aucune dépendance transitive, requêtes paramétrées imposées par la syntaxe (installation approuvée par le porteur de projet).
 - **Aucune donnée de santé ni donnée directement identifiante** : les tests automatiques vérifient que les colonnes suivent une liste autorisée par service.
 - **Agents IA** : jamais d'accès direct (règle de `platform/CLAUDE.md`), uniquement des outils à portée minimale.
 - **Développement et tests** : Postgres local (docker-compose, et en CI comme pour Unleash), données fictives uniquement.
@@ -46,6 +46,11 @@ Option 1.
 - La CI démarre un Postgres de test. La chaîne e2e locale réutilise le Postgres 16 déjà lancé pour Unleash, avec une base distincte.
 - À mettre à jour : registre des traitements (codes d'invitation, durée de conservation), AIPD (nouvelle base, même hébergeur), plan de sauvegarde et de reprise.
 - Risque : dérive vers le stockage de données de santé hors du dossier FHIR. Il est couvert par la liste autorisée de colonnes et par la revue de code.
-- Reste à décider : pilote Node, durée de validité d'un code, nombre maximal d'invitations par vague, qui reçoit le rôle `gestion-invitations`.
+- Décisions du porteur de projet (2026-09-27) :
+  - pilote `postgres` ;
+  - code valable **14 jours**, un code par personne, usage unique ; **8 caractères** sans caractères ambigus (ni 0/O, ni 1/I), faciles à dicter ou à envoyer par SMS ;
+  - vague 1 : **100 patients dans une seule ville (Libreville)**, puis tranches de 100 à chaque critère de passage atteint — durée, taille et ville sont des **paramètres de déploiement**, jamais codés en dur ;
+  - rôle `gestion-invitations` : le porteur de projet et **une personne de confiance nommée** (ex. coordinateur terrain), double authentification obligatoire ; **jamais un agent IA** (l'Agent 6 peut proposer une liste, un humain crée les codes) ; chaque création est journalisée.
+- Reste à désigner nommément la personne de confiance.
 
 Sources : ADR-0003, ADR-0004, ADR-0005, ADR-0007, ADR-0009 ; `docs/deploiement/vagues.md` (vague 1, population limitée) ; principes n°3, n°4 et n°5 de `CLAUDE.md` ; documentation PostgreSQL 16 (rôles et privilèges) — https://www.postgresql.org/docs/16/ddl-priv.html

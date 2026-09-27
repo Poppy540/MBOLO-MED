@@ -1,7 +1,9 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
 // Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
 // IDENTITE_SERVICE_CLIENT_SECRET, TELECONSULTATION_SERVICE_CLIENT_SECRET et NOTIFICATIONS_SERVICE_CLIENT_SECRET et CONSULTATION_SERVICE_CLIENT_SECRET identiques à ceux donnés à Keycloak, et un Unleash local
-// (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), et un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET).
+// (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET), et un
+// PostgreSQL de test pour les invitations (INVITATIONS_DATABASE_URL, INVITATIONS_MIGRATION_DATABASE_URL,
+// INVITATIONS_CLE_EMPREINTE).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 import {
@@ -12,6 +14,8 @@ import {
   APP_PATIENT_URL,
   APP_PRO_URL,
   CONSULTATION_URL,
+  COHORTE_TEST,
+  INVITATIONS_URL,
   NOTIFICATIONS_URL,
   TELECONSULTATION_URL,
   UNLEASH_URL,
@@ -117,6 +121,22 @@ export default defineConfig({
         NOTIFICATIONS_SERVICE_CLIENT_SECRET:
           process.env['NOTIFICATIONS_SERVICE_CLIENT_SECRET'] ?? '',
         PORT: new URL(NOTIFICATIONS_URL).port,
+        MBOLO_ENV: 'dev',
+      },
+    },
+    {
+      command: 'node ../../services/invitations/dist/main.js',
+      url: `${INVITATIONS_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        INVITATIONS_DATABASE_URL: process.env['INVITATIONS_DATABASE_URL'] ?? '',
+        INVITATIONS_MIGRATION_DATABASE_URL: process.env['INVITATIONS_MIGRATION_DATABASE_URL'] ?? '',
+        INVITATIONS_CLE_EMPREINTE: process.env['INVITATIONS_CLE_EMPREINTE'] ?? '',
+        INVITATIONS_COHORTES: COHORTE_TEST,
+        // La base de test garde les codes des exécutions précédentes : quota large ici, testé à part.
+        INVITATIONS_QUOTA_PAR_COHORTE: '1000000',
+        PORT: new URL(INVITATIONS_URL).port,
         MBOLO_ENV: 'dev',
       },
     },

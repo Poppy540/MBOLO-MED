@@ -1,0 +1,23 @@
+{
+  "name": "@mbolo/base-donnees",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Base des services de Mbolo Santé (ADR-0013) : connexion PostgreSQL, migrations versionnées, un schéma et un rôle par service, aucune donnée de santé.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "postgres": "^3.4.9"
+  }
+}

@@ -75,6 +75,9 @@
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
 | `DB_USER` / `DB_PASSWORD` | Base applicative | Plateforme | Données applicatives hors dossier médical | Un utilisateur par service ; secrets dynamiques si le coffre le permet | D R P | `mbolo/<env>/base-donnees/` | 30 j ou dynamique | RT | 0 |
+| `INVITATIONS_DATABASE_URL` | Base des services, schéma `invitations` (ADR-0013) | Plateforme (invitations) | Connexion du service des invitations | Rôle d'exécution : lecture, insertion, mise à jour de ses tables ; **ni suppression ni modification du schéma** ; TLS vérifié en production | D R P | `mbolo/<env>/base-donnees/` | 30 j ou dynamique | RT | 1 |
+| `INVITATIONS_MIGRATION_DATABASE_URL` | Base des services, schéma `invitations` (ADR-0013) | **Infrastructure uniquement** (démarrage ou déploiement) | Appliquer les migrations versionnées | Propriétaire du schéma `invitations` seulement ; jamais utilisée pour les requêtes du service | D R P | idem | 30 j | RT | 1 |
+| `INVITATIONS_CLE_EMPREINTE` | Service des invitations (ADR-0013) | Plateforme (invitations) | Clé HMAC des empreintes de codes d'invitation (aucun code en clair en base) | 32 octets au moins ; la changer invalide les codes en cours | D R P | `mbolo/<env>/base-donnees/` | à chaque vague (codes en cours à réémettre) | RS | 1 |
 | `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | Stockage objet chiffré | Plateforme | Documents médicaux (photos d'ordonnances, résultats) | Un seul compartiment, pas de listing public | D R P | `mbolo/<env>/stockage/` | 90 j | RT | 0 |
 | `STORAGE_KMS_KEY_REFERENCE` | KMS | Plateforme | Référence de la clé de chiffrement (pas la clé elle-même) | Chiffrer / déchiffrer | D R P | idem | rotation annuelle de la clé KMS | RS | 0 |
 
@@ -143,3 +146,4 @@
 | 2026-09-27 | Compte de service `TELECONSULTATION_SERVICE_CLIENT_SECRET` (rendez-vous dans le dossier, PR L) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Compte de service `NOTIFICATIONS_SERVICE_CLIENT_SECRET` (ADR-0012, PR P) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Compte de service `CONSULTATION_SERVICE_CLIENT_SECRET` (consultation clinique, PR V) | En attente — responsable sécurité à nommer |
+| 2026-09-27 | Base des services et invitations : `INVITATIONS_DATABASE_URL`, `INVITATIONS_MIGRATION_DATABASE_URL`, `INVITATIONS_CLE_EMPREINTE` (ADR-0013, PR Z) | En attente — responsable sécurité à nommer |
