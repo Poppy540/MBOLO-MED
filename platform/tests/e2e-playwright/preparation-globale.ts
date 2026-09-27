@@ -1,7 +1,15 @@
 // Préparation du Keycloak de test : comptes FICTIFS. Le profil utilisateur (attributs réservés à
 // l'administrateur) est déjà dans le royaume importé : il n'est pas réappliqué ici, pour le vérifier. N'agit que sur un Keycloak local ou de CI, jamais sur un environnement réel.
 import { randomBytes } from 'node:crypto';
-import { COMPTES, KEYCLOAK_URL, ROYAUME, VARIABLE_MOTS_DE_PASSE } from './configuration.js';
+import { MARQUEUR_FICTIF } from '@mbolo/dossier-fhir';
+import {
+  COMPTES,
+  FHIR_URL,
+  KEYCLOAK_URL,
+  RESSOURCES_FHIR,
+  ROYAUME,
+  VARIABLE_MOTS_DE_PASSE,
+} from './configuration.js';
 
 async function jetonAdministrateur(): Promise<string> {
   const motDePasse = process.env['KC_BOOTSTRAP_ADMIN_PASSWORD'];
@@ -19,10 +27,50 @@ async function jetonAdministrateur(): Promise<string> {
   return ((await r.json()) as { access_token: string }).access_token;
 }
 
-export default async function preparationGlobale(): Promise<void> {
-  if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(KEYCLOAK_URL)) {
-    throw new Error('Les tests e2e ne s’exécutent que contre un Keycloak local.');
+/** Patients, professionnels et proches FICTIFS dans le serveur FHIR (identifiants imposés, marqués fictifs). */
+async function preparerDossier(): Promise<void> {
+  for (const { type, id } of RESSOURCES_FHIR) {
+    const r = await fetch(`${FHIR_URL}/${type}/${id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/fhir+json' },
+      body: JSON.stringify({
+        resourceType: type,
+        id,
+        meta: { tag: [MARQUEUR_FICTIF] },
+        ...(type === 'RelatedPerson' ? { patient: { reference: 'Patient/pat-fictif-001' } } : {}),
+        name: [{ text: `${id} [FICTIF]` }],
+      }),
+    });
+    if (!r.ok)
+      throw new Error(`Serveur FHIR : création de ${type}/${id} impossible (${r.status}).`);
   }
+  // Scénarios indépendants des exécutions précédentes : les consentements encore actifs des patients
+  // fictifs sont révoqués (jamais supprimés, comme dans le dossier réel).
+  for (const { id } of RESSOURCES_FHIR.filter((x) => x.type === 'Patient')) {
+    const lot = (await (
+      await fetch(`${FHIR_URL}/Consent?patient=Patient/${id}&status=active&_count=200`, {
+        headers: { 'cache-control': 'no-cache' },
+      })
+    ).json()) as { entry?: { resource: { id: string; status: string } }[] };
+    for (const { resource } of lot.entry ?? []) {
+      const r = await fetch(`${FHIR_URL}/Consent/${resource.id}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/fhir+json' },
+        body: JSON.stringify({ ...resource, status: 'inactive' }),
+      });
+      if (!r.ok) throw new Error(`Serveur FHIR : révocation de Consent/${resource.id} impossible.`);
+    }
+  }
+}
+
+export default async function preparationGlobale(): Promise<void> {
+  const local = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/;
+  if (!local.test(KEYCLOAK_URL) || !local.test(FHIR_URL)) {
+    throw new Error(
+      'Les tests e2e ne s’exécutent que contre un Keycloak et un serveur FHIR locaux.',
+    );
+  }
+  await preparerDossier();
   const jeton = await jetonAdministrateur();
   const admin = async (chemin: string, init: RequestInit = {}): Promise<Response> => {
     const r = await fetch(`${KEYCLOAK_URL}/admin/realms/${ROYAUME}${chemin}`, {

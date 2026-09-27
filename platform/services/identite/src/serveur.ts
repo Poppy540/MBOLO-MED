@@ -11,6 +11,7 @@ import {
   type ServiceConsentements,
   type DepotConsentements,
 } from './consentements.js';
+import { ErreurDepot } from './depot-fhir.js';
 import type { VerifierJeton } from './jeton.js';
 import type { Utilisateur } from './roles.js';
 
@@ -47,6 +48,10 @@ export function creerServeur(o: OptionsServeur): FastifyInstance {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurAcces) return reply.code(403).send({ erreur: 'Accès refusé.' });
+    if (err instanceof ErreurDepot) {
+      if (err.statut === 503) o.journal.erreur('dossier médical indisponible', { err });
+      return reply.code(err.statut).send({ erreur: err.message });
+    }
     if (err instanceof ErreurValidation) {
       return reply.code(422).send({ erreur: err.message, regles: err.regles });
     }

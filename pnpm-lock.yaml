@@ -59,6 +59,9 @@ importers:
 
   platform/tests/e2e-playwright:
     devDependencies:
+      '@mbolo/dossier-fhir':
+        specifier: workspace:*
+        version: link:../../services/dossier-fhir
       '@playwright/test':
         specifier: 1.56.1
         version: 1.56.1

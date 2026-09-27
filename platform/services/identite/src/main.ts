@@ -1,7 +1,9 @@
-// Démarrage du service identité. Configuration par variables d'environnement (aucun secret requis :
-// l'API ne fait que vérifier des jetons publics signés par Keycloak).
+// Démarrage du service identité. Configuration par variables d'environnement (aucun secret requis en
+// vague 0 : l'API vérifie des jetons publics signés par Keycloak ; le serveur FHIR local est sans
+// authentification et ne contient que des données fictives).
 import { creerJournal } from '@mbolo/journal-securise';
-import { DepotMemoire, ServiceConsentements } from './consentements.js';
+import { DepotMemoire, ServiceConsentements, type DepotConsentements } from './consentements.js';
+import { DepotFhir } from './depot-fhir.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
 
@@ -9,6 +11,7 @@ const emetteur = process.env['KEYCLOAK_ISSUER'];
 const audience = process.env['IDENTITE_AUDIENCE'] ?? 'mbolo-identite-api';
 const port = Number(process.env['PORT'] ?? '3001');
 const env = process.env['MBOLO_ENV'] === 'prod' ? 'prod' : 'dev';
+const fhir = process.env['FHIR_BASE_URL'];
 
 const journal = creerJournal({ service: 'identite' });
 
@@ -17,12 +20,19 @@ if (!emetteur) {
   process.exit(1);
 }
 if (env === 'prod') {
-  // Le dépôt en mémoire n'est pas destiné à la production (vague 0).
-  journal.erreur('Dépôt de production non configuré : arrêt.');
+  // Vague 0 : l'accès authentifié (SMART on FHIR) au dossier de production n'est pas encore en place.
+  journal.erreur('Authentification du dossier médical de production non configurée : arrêt.');
   process.exit(1);
 }
 
-const depot = new DepotMemoire();
+let depot: DepotConsentements;
+if (fhir) {
+  depot = new DepotFhir({ base: fhir });
+  journal.info('consentements enregistrés dans le dossier FHIR');
+} else {
+  depot = new DepotMemoire();
+  journal.avertissement('FHIR_BASE_URL absent : consentements en mémoire (perdus à l’arrêt).');
+}
 const app = creerServeur({
   verifierJeton: creerVerificateur({ emetteur, audience }),
   consentements: new ServiceConsentements(depot, env),

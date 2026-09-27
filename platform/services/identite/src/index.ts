@@ -9,6 +9,8 @@ export {
   ServiceConsentements,
 } from './consentements.js';
 export type { DemandeConsentement, DepotConsentements } from './consentements.js';
+export { DepotFhir, ErreurDepot } from './depot-fhir.js';
+export type { OptionsDepotFhir } from './depot-fhir.js';
 export { creerVerificateur } from './jeton.js';
 export type { OptionsJeton, VerifierJeton } from './jeton.js';
 export { creerServeur } from './serveur.js';

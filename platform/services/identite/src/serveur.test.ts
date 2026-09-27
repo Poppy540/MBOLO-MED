@@ -1,6 +1,7 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DepotMemoire, ServiceConsentements } from './consentements.js';
+import { ErreurDepot } from './depot-fhir.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
 import type { Journal } from '@mbolo/journal-securise';
@@ -224,5 +225,45 @@ describe('API identité', () => {
     const tout = JSON.stringify(lignes);
     expect(tout).not.toContain(jeton);
     expect(tout).not.toContain('Texte C-SOINS');
+  });
+
+  it('dossier médical : refus du serveur en 422, indisponibilité en 503 journalisée', async () => {
+    class DepotEnPanne extends DepotMemoire {
+      override async ajouter(): Promise<never> {
+        throw new ErreurDepot('Consentement refusé par le dossier médical.', 422);
+      }
+      override async parPatient(): Promise<never> {
+        throw new ErreurDepot('Dossier médical indisponible.', 503);
+      }
+    }
+    const depot = new DepotEnPanne();
+    const serveur = creerServeur({
+      verifierJeton: creerVerificateur({
+        emetteur: EMETTEUR,
+        audience: AUDIENCE,
+        cles: createLocalJWKSet(jwks),
+      }),
+      consentements: new ServiceConsentements(depot, 'dev'),
+      depot,
+      journal,
+    });
+    const entetes = { authorization: `Bearer ${await jetonPatient()}` };
+    lignes.length = 0;
+    const cree = await serveur.inject({
+      method: 'POST',
+      url: '/patients/fictif-patient-0001/consentements',
+      headers: entetes,
+      payload: { categorie: 'C-SOINS', mode: 'texte', versionTexte: 'v0 [FICTIF]', accepte: true },
+    });
+    expect(cree.statusCode).toBe(422);
+    const acces = await serveur.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: entetes,
+      payload: { patientId: 'fictif-patient-0001' },
+    });
+    // Sans dossier consultable, pas de décision d'accès : on refuse de répondre plutôt que d'accorder.
+    expect(acces.statusCode).toBe(503);
+    expect(lignes.some((l) => l.niveau === 'erreur')).toBe(true);
   });
 });
