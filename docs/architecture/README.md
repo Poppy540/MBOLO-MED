@@ -19,6 +19,7 @@
 | [0013](adr/0013-base-de-donnees-services.md) | Base de données des services (hors dossier médical), premier usage : codes d'invitation | Acceptée |
 | [0014](adr/0014-inscription-patient.md) | Inscription d'un patient avec un code d'invitation (extension Keycloak, identité vérifiée) | Acceptée (vérification à préciser) |
 | [0015](adr/0015-stockage-documents-verification-identite.md) | Stockage chiffré des documents et vérification d'identité | Acceptée (durée de conservation à fixer) |
+| [0016](adr/0016-preparation-production.md) | Préparation de la production : clé maître (KMS), supervision et alertes, authentification des services | Acceptée (destinataires des alertes à désigner) |
 
 ## Vue d'ensemble (cible, à détailler)
 
