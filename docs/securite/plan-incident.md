@@ -18,5 +18,23 @@
 ## Étapes
 1. Détecter et qualifier. 2. Contenir (désactiver un flag, révoquer une clé — par un humain). 3. Éradiquer. 4. Rétablir. 5. Notifier (autorités, personnes concernées si requis). 6. Retour d'expérience → `memory.md` (leçons apprises) et fiche problématique.
 
+## Scénario : fuite de photos d'identité (ADR-0015) — brouillon, à valider
+
+**Signaux** : consultation anormale dans les traces (volume, horaires, vérificateur inhabituel) ; accès inconnu au stockage objet ou à la base ; clé maître ou clés du stockage exposées ; signalement d'un patient (historique des accès).
+
+**Gravité** : critique. Alerte immédiate du responsable sécurité et du porteur de projet.
+
+**Contenir** (décidé et fait par un humain) :
+1. **Désactiver le flag `identite.photos`** : plus aucun nouvel envoi.
+2. **Retirer le rôle `verification-identite`** au compte en cause, ou à tous, et révoquer ses sessions dans Keycloak.
+3. **Changer les clés du stockage** (`STORAGE_*`) et, si la base est touchée, les mots de passe de la base.
+4. **Si la clé maître est exposée** : la remplacer, puis ré-envelopper les clés des photos. **Dernier recours** : détruire la clé maître, ce qui rend toutes les photos illisibles pour toujours. Les patients devront alors renvoyer leurs photos ; le résultat des vérifications déjà faites reste dans le dossier.
+
+**Évaluer** : quelles photos, quels patients, depuis quand (traces `AuditEvent` de motif `verification-identite`, décisions du schéma `documents`, journaux du stockage).
+
+**Notifier** (si requis, avec le juriste) : autorité de protection des données (Gabon : CNPDCP ; UE : autorité du pays) et **patients concernés**, en phrases simples, avec les mesures à prendre (vigilance sur l'usurpation d'identité) `[À CONFIRMER : délais légaux]`.
+
+**Retour d'expérience** : fiche problématique, `memory.md`, mise à jour de l'[AIPD n°1](aipd-verification-identite.md) et du [modèle de menaces](modele-menaces.md).
+
 ## Contacts (à compléter — rôles, pas de données personnelles dans le dépôt)
 Directeur médical de garde · Responsable sécurité · Porteur de projet · Hébergeur · Prestataires critiques.
