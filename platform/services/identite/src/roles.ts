@@ -10,6 +10,8 @@ export const ROLES = [
   'agent-ia',
   /** Relecteur des accès d'urgence : revoit les bris de glace, aucun accès clinique. */
   'revue-acces',
+  /** Crée et révoque les codes d'invitation (ADR-0013), aucun accès clinique. Jamais un agent IA. */
+  'gestion-invitations',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

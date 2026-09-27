@@ -80,6 +80,14 @@
         "composites": {
           "realm": ["mfa-requise"]
         }
+      },
+      {
+        "name": "gestion-invitations",
+        "description": "Gestionnaire des invitations (ADR-0013) : crée et révoque les codes d'invitation, aucun accès clinique. MFA obligatoire. Attribué par un administrateur au porteur de projet et à la personne de confiance qu'il désigne ; jamais à un agent IA.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },
@@ -194,6 +202,16 @@
           "protocolMapper": "oidc-audience-mapper",
           "config": {
             "included.client.audience": "mbolo-consultation-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "audience-invitations-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-invitations-api",
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
@@ -416,6 +434,13 @@
     {
       "clientId": "mbolo-consultation-api",
       "name": "API consultation clinique (ressource)",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "mbolo-invitations-api",
+      "name": "API des invitations (ressource)",
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false

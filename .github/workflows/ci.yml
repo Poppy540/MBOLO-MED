@@ -86,6 +86,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm typecheck
+      - name: PostgreSQL de test (base des services, ADR-0013)
+        run: bash scripts/postgres-test.sh
       - run: pnpm test
 
   fhir:
@@ -141,6 +143,8 @@ jobs:
             echo "$NOM=$VALEUR" >> "$GITHUB_ENV"
           done
           echo "WEBRTC_API_KEY=mbolo-ci-$(openssl rand -hex 6)" >> "$GITHUB_ENV"
+      - name: PostgreSQL de test (invitations, ADR-0013)
+        run: bash scripts/postgres-test.sh
       - name: Démarrer Keycloak (royaume mbolo)
         run: docker compose -f platform/services/identite/docker-compose.yml up -d
       - name: Démarrer HAPI FHIR (données fictives, effacées à l'arrêt)

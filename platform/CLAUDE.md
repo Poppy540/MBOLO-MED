@@ -15,12 +15,14 @@
 | `services/passerelle-fhir` | Seul point d'entrée des services vers le dossier FHIR : jetons de service, permissions SMART, validation des écritures (ADR-0010) — voir son README | 0 |
 | `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
 | `services/consultation` | Prototype : lecture du dossier par le professionnel après décision d'`identite` (consentement, bris de glace), compte-rendu rédigé par le professionnel (`Composition`, jamais par une IA) — voir son README | 1 |
+| `services/invitations` | Prototype (ADR-0013) : codes d'invitation à usage unique créés par le rôle `gestion-invitations`, empreinte HMAC (jamais le code en clair), quota par cohorte, vérification limitée ; PostgreSQL — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
 | `services/notifications` | Prototype (ADR-0012) : gabarits fermés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier, canal simulé en attendant le fournisseur — voir son README | 1 |
 | `services/feature-flags` | Unleash local (`docker-compose.yml`, flags fictifs) ; activation par ville, spécialité, type d'utilisateur (ADR-0003, ADR-0007) | 0 |
 | `packages/drapeaux` | Feature flags via OpenFeature + Unleash : catalogue désactivé par défaut, dépendances, refus en cas d'erreur — registre `docs/deploiement/flags.md` | 0 |
 | `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |
+| `packages/base-donnees` | Base des services (ADR-0013) : PostgreSQL, un schéma et un rôle par service, migrations versionnées, TLS vérifié en production, aucune donnée de santé | 1 |
 | `packages/client-web` | Briques communes des applications web : connexion PKCE, appels d'API, dates par pays, visio LiveKit avec repli audio | 1 |
 | `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`), par domaine (`identite/`…) | 0 |
 | `tests/e2e-playwright` | `@mbolo/e2e` : étapes Playwright (playwright-bdd), comptes fictifs, Keycloak, HAPI FHIR, passerelle, Unleash et LiveKit réels — `pnpm e2e`, voir son README | 0 |

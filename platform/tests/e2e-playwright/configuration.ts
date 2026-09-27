@@ -16,6 +16,10 @@ export const CLIENT_SERVICE_NOTIFICATIONS = 'mbolo-notifications-service';
 export const TELECONSULTATION_URL = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
 export const NOTIFICATIONS_URL = process.env['NOTIFICATIONS_URL'] ?? 'http://127.0.0.1:3004';
 export const CONSULTATION_URL = process.env['CONSULTATION_URL'] ?? 'http://127.0.0.1:3005';
+/** Service des invitations (ADR-0013) et sa base PostgreSQL de test. */
+export const INVITATIONS_URL = process.env['INVITATIONS_URL'] ?? 'http://127.0.0.1:3006';
+/** [FICTIF] Cohorte ouverte par le déploiement de test. */
+export const COHORTE_TEST = 'ville-fictive';
 /**
  * Applications (vite preview). Les ports 5173 et 5174 restent les faux retours de connexion des
  * étapes de test (clients patient et professionnel) : une vraie application y consommerait leurs codes.
@@ -40,7 +44,14 @@ export const APPLICATIONS = {
 export interface CompteFictif {
   identifiant: string;
   prenom: string;
-  role: 'patient' | 'proche' | 'professionnel' | 'infirmier' | 'pharmacien' | 'revue-acces';
+  role:
+    | 'patient'
+    | 'proche'
+    | 'professionnel'
+    | 'infirmier'
+    | 'pharmacien'
+    | 'revue-acces'
+    | 'gestion-invitations';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -86,6 +97,13 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'relecteur-fictif-01',
     prenom: 'Claire',
     role: 'revue-acces',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    identifiant: 'gestionnaire-fictif-01',
+    prenom: 'Joël',
+    role: 'gestion-invitations',
     application: 'pro',
     attributs: {},
   },
