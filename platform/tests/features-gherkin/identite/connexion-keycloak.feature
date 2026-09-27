@@ -24,3 +24,7 @@ Fonctionnalité: Connexion sécurisée par Keycloak
     Quand "patient-fictif-01" tente de modifier lui-même son identifiant de dossier en "pat-fictif-002"
     Alors la modification est refusée
     Et le jeton de "patient-fictif-01" le rattache au dossier "pat-fictif-001"
+
+  Scénario: Le jeton d'accès ne contient ni e-mail ni nom (minimisation)
+    Étant donné que "patient-fictif-01" est connecté
+    Alors le jeton de "patient-fictif-01" ne contient ni e-mail ni nom

@@ -35,23 +35,43 @@
       },
       {
         "name": "professionnel",
-        "description": "Professionnel de santé vérifié par un humain : accès au dossier avec consentement C-PARTAGE-PRO ou bris de glace motivé. MFA obligatoire."
+        "description": "Professionnel de santé vérifié par un humain : accès au dossier avec consentement C-PARTAGE-PRO ou bris de glace motivé. MFA obligatoire.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       },
       {
         "name": "infirmier",
-        "description": "Infirmier d'un point de consultation assistée. MFA obligatoire."
+        "description": "Infirmier d'un point de consultation assistée. MFA obligatoire.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       },
       {
         "name": "pharmacien",
-        "description": "Pharmacien partenaire : aucun accès au dossier (ordonnances via un service dédié). MFA obligatoire."
+        "description": "Pharmacien partenaire : aucun accès au dossier (ordonnances via un service dédié). MFA obligatoire.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       },
       {
         "name": "administrateur",
-        "description": "Administration technique : aucun accès aux données de santé. MFA obligatoire."
+        "description": "Administration technique : aucun accès aux données de santé. MFA obligatoire.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       },
       {
         "name": "agent-ia",
         "description": "Compte de service d'un agent IA : patient de la session uniquement, avec C-SOINS actif."
+      },
+      {
+        "name": "mfa-requise",
+        "description": "Rôle technique : impose la double authentification (OTP) à la connexion. Inclus dans professionnel, infirmier, pharmacien, administrateur. Ne jamais l'attribuer ni le retirer à la main."
       }
     ]
   },
@@ -109,7 +129,9 @@
             "userinfo.token.claim": "false"
           }
         }
-      ]
+      ],
+      "defaultClientScopes": ["web-origins", "acr", "roles", "basic"],
+      "optionalClientScopes": ["profile", "email"]
     },
     {
       "clientId": "mbolo-app-pro",
@@ -151,7 +173,9 @@
             "userinfo.token.claim": "false"
           }
         }
-      ]
+      ],
+      "defaultClientScopes": ["web-origins", "acr", "roles", "basic"],
+      "optionalClientScopes": ["profile", "email"]
     },
     {
       "clientId": "mbolo-identite-api",
@@ -160,5 +184,106 @@
       "bearerOnly": true,
       "publicClient": false
     }
-  ]
+  ],
+  "browserFlow": "navigateur-mbolo",
+  "authenticationFlows": [
+    {
+      "alias": "navigateur-mbolo",
+      "description": "Connexion Mbolo Santé : session existante, ou formulaire + OTP pour les rôles à MFA obligatoire.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "navigateur-mbolo formulaires",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "navigateur-mbolo formulaires",
+      "description": "Identifiant et mot de passe, puis MFA conditionnelle.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "navigateur-mbolo mfa",
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "navigateur-mbolo mfa",
+      "description": "OTP obligatoire pour les comptes portant le rôle mfa-requise (configuration imposée à la première connexion).",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "role-mfa-requise",
+          "authenticator": "conditional-user-role",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "role-mfa-requise",
+      "config": {
+        "condUserRole": "mfa-requise",
+        "negate": "false"
+      }
+    }
+  ],
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyCodeReusable": false,
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"patient_id\",\"displayName\":\"Identifiant FHIR Patient\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]}},{\"name\":\"practitioner_id\",\"displayName\":\"Identifiant FHIR Practitioner\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]}},{\"name\":\"related_person_id\",\"displayName\":\"Identifiant FHIR RelatedPerson\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]}}]}"
+          ]
+        }
+      }
+    ]
+  }
 }

@@ -15,7 +15,7 @@ export const APPLICATIONS = {
 export interface CompteFictif {
   identifiant: string;
   prenom: string;
-  role: 'patient' | 'proche' | 'professionnel' | 'pharmacien';
+  role: 'patient' | 'proche' | 'professionnel' | 'infirmier' | 'pharmacien';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -49,6 +49,13 @@ export const COMPTES: CompteFictif[] = [
     role: 'proche',
     application: 'patient',
     attributs: { related_person_id: 'rp-fictif-001' },
+  },
+  {
+    identifiant: 'infirmier-fictif-01',
+    prenom: 'Marc',
+    role: 'infirmier',
+    application: 'pro',
+    attributs: { practitioner_id: 'prac-fictif-002' },
   },
   {
     identifiant: 'pharmacien-fictif-01',

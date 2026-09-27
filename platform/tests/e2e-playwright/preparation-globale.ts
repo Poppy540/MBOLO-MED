@@ -1,13 +1,7 @@
-// Préparation du Keycloak de test : profil utilisateur (attributs réservés à l'administrateur)
-// et comptes FICTIFS. N'agit que sur un Keycloak local ou de CI, jamais sur un environnement réel.
+// Préparation du Keycloak de test : comptes FICTIFS. Le profil utilisateur (attributs réservés à
+// l'administrateur) est déjà dans le royaume importé : il n'est pas réappliqué ici, pour le vérifier. N'agit que sur un Keycloak local ou de CI, jamais sur un environnement réel.
 import { randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { COMPTES, KEYCLOAK_URL, ROYAUME, VARIABLE_MOTS_DE_PASSE } from './configuration.js';
-
-const PROFIL = fileURLToPath(
-  new URL('../../services/identite/keycloak/profil-utilisateur.json', import.meta.url),
-);
 
 async function jetonAdministrateur(): Promise<string> {
   const motDePasse = process.env['KC_BOOTSTRAP_ADMIN_PASSWORD'];
@@ -41,10 +35,7 @@ export default async function preparationGlobale(): Promise<void> {
     return r;
   };
 
-  // 1. Profil utilisateur : patient_id, practitioner_id, related_person_id modifiables par l'administrateur seul.
-  await admin('/users/profile', { method: 'PUT', body: readFileSync(PROFIL, 'utf8') });
-
-  // 2. Comptes fictifs, recréés à chaque exécution avec un mot de passe aléatoire.
+  // Comptes fictifs, recréés à chaque exécution avec un mot de passe aléatoire.
   const motsDePasse: Record<string, string> = {};
   for (const c of COMPTES) {
     const existants = (await (
