@@ -324,7 +324,21 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus",
+            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "elements-autorises",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements",
+            "claim.value": "Practitioner.name Practitioner.qualification",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

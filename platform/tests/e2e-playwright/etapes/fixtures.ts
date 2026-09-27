@@ -22,6 +22,8 @@ export interface Monde {
   creneauInitial?: string;
   /** Début de la relève de la boîte des notifications simulées. */
   depuis?: string;
+  /** Conclusion du compte-rendu rédigé pendant le scénario (unique par exécution). */
+  conclusion?: string;
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }

@@ -28,6 +28,8 @@ export interface DepotCreneaux {
   liberer(id: string): Promise<void>;
   /** Libre → retiré ; refusé (409) s'il n'est plus libre. */
   retirer(id: string): Promise<Creneau>;
+  /** Professionnels qui ont un agenda de téléconsultation. */
+  praticiensAvecAgenda(): Promise<string[]>;
 }
 
 export class ErreurCreneau extends Error {
@@ -78,6 +80,9 @@ export class DepotCreneauxMemoire implements DepotCreneaux {
   async liberer(id: string): Promise<void> {
     const c = this.donnees.get(id);
     if (c?.statut === 'reserve') this.donnees.set(id, { ...c, statut: 'libre' });
+  }
+  async praticiensAvecAgenda(): Promise<string[]> {
+    return [...new Set([...this.donnees.values()].map((c) => c.praticienId))];
   }
   async retirer(id: string): Promise<Creneau> {
     const c = this.donnees.get(id);

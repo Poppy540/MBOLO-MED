@@ -6,7 +6,10 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
 
 1. **Connexion** : Keycloak, client public `mbolo-app-patient`, flux « authorization code » avec **PKCE S256**, vérification de l'état (anti-CSRF). Le jeton reste **en mémoire**, jamais dans `localStorage`.
 2. **Mes rendez-vous** : liste des rendez-vous prévus, boutons « Rejoindre » et « Annuler ».
-3. **Prendre rendez-vous** : créneaux libres du professionnel indiqué par le lien reçu (`/?praticien=<id>`, par exemple donné par le point de consultation), puis confirmation. L'annuaire des professionnels viendra plus tard.
+3. **Prendre rendez-vous** :
+   - **sans lien**, l'**annuaire** liste les médecins (nom, spécialité, prochain créneau libre) ;
+   - avec le lien d'un point de consultation (`/?praticien=<id>`), les créneaux de ce médecin s'affichent directement ;
+   - le patient choisit un créneau, puis confirme.
 4. **Téléconsultation** : LiveKit, chargé **seulement à ce moment** (141 Ko compressés) :
    - le micro et la caméra sont demandés **avant** la connexion (message clair en cas de refus) ;
    - vidéo en basse définition (216p), flux adaptatif ;
@@ -38,7 +41,7 @@ L'API de téléconsultation est servie sous `/api/teleconsultation` (même origi
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **10,3 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **10,5 Ko**.
 
 ## Lancer
 
@@ -58,5 +61,5 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
 ## Reste à faire
 
 - Traduction en langues locales, messages vocaux.
-- Annuaire des professionnels ; report depuis l'application.
+- Report depuis l'application ; recherche par spécialité ou par ville quand l'annuaire grandira.
 - Validation des écrans avec le pilote conception (skill `ux-contexte-gabonais`) et test terrain sur téléphone réel.

@@ -1,5 +1,6 @@
 // Étapes « espace professionnel » : vrai navigateur sur l'application (vite preview), connexion
 // par le formulaire Keycloak avec double authentification, API et LiveKit réels. Données FICTIVES.
+import { randomUUID } from 'node:crypto';
 import { expect, type Browser, type Page } from '@playwright/test';
 import { APP_PRO_URL, FHIR_URL } from '../configuration.js';
 import { Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
@@ -174,11 +175,14 @@ When(
   'le professionnel rédige le compte-rendu avec la conclusion {string}',
   async ({ monde }, conclusion: string) => {
     const p = page(monde);
+    // Unique par exécution : le dossier de test garde les comptes-rendus des exécutions précédentes.
+    const texte = `${conclusion} (${randomUUID().slice(0, 8)})`;
+    monde.conclusion = texte;
     await p.getByLabel('Motif de consultation').fill('[FICTIF] Toux depuis 5 jours');
-    await p.getByLabel('Conclusion').fill(conclusion);
+    await p.getByLabel('Conclusion').fill(texte);
     await p.getByRole('button', { name: /Enregistrer le compte-rendu/ }).click();
     await expect(p.getByText('Compte-rendu enregistré dans le dossier.')).toBeVisible();
-    await expect(p.locator('li[data-compte-rendu]', { hasText: conclusion })).toHaveCount(1);
+    await expect(p.locator('li[data-compte-rendu]', { hasText: texte })).toHaveCount(1);
   },
 );
 
@@ -193,6 +197,7 @@ Then(
       entry?: {
         resource: {
           author: { reference: string }[];
+          section?: { text?: { div?: string } }[];
           event?: { detail?: { reference: string }[] }[];
           meta?: { tag?: { code?: string }[] };
         };
@@ -203,5 +208,9 @@ Then(
     expect(c?.author).toEqual([{ reference: `Practitioner/${praticien}` }]);
     expect(c?.event?.[0]?.detail?.[0]?.reference).toBe(`Appointment/${monde.rendezVousId ?? ''}`);
     expect(c?.meta?.tag?.some((t) => t.code === 'fictif')).toBe(true);
+    // C'est bien le compte-rendu de ce scénario.
+    expect(c?.section?.map((s) => s.text?.div ?? '').join('')).toContain(
+      (monde.conclusion ?? 'absent').split(' (')[1]?.replace(')', '') ?? 'absent',
+    );
   },
 );

@@ -13,7 +13,7 @@ import {
   terminerConnexion,
   urlDeconnexion,
 } from '@mbolo/client-web';
-import { creerApi, type Creneau, type RendezVous } from './api.js';
+import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
 import { CONFIG } from './config.js';
 
 const connexion = () => ({
@@ -32,6 +32,7 @@ const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
 type Ecran =
   | { nom: 'accueil' }
   | { nom: 'rendez-vous' }
+  | { nom: 'praticiens' }
   | { nom: 'creneaux'; praticienId: string }
   | { nom: 'visio'; rendezVous: RendezVous };
 
@@ -99,6 +100,12 @@ export function App() {
             setMessage(undefined);
             setEcran(e);
           }}
+          signaler={signaler}
+        />
+      ) : ecran.nom === 'praticiens' ? (
+        <Praticiens
+          choisir={(id) => setEcran({ nom: 'creneaux', praticienId: id })}
+          retour={() => setEcran({ nom: 'rendez-vous' })}
           signaler={signaler}
         />
       ) : ecran.nom === 'creneaux' ? (
@@ -198,14 +205,15 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
           ))}
         </ul>
       )}
-      {praticien && (
-        <button
-          class="principal"
-          onClick={() => p.allerA({ nom: 'creneaux', praticienId: praticien })}
-        >
-          <span aria-hidden="true">➕</span> Prendre rendez-vous
-        </button>
-      )}
+      {/* Lien d'un point de consultation : directement ce médecin ; sinon l'annuaire. */}
+      <button
+        class="principal"
+        onClick={() =>
+          p.allerA(praticien ? { nom: 'creneaux', praticienId: praticien } : { nom: 'praticiens' })
+        }
+      >
+        <span aria-hidden="true">➕</span> Prendre rendez-vous
+      </button>
     </section>
   );
 }
@@ -265,6 +273,46 @@ function Creneaux(p: {
         </ul>
       )}
       <button onClick={() => p.retour()}>Retour</button>
+    </section>
+  );
+}
+
+/** Annuaire : médecins qui consultent en vidéo, avec leur prochain créneau libre. */
+function Praticiens(p: {
+  choisir: (id: string) => void;
+  retour: () => void;
+  signaler: (e: unknown) => void;
+}) {
+  const [liste, setListe] = useState<Praticien[]>();
+  useEffect(() => void api.praticiens().then(setListe).catch(p.signaler), []);
+  return (
+    <section>
+      <h2>
+        <span aria-hidden="true">🩺</span> Choisir un médecin
+      </h2>
+      {liste === undefined ? (
+        <p aria-live="polite">Chargement…</p>
+      ) : liste.length === 0 ? (
+        <p>Aucun médecin disponible pour le moment.</p>
+      ) : (
+        <ul class="liste" aria-label="Médecins">
+          {liste.map((x) => (
+            <li key={x.id}>
+              <button data-praticien={x.id} onClick={() => p.choisir(x.id)}>
+                <strong>{x.nom}</strong>
+                {x.specialite && <span> — {x.specialite}</span>}
+                <br />
+                <small>
+                  {x.prochainCreneau
+                    ? `Prochain créneau : ${quand(x.prochainCreneau)}`
+                    : 'Pas de créneau libre pour le moment'}
+                </small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button onClick={p.retour}>Retour</button>
     </section>
   );
 }

@@ -103,7 +103,11 @@ describe('royaume mbolo', () => {
     // Aucun accès aux consentements, au journal ni aux données cliniques.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Appointment.crus system/Schedule.crus system/Slot.crus');
+    ).toBe('system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r');
+    // Annuaire : du professionnel, seuls le nom et la qualification sortent de la passerelle.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
+    ).toBe('Practitioner.name Practitioner.qualification');
   });
 
   it('compte de service notifications : lecture du contact et du consentement seulement', () => {

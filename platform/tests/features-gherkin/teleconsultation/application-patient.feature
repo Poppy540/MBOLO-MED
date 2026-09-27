@@ -32,3 +32,10 @@ Fonctionnalité: Application patient
     Alors l’application affiche ce rendez-vous
     Quand le téléphone du patient perd le réseau et rouvre l’application
     Alors l’application affiche sans réseau les rendez-vous connus
+
+  Scénario: Sans lien, le patient choisit son médecin dans l'annuaire
+    Étant donné un créneau libre de "prac-fictif-001" est publié dans 9 jours
+    Quand "patient-fictif-01" ouvre l’application patient
+    Et que le patient choisit "prac-fictif-001" dans l’annuaire
+    Et que le patient réserve ce créneau
+    Alors l’application confirme le rendez-vous
