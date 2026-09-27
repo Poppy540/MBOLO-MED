@@ -1,7 +1,7 @@
 # ADR-0016 — Préparation de la production : clé maître, supervision, authentification des services
 
 - **Date :** 2026-09-27
-- **Statut :** proposée
+- **Statut :** acceptée (porteur de projet, 2026-09-27) ; destinataires des alertes à désigner
 - **Décideurs :** porteur de projet, responsable sécurité (à nommer)
 
 ## Contexte
@@ -57,7 +57,11 @@ Contraintes :
 2. **TLS mutuel** (certificat client) : robuste, mais une autorité de certification est à gérer et l'exploitation est plus lourde.
 3. **Secret partagé** (situation actuelle), avec rotation tous les 90 jours.
 
-## Recommandation (à décider)
+## Décision (porteur de projet, 2026-09-27)
+
+Les trois recommandations sont acceptées : **A.1**, **B.1** avec les seuils proposés, et **C.1**. Les destinataires des alertes de sécurité et d'exploitation restent à désigner.
+
+### Recommandations retenues
 
 - **A.1 — KMS de l'hébergeur**, dès que le contrat de l'hébergeur de santé est signé :
   - le service `documents` a déjà l'interface prévue pour cela (`CleMaitre`), une nouvelle implémentation suffit ;
@@ -93,11 +97,9 @@ Contraintes :
   - si le KMS est indisponible, plus aucune photo ne peut être déposée ni lue ; la téléconsultation n'en dépend pas ;
   - des alertes trop nombreuses finissent ignorées : seuils à ajuster après un mois de vague 1.
 
-## Décisions demandées au porteur de projet
+## Reste à décider
 
-1. A : KMS de l'hébergeur (recommandé), OpenBao, ou clé du coffre-fort ?
-2. B : pile Grafana auto-hébergée (recommandé), ou service de l'hébergeur ? Les seuils proposés vous conviennent-ils ?
-3. C : `private_key_jwt` (recommandé), TLS mutuel, ou secret partagé ?
-4. Qui reçoit les alertes de sécurité (responsable sécurité) et d'exploitation ?
+- Qui reçoit les alertes de sécurité (responsable sécurité) et d'exploitation ?
+- Ajuster les seuils après un mois de vague 1.
 
 Sources : ADR-0004, ADR-0005, ADR-0006, ADR-0010, ADR-0015 ; [AIPD n°1](../../securite/aipd-verification-identite.md) ; [modèle de menaces](../../securite/modele-menaces.md) ; RFC 7523 (JWT pour l'authentification des clients OAuth 2.0) ; documentation OVHcloud KMS ; documentation Grafana Loki, Prometheus et OnCall ; OWASP Logging Cheat Sheet.
