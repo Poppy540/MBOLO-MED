@@ -62,7 +62,7 @@ export function consentementActif(
  * - professionnel / infirmier : consentement C-PARTAGE-PRO actif qui le désigne, ou bris de glace motivé ;
  * - proche : consentement C-PROCHE actif qui le désigne ;
  * - agent IA : uniquement le patient de sa session, avec C-SOINS actif ;
- * - pharmacien, administrateur : jamais (les ordonnances passent par un service dédié).
+ * - pharmacien, administrateur, relecteur des accès : jamais (revue sur les traces seulement).
  */
 export function deciderAccesDossier(
   u: Utilisateur,
@@ -102,7 +102,11 @@ export function deciderAccesDossier(
       : refus('refus-sans-consentement');
   }
 
-  if (u.roles.includes('pharmacien') || u.roles.includes('administrateur')) {
+  if (
+    u.roles.includes('pharmacien') ||
+    u.roles.includes('administrateur') ||
+    u.roles.includes('revue-acces')
+  ) {
     return refus('refus-role-sans-acces-clinique');
   }
 

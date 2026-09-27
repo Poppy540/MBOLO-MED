@@ -72,6 +72,14 @@
       {
         "name": "mfa-requise",
         "description": "Rôle technique : impose la double authentification (OTP) à la connexion. Inclus dans professionnel, infirmier, pharmacien, administrateur. Ne jamais l'attribuer ni le retirer à la main."
+      },
+      {
+        "name": "revue-acces",
+        "description": "Relecteur des accès d'urgence : revoit les bris de glace (traces seulement), aucun accès clinique. MFA obligatoire. Attribué par un administrateur à la personne désignée par le porteur de projet.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },

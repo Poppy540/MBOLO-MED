@@ -6,6 +6,7 @@ import { creerJournal } from '@mbolo/journal-securise';
 import { DepotMemoire, ServiceConsentements, type DepotConsentements } from './consentements.js';
 import { DepotFhir } from './depot-fhir.js';
 import { JournalAccesFhir, JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
+import { ServiceRevue } from './revue.js';
 import { creerFournisseurJeton } from './jeton-service.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
@@ -68,6 +69,12 @@ const app = creerServeur({
   consentements: new ServiceConsentements(depot, env, drapeaux),
   depot,
   journalAcces,
+  // Délai de revue des bris de glace : proposition de 24 h, à valider par le porteur de projet.
+  revue: new ServiceRevue(
+    journalAcces,
+    env,
+    Number(process.env['REVUE_BRIS_DE_GLACE_DELAI_HEURES'] ?? '24'),
+  ),
   env,
   journal,
 });

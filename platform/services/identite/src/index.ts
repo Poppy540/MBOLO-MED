@@ -16,6 +16,8 @@ export { ErreurJetonService, creerFournisseurJeton } from './jeton-service.js';
 export type { FournisseurJeton, OptionsJetonService } from './jeton-service.js';
 export { JournalAccesFhir, JournalAccesMemoire } from './journal-acces.js';
 export type { JournalAcces } from './journal-acces.js';
+export { ErreurRevue, ServiceRevue } from './revue.js';
+export type { BrisDeGlaceARevoir } from './revue.js';
 export { creerVerificateur } from './jeton.js';
 export type { OptionsJeton, VerifierJeton } from './jeton.js';
 export { creerServeur } from './serveur.js';

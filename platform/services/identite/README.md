@@ -9,6 +9,7 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 | `src/acces.ts` | Point de décision d'accès au dossier d'un patient. **Refus par défaut.** |
 | `src/consentements.ts` | Enregistrer, lister, révoquer un consentement (ressources FHIR `Consent` construites et vérifiées par `@mbolo/dossier-fhir`) |
 | `src/depot-fhir.ts` | Stockage des consentements dans le serveur FHIR du dossier (`FHIR_BASE_URL`) : création, lecture, révocation avec verrou optimiste (`If-Match`), recherche **sans cache** pour qu'une révocation prenne effet immédiatement |
+| `src/revue.ts` | Revue humaine des bris de glace : liste à revoir, retards, conclusion enregistrée (rôle `revue-acces`) |
 | `src/journal-acces.ts` | Journal des accès au dossier : `AuditEvent` FHIR pour chaque décision, historique consultable par le patient |
 | `src/client-fhir.ts` | Accès HTTP commun au dossier (jeton de service, délai, erreurs, pagination sans cache) |
 | `src/jeton-service.ts` | Jeton du compte de service `mbolo-identite-service` (client credentials) pour la passerelle du dossier, renouvelé avant expiration (ADR-0010) |
@@ -39,7 +40,19 @@ Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses
 - **Aucun accès n'est accordé sans trace** : si la trace ne peut pas être écrite, la réponse est **503**. Un refus reste un refus, même si sa trace échoue.
 - **Les traces sont immuables** : la passerelle refuse toute modification d'un `AuditEvent`, et aucune suppression n'est possible.
 - **Transparence** : `GET /patients/:id/acces` permet au patient (ou à l'agent de sa session) de voir qui a demandé l'accès à son dossier, quand, avec quel résultat et quel motif. Personne d'autre ne peut lire cet historique.
-- Revue humaine des bris de glace : une interface dédiée aux personnes habilitées reste à faire (qui, sous quel délai : décision du porteur de projet).
+
+## Revue humaine des bris de glace
+
+- **Qui peut revoir** : le rôle Keycloak `revue-acces` (relecteur des accès d'urgence), avec double authentification obligatoire et **aucun accès clinique**. Un administrateur l'attribue à la personne désignée par le porteur de projet (ex. directeur médical de garde).
+- `GET /revue/bris-de-glace?statut=a-revoir|toutes` : liste des accès d'urgence accordés, les plus récents d'abord. Chaque entrée donne :
+  - le patient et l'identifiant technique du demandeur ;
+  - la justification écrite ;
+  - **`enRetard`** si le délai de revue est dépassé.
+  - Le délai est fixé par `REVUE_BRIS_DE_GLACE_DELAI_HEURES`. La valeur par défaut de **24 h est une proposition à valider** par le porteur de projet.
+- `POST /revue/bris-de-glace/:traceId` enregistre la conclusion (`justifie`, `injustifie`, `a-approfondir`) et un commentaire, sous forme d'une **nouvelle trace** : la trace d'origine n'est jamais modifiée.
+  - Une seule revue par accès.
+  - **Personne ne revoit son propre accès d'urgence** (séparation des tâches).
+  - Une conclusion `injustifie` ou `a-approfondir` produit une alerte dans le journal, pour que le responsable sécurité et le DPO donnent une suite (à relier à l'astreinte, ADR-0006).
 
 ## ⚠️ Sécurité : identifiants FHIR des comptes
 

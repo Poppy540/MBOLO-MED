@@ -36,7 +36,10 @@ Option 1.
 - Les consentements sont stockés dans le **serveur FHIR du dossier** (HAPI, `DepotFhir`). Les recherches se font sans cache, pour qu'une révocation soit immédiate. Le service refuse encore de démarrer en production tant que l'accès authentifié (SMART on FHIR) au dossier n'est pas en place.
 - Keycloak doit être hébergé chez l'hébergeur HDS (ADR-0004) ; le mot de passe d'administration initial vient du coffre-fort (ADR-0005), jamais du dépôt.
 - Chaque décision d'accès est tracée dans le dossier (`AuditEvent`, PR I). Aucun accès n'est accordé sans trace, et le patient peut consulter l'historique des accès à son dossier.
-- La revue des bris de glace (qui, sous quel délai) est à définir avec le comité médical et le responsable sécurité.
+- Revue des bris de glace outillée (PR J) :
+  - rôle `revue-acces` (MFA, aucun accès clinique) ;
+  - liste à revoir avec les retards, conclusion tracée, séparation des tâches.
+  - **Le titulaire du rôle et le délai (24 h proposé) restent à décider** avec le comité médical et le responsable sécurité.
 - La traduction complète des écrans Keycloak et le parcours de récupération d'un appareil OTP perdu (procédure humaine vérifiée) restent à faire.
 
 Sources : Keycloak — https://www.keycloak.org/documentation ; OAuth 2.0 for Browser-Based Apps (PKCE) — https://datatracker.ietf.org/doc/html/rfc7636 ; HL7 FHIR R4 Consent — https://hl7.org/fhir/R4/consent.html ; OWASP ASVS v4 (V2, V4) — https://owasp.org/www-project-application-security-verification-standard/

@@ -27,6 +27,7 @@ export const SYSTEMES = {
   sujetCompte: `${CANONIQUE}/identifiant-compte`,
   motifDecision: `${CANONIQUE}/CodeSystem/mbolo-motif-acces`,
   role: `${CANONIQUE}/CodeSystem/mbolo-role`,
+  sousTypeAudit: `${CANONIQUE}/CodeSystem/mbolo-audit`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;
@@ -40,6 +41,10 @@ export const CATEGORIES_CONSENTEMENT = [
   'C-PHOTOS',
 ] as const;
 export type CategorieConsentement = (typeof CATEGORIES_CONSENTEMENT)[number];
+
+/** Conclusions possibles de la revue humaine d'un bris de glace. */
+export const CONCLUSIONS_REVUE = ['justifie', 'injustifie', 'a-approfondir'] as const;
+export type ConclusionRevue = (typeof CONCLUSIONS_REVUE)[number];
 
 export const MODES_RECUEIL = ['texte', 'vocal', 'pictogramme', 'interprete'] as const;
 export type ModeRecueil = (typeof MODES_RECUEIL)[number];

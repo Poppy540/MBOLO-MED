@@ -4,7 +4,7 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 
 ## Données
 
-- **Comptes fictifs uniquement** (`configuration.ts`, marqués `[FICTIF]`) : `patient-fictif-01`, `patient-fictif-02`, `medecin-fictif-01`, `infirmier-fictif-01`, `proche-fictif-01`, `pharmacien-fictif-01`.
+- **Comptes fictifs uniquement** (`configuration.ts`, marqués `[FICTIF]`) : `patient-fictif-01`, `patient-fictif-02`, `medecin-fictif-01`, `infirmier-fictif-01`, `relecteur-fictif-01`, `proche-fictif-01`, `pharmacien-fictif-01`.
 - Recréés à chaque exécution par `preparation-globale.ts`, avec des **mots de passe aléatoires**. Ils sont transmis aux tests par l'environnement du processus et ne sont jamais écrits sur disque.
 - `preparation-globale.ts` crée dans le serveur FHIR les `Patient`, `Practitioner` et `RelatedPerson` fictifs (marqués `fictif`). Il révoque aussi les consentements restés actifs d'une exécution précédente, sans jamais les supprimer.
 - Il active le flag `consentement.proche` pour la seule cohorte de test (`patient-fictif-01`, ciblée par identifiant de compte).
@@ -18,6 +18,7 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 |---|---|
 | `identite/connexion-keycloak.feature` | Connexion réelle par la page Keycloak avec PKCE S256 ; refus sans PKCE ; connexion directe par mot de passe désactivée ; un patient ne peut pas modifier lui-même son `patient_id` (profil utilisateur intégré au royaume) ; le jeton ne contient ni e-mail ni nom |
 | `dossier/passerelle.feature` | Le dossier n'est ouvert qu'avec un jeton de service : 401 sans jeton ou avec le jeton d'un patient ; le service `identite` lit les consentements, mais pas les autres ressources (403), ne peut pas élargir une recherche (`_include`) ni supprimer |
+| `identite/revue-bris-de-glace.feature` | Un bris de glace apparaît dans la liste à revoir du relecteur (`relecteur-fictif-01`, rôle `revue-acces`), puis en sort une fois revu ; un médecin ne peut pas consulter cette liste ; le relecteur n'a aucun accès au dossier |
 | `identite/double-authentification.feature` | Code à usage unique exigé pour infirmier, médecin et pharmacien (configuration imposée à la première connexion) ; aucun code pour un patient. Les codes TOTP sont calculés par `etapes/totp.ts`, avec un secret gardé en mémoire |
 | `identite/acces-dossier.feature` | Refus par défaut ; partage avec un proche refusé hors de la cohorte activée (flag `consentement.proche`) ; consentement enregistré puis révoqué **dans le dossier FHIR** (statut `active` puis `inactive`) ; partage avec un professionnel inconnu du dossier refusé ; accès du patient à son dossier ; partage avec un médecin puis révocation ; proche (diaspora) ; bris de glace motivé (revue humaine demandée) ou non motivé ; pharmacien sans accès clinique ; 403 et 401 (sans jeton, jeton altéré) |
 

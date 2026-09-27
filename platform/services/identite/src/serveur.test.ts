@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { DepotMemoire, ServiceConsentements } from './consentements.js';
 import { ErreurDepot } from './depot-fhir.js';
 import { JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
+import { ServiceRevue } from './revue.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
 import type { Journal } from '@mbolo/journal-securise';
@@ -49,6 +50,7 @@ const app = (journalAcces: JournalAcces = new JournalAccesMemoire()) => {
     consentements: new ServiceConsentements(depot, 'dev', { estActif: async () => true }),
     depot,
     journalAcces,
+    revue: new ServiceRevue(journalAcces, 'dev', 24),
     env: 'dev',
     journal,
   });
@@ -249,6 +251,7 @@ describe('API identité', () => {
       consentements: new ServiceConsentements(depot, 'dev', { estActif: async () => true }),
       depot,
       journalAcces: new JournalAccesMemoire(),
+      revue: new ServiceRevue(new JournalAccesMemoire(), 'dev', 24),
       env: 'dev',
       journal,
     });
@@ -324,6 +327,7 @@ describe('API identité', () => {
         throw new ErreurDepot('Dossier médical indisponible.', 503);
       },
       parPatient: async () => [],
+      parSousType: async () => [],
     };
     const a = app(enPanne);
     const accordable = await a.inject({
