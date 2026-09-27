@@ -1,7 +1,7 @@
 # ADR-0002 — Vidéo WebRTC adaptée au faible débit
 
 - **Date :** 2026-09-26
-- **Statut :** acceptée ; outil (LiveKit ou Jitsi) à choisir — comparaison et recommandation : [ADR-0011](0011-serveur-webrtc.md)
+- **Statut :** acceptée ; outil : **LiveKit** ([ADR-0011](0011-serveur-webrtc.md))
 
 ## Contexte
 Réseau majoritairement 3G/4G, forte variabilité en province, smartphones d'entrée de gamme.

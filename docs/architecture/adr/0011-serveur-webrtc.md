@@ -1,7 +1,7 @@
-# ADR-0011 — Serveur de téléconsultation vidéo : LiveKit ou Jitsi
+# ADR-0011 — Serveur de téléconsultation vidéo : LiveKit
 
 - **Date :** 2026-09-27
-- **Statut :** proposée — **décision du porteur de projet attendue** ; précise l'outil de l'ADR-0002
+- **Statut :** **acceptée — LiveKit** (décision du porteur de projet, 2026-09-27), sous les conditions ci-dessous (prototype, test terrain) ; précise l'outil de l'ADR-0002
 
 ## Contexte
 L'ADR-0002 impose un serveur WebRTC open source de type SFU, avec :
@@ -31,7 +31,7 @@ Deux candidats restent : **LiveKit** et **Jitsi**. La vague 1 (Libreville, méde
 | Hébergement HDS | Auto-hébergeable (OVHcloud) ; offre gérée non HDS à exclure pour les données de santé | Auto-hébergeable (OVHcloud) |
 | Délai pour un premier pilote | Plus long : l'interface est à construire, mais c'est de toute façon prévu pour l'adapter au public | Plus court si l'interface Jitsi est acceptée telle quelle, ce qui cadre mal avec la faible littératie et la charte |
 
-## Recommandation
+## Recommandation (retenue)
 **LiveKit**, pour quatre raisons :
 - **Contrôle d'accès** : les jetons de salle sont émis par nos services, après vérification du rendez-vous et du consentement. C'est le même modèle que la passerelle du dossier.
 - **Faible débit et repli audio** : ils sont pilotés par **notre** application, ce qui permet de les adapter au contexte gabonais.
