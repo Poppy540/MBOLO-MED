@@ -1,7 +1,7 @@
 # ADR-0015 — Stockage chiffré des documents et vérification d'identité
 
 - **Date :** 2026-09-27
-- **Statut :** proposée (à valider par le porteur de projet)
+- **Statut :** acceptée (porteur de projet, 2026-09-27) ; durée de conservation des photos à fixer avec l'avis juridique
 - **Décideurs :** porteur de projet
 
 ## Contexte
@@ -33,13 +33,13 @@ Contraintes :
   - une fuite du compartiment ne révèle rien ;
   - détruire la clé d'un fichier le rend illisible pour toujours (utile pour la suppression).
 
-## Décision proposée
-**Option 1 avec le chiffrement B.**
+## Décision (porteur de projet, 2026-09-27)
+**Option 1 avec le chiffrement B**, écran de vérification dans l'espace professionnel, et installation de `@aws-sdk/client-s3` acceptées.
 
 - **Nouveau service `documents`** :
   - seul détenteur des accès au stockage (`STORAGE_*`, déjà inventoriés) ;
   - il chiffre avant d'écrire et déchiffre à la lecture, avec `node:crypto` (aucune bibliothèque de chiffrement ajoutée) ;
-  - client S3 : `@aws-sdk/client-s3`, **à installer avec votre accord**.
+  - client S3 : `@aws-sdk/client-s3` (installation acceptée).
 - **Métadonnées dans la base des services** (schéma `documents`, ADR-0013) :
   - identifiant, patient (référence opaque), type (`piece-identite`, `acte-naissance`, `visage`), version de la charte acceptée, dates de dépôt et de suppression prévue, clé chiffrée ;
   - jamais l'image ni le nom.
