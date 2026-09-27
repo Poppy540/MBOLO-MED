@@ -80,7 +80,7 @@
 4. Valider le **contenu des vagues** et fixer les seuils chiffrés des critères de passage.
 5. **Fournisseur SMS / WhatsApp** (ADR-0012) et relecture des gabarits de notification.
 6. Désigner la **personne de confiance** qui partage le rôle `gestion-invitations` (ADR-0013).
-7. **ADR-0014** — durée de conservation des photos (document + visage) et texte de la **charte** à accepter avant l'envoi : à valider avec l'avis juridique ; désigner les titulaires du rôle `verification-identite`.
+7. **ADR-0014** — relire avec le juriste le **brouillon de charte** (`docs/securite/charte-verification-identite.md`, v0.1 : base légale, durée de conservation des photos, exclusion de la reconnaissance faciale automatique, mineurs, coordonnées DPO et CNPDCP) ; désigner les titulaires du rôle `verification-identite`.
 8. Activer les **alertes et mises à jour de sécurité Dependabot** dans les réglages du dépôt (Settings → Code security).
 9. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
 

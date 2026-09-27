@@ -84,7 +84,7 @@ Conséquences :
    - durée de conservation ;
    - droits du patient.
 
-   Le texte de la charte est à rédiger et à valider par le porteur de projet et le juriste. Son acceptation est enregistrée (version, date).
+   Brouillon : [`docs/securite/charte-verification-identite.md`](../../securite/charte-verification-identite.md) (v0.1), à valider par le porteur de projet et le juriste. Son acceptation est enregistrée (version, date).
 
 ## Conséquences
 - **Extension Keycloak en Java** :
