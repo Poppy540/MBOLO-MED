@@ -63,6 +63,19 @@ describe('DepotFhir', () => {
     expect(appels[0]?.entetes['authorization']).toBe('Bearer jeton-de-test');
   });
 
+  it('signale en 503 un jeton de service impossible à obtenir, sans appeler le dossier', async () => {
+    const { appels, f } = fauxServeur([]);
+    const depot = new DepotFhir({
+      base: BASE,
+      fetch: f,
+      entetes: async () => {
+        throw new Error('Keycloak injoignable');
+      },
+    });
+    await expect(depot.lire('12')).rejects.toMatchObject({ statut: 503 });
+    expect(appels).toHaveLength(0);
+  });
+
   it('renvoie undefined pour un consentement absent ou supprimé', async () => {
     const { f } = fauxServeur([json(404, {}), json(410, {})]);
     const depot = new DepotFhir({ base: BASE, fetch: f });

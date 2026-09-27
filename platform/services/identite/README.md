@@ -9,6 +9,7 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 | `src/acces.ts` | Point de décision d'accès au dossier d'un patient. **Refus par défaut.** |
 | `src/consentements.ts` | Enregistrer, lister, révoquer un consentement (ressources FHIR `Consent` construites et vérifiées par `@mbolo/dossier-fhir`) |
 | `src/depot-fhir.ts` | Stockage des consentements dans le serveur FHIR du dossier (`FHIR_BASE_URL`) : création, lecture, révocation avec verrou optimiste (`If-Match`), recherche **sans cache** pour qu'une révocation prenne effet immédiatement |
+| `src/jeton-service.ts` | Jeton du compte de service `mbolo-identite-service` (client credentials) pour la passerelle du dossier, renouvelé avant expiration (ADR-0010) |
 | `src/jeton.ts` | Vérification des jetons Keycloak (signature, émetteur, audience, expiration) |
 | `src/serveur.ts` | API HTTP (Fastify) : `/patients/:id/consentements`, `/consentements/:id/revocation`, `/acces/dossier` |
 | `keycloak/realm-mbolo.json` | Royaume « mbolo » : rôles, clients (PKCE), protection contre la force brute, politique de mot de passe |
@@ -45,9 +46,10 @@ Le jeton d'accès des applications ne contient **ni e-mail ni nom** : les porté
 
 ```bash
 pnpm --filter @mbolo/identite test     # accès, consentements, dépôt FHIR, royaume, API (jetons signés par des clés de test)
-KC_BOOTSTRAP_ADMIN_PASSWORD=… docker compose -f platform/services/identite/docker-compose.yml up -d
-docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d   # HAPI FHIR local
-KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:8080/fhir pnpm --filter @mbolo/identite start
+KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… docker compose -f platform/services/identite/docker-compose.yml up -d
+docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d   # HAPI FHIR local (interne)
+KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_AMONT_URL=http://127.0.0.1:8080/fhir pnpm --filter @mbolo/passerelle-fhir start
+KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:3002/fhir IDENTITE_SERVICE_CLIENT_SECRET=… pnpm --filter @mbolo/identite start
 ```
 
 ## Tests de bout en bout
@@ -57,6 +59,7 @@ Le royaume, le profil utilisateur et l'API sont vérifiés avec un vrai Keycloak
 ## Limites (vague 0)
 
 - Les consentements sont stockés dans le serveur FHIR si `FHIR_BASE_URL` est défini, sinon **en mémoire** (développement seulement, avec un avertissement au démarrage).
-- Le service refuse de démarrer en production : l'accès authentifié (SMART on FHIR, client `FHIR_CLIENT_ID_PLATFORM`) au dossier de production n'est pas encore en place. Le dépôt FHIR accepte déjà des en-têtes d'authentification (`entetes`).
+- Le dossier est joint **par la passerelle** (`FHIR_BASE_URL`), avec le jeton du compte de service : permission `system/Consent.crus`, rien d'autre (ADR-0010).
+- Le service refuse de démarrer en production (vague 0).
 - Si le dossier médical est indisponible, l'API répond **503**. Elle ne décide jamais d'un accès sans avoir pu lire les consentements.
 - Comptes de service des agents IA (un client par agent, portée minimale) : avec l'intégration des agents.

@@ -57,6 +57,25 @@ importers:
         specifier: ^0.0.41
         version: 0.0.41
 
+  platform/services/passerelle-fhir:
+    dependencies:
+      '@mbolo/dossier-fhir':
+        specifier: workspace:*
+        version: link:../dossier-fhir
+      '@mbolo/journal-securise':
+        specifier: workspace:*
+        version: link:../../packages/journal-securise
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+    devDependencies:
+      '@types/fhir':
+        specifier: ^0.0.41
+        version: 0.0.41
+
   platform/tests/e2e-playwright:
     devDependencies:
       '@mbolo/dossier-fhir':

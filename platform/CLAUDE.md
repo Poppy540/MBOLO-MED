@@ -12,6 +12,7 @@
 | `apps/backoffice` | Administration interne (rôles habilités, journalisé) | 0–1 |
 | `services/identite` | Keycloak (royaume `mbolo`), vérification des jetons, décision d'accès au dossier, API de consentement stockée dans le dossier FHIR, bris de glace, MFA (ADR-0009) — voir son README | 0 |
 | `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
+| `services/passerelle-fhir` | Seul point d'entrée des services vers le dossier FHIR : jetons de service, permissions SMART, validation des écritures (ADR-0010) — voir son README | 0 |
 | `services/teleconsultation` | Salles WebRTC, jetons courts, repli audio (ADR-0002) | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
@@ -19,7 +20,7 @@
 | `services/feature-flags` | Activation par ville, spécialité, type d'utilisateur (ADR-0003) | 0 |
 | `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |
 | `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`), par domaine (`identite/`…) | 0 |
-| `tests/e2e-playwright` | `@mbolo/e2e` : étapes Playwright (playwright-bdd), comptes fictifs, Keycloak et HAPI FHIR réels — `pnpm e2e`, voir son README | 0 |
+| `tests/e2e-playwright` | `@mbolo/e2e` : étapes Playwright (playwright-bdd), comptes fictifs, Keycloak, HAPI FHIR et passerelle réels — `pnpm e2e`, voir son README | 0 |
 
 ## Règles locales
 - Socle : TypeScript strict, pnpm, ESLint, Prettier, Vitest (ADR-0008). Avant de pousser : `pnpm verifier`.

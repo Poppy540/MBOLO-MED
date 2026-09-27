@@ -23,8 +23,21 @@ RESSOURCES="ig/fsh-generated/resources"
 SORTIE="$CACHE/sortie.txt"
 
 # Lance le validateur officiel ; le rapport complet est écrit dans $SORTIE.
+# Si le serveur de terminologie public (tx.fhir.org) est momentanément injoignable, on réessaie
+# (3 tentatives, attente croissante). On ne désactive jamais la terminologie : un échec persistant
+# reste un échec, avec un message explicite.
 executer_validateur() {
-  java -jar "$JAR" "$@" -version 4.0.1 -ig "$RESSOURCES" -level errors > "$SORTIE" 2>&1 || true
+  local tentative
+  for tentative in 1 2 3; do
+    java -jar "$JAR" "$@" -version 4.0.1 -ig "$RESSOURCES" -level errors > "$SORTIE" 2>&1 || true
+    if ! grep -q "Unable to connect to terminology server" "$SORTIE"; then
+      return 0
+    fi
+    echo "Serveur de terminologie tx.fhir.org injoignable (tentative $tentative/3)."
+    if [ "$tentative" -lt 3 ]; then sleep $((30 * tentative)); fi
+  done
+  echo "ERREUR : tx.fhir.org reste injoignable après 3 tentatives (panne externe, voir https://tx.fhir.org)."
+  exit 1
 }
 
 echo "== Les exemples fictifs doivent être valides"

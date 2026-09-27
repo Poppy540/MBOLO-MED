@@ -47,7 +47,13 @@ export class DepotFhir implements DepotConsentements {
   }
 
   private async appeler(url: string, init: RequestInit = {}): Promise<Response> {
-    const entetes = { accept: TYPE_FHIR, ...(await this.o.entetes?.()), ...init.headers };
+    let authentification: Record<string, string> | undefined;
+    try {
+      authentification = await this.o.entetes?.();
+    } catch {
+      throw new ErreurDepot('Dossier médical indisponible.', 503);
+    }
+    const entetes = { accept: TYPE_FHIR, ...authentification, ...init.headers };
     try {
       return await this.fetch(url, {
         ...init,

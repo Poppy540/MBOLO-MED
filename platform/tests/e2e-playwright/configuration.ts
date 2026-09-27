@@ -5,7 +5,11 @@ export const KEYCLOAK_URL = process.env['KEYCLOAK_URL'] ?? 'http://127.0.0.1:808
 export const ROYAUME = 'mbolo';
 export const EMETTEUR = `${KEYCLOAK_URL}/realms/${ROYAUME}`;
 export const IDENTITE_URL = process.env['IDENTITE_URL'] ?? 'http://127.0.0.1:3001';
-export const FHIR_URL = process.env['FHIR_BASE_URL'] ?? 'http://127.0.0.1:8080/fhir';
+/** Serveur FHIR interne (HAPI) : seuls la passerelle et la préparation des tests y accèdent. */
+export const FHIR_URL = process.env['FHIR_AMONT_URL'] ?? 'http://127.0.0.1:8080/fhir';
+/** Passerelle du dossier : seul point d'entrée des services vers le dossier. */
+export const PASSERELLE_URL = process.env['PASSERELLE_URL'] ?? 'http://127.0.0.1:3002';
+export const CLIENT_SERVICE_IDENTITE = 'mbolo-identite-service';
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
 export const APPLICATIONS = {

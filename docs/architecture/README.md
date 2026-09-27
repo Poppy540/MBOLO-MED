@@ -13,6 +13,7 @@
 | [0007](adr/0007-feature-flags-unleash.md) | Feature flags : Unleash (OpenFeature) | Acceptée |
 | [0008](adr/0008-socle-technique.md) | Socle technique : monorepo TypeScript, pnpm, CI GitHub Actions | Acceptée |
 | [0009](adr/0009-identite-controle-acces.md) | Identité (Keycloak), contrôle d'accès au dossier, consentements, bris de glace | Proposée |
+| [0010](adr/0010-passerelle-dossier.md) | Passerelle du dossier médical, comptes de service, permissions SMART | Proposée |
 
 ## Vue d'ensemble (cible, à détailler)
 

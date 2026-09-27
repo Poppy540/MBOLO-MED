@@ -51,6 +51,7 @@
 
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
+| `FHIR_AMONT_URL` / `PASSERELLE_AUDIENCE` | Passerelle du dossier (ADR-0010) | Plateforme | Adresse interne du serveur FHIR et audience des jetons (pas des secrets) | — | D R P | `mbolo/<env>/fhir/` | — | RS | 0 |
 | `FHIR_BASE_URL` | Serveur FHIR | Plateforme (dossier-fhir, identite) | Adresse du dossier ; `identite` y stocke les consentements (pas un secret, suivie pour cohérence) | — | D R P | `mbolo/<env>/fhir/` | — | RS | 0 |
 | `FHIR_CLIENT_ID_PLATFORM` / `_SECRET_PLATFORM` | Serveur FHIR | Plateforme | Service dossier-fhir | Selon rôle de l'utilisateur authentifié (SMART on FHIR) | D R P | `mbolo/<env>/fhir/` | 90 j | RS | 0 |
 | `FHIR_CLIENT_ID_AGENT01` / `_SECRET_AGENT01` | Serveur FHIR | **Agent 1** | Créer et compléter le dossier du patient en cours d'interaction | Écriture : Patient, Observation, Condition, AllergyIntolerance, Encounter, Consent, QuestionnaireResponse ; **lecture limitée au patient de la session** | D R P | idem | 90 j | RS | 0 (fictif) / 1 |
@@ -63,6 +64,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | `KEYCLOAK_ISSUER` | Keycloak (ADR-0009) | Plateforme | URL de l'émetteur des jetons (pas un secret, suivie pour cohérence) | — | D R P | `mbolo/<env>/identite/` | — | RS | 0 |
 | `IDENTITE_AUDIENCE` | Service identite | Plateforme | Audience attendue dans les jetons | — | D R P | idem | — | RS | 0 |
+| `IDENTITE_SERVICE_CLIENT_SECRET` | Keycloak (ADR-0010) | Plateforme (identite) | Obtenir un jeton de service pour la passerelle du dossier | **Consentements uniquement** (`system/Consent.crus`, jamais de suppression) ; injecté dans le royaume à l'import | D R P | `mbolo/<env>/identite/` | 90 j (réimport ou changement dans la console, puis redémarrage de identite) | RS | 0 |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD` | Keycloak | **Infrastructure uniquement** | Compte d'administration initial | À désactiver après création d'un administrateur nominatif avec MFA | D R P | idem | après chaque usage | RS | 0 |
 
 ## Base de données et stockage
@@ -132,3 +134,4 @@
 | 2026-09-26 | Outils choisis (D-0002) : Infisical, Slack + Grafana OnCall, Unleash ; variables renommées en conséquence | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Ajout de la section Identité (Keycloak, ADR-0009) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | `FHIR_BASE_URL` inventoriée (utilisée aussi par `identite`) | En attente — responsable sécurité à nommer |
+| 2026-09-27 | Compte de service `IDENTITE_SERVICE_CLIENT_SECRET` et variables de la passerelle (ADR-0010) | En attente — responsable sécurité à nommer |
