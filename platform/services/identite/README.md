@@ -9,6 +9,8 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 | `src/acces.ts` | Point de décision d'accès au dossier d'un patient. **Refus par défaut.** |
 | `src/consentements.ts` | Enregistrer, lister, révoquer un consentement (ressources FHIR `Consent` construites et vérifiées par `@mbolo/dossier-fhir`) |
 | `src/depot-fhir.ts` | Stockage des consentements dans le serveur FHIR du dossier (`FHIR_BASE_URL`) : création, lecture, révocation avec verrou optimiste (`If-Match`), recherche **sans cache** pour qu'une révocation prenne effet immédiatement |
+| `src/journal-acces.ts` | Journal des accès au dossier : `AuditEvent` FHIR pour chaque décision, historique consultable par le patient |
+| `src/client-fhir.ts` | Accès HTTP commun au dossier (jeton de service, délai, erreurs, pagination sans cache) |
 | `src/jeton-service.ts` | Jeton du compte de service `mbolo-identite-service` (client credentials) pour la passerelle du dossier, renouvelé avant expiration (ADR-0010) |
 | `src/jeton.ts` | Vérification des jetons Keycloak (signature, émetteur, audience, expiration) |
 | `src/serveur.ts` | API HTTP (Fastify) : `/patients/:id/consentements`, `/consentements/:id/revocation`, `/acces/dossier` |
@@ -27,6 +29,17 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 | Pharmacien, administrateur | Aucun | Les ordonnances passeront par un service dédié |
 
 Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses consentements. Une révocation prend effet immédiatement ; la ressource est conservée (`inactive`) pour la traçabilité.
+
+## Journal des accès (principe n°3)
+
+- **Chaque décision d'accès** (`POST /acces/dossier`), accordée ou refusée, est consignée dans le dossier du patient comme `AuditEvent` FHIR :
+  - identifiant technique du demandeur et ses rôles ;
+  - motif de la décision ;
+  - « urgence » et justification écrite en cas de bris de glace.
+- **Aucun accès n'est accordé sans trace** : si la trace ne peut pas être écrite, la réponse est **503**. Un refus reste un refus, même si sa trace échoue.
+- **Les traces sont immuables** : la passerelle refuse toute modification d'un `AuditEvent`, et aucune suppression n'est possible.
+- **Transparence** : `GET /patients/:id/acces` permet au patient (ou à l'agent de sa session) de voir qui a demandé l'accès à son dossier, quand, avec quel résultat et quel motif. Personne d'autre ne peut lire cet historique.
+- Revue humaine des bris de glace : une interface dédiée aux personnes habilitées reste à faire (qui, sous quel délai : décision du porteur de projet).
 
 ## ⚠️ Sécurité : identifiants FHIR des comptes
 

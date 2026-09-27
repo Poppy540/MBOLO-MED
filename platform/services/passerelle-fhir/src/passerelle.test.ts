@@ -253,4 +253,23 @@ describe('passerelle du dossier', () => {
     expect(tout).not.toContain(jeton);
     expect(tout).not.toContain('v0 [FICTIF]');
   });
+
+  it('une trace (AuditEvent, Provenance) ne peut jamais être modifiée, même avec la permission', async () => {
+    const { app, appels } = passerelle();
+    const jeton = await signer({
+      azp: 'client-de-test',
+      mbolo_scopes: 'system/AuditEvent.cruds system/Provenance.cruds',
+    });
+    const h = { authorization: `Bearer ${jeton}`, 'content-type': 'application/fhir+json' };
+    for (const type of ['AuditEvent', 'Provenance']) {
+      const r = await app.inject({
+        method: 'PUT',
+        url: `/fhir/${type}/1`,
+        headers: h,
+        payload: { resourceType: type, id: '1' },
+      });
+      expect(r.statusCode, type).toBe(403);
+    }
+    expect(appels).toHaveLength(0);
+  });
 });

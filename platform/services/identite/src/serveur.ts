@@ -1,9 +1,14 @@
 // API HTTP du service identité. Toute requête (hors /sante) exige un jeton Keycloak valide.
 // Chaque décision d'accès est journalisée (journal sécurisé : aucune donnée de santé en clair).
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import { CATEGORIES_CONSENTEMENT, MODES_RECUEIL } from '@mbolo/dossier-fhir';
+import {
+  CATEGORIES_CONSENTEMENT,
+  MODES_RECUEIL,
+  evenementAccesDossier,
+  type Environnement,
+} from '@mbolo/dossier-fhir';
 import type { Journal } from '@mbolo/journal-securise';
-import { deciderAccesDossier } from './acces.js';
+import { deciderAccesDossier, peutGererConsentements } from './acces.js';
 import {
   ErreurAcces,
   ErreurFonctionInactive,
@@ -14,13 +19,18 @@ import {
 } from './consentements.js';
 import { ErreurDepot } from './depot-fhir.js';
 import type { VerifierJeton } from './jeton.js';
+import type { JournalAcces } from './journal-acces.js';
 import type { Utilisateur } from './roles.js';
 
 export interface OptionsServeur {
   verifierJeton: VerifierJeton;
   consentements: ServiceConsentements;
   depot: DepotConsentements;
+  /** Journal des accès au dossier (AuditEvent FHIR). */
+  journalAcces: JournalAcces;
+  env: Environnement;
   journal: Journal;
+  maintenant?: () => Date;
 }
 
 class ErreurAuthentification extends Error {}
@@ -116,6 +126,38 @@ export function creerServeur(o: OptionsServeur): FastifyInstance {
     },
   );
 
+  // Transparence : le patient (ou l'agent de sa session) voit qui a demandé l'accès à son dossier.
+  app.get<{ Params: { patientId: string } }>(
+    '/patients/:patientId/acces',
+    {
+      schema: {
+        params: { type: 'object', properties: { patientId: ID }, required: ['patientId'] },
+      },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      if (!peutGererConsentements(u, req.params.patientId)) throw new ErreurAcces('Accès refusé.');
+      const traces = await o.journalAcces.parPatient(req.params.patientId);
+      o.journal.info('historique des accès lu', {
+        sujet: u.sujet,
+        patientId: req.params.patientId,
+      });
+      return {
+        acces: traces.map((t) => ({
+          date: t.recorded,
+          autorise: t.outcome === '0',
+          motif: t.outcomeDesc,
+          roles: (t.agent[0]?.role ?? []).flatMap((r) => (r.coding ?? []).map((c) => c.code)),
+          urgence:
+            t.purposeOfEvent?.some((p) => p.coding?.some((c) => c.code === 'ETREAT')) ?? false,
+          justification: t.entity
+            ?.flatMap((e) => e.detail ?? [])
+            .find((d) => d.type === 'justification-bris-de-glace')?.valueString,
+        })),
+      };
+    },
+  );
+
   app.post<{ Params: { consentementId: string } }>(
     '/consentements/:consentementId/revocation',
     {
@@ -171,6 +213,30 @@ export function creerServeur(o: OptionsServeur): FastifyInstance {
         o.journal.avertissement('ACCÈS BRIS DE GLACE — revue humaine requise', contexte);
       } else {
         o.journal.info('décision d’accès au dossier', contexte);
+      }
+      // Trace dans le dossier du patient. Un accès n'est jamais accordé sans trace : si elle ne peut
+      // pas être écrite, on répond 503. Un refus reste un refus, même sans trace.
+      const trace = evenementAccesDossier({
+        patientId: req.body.patientId,
+        sujet: u.sujet,
+        roles: u.roles,
+        autorise: decision.autorise,
+        motifDecision: decision.motif,
+        ...(decision.motif === 'bris-de-glace' && req.body.brisDeGlace
+          ? { brisDeGlace: { justification: req.body.brisDeGlace.motif } }
+          : {}),
+        source: 'identite',
+        date: (o.maintenant?.() ?? new Date()).toISOString(),
+        env: o.env,
+      });
+      try {
+        await o.journalAcces.consigner(trace);
+      } catch (err) {
+        if (decision.autorise) throw err;
+        o.journal.avertissement('refus d’accès non consigné dans le dossier', {
+          sujet: u.sujet,
+          patientId: req.body.patientId,
+        });
       }
       return decision;
     },

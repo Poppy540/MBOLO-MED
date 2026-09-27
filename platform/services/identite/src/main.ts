@@ -5,6 +5,7 @@ import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { creerJournal } from '@mbolo/journal-securise';
 import { DepotMemoire, ServiceConsentements, type DepotConsentements } from './consentements.js';
 import { DepotFhir } from './depot-fhir.js';
+import { JournalAccesFhir, JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
 import { creerFournisseurJeton } from './jeton-service.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
@@ -32,18 +33,19 @@ if (env === 'prod') {
 }
 
 let depot: DepotConsentements;
+let journalAcces: JournalAcces;
 if (fhir) {
   if (!secretService) {
     journal.erreur('IDENTITE_SERVICE_CLIENT_SECRET manquant : accès au dossier impossible, arrêt.');
     process.exit(1);
   }
-  depot = new DepotFhir({
-    base: fhir,
-    entetes: creerFournisseurJeton({ emetteur, client: clientService, secret: secretService }),
-  });
+  const entetes = creerFournisseurJeton({ emetteur, client: clientService, secret: secretService });
+  depot = new DepotFhir({ base: fhir, entetes });
+  journalAcces = new JournalAccesFhir({ base: fhir, entetes });
   journal.info('consentements enregistrés dans le dossier FHIR (passerelle authentifiée)');
 } else {
   depot = new DepotMemoire();
+  journalAcces = new JournalAccesMemoire();
   journal.avertissement('FHIR_BASE_URL absent : consentements en mémoire (perdus à l’arrêt).');
 }
 // Feature flags (ADR-0007) : sans Unleash, toutes les fonctions nouvelles restent désactivées.
@@ -65,6 +67,8 @@ const app = creerServeur({
   verifierJeton: creerVerificateur({ emetteur, audience }),
   consentements: new ServiceConsentements(depot, env, drapeaux),
   depot,
+  journalAcces,
+  env,
   journal,
 });
 

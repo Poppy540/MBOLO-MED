@@ -36,3 +36,8 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Étant donné que le service identité a obtenu son jeton de service
     Quand le service identité tente de supprimer "Consent/1" du dossier
     Alors le dossier répond avec le statut 404
+
+  Scénario: Une trace d'accès ne peut jamais être modifiée
+    Étant donné que le service identité a obtenu son jeton de service
+    Quand le service identité tente de modifier la trace d'accès "1"
+    Alors le dossier répond avec le statut 403

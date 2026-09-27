@@ -52,11 +52,26 @@ Fonctionnalité: Accès au dossier d'un patient selon ses consentements
     Quand "patient-fictif-01" tente de donner son consentement "C-PARTAGE-PRO" à "Practitioner/prac-inconnu-999"
     Alors le consentement est refusé par le dossier médical
 
-  Scénario: Accès d'urgence (bris de glace) motivé : accordé et signalé pour revue humaine
+  Scénario: Accès d'urgence (bris de glace) motivé : accordé, signalé pour revue humaine et visible du patient
     Étant donné que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" est connecté
     Quand "medecin-fictif-01" demande l'accès au dossier "pat-fictif-001" en urgence avec le motif "Patient inconscient aux urgences [FICTIF]"
     Alors l'accès est accordé avec le motif "bris-de-glace"
     Et une revue humaine est demandée
+    Quand "patient-fictif-01" consulte l'historique des accès au dossier "pat-fictif-001"
+    Alors l'historique contient un accès en urgence justifié par "Patient inconscient aux urgences [FICTIF]"
+
+  Scénario: Les accès refusés sont aussi tracés dans le dossier du patient
+    Étant donné que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-02" est connecté
+    Quand "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
+    Et que "patient-fictif-02" consulte l'historique des accès au dossier "pat-fictif-002"
+    Alors l'historique contient un accès refusé pour le motif "refus-sans-consentement"
+
+  Scénario: Un médecin ne peut pas lire l'historique des accès d'un patient
+    Étant donné que "medecin-fictif-01" est connecté
+    Quand "medecin-fictif-01" consulte l'historique des accès au dossier "pat-fictif-001"
+    Alors la demande est interdite
 
   Scénario: Bris de glace sans motif suffisant : refusé
     Étant donné que "medecin-fictif-01" est connecté

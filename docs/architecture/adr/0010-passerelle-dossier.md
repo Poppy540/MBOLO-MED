@@ -41,6 +41,6 @@ Option 1.
   - authentification des clients par clé asymétrique (`private_key_jwt`, recommandé par SMART Backend Services) au lieu d'un secret partagé ;
   - réseau privé entre la passerelle et HAPI ;
   - TLS de bout en bout ;
-  - journal d'audit FHIR (`AuditEvent`).
+  - ~~journal d'audit FHIR (`AuditEvent`)~~ : fait (PR I). Chaque décision d'accès est tracée par `identite`, et la passerelle rend les traces (`AuditEvent`, `Provenance`) immuables. Reste la trace des accès des futurs services qui liront le dossier.
 
 Sources : SMART App Launch v2 — scopes (https://hl7.org/fhir/smart-app-launch/scopes-and-launch-context.html) ; SMART Backend Services (https://hl7.org/fhir/smart-app-launch/backend-services.html) ; Keycloak — importing a realm, placeholders (https://www.keycloak.org/server/importExport) ; OWASP API Security Top 10 (API1 BOLA, API5 BFLA).
