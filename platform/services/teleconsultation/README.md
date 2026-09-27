@@ -9,6 +9,12 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
   - Le profil **interdit tout motif, pièce jointe ou texte libre** (invariant `mbolo-rdv-1`) et impose **un patient et un professionnel** (`mbolo-rdv-2`).
   - Un professionnel inconnu du dossier est refusé (422).
   - Un rendez-vous dont le statut n'est plus `booked` (annulé dans le dossier) ferme la salle.
+- **Annulation** : `POST /rendez-vous/:id/annulation`, par le patient ou le professionnel du rendez-vous.
+  - Un tiers reçoit un 404, sans apprendre que le rendez-vous existe.
+  - Refusée (409) si le rendez-vous est déjà annulé ou terminé, ou s'il a changé entre-temps (verrou optimiste).
+  - Le rendez-vous est **conservé** dans le dossier (`cancelled`), avec **qui** a annulé (code `patient` ou `professionnel`) et **quand** (extension `date-annulation`). **Aucun motif** n'est demandé ni conservé (invariant `mbolo-rdv-4`).
+  - La salle se ferme aussitôt.
+  - Pas de condition de flag : si la fonction est désactivée, chacun peut encore annuler ses rendez-vous.
 - `GET /rendez-vous` : le patient voit ses rendez-vous, le professionnel les siens (recherche sans cache, chaque résultat revérifié).
 - `POST /rendez-vous/:id/salle` renvoie l'adresse LiveKit et un **jeton de salle** aux conditions suivantes :
   - l'utilisateur est le **patient** ou le **professionnel** de ce rendez-vous. Sinon **404**, sans révéler que le rendez-vous existe ;
@@ -49,18 +55,20 @@ En CI, le binaire LiveKit **1.12.0** est téléchargé depuis les versions GitHu
   - fenêtre horaire ;
   - flag ;
   - contenu du jeton LiveKit (salle, durée, aucun droit d'enregistrement) ;
-  - dépôt FHIR : `Appointment` conforme et sans motif, annulation qui ferme la salle, résultat étranger écarté, refus 422.
+  - dépôt FHIR : `Appointment` conforme et sans motif, annulation qui ferme la salle, résultat étranger écarté, refus 422 ;
+  - annulation : par le patient ou le médecin, refusée à un tiers (404), en double ou après la fin (409), verrou optimiste, possible même flag retiré.
 - **E2E** (`features-gherkin/teleconsultation/visio.feature`) :
   - le patient et le médecin rejoignent la salle depuis **deux navigateurs** (micro simulé) et **s'entendent** ;
   - un autre patient ou un infirmier ne peut pas entrer ;
   - la fonction est refusée hors cohorte ;
   - 401 sans jeton ;
   - le rendez-vous est dans le dossier (sans motif, marqué fictif) et chacun des deux participants le retrouve ;
-  - un professionnel inconnu du dossier est refusé.
+  - un professionnel inconnu du dossier est refusé ;
+  - le patient annule : la salle se ferme et le dossier garde qui et quand ; le médecin annule ; un autre patient ne peut pas.
 
 ## Reste à faire avant la vague 1
 
-- Annulation et report d'un rendez-vous ; créneaux proposés par les professionnels.
+- Report d'un rendez-vous ; créneaux proposés par les professionnels ; notification de l'annulation à l'autre participant.
 - Applications patient et professionnel, avec le **repli audio automatique** quand la qualité baisse.
 - TURN et hébergement HDS, au plus près du Gabon.
 - **Test terrain** en 3G/4G, avec des seuils à fixer par le porteur de projet.

@@ -91,5 +91,18 @@ export function creerServeur(o: {
     },
   );
 
+  app.post<{ Params: { id: string } }>(
+    '/rendez-vous/:id/annulation',
+    {
+      schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const r = await o.service.annuler(u, req.params.id);
+      o.journal.info('rendez-vous annulé', { sujet: u.sujet, rendezVousId: r.id });
+      return r;
+    },
+  );
+
   return app;
 }

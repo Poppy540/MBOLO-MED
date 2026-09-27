@@ -93,3 +93,31 @@ describe('DepotRendezVousFhir', () => {
     ).rejects.toMatchObject({ statut: 422, message: 'Rendez-vous refusé par le dossier médical.' });
   });
 });
+
+describe('DepotRendezVousFhir — annulation', () => {
+  it('annule avec verrou optimiste : auteur codé, date, aucun motif', async () => {
+    const lu = { ...rdv(), meta: { versionId: '3' } };
+    const s = fauxServeur([json(lu), json({ ...lu, status: 'cancelled' })]);
+    const depot = new DepotRendezVousFhir({ base: BASE, fetch: s.fetch }, 'dev');
+    await depot.annuler('rdv-fictif-1', 'patient', '2026-09-30T17:00:00.000Z');
+    const put = s.requetes[1];
+    expect(put?.init.method).toBe('PUT');
+    expect((put?.init.headers as Record<string, string>)['if-match']).toBe('W/"3"');
+    const envoye = JSON.parse(String(put?.init.body)) as Appointment;
+    expect(envoye.status).toBe('cancelled');
+    expect(envoye.cancelationReason).toEqual({
+      coding: [
+        { system: 'https://mbolo-sante.example/fhir/CodeSystem/mbolo-annulation', code: 'patient' },
+      ],
+    });
+    expect(envoye.extension?.[0]?.valueDateTime).toBe('2026-09-30T17:00:00.000Z');
+  });
+
+  it('une modification concurrente est refusée (409)', async () => {
+    const s = fauxServeur([json({ ...rdv(), meta: { versionId: '3' } }), json({}, 412)]);
+    const depot = new DepotRendezVousFhir({ base: BASE, fetch: s.fetch }, 'dev');
+    await expect(
+      depot.annuler('rdv-fictif-1', 'professionnel', '2026-09-30T17:00:00.000Z'),
+    ).rejects.toMatchObject({ statut: 409 });
+  });
+});

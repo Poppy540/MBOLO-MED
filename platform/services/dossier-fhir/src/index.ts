@@ -1,5 +1,6 @@
 export * from './constantes.js';
 export {
+  annulerRendezVous,
   conditionDeclaree,
   consentement,
   evenementAccesDossier,

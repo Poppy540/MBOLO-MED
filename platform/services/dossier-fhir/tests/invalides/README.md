@@ -9,3 +9,4 @@ Chacune viole une règle des profils Mbolo Santé. Le script `scripts/valider-ig
 | `consent-categorie-inconnue.json` | catégorie hors du jeu de valeurs Mbolo (consentement groupé interdit) | `TOUT-ACCEPTER` |
 | `consent-proche-sans-beneficiaire.json` | `mbolo-consent-1` : consentement de partage sans bénéficiaire désigné | `mbolo-consent-1` |
 | `rendez-vous-avec-motif.json` | `mbolo-rdv-1` : motif médical dans un rendez-vous (minimisation) | `mbolo-rdv-1` |
+| `rendez-vous-annule-sans-auteur.json` | `mbolo-rdv-4` : annulation avec un motif en texte libre, sans auteur codé ni date | `mbolo-rdv-4` |

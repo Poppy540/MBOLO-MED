@@ -3,6 +3,8 @@
 // enregistrerait un diagnostic confirmé).
 import type { Appointment, AuditEvent, Condition, Consent, Provenance } from 'fhir/r4.js';
 import {
+  type AuteurAnnulation,
+  EXTENSION_DATE_ANNULATION,
   EXTENSION_MODE_RECUEIL,
   type ConclusionRevue,
   MARQUEUR_FICTIF,
@@ -258,5 +260,29 @@ export function rendezVousVideo(o: OptionsRendezVous): Appointment {
       { actor: { reference: `Patient/${o.patientId}` }, status: 'accepted' },
       { actor: { reference: `Practitioner/${o.praticienId}` }, status: 'accepted' },
     ],
+  };
+}
+
+/**
+ * Annulation : le rendez-vous est conservé (statut « cancelled »), avec qui l'a annulé (code) et
+ * quand (extension date-annulation). La salle se ferme. Jamais de motif (invariant mbolo-rdv-4).
+ */
+export function annulerRendezVous(
+  a: Appointment,
+  par: AuteurAnnulation,
+  date: string,
+): Appointment {
+  const prefixe = par === 'patient' ? 'Patient/' : 'Practitioner/';
+  return {
+    ...a,
+    extension: [
+      ...(a.extension ?? []).filter((e) => e.url !== EXTENSION_DATE_ANNULATION),
+      { url: EXTENSION_DATE_ANNULATION, valueDateTime: date },
+    ],
+    status: 'cancelled',
+    cancelationReason: { coding: [{ system: SYSTEMES.annulation, code: par }] },
+    participant: a.participant.map((p) =>
+      p.actor?.reference?.startsWith(prefixe) ? { ...p, status: 'declined' } : p,
+    ),
   };
 }

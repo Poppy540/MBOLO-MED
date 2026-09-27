@@ -178,3 +178,47 @@ Given("aucun jeton n'est présenté au service de téléconsultation", async ({ 
 Then('le service de téléconsultation exige une authentification', ({ monde }) => {
   expect(monde.reponse?.statut).toBe(401);
 });
+
+When('{string} annule ce rendez-vous', async ({ monde }, identifiant: string) => {
+  await appeler(
+    monde,
+    'POST',
+    `/rendez-vous/${monde.rendezVousId ?? ''}/annulation`,
+    monde.jetons.get(identifiant),
+  );
+});
+
+Then('le rendez-vous est annulé', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  expect(monde.reponse?.corps['statut']).toBe('annule');
+});
+
+Then("l'annulation est refusée car le rendez-vous est introuvable", ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(404);
+});
+
+Then('la salle est fermée pour ce rendez-vous', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(409);
+  expect(monde.reponse?.corps['jeton']).toBeUndefined();
+});
+
+// Lecture directe du serveur FHIR de test : le rendez-vous est conservé, avec qui a annulé et quand.
+Then(
+  'le dossier médical conserve ce rendez-vous annulé par {string}, sans motif',
+  async ({ monde }, auteur: string) => {
+    const r = await fetch(`${FHIR_URL}/Appointment/${monde.rendezVousId ?? ''}`, {
+      headers: { accept: 'application/fhir+json', 'cache-control': 'no-cache' },
+    });
+    expect(r.status).toBe(200);
+    const a = (await r.json()) as {
+      status: string;
+      cancelationReason?: { text?: string; coding?: { code?: string }[] };
+      extension?: { url: string; valueDateTime?: string }[];
+    };
+    expect(a.status).toBe('cancelled');
+    expect(a.cancelationReason?.coding?.[0]?.code).toBe(auteur);
+    expect(a.cancelationReason?.text).toBeUndefined();
+    const date = a.extension?.find((e) => e.url.endsWith('/date-annulation'))?.valueDateTime;
+    expect(Date.now() - new Date(date ?? 0).getTime()).toBeLessThan(5 * 60_000);
+  },
+);

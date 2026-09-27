@@ -143,3 +143,59 @@ describe('téléconsultation', () => {
     await expect(service.mesRendezVous(pharmacien)).rejects.toMatchObject({ statut: 403 });
   });
 });
+
+describe('annulation', () => {
+  const prevu = async (maintenant: string, actif = true) => {
+    const s = salles();
+    const depot = new DepotRendezVousMemoire();
+    // Rendez-vous créé pendant que la fonction est active ; `actif` règle le flag ensuite.
+    const r = await new ServiceTeleconsultation(
+      depot,
+      s.f,
+      { estActif: async () => true },
+      a(maintenant),
+    ).demander(patient, { praticienId: 'prac-fictif-001', debut: DEBUT, dureeMinutes: 20 });
+    const service = new ServiceTeleconsultation(
+      depot,
+      s.f,
+      { estActif: async () => actif },
+      a(maintenant),
+    );
+    return { service, r, s };
+  };
+
+  it('le patient annule : qui et quand sont conservés, la salle est fermée', async () => {
+    const { service, r, s } = await prevu('2026-09-27T09:00:00Z');
+    const annule = await service.annuler(patient, r.id);
+    expect(annule).toMatchObject({
+      statut: 'annule',
+      annulation: { par: 'patient', date: '2026-09-27T09:00:00.000Z' },
+    });
+    await expect(service.rejoindre(medecin, r.id)).rejects.toMatchObject({ statut: 409 });
+    expect(s.jetons).toEqual([]);
+  });
+
+  it('le médecin du rendez-vous peut annuler ; une seconde annulation est refusée', async () => {
+    const { service, r } = await prevu('2026-09-27T09:00:00Z');
+    expect((await service.annuler(medecin, r.id)).annulation?.par).toBe('professionnel');
+    await expect(service.annuler(patient, r.id)).rejects.toMatchObject({ statut: 409 });
+  });
+
+  it('un tiers ne peut pas annuler, sans apprendre que le rendez-vous existe', async () => {
+    const { service, r } = await prevu('2026-09-27T09:00:00Z');
+    for (const u of [autrePatient, autreMedecin, pharmacien]) {
+      const e = await service.annuler(u, r.id).catch((x: unknown) => x);
+      expect(e).toBeInstanceOf(ErreurTeleconsultation);
+      expect(e).toMatchObject({ statut: 404, message: 'Rendez-vous introuvable.' });
+    }
+  });
+
+  it('un rendez-vous passé ne s’annule plus ; l’annulation reste possible si le flag est retiré', async () => {
+    const passe = await prevu('2026-09-27T11:00:00Z');
+    await expect(passe.service.annuler(patient, passe.r.id)).rejects.toMatchObject({
+      statut: 409,
+    });
+    const sansFlag = await prevu('2026-09-27T09:00:00Z', false);
+    expect((await sansFlag.service.annuler(patient, sansFlag.r.id)).statut).toBe('annule');
+  });
+});

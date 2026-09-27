@@ -2,7 +2,14 @@
 // via la passerelle (ADR-0010) avec un jeton de service limité à system/Appointment.crus.
 // Un rendez-vous ne contient ni motif ni texte libre (invariant mbolo-rdv-1). Rien n'est journalisé ici.
 import type { Appointment, FhirResource } from 'fhir/r4.js';
-import { rendezVousVideo, type Environnement } from '@mbolo/dossier-fhir';
+import {
+  annulerRendezVous,
+  type AuteurAnnulation,
+  AUTEURS_ANNULATION,
+  EXTENSION_DATE_ANNULATION,
+  rendezVousVideo,
+  type Environnement,
+} from '@mbolo/dossier-fhir';
 import { ClientFhir, ErreurDepot, TYPE_FHIR, type OptionsDepotFhir } from '@mbolo/identite';
 import type { DepotRendezVous, RendezVous } from './rendez-vous.js';
 
@@ -19,6 +26,15 @@ export function versRendezVous(a: Appointment): RendezVous {
   if (!a.id || !patientId || !praticienId || !a.start || !a.minutesDuration) {
     throw new ErreurDepot('Réponse inattendue du dossier médical.', 503);
   }
+  const par = a.cancelationReason?.coding?.[0]?.code;
+  const date = a.extension?.find((e) => e.url === EXTENSION_DATE_ANNULATION)?.valueDateTime;
+  const annulation =
+    a.status === 'cancelled' &&
+    par &&
+    date &&
+    (AUTEURS_ANNULATION as readonly string[]).includes(par)
+      ? { annulation: { par: par as AuteurAnnulation, date } }
+      : {};
   return {
     id: a.id,
     patientId,
@@ -26,6 +42,7 @@ export function versRendezVous(a: Appointment): RendezVous {
     debut: new Date(a.start).toISOString(),
     dureeMinutes: a.minutesDuration,
     statut: a.status === 'booked' ? 'prevu' : 'annule',
+    ...annulation,
   };
 }
 
@@ -66,9 +83,35 @@ export class DepotRendezVousFhir extends ClientFhir implements DepotRendezVous {
     return versRendezVous(DepotRendezVousFhir.appointment(await reponse.json()));
   }
 
-  async lire(id: string): Promise<RendezVous | undefined> {
-    const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(id)}`);
+  private async lireAppointment(id: string): Promise<Appointment | undefined> {
+    const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(id)}`, {
+      headers: { 'cache-control': 'no-cache' },
+    });
     if (r.status === 404 || r.status === 410) return undefined;
+    if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
+    return DepotRendezVousFhir.appointment(await r.json());
+  }
+
+  async lire(id: string): Promise<RendezVous | undefined> {
+    const a = await this.lireAppointment(id);
+    return a ? versRendezVous(a) : undefined;
+  }
+
+  /** Mise à jour avec verrou optimiste : refusée (409) si le rendez-vous a changé depuis sa lecture. */
+  async annuler(id: string, par: AuteurAnnulation, date: string): Promise<RendezVous> {
+    const a = await this.lireAppointment(id);
+    if (!a?.id) throw new ErreurDepot('Rendez-vous introuvable dans le dossier médical.', 409);
+    const version = a.meta?.versionId;
+    const annule = annulerRendezVous(a, par, date);
+    const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(a.id)}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': TYPE_FHIR,
+        prefer: 'return=representation',
+        ...(version ? { 'if-match': `W/"${version}"` } : {}),
+      },
+      body: JSON.stringify(annule),
+    });
     if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
     return versRendezVous(DepotRendezVousFhir.appointment(await r.json()));
   }

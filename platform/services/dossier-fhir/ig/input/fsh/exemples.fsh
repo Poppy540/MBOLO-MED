@@ -74,3 +74,20 @@ Usage: #example
 * participant[0].status = #accepted
 * participant[1].actor = Reference(fictif-praticien-0001)
 * participant[1].status = #accepted
+
+Instance: fictif-rendez-vous-annule-0001
+InstanceOf: MboloRendezVous
+Title: "[FICTIF] Téléconsultation annulée par la patiente"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* extension[dateAnnulation].valueDateTime = "2026-09-30T18:00:00+01:00"
+* status = #cancelled
+* cancelationReason = MboloAnnulationCS#patient
+* serviceType = MboloModeConsultationCS#video
+* start = "2026-10-01T09:00:00+01:00"
+* end = "2026-10-01T09:20:00+01:00"
+* minutesDuration = 20
+* participant[0].actor = Reference(fictif-patient-0001)
+* participant[0].status = #declined
+* participant[1].actor = Reference(fictif-praticien-0001)
+* participant[1].status = #accepted

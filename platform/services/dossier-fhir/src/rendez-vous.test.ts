@@ -1,6 +1,6 @@
 import type { Appointment } from 'fhir/r4.js';
 import { describe, expect, it } from 'vitest';
-import { rendezVousVideo } from './construire.js';
+import { annulerRendezVous, rendezVousVideo } from './construire.js';
 import { valider, verifierAppointment } from './regles.js';
 
 // Toutes les données sont FICTIVES.
@@ -47,5 +47,30 @@ describe('Appointment — rendez-vous de téléconsultation', () => {
   it('refuse une fin antérieure au début (mbolo-rdv-3)', () => {
     const a: Appointment = { ...rdv(), end: '2026-10-01T07:00:00Z' };
     expect(regles(verifierAppointment(a))).toContain('mbolo-rdv-3');
+  });
+});
+
+describe('Appointment — annulation (mbolo-rdv-4)', () => {
+  it('annule en gardant le rendez-vous : auteur codé, date, participant qui décline', () => {
+    const a = annulerRendezVous(rdv(), 'patient', '2026-09-30T17:00:00Z');
+    expect(valider(a, 'dev')).toEqual([]);
+    expect(a.status).toBe('cancelled');
+    expect(a.cancelationReason?.coding?.[0]?.code).toBe('patient');
+    expect(a.participant.find((p) => p.actor?.reference?.startsWith('Patient/'))?.status).toBe(
+      'declined',
+    );
+  });
+
+  it('refuse une annulation avec un motif libre ou sans date', () => {
+    const libre: Appointment = {
+      ...annulerRendezVous(rdv(), 'professionnel', '2026-09-30T17:00:00Z'),
+      cancelationReason: { text: '[FICTIF] motif libre' },
+    };
+    expect(regles(verifierAppointment(libre))).toContain('mbolo-rdv-4');
+    const sansDate: Appointment = {
+      ...annulerRendezVous(rdv(), 'patient', '2026-09-30T17:00:00Z'),
+      extension: [],
+    };
+    expect(regles(verifierAppointment(sansDate))).toContain('mbolo-rdv-4');
   });
 });

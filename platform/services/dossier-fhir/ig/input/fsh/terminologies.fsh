@@ -67,3 +67,21 @@ Description: "Tous les modes de consultation Mbolo Santé."
 * ^status = #draft
 * ^experimental = true
 * include codes from system MboloModeConsultationCS
+
+CodeSystem: MboloAnnulationCS
+Id: mbolo-annulation
+Title: "Auteur de l'annulation d'un rendez-vous"
+Description: "Qui a annulé le rendez-vous. Jamais de motif en texte libre (minimisation)."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #patient "Annulé par le patient" "Le patient a annulé le rendez-vous."
+* #professionnel "Annulé par le professionnel" "Le professionnel de santé a annulé le rendez-vous."
+
+ValueSet: MboloAnnulationVS
+Id: mbolo-annulation
+Title: "Auteurs d'annulation d'un rendez-vous"
+Description: "Tous les auteurs possibles d'une annulation."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloAnnulationCS

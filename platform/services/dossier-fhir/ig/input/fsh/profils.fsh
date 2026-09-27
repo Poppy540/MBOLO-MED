@@ -88,6 +88,11 @@ Description: "La fin d'un rendez-vous est postérieure à son début."
 Expression: "end > start"
 Severity: #error
 
+Invariant: mbolo-rdv-4
+Description: "Un rendez-vous annulé indique qui l'a annulé (code, sans texte libre) et quand."
+Expression: "status = 'cancelled' implies (cancelationReason.coding.exists() and cancelationReason.text.empty() and extension.where(url = 'https://mbolo-sante.example/fhir/StructureDefinition/date-annulation').exists())"
+Severity: #error
+
 Profile: MboloRendezVous
 Parent: Appointment
 Id: mbolo-rendez-vous
@@ -95,7 +100,10 @@ Title: "Rendez-vous de téléconsultation Mbolo Santé"
 Description: "Rendez-vous entre un patient et un professionnel de santé (ADR-0011), sans motif médical (minimisation)."
 * ^status = #draft
 * ^experimental = true
-* obeys mbolo-rdv-1 and mbolo-rdv-2 and mbolo-rdv-3
+* obeys mbolo-rdv-1 and mbolo-rdv-2 and mbolo-rdv-3 and mbolo-rdv-4
+* extension contains DateAnnulation named dateAnnulation 0..1 MS
+* cancelationReason MS
+* cancelationReason from MboloAnnulationVS (required)
 * status MS
 * serviceType 1..1 MS
 * serviceType from MboloModeConsultationVS (required)

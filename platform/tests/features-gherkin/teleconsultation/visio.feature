@@ -48,3 +48,24 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
   Scénario: Le service exige une authentification
     Étant donné qu'aucun jeton n'est présenté au service de téléconsultation
     Alors le service de téléconsultation exige une authentification
+
+  Scénario: Le patient annule son rendez-vous : la salle se ferme et le dossier garde la trace
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "patient-fictif-01" annule ce rendez-vous
+    Alors le rendez-vous est annulé
+    Et le dossier médical conserve ce rendez-vous annulé par "patient", sans motif
+    Quand "medecin-fictif-01" demande à entrer dans la salle de ce rendez-vous
+    Alors la salle est fermée pour ce rendez-vous
+
+  Scénario: Le médecin annule le rendez-vous ; personne d'autre ne le peut
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "patient-fictif-02" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que "patient-fictif-02" annule ce rendez-vous
+    Alors l'annulation est refusée car le rendez-vous est introuvable
+    Quand "medecin-fictif-01" annule ce rendez-vous
+    Alors le rendez-vous est annulé
+    Et le dossier médical conserve ce rendez-vous annulé par "professionnel", sans motif

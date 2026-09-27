@@ -12,7 +12,9 @@ import type {
   Reference,
 } from 'fhir/r4.js';
 import {
+  AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
+  EXTENSION_DATE_ANNULATION,
   CATEGORIES_CONSENTEMENT,
   MARQUEUR_FICTIF,
   SYSTEMES,
@@ -134,6 +136,22 @@ export function verifierAppointment(a: Appointment): Violation[] {
       regle: 'mbolo-rdv-2',
       message: 'Exactement un patient et un professionnel de santé.',
     });
+  }
+  if (a.status === 'cancelled') {
+    const auteur = a.cancelationReason?.coding ?? [];
+    const valide =
+      auteur.length === 1 &&
+      auteur[0]?.system === SYSTEMES.annulation &&
+      (AUTEURS_ANNULATION as readonly string[]).includes(auteur[0].code ?? '');
+    const date = (a.extension ?? []).some(
+      (e) => e.url === EXTENSION_DATE_ANNULATION && !!e.valueDateTime,
+    );
+    if (!valide || a.cancelationReason?.text || !date) {
+      v.push({
+        regle: 'mbolo-rdv-4',
+        message: 'Une annulation indique qui a annulé (code, sans texte libre) et quand.',
+      });
+    }
   }
   const codes = (a.serviceType ?? []).flatMap((s) => s.coding ?? []);
   if (codes.length !== 1 || codes[0]?.system !== SYSTEMES.modeConsultation) {
