@@ -2,6 +2,7 @@ import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWK } from
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DepotMemoire, ServiceConsentements } from './consentements.js';
 import { ErreurDepot } from './depot-fhir.js';
+import { JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
 import type { Journal } from '@mbolo/journal-securise';
@@ -37,7 +38,7 @@ beforeAll(async () => {
       .sign(privateKey);
 });
 
-const app = () => {
+const app = (journalAcces: JournalAcces = new JournalAccesMemoire()) => {
   const depot = new DepotMemoire();
   return creerServeur({
     verifierJeton: creerVerificateur({
@@ -47,6 +48,8 @@ const app = () => {
     }),
     consentements: new ServiceConsentements(depot, 'dev', { estActif: async () => true }),
     depot,
+    journalAcces,
+    env: 'dev',
     journal,
   });
 };
@@ -245,6 +248,8 @@ describe('API identité', () => {
       }),
       consentements: new ServiceConsentements(depot, 'dev', { estActif: async () => true }),
       depot,
+      journalAcces: new JournalAccesMemoire(),
+      env: 'dev',
       journal,
     });
     const entetes = { authorization: `Bearer ${await jetonPatient()}` };
@@ -265,5 +270,76 @@ describe('API identité', () => {
     // Sans dossier consultable, pas de décision d'accès : on refuse de répondre plutôt que d'accorder.
     expect(acces.statusCode).toBe(503);
     expect(lignes.some((l) => l.niveau === 'erreur')).toBe(true);
+  });
+
+  it('trace chaque décision dans le dossier ; le patient voit l’historique, le médecin non', async () => {
+    const journalAcces = new JournalAccesMemoire();
+    const a = app(journalAcces);
+    const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
+    const patient = { authorization: `Bearer ${await jetonPatient()}` };
+    const refus = await a.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: medecin,
+      payload: { patientId: 'fictif-patient-0001' },
+    });
+    expect(refus.json()).toMatchObject({ autorise: false });
+    const urgence = await a.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: medecin,
+      payload: {
+        patientId: 'fictif-patient-0001',
+        brisDeGlace: { motif: 'Patient inconscient aux urgences [FICTIF]' },
+      },
+    });
+    expect(urgence.json()).toMatchObject({ autorise: true, motif: 'bris-de-glace' });
+    expect(journalAcces.traces.map((t) => t.outcome)).toEqual(['4', '0']);
+
+    const historique = await a.inject({
+      method: 'GET',
+      url: '/patients/fictif-patient-0001/acces',
+      headers: patient,
+    });
+    expect(historique.statusCode).toBe(200);
+    const { acces } = historique.json<{ acces: Record<string, unknown>[] }>();
+    expect(acces).toHaveLength(2);
+    expect(acces.find((x) => x['urgence'])).toMatchObject({
+      autorise: true,
+      motif: 'bris-de-glace',
+      roles: ['professionnel'],
+      justification: 'Patient inconscient aux urgences [FICTIF]',
+    });
+    const parMedecin = await a.inject({
+      method: 'GET',
+      url: '/patients/fictif-patient-0001/acces',
+      headers: medecin,
+    });
+    expect(parMedecin.statusCode).toBe(403);
+  });
+
+  it('aucun accès accordé sans trace : 503 si le journal est indisponible ; un refus reste un refus', async () => {
+    const enPanne: JournalAcces = {
+      consigner: async () => {
+        throw new ErreurDepot('Dossier médical indisponible.', 503);
+      },
+      parPatient: async () => [],
+    };
+    const a = app(enPanne);
+    const accordable = await a.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: { authorization: `Bearer ${await jetonPatient()}` },
+      payload: { patientId: 'fictif-patient-0001' },
+    });
+    expect(accordable.statusCode).toBe(503);
+    const refus = await a.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: { authorization: `Bearer ${await jetonMedecin()}` },
+      payload: { patientId: 'fictif-patient-0001' },
+    });
+    expect(refus.statusCode).toBe(200);
+    expect(refus.json()).toMatchObject({ autorise: false });
   });
 });

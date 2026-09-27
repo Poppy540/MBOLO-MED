@@ -22,6 +22,11 @@ export const SYSTEMES = {
   actReason: 'http://terminology.hl7.org/CodeSystem/v3-ActReason',
   provenanceType: 'http://terminology.hl7.org/CodeSystem/provenance-participant-type',
   participationType: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
+  auditType: 'http://dicom.nema.org/resources/ontology/DCM',
+  auditEntiteType: 'http://terminology.hl7.org/CodeSystem/audit-entity-type',
+  sujetCompte: `${CANONIQUE}/identifiant-compte`,
+  motifDecision: `${CANONIQUE}/CodeSystem/mbolo-motif-acces`,
+  role: `${CANONIQUE}/CodeSystem/mbolo-role`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;

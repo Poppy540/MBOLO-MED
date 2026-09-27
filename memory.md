@@ -19,8 +19,9 @@
 - **Durcissement identité :** PR E fusionnée ([PR n°6](https://github.com/Poppy540/MBOLO-MED/pull/6)) — MFA OTP obligatoire pour les rôles professionnels, jeton sans e-mail ni nom, profil intégré au royaume.
 - **PR F fusionnée** ([PR n°7](https://github.com/Poppy540/MBOLO-MED/pull/7)) : consentements stockés dans HAPI FHIR (`DepotFhir`, recherche sans cache, verrou optimiste).
 - **PR G fusionnée** ([PR n°8](https://github.com/Poppy540/MBOLO-MED/pull/8)) : passerelle du dossier `passerelle-fhir` (ADR-0010, proposée), jetons de service, permissions SMART (`mbolo_scopes`).
-- **PR H en cours :** feature flags `@mbolo/drapeaux` (OpenFeature + Unleash 7, catalogue désactivé par défaut, registre `docs/deploiement/flags.md`) ; premier flag branché `consentement.proche` ; Unleash en CI ; 28 scénarios e2e.
-- **Protection de `main` à vérifier** : les PR E et F ont été fusionnées avant la fin de la CI (contrôles obligatoires non appliqués ou contournés par l'administrateur).
+- **PR H fusionnée** ([PR n°9](https://github.com/Poppy540/MBOLO-MED/pull/9)) : feature flags `@mbolo/drapeaux` (OpenFeature + Unleash 7), registre `docs/deploiement/flags.md`, flag `consentement.proche`.
+- **PR I en cours :** journal des accès au dossier — `AuditEvent` FHIR pour chaque décision (aucun accès sans trace), traces immuables (passerelle), historique visible par le patient (`GET /patients/:id/acces`) ; modèle de menaces mis à jour ; 31 scénarios e2e.
+- **Protection de `main` à vérifier** : les PR E, F et H ont été fusionnées avant la fin de la CI (contrôles obligatoires non appliqués ou contournés par l'administrateur).
 - **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub, HAPI depuis la couche de l'image Docker Hub (`app/main.war`, Java 21) ; Unleash 7 via npm sur un Postgres 16 local (port 5433) ; pas de démon Docker ; script de relance dans le dossier de travail.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 

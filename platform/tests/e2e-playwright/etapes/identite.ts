@@ -316,3 +316,37 @@ When(
 Then('la demande est interdite', ({ monde }) => {
   expect(monde.reponse?.statut).toBe(403);
 });
+
+// ── Journal des accès (AuditEvent) ───────────────────────────────────────────
+
+When(
+  "{string} consulte l'historique des accès au dossier {string}",
+  async ({ monde }, identifiant: string, dossier: string) => {
+    await appeler(monde, 'GET', `/patients/${dossier}/acces`, {
+      jeton: jeton(monde, identifiant),
+    });
+  },
+);
+
+Then(
+  "l'historique contient un accès en urgence justifié par {string}",
+  ({ monde }, justification: string) => {
+    expect(monde.reponse?.statut).toBe(200);
+    const acces = (monde.reponse?.corps['acces'] ?? []) as Record<string, unknown>[];
+    expect(acces).toContainEqual(
+      expect.objectContaining({
+        urgence: true,
+        autorise: true,
+        motif: 'bris-de-glace',
+        roles: ['professionnel'],
+        justification,
+      }),
+    );
+  },
+);
+
+Then("l'historique contient un accès refusé pour le motif {string}", ({ monde }, motif: string) => {
+  expect(monde.reponse?.statut).toBe(200);
+  const acces = (monde.reponse?.corps['acces'] ?? []) as Record<string, unknown>[];
+  expect(acces).toContainEqual(expect.objectContaining({ autorise: false, motif }));
+});

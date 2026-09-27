@@ -78,10 +78,11 @@ describe('royaume mbolo', () => {
         'included.client.audience'
       ],
     ).toBe('mbolo-dossier-fhir');
-    // Consentements seulement : créer, lire, mettre à jour, rechercher ; jamais supprimer.
+    // Consentements (créer, lire, mettre à jour, rechercher) et journal des accès (créer, rechercher
+    // seulement : une trace ne se modifie pas) ; jamais de suppression.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Consent.crus');
+    ).toBe('system/Consent.crus system/AuditEvent.cs');
   });
 
   it('aucun client ne contient de secret en clair', () => {

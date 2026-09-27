@@ -1,7 +1,7 @@
 // Constructeurs de ressources conformes aux profils Mbolo Santé.
 // Ils rendent impossible, par construction, les écarts les plus graves (ex. un agent IA qui
 // enregistrerait un diagnostic confirmé).
-import type { Condition, Consent, Provenance } from 'fhir/r4.js';
+import type { AuditEvent, Condition, Consent, Provenance } from 'fhir/r4.js';
 import {
   EXTENSION_MODE_RECUEIL,
   MARQUEUR_FICTIF,
@@ -113,6 +113,70 @@ export function provenanceAgent(o: OptionsProvenanceAgent): Provenance {
       {
         type: { coding: [{ system: SYSTEMES.provenanceType, code: 'author' }] },
         who: { display: o.agent },
+      },
+    ],
+  };
+}
+
+export interface OptionsEvenementAcces {
+  patientId: string;
+  /** Identifiant technique du compte qui demande l'accès (sujet Keycloak), jamais un nom. */
+  sujet: string;
+  roles: readonly string[];
+  autorise: boolean;
+  /** Motif de la décision (ex. consentement-partage-pro, refus-par-defaut, bris-de-glace). */
+  motifDecision: string;
+  /** Accès d'urgence : justification écrite du professionnel, pour la revue humaine. */
+  brisDeGlace?: { justification: string };
+  /** Service qui a pris la décision (ex. identite). */
+  source: string;
+  date: string;
+  env: Environnement;
+}
+
+/**
+ * Trace d'une demande d'accès au dossier d'un patient (principe n°3 : journalisation des accès).
+ * Enregistrée pour chaque décision, accordée ou refusée ; jamais modifiée ni supprimée.
+ */
+export function evenementAccesDossier(o: OptionsEvenementAcces): AuditEvent {
+  return {
+    resourceType: 'AuditEvent',
+    ...(o.env === 'prod' ? {} : { meta: { tag: [MARQUEUR_FICTIF] } }),
+    type: { system: SYSTEMES.auditType, code: '110110', display: 'Patient Record' },
+    action: 'R',
+    recorded: o.date,
+    // 0 : succès (accès accordé) ; 4 : échec mineur (accès refusé).
+    outcome: o.autorise ? '0' : '4',
+    outcomeDesc: o.motifDecision,
+    purposeOfEvent: [
+      {
+        coding: [
+          {
+            system: SYSTEMES.actReason,
+            code: o.brisDeGlace ? 'ETREAT' : 'TREAT',
+          },
+        ],
+      },
+    ],
+    agent: [
+      {
+        who: { identifier: { system: SYSTEMES.sujetCompte, value: o.sujet } },
+        requestor: true,
+        role: o.roles.map((r) => ({ coding: [{ system: SYSTEMES.role, code: r }] })),
+      },
+    ],
+    source: { observer: { display: o.source } },
+    entity: [
+      {
+        what: { reference: `Patient/${o.patientId}` },
+        type: { system: SYSTEMES.auditEntiteType, code: '1', display: 'Person' },
+        ...(o.brisDeGlace
+          ? {
+              detail: [
+                { type: 'justification-bris-de-glace', valueString: o.brisDeGlace.justification },
+              ],
+            }
+          : {}),
       },
     ],
   };

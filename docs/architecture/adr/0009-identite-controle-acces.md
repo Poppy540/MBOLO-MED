@@ -35,6 +35,7 @@ Option 1.
 ## Conséquences
 - Les consentements sont stockés dans le **serveur FHIR du dossier** (HAPI, `DepotFhir`). Les recherches se font sans cache, pour qu'une révocation soit immédiate. Le service refuse encore de démarrer en production tant que l'accès authentifié (SMART on FHIR) au dossier n'est pas en place.
 - Keycloak doit être hébergé chez l'hébergeur HDS (ADR-0004) ; le mot de passe d'administration initial vient du coffre-fort (ADR-0005), jamais du dépôt.
+- Chaque décision d'accès est tracée dans le dossier (`AuditEvent`, PR I). Aucun accès n'est accordé sans trace, et le patient peut consulter l'historique des accès à son dossier.
 - La revue des bris de glace (qui, sous quel délai) est à définir avec le comité médical et le responsable sécurité.
 - La traduction complète des écrans Keycloak et le parcours de récupération d'un appareil OTP perdu (procédure humaine vérifiée) restent à faire.
 

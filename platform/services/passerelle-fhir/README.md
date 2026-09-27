@@ -12,13 +12,15 @@
 4. **Écriture** : la ressource doit correspondre à l'adresse, puis passer les règles `@mbolo/dossier-fhir`. Sinon **422**, avec les règles violées.
 5. **Journal** : client, interaction, type, statut. Jamais de contenu médical ni de jeton.
 
+Les **traces** (`AuditEvent`, `Provenance`) ne sont jamais modifiables, quelles que soient les permissions : le journal des accès est immuable.
+
 Tout le reste est refusé : `DELETE`, `_history`, `$opérations`, transactions et `metadata`.
 
 ## Clients et permissions
 
 | Client Keycloak | Service | Permissions |
 |---|---|---|
-| `mbolo-identite-service` | `identite` (consentements) | `system/Consent.crus` |
+| `mbolo-identite-service` | `identite` (consentements, journal des accès) | `system/Consent.crus system/AuditEvent.cs` |
 
 Ajouter un client (ex. agent IA) : un client confidentiel dans `keycloak/realm-mbolo.json` avec le secret en `${VARIABLE}`, une audience `mbolo-dossier-fhir` et une revendication `mbolo_scopes` **minimale**. Le responsable sécurité revoit chaque ajout.
 
@@ -36,4 +38,4 @@ KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_AMONT_URL=http://127.0.0
   - authentification des clients par clé asymétrique (`private_key_jwt`) ;
   - réseau privé vers HAPI ;
   - TLS ;
-  - `AuditEvent` FHIR.
+  - trace (`AuditEvent`) de chaque lecture de données cliniques par les futurs services (les décisions d'accès sont déjà tracées par `identite`).

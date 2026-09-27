@@ -25,6 +25,8 @@ const TYPE_FHIR = 'application/fhir+json';
 /** Paramètres qui ramèneraient d'autres types de ressources que celui autorisé. */
 const PARAMETRES_INTERDITS = /^(_include|_revinclude|_has|_contained|_containedType)(:|$)/;
 const ENTETES_TRANSMIS = ['if-match', 'prefer', 'cache-control'] as const;
+/** Traces : jamais modifiées, quelles que soient les permissions (journal immuable). */
+const TYPES_IMMUABLES = new Set(['AuditEvent', 'Provenance']);
 
 class Refus extends Error {
   constructor(
@@ -217,6 +219,13 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
   app.put<{ Params: { type: string; id: string } }>('/fhir/:type/:id', async (req, reply) => {
     const c = await authentifier(req);
     verifierType(req.params.type, req.params.id);
+    if (TYPES_IMMUABLES.has(req.params.type)) {
+      o.journal.avertissement('modification d’une trace refusée', {
+        client: c.client,
+        type: req.params.type,
+      });
+      throw new Refus(403, 'Une trace ne peut pas être modifiée.');
+    }
     exiger(c, req.params.type, 'u');
     verifierEcriture(req.params.type, req.params.id, req.body);
     return relayer(

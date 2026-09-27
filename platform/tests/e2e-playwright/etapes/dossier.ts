@@ -27,16 +27,19 @@ Given('le service identité a obtenu son jeton de service', async ({ monde }) =>
 
 async function appelerDossier(
   monde: Monde,
-  methode: 'GET' | 'DELETE',
+  methode: 'GET' | 'DELETE' | 'PUT',
   chemin: string,
   jeton?: string,
+  corps?: unknown,
 ): Promise<void> {
   const r = await fetch(`${PASSERELLE_URL}/fhir/${chemin}`, {
     method: methode,
     headers: {
       accept: 'application/fhir+json',
       ...(jeton ? { authorization: `Bearer ${jeton}` } : {}),
+      ...(corps ? { 'content-type': 'application/fhir+json' } : {}),
     },
+    ...(corps ? { body: JSON.stringify(corps) } : {}),
   });
   monde.reponse = { statut: r.status, corps: (await r.json()) as Record<string, unknown> };
 }
@@ -60,6 +63,17 @@ When(
   'le service identité tente de supprimer {string} du dossier',
   async ({ monde }, chemin: string) => {
     await appelerDossier(monde, 'DELETE', chemin, monde.jetons.get(JETON_SERVICE));
+  },
+);
+
+When(
+  "le service identité tente de modifier la trace d'accès {string}",
+  async ({ monde }, id: string) => {
+    await appelerDossier(monde, 'PUT', `AuditEvent/${id}`, monde.jetons.get(JETON_SERVICE), {
+      resourceType: 'AuditEvent',
+      id,
+      outcome: '0',
+    });
   },
 );
 

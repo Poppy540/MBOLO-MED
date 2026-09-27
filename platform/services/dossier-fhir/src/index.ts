@@ -1,8 +1,15 @@
 export * from './constantes.js';
-export { conditionDeclaree, consentement, provenanceAgent, revoquer } from './construire.js';
+export {
+  conditionDeclaree,
+  consentement,
+  evenementAccesDossier,
+  provenanceAgent,
+  revoquer,
+} from './construire.js';
 export type {
   OptionsConditionDeclaree,
   OptionsConsentement,
+  OptionsEvenementAcces,
   OptionsProvenanceAgent,
 } from './construire.js';
 export { jeuFictif } from './donnees-fictives.js';

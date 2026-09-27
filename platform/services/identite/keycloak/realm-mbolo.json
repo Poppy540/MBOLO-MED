@@ -193,7 +193,7 @@
     },
     {
       "clientId": "mbolo-identite-service",
-      "name": "Compte de service du service identité (accès au dossier : consentements uniquement)",
+      "name": "Compte de service du service identité (dossier : consentements et journal des accès)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
@@ -225,7 +225,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Consent.crus",
+            "claim.value": "system/Consent.crus system/AuditEvent.cs",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",
