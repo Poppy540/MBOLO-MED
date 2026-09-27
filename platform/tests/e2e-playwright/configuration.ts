@@ -15,6 +15,7 @@ export const CLIENT_SERVICE_NOTIFICATIONS = 'mbolo-notifications-service';
 /** Service de téléconsultation et serveur LiveKit de test (ADR-0011). */
 export const TELECONSULTATION_URL = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
 export const NOTIFICATIONS_URL = process.env['NOTIFICATIONS_URL'] ?? 'http://127.0.0.1:3004';
+export const CONSULTATION_URL = process.env['CONSULTATION_URL'] ?? 'http://127.0.0.1:3005';
 /**
  * Applications (vite preview). Les ports 5173 et 5174 restent les faux retours de connexion des
  * étapes de test (clients patient et professionnel) : une vraie application y consommerait leurs codes.

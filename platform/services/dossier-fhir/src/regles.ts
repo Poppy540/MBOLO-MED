@@ -4,6 +4,7 @@
 // Le serveur FHIR et le validateur officiel restent la référence (CI : job « FHIR »).
 import type {
   Appointment,
+  Composition,
   Schedule,
   Slot,
   CodeableConcept,
@@ -17,6 +18,7 @@ import {
   AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
   EXTENSION_DATE_ANNULATION,
+  SECTIONS_COMPTE_RENDU,
   CATEGORIES_CONSENTEMENT,
   MARQUEUR_FICTIF,
   SYSTEMES,
@@ -206,6 +208,40 @@ export function verifierSlot(s: Slot): Violation[] {
   return v;
 }
 
+export function verifierComposition(c: Composition): Violation[] {
+  const v: Violation[] = [];
+  const auteurs = c.author ?? [];
+  if (auteurs.length !== 1 || !auteurs[0]?.reference?.startsWith('Practitioner/')) {
+    v.push({
+      regle: 'mbolo-cr-1',
+      message:
+        'Principe n°1 : un compte-rendu est rédigé par un seul professionnel de santé, jamais par un agent IA.',
+    });
+  }
+  const sections = c.section ?? [];
+  if (sections.length === 0 || sections.some((s) => !s.text?.div)) {
+    v.push({ regle: 'mbolo-cr-2', message: 'Chaque section porte un texte.' });
+  }
+  const codes = sections.flatMap((s) => s.code?.coding ?? []);
+  if (
+    codes.some(
+      (k) =>
+        k.system !== SYSTEMES.sectionCompteRendu ||
+        !(SECTIONS_COMPTE_RENDU as readonly string[]).includes(k.code ?? ''),
+    )
+  ) {
+    v.push({ regle: 'mbolo-compte-rendu.section', message: 'Section inconnue.' });
+  }
+  if (!c.subject?.reference?.startsWith('Patient/')) {
+    v.push({ regle: 'mbolo-compte-rendu.subject', message: 'Patient obligatoire.' });
+  }
+  const type = c.type.coding?.[0];
+  if (type?.system !== SYSTEMES.typeDocument || type.code !== 'compte-rendu-teleconsultation') {
+    v.push({ regle: 'mbolo-compte-rendu.type', message: 'Type de document inconnu.' });
+  }
+  return v;
+}
+
 /** Principe n°4 : hors production, toute donnée doit porter le marqueur « fictif ». */
 export function verifierMarqueurFictif(r: FhirResource, env: Environnement): Violation[] {
   if (env === 'prod') return [];
@@ -237,6 +273,8 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierSchedule(r);
       case 'Slot':
         return verifierSlot(r);
+      case 'Composition':
+        return verifierComposition(r);
       default:
         return [];
     }

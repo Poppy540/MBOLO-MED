@@ -2,6 +2,7 @@ export * from './constantes.js';
 export {
   agendaVideo,
   annulerRendezVous,
+  compteRendu,
   conditionDeclaree,
   consentement,
   creneauVideo,
@@ -11,8 +12,10 @@ export {
   reporterRendezVous,
   revoquer,
   revueBrisDeGlace,
+  texteSection,
 } from './construire.js';
 export type {
+  OptionsCompteRendu,
   OptionsConditionDeclaree,
   OptionsConsentement,
   OptionsCreneau,
@@ -25,6 +28,7 @@ export { jeuFictif } from './donnees-fictives.js';
 export {
   valider,
   verifierAppointment,
+  verifierComposition,
   verifierCondition,
   verifierConsent,
   verifierMarqueurFictif,

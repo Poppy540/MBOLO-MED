@@ -161,3 +161,35 @@ Description: "Plage publiée par un professionnel, libre (free) ou réservée (b
 * serviceType from MboloModeConsultationVS (required)
 * start MS
 * end MS
+
+Invariant: mbolo-cr-1
+Description: "Principe n°1 : un compte-rendu de consultation est rédigé par un seul professionnel de santé, jamais par un agent IA ni par le patient."
+Expression: "author.count() = 1 and author.all(reference.startsWith('Practitioner/'))"
+Severity: #error
+
+Invariant: mbolo-cr-2
+Description: "Chaque section du compte-rendu porte un texte rédigé par le professionnel."
+Expression: "section.all(text.exists())"
+Severity: #error
+
+Profile: MboloCompteRendu
+Parent: Composition
+Id: mbolo-compte-rendu
+Title: "Compte-rendu de téléconsultation Mbolo Santé"
+Description: "Compte-rendu rédigé et signé par le professionnel de santé après une téléconsultation. Sections fixes : motif, observations, conclusion, conduite à tenir."
+* ^status = #draft
+* ^experimental = true
+* obeys mbolo-cr-1 and mbolo-cr-2
+* status MS
+* type = MboloTypeDocumentCS#compte-rendu-teleconsultation
+* subject 1..1 MS
+* subject only Reference(MboloPatient)
+* date MS
+* author 1..1 MS
+* author only Reference(Practitioner)
+* title MS
+* event MS
+* section 1..* MS
+* section.code 1..1 MS
+* section.code from MboloSectionCompteRenduVS (required)
+* section.text 1..1 MS

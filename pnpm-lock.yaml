@@ -82,6 +82,28 @@ importers:
 
   platform/packages/journal-securise: {}
 
+  platform/services/consultation:
+    dependencies:
+      '@mbolo/dossier-fhir':
+        specifier: workspace:*
+        version: link:../dossier-fhir
+      '@mbolo/identite':
+        specifier: workspace:*
+        version: link:../identite
+      '@mbolo/journal-securise':
+        specifier: workspace:*
+        version: link:../../packages/journal-securise
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+    devDependencies:
+      '@types/fhir':
+        specifier: ^0.0.41
+        version: 0.0.41
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+
   platform/services/dossier-fhir:
     devDependencies:
       '@types/fhir':

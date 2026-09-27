@@ -4,6 +4,7 @@
 import type {
   Appointment,
   AuditEvent,
+  Composition,
   Condition,
   Consent,
   Provenance,
@@ -15,6 +16,8 @@ import {
   EXTENSION_DATE_ANNULATION,
   EXTENSION_MODE_RECUEIL,
   type ConclusionRevue,
+  SECTIONS_COMPTE_RENDU,
+  type SectionCompteRendu,
   MARQUEUR_FICTIF,
   PROFILS,
   SYSTEMES,
@@ -349,4 +352,58 @@ export function creneauVideo(o: OptionsCreneau): Slot {
     start: debut.toISOString(),
     end: new Date(debut.getTime() + o.dureeMinutes * 60_000).toISOString(),
   };
+}
+
+const echapper = (t: string) =>
+  t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+export interface OptionsCompteRendu {
+  patientId: string;
+  /** Auteur : toujours un professionnel de santé (invariant mbolo-cr-1). */
+  praticienId: string;
+  /** Rendez-vous de la téléconsultation. */
+  rendezVousId: string;
+  date: string;
+  /** Texte de chaque section rédigée ; une section vide est omise. */
+  sections: Partial<Record<SectionCompteRendu, string>>;
+  env: Environnement;
+}
+
+/** Compte-rendu de téléconsultation (profil mbolo-compte-rendu), rédigé par le professionnel. */
+export function compteRendu(o: OptionsCompteRendu): Composition {
+  const sections = SECTIONS_COMPTE_RENDU.filter((s) => o.sections[s]?.trim()).map((s) => ({
+    code: { coding: [{ system: SYSTEMES.sectionCompteRendu, code: s }] },
+    text: {
+      status: 'generated' as const,
+      div: `<div xmlns="http://www.w3.org/1999/xhtml">${echapper(o.sections[s]?.trim() ?? '')}</div>`,
+    },
+  }));
+  if (sections.length === 0) throw new Error('Un compte-rendu contient au moins une section.');
+  return {
+    resourceType: 'Composition',
+    meta: meta(PROFILS.compteRendu, o.env),
+    status: 'final',
+    type: {
+      coding: [{ system: SYSTEMES.typeDocument, code: 'compte-rendu-teleconsultation' }],
+    },
+    subject: { reference: `Patient/${o.patientId}` },
+    date: o.date,
+    author: [{ reference: `Practitioner/${o.praticienId}` }],
+    title: 'Compte-rendu de téléconsultation',
+    event: [{ detail: [{ reference: `Appointment/${o.rendezVousId}` }] }],
+    section: sections,
+  };
+}
+
+/** Texte brut d'une section (le narratif FHIR est du XHTML échappé par compteRendu). */
+export function texteSection(c: Composition, s: SectionCompteRendu): string | undefined {
+  const div = c.section?.find((x) => x.code?.coding?.some((k) => k.code === s))?.text?.div;
+  if (!div) return undefined;
+  return div
+    .replace(/^<div[^>]*>/, '')
+    .replace(/<\/div>$/, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&');
 }

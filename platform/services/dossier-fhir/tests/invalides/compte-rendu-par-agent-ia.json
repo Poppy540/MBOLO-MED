@@ -1,0 +1,48 @@
+{
+  "resourceType": "Composition",
+  "id": "fictif-invalide-8",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-compte-rendu"],
+    "tag": [
+      {
+        "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur",
+        "code": "fictif"
+      }
+    ]
+  },
+  "status": "final",
+  "type": {
+    "coding": [
+      {
+        "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-type-document",
+        "code": "compte-rendu-teleconsultation"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/fictif-patient-0001"
+  },
+  "date": "2026-10-01T09:25:00+01:00",
+  "author": [
+    {
+      "reference": "Device/agent-01-accueil"
+    }
+  ],
+  "title": "[FICTIF] Compte-rendu rédigé par un agent IA : interdit",
+  "section": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-section-compte-rendu",
+            "code": "conclusion"
+          }
+        ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">[FICTIF] Conclusion posée par une IA.</div>"
+      }
+    }
+  ]
+}

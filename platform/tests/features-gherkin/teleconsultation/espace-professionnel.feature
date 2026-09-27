@@ -34,3 +34,26 @@ Fonctionnalité: Espace professionnel
     Et que le professionnel rejoint ce rendez-vous dans l’espace professionnel
     Alors l’espace professionnel indique que le patient est connecté
     Et l’application indique que le professionnel de santé est connecté
+
+  Scénario: Sans partage du dossier, le médecin ne le voit pas, sauf accès d'urgence motivé
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Quand "medecin-fictif-01" ouvre l’espace professionnel
+    Et que le professionnel ouvre le dossier de ce rendez-vous
+    Alors l’espace professionnel indique que le dossier n’est pas partagé
+    Quand le professionnel accède en urgence avec le motif "[FICTIF] Détresse respiratoire pendant la consultation"
+    Alors l’espace professionnel affiche le dossier du patient
+    Et l’espace professionnel signale un accès d’urgence
+
+  Scénario: Avec le partage du dossier, le médecin rédige le compte-rendu de la consultation
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" donne son consentement "C-PARTAGE-PRO" à "Practitioner/prac-fictif-001"
+    Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Quand "medecin-fictif-01" ouvre l’espace professionnel
+    Et que le professionnel ouvre le dossier de ce rendez-vous
+    Alors l’espace professionnel affiche le dossier du patient
+    Quand le professionnel rédige le compte-rendu avec la conclusion "[FICTIF] Rhume simple, pas de signe de gravité"
+    Alors le dossier médical contient ce compte-rendu, signé par "prac-fictif-001"
+    Quand "patient-fictif-01" retire ce consentement

@@ -15,7 +15,13 @@ import {
   urlDeconnexion,
   versInstant,
 } from '@mbolo/client-web';
-import { creerApi, type Creneau, type RendezVous } from './api.js';
+import {
+  creerApi,
+  creerApiConsultation,
+  type Creneau,
+  type RendezVous,
+  type ResumeDossier,
+} from './api.js';
 import { CONFIG } from './config.js';
 
 const connexion = () => ({
@@ -26,6 +32,7 @@ const connexion = () => ({
 
 let jeton: string | undefined;
 const api = creerApi(CONFIG.api, () => jeton);
+const clinique = creerApiConsultation(CONFIG.apiConsultation, () => jeton);
 const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
 
 type Ecran =
@@ -33,6 +40,7 @@ type Ecran =
   | { nom: 'rendez-vous' }
   | { nom: 'creneaux' }
   | { nom: 'report'; rendezVous: RendezVous }
+  | { nom: 'dossier'; rendezVous: RendezVous }
   | { nom: 'visio'; rendezVous: RendezVous };
 
 export function App() {
@@ -128,6 +136,8 @@ export function App() {
         <MesRendezVous allerA={allerA} signaler={signaler} />
       ) : ecran.nom === 'creneaux' ? (
         <MesCreneaux signaler={signaler} />
+      ) : ecran.nom === 'dossier' ? (
+        <DossierPatient rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : ecran.nom === 'report' ? (
         <Report rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : (
@@ -182,6 +192,9 @@ function MesRendezVous(p: {
               <div class="actions">
                 <button class="principal" onClick={() => p.allerA({ nom: 'visio', rendezVous: r })}>
                   <span aria-hidden="true">📹</span> Rejoindre
+                </button>
+                <button onClick={() => p.allerA({ nom: 'dossier', rendezVous: r })}>
+                  <span aria-hidden="true">📋</span> Dossier
                 </button>
                 <button onClick={() => p.allerA({ nom: 'report', rendezVous: r })}>Reporter</button>
                 <button
@@ -334,6 +347,150 @@ function MesCreneaux(p: { signaler: (e: unknown) => void }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+const SECTIONS = [
+  ['motif', 'Motif de consultation'],
+  ['observations', 'Observations'],
+  ['conclusion', 'Conclusion'],
+  ['conduiteATenir', 'Conduite à tenir'],
+] as const;
+
+const LIBELLES_CR: Record<string, string> = {
+  motif: 'Motif',
+  observations: 'Observations',
+  conclusion: 'Conclusion',
+  'conduite-a-tenir': 'Conduite à tenir',
+};
+
+/**
+ * Dossier du patient (lecture après décision d'accès d'identite) et compte-rendu rédigé par le
+ * professionnel. Aucune suggestion automatique : le texte est celui du professionnel.
+ */
+function DossierPatient(p: {
+  rendezVous: RendezVous;
+  allerA: (e: Ecran, m?: string) => void;
+  signaler: (e: unknown) => void;
+}) {
+  const [dossier, setDossier] = useState<ResumeDossier>();
+  const [refus, setRefus] = useState(false);
+  const [info, setInfo] = useState<string>();
+
+  const lire = (brisDeGlace?: { motif: string }) =>
+    clinique
+      .lireDossier(p.rendezVous.patientId, brisDeGlace)
+      .then((d) => {
+        setRefus(false);
+        setDossier(d);
+      })
+      .catch((e: unknown) =>
+        e instanceof ErreurApi && e.statut === 403 ? setRefus(true) : p.signaler(e),
+      );
+  useEffect(() => void lire(), []);
+
+  const enregistrer = async (e: Event) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget as HTMLFormElement);
+    const saisie = Object.fromEntries(SECTIONS.map(([cle]) => [cle, String(f.get(cle) ?? '')]));
+    try {
+      await clinique.ecrireCompteRendu(p.rendezVous.id, saisie);
+      (e.currentTarget as HTMLFormElement | null)?.reset();
+      setInfo('Compte-rendu enregistré dans le dossier.');
+      await lire();
+    } catch (x) {
+      setInfo(undefined);
+      p.signaler(x);
+    }
+  };
+
+  return (
+    <section>
+      <h2>Dossier — rendez-vous du {quand(p.rendezVous.debut)}</h2>
+      {refus ? (
+        <div data-acces-refuse="">
+          <p class="message" role="status">
+            Le patient n’a pas partagé son dossier avec vous.
+          </p>
+          <details>
+            <summary>Accès d’urgence (bris de glace)</summary>
+            <p>
+              Réservé à une urgence vitale. Votre motif est enregistré, signalé au patient et revu
+              par un humain.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const motif = String(new FormData(e.currentTarget).get('motif') ?? '').trim();
+                if (motif) void lire({ motif });
+              }}
+            >
+              <label>
+                Motif <textarea name="motif" required maxLength={500} rows={3} />
+              </label>
+              <button class="danger" type="submit">
+                Accéder en urgence
+              </button>
+            </form>
+          </details>
+        </div>
+      ) : dossier === undefined ? (
+        <p aria-live="polite">Chargement…</p>
+      ) : (
+        <div data-dossier="">
+          {dossier.motifAcces === 'bris-de-glace' && (
+            <p class="message" role="status">
+              Accès d’urgence : cette consultation du dossier sera revue.
+            </p>
+          )}
+          <h3>Problèmes de santé</h3>
+          {dossier.problemes.length === 0 ? (
+            <p>Aucun problème enregistré.</p>
+          ) : (
+            <ul class="liste">
+              {dossier.problemes.map((x, i) => (
+                <li key={i}>
+                  {x.texte}{' '}
+                  <em>
+                    ({x.parProfessionnel ? 'posé par un professionnel' : 'déclaré, non confirmé'})
+                  </em>
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3>Comptes-rendus</h3>
+          {dossier.comptesRendus.length === 0 ? (
+            <p>Aucun compte-rendu.</p>
+          ) : (
+            <ul class="liste" aria-label="Comptes-rendus">
+              {dossier.comptesRendus.map((c) => (
+                <li key={c.id} data-compte-rendu={c.id}>
+                  <strong>{quand(c.date)}</strong>
+                  {Object.entries(c.sections).map(([s, t]) => (
+                    <p key={s}>
+                      <strong>{LIBELLES_CR[s] ?? s} :</strong> {t}
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3>Rédiger le compte-rendu</h3>
+          <form onSubmit={enregistrer} class="formulaire">
+            {SECTIONS.map(([cle, libelle]) => (
+              <label key={cle}>
+                {libelle} <textarea name={cle} maxLength={4000} rows={3} />
+              </label>
+            ))}
+            <button class="principal" type="submit">
+              <span aria-hidden="true">💾</span> Enregistrer le compte-rendu
+            </button>
+          </form>
+          {info && <p role="status">{info}</p>}
+        </div>
+      )}
+      <button onClick={() => p.allerA({ nom: 'rendez-vous' })}>Retour</button>
     </section>
   );
 }

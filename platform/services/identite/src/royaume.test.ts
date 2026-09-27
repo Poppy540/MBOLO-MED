@@ -133,6 +133,24 @@ describe('royaume mbolo', () => {
     expect(audiences('mbolo-identite-service')).not.toContain('mbolo-notifications');
   });
 
+  it('compte de service consultation : problèmes et comptes-rendus, rendez-vous en lecture seule', () => {
+    const c = royaume.clients.find((x) => x.clientId === 'mbolo-consultation-service');
+    expect(c).toMatchObject({ publicClient: false, serviceAccountsEnabled: true });
+    expect(c?.secret).toBe('${CONSULTATION_SERVICE_CLIENT_SECRET}');
+    const mappeurs = c?.protocolMappers ?? [];
+    // Pas de suppression, pas de modification ; pas d'accès aux consentements ni au journal.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
+    ).toBe('system/Condition.rs system/Composition.crs system/Appointment.r');
+    // Seule l'application des professionnels appelle l'API de consultation.
+    const audiences = (id: string) =>
+      (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
+        .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
+        .map((m) => m.config['included.client.audience']);
+    expect(audiences('mbolo-app-pro')).toContain('mbolo-consultation-api');
+    expect(audiences('mbolo-app-patient')).not.toContain('mbolo-consultation-api');
+  });
+
   it('aucun client ne contient de secret en clair', () => {
     for (const c of royaume.clients) {
       if (c.secret !== undefined) expect(c.secret).toMatch(/^\$\{[A-Z_]+\}$/);
