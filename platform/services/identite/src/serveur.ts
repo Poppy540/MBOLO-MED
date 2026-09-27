@@ -6,6 +6,7 @@ import type { Journal } from '@mbolo/journal-securise';
 import { deciderAccesDossier } from './acces.js';
 import {
   ErreurAcces,
+  ErreurFonctionInactive,
   ErreurValidation,
   type DemandeConsentement,
   type ServiceConsentements,
@@ -48,6 +49,9 @@ export function creerServeur(o: OptionsServeur): FastifyInstance {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurAcces) return reply.code(403).send({ erreur: 'Accès refusé.' });
+    if (err instanceof ErreurFonctionInactive) {
+      return reply.code(403).send({ erreur: 'Fonction non disponible.' });
+    }
     if (err instanceof ErreurDepot) {
       if (err.statut === 503) o.journal.erreur('dossier médical indisponible', { err });
       return reply.code(err.statut).send({ erreur: err.message });

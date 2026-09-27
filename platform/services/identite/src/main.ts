@@ -1,6 +1,7 @@
 // Démarrage du service identité. Configuration par variables d'environnement. Le seul secret est
 // celui du compte de service (IDENTITE_SERVICE_CLIENT_SECRET) qui donne accès au dossier via la
 // passerelle : il vient du coffre-fort, jamais du dépôt.
+import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { creerJournal } from '@mbolo/journal-securise';
 import { DepotMemoire, ServiceConsentements, type DepotConsentements } from './consentements.js';
 import { DepotFhir } from './depot-fhir.js';
@@ -15,6 +16,8 @@ const env = process.env['MBOLO_ENV'] === 'prod' ? 'prod' : 'dev';
 const fhir = process.env['FHIR_BASE_URL'];
 const clientService = process.env['IDENTITE_SERVICE_CLIENT_ID'] ?? 'mbolo-identite-service';
 const secretService = process.env['IDENTITE_SERVICE_CLIENT_SECRET'];
+const unleashUrl = process.env['UNLEASH_API_URL'];
+const unleashJeton = process.env['UNLEASH_BACKEND_TOKEN'];
 
 const journal = creerJournal({ service: 'identite' });
 
@@ -43,9 +46,24 @@ if (fhir) {
   depot = new DepotMemoire();
   journal.avertissement('FHIR_BASE_URL absent : consentements en mémoire (perdus à l’arrêt).');
 }
+// Feature flags (ADR-0007) : sans Unleash, toutes les fonctions nouvelles restent désactivées.
+let drapeaux;
+if (unleashUrl && unleashJeton) {
+  drapeaux = await drapeauxUnleash({
+    url: unleashUrl,
+    jeton: unleashJeton,
+    application: 'identite',
+    rafraichissementMs: Number(process.env['UNLEASH_REFRESH_MS'] ?? '15000'),
+  });
+  journal.info('feature flags servis par Unleash');
+} else {
+  drapeaux = await drapeauxFixes();
+  journal.avertissement('Unleash non configuré : toutes les fonctions nouvelles sont désactivées.');
+}
+
 const app = creerServeur({
   verifierJeton: creerVerificateur({ emetteur, audience }),
-  consentements: new ServiceConsentements(depot, env),
+  consentements: new ServiceConsentements(depot, env, drapeaux),
   depot,
   journal,
 });

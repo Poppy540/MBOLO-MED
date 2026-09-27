@@ -10,6 +10,7 @@ import {
   type Environnement,
   type ModeRecueil,
 } from '@mbolo/dossier-fhir';
+import type { Drapeaux } from '@mbolo/drapeaux';
 import { peutGererConsentements } from './acces.js';
 import type { Utilisateur } from './roles.js';
 
@@ -51,6 +52,14 @@ export class ErreurAcces extends Error {
   }
 }
 
+/** Fonction pas encore activée pour ce compte (feature flag désactivé, ADR-0003). */
+export class ErreurFonctionInactive extends Error {
+  constructor() {
+    super('Fonction non disponible.');
+    this.name = 'ErreurFonctionInactive';
+  }
+}
+
 export class ErreurValidation extends Error {
   constructor(
     message: string,
@@ -73,6 +82,8 @@ export class ServiceConsentements {
   constructor(
     private readonly depot: DepotConsentements,
     private readonly env: Environnement,
+    /** Feature flags : le partage avec un proche n'est proposé qu'à partir de la vague 2. */
+    private readonly drapeaux: Pick<Drapeaux, 'estActif'>,
     private readonly maintenant: () => Date = () => new Date(),
   ) {}
 
@@ -83,6 +94,15 @@ export class ServiceConsentements {
 
   async enregistrer(u: Utilisateur, patientId: string, d: DemandeConsentement): Promise<Consent> {
     if (!peutGererConsentements(u, patientId)) throw new ErreurAcces('Accès refusé.');
+    if (
+      d.categorie === 'C-PROCHE' &&
+      !(await this.drapeaux.estActif('consentement.proche', {
+        sujet: u.sujet,
+        ...(u.roles[0] ? { typeUtilisateur: u.roles[0] } : {}),
+      }))
+    ) {
+      throw new ErreurFonctionInactive();
+    }
     const ressource = consentement({
       patientId,
       categorie: d.categorie,

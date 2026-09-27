@@ -273,6 +273,11 @@ When(
   },
 );
 
+Then("la fonction n'est pas encore disponible pour ce patient", ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(403);
+  expect(monde.reponse?.corps['erreur']).toBe('Fonction non disponible.');
+});
+
 Then('le consentement est refusé par le dossier médical', ({ monde }) => {
   expect(monde.reponse?.statut).toBe(422);
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DepotMemoire,
   ErreurAcces,
+  ErreurFonctionInactive,
   ErreurValidation,
   ServiceConsentements,
 } from './consentements.js';
@@ -17,7 +18,12 @@ const patient2: Utilisateur = {
 };
 
 const service = () =>
-  new ServiceConsentements(new DepotMemoire(), 'dev', () => new Date('2026-09-27T08:00:00Z'));
+  new ServiceConsentements(
+    new DepotMemoire(),
+    'dev',
+    { estActif: async () => true },
+    () => new Date('2026-09-27T08:00:00Z'),
+  );
 
 const soins = {
   categorie: 'C-SOINS',
@@ -63,5 +69,29 @@ describe('ServiceConsentements', () => {
     const c = await s.enregistrer(patient1, P1, soins);
     await expect(s.revoquer(patient2, c.id ?? '')).rejects.toBeInstanceOf(ErreurAcces);
     await expect(s.revoquer(patient2, 'inexistant')).rejects.toBeInstanceOf(ErreurAcces);
+  });
+
+  it('partage avec un proche : refusé tant que le flag consentement.proche est désactivé', async () => {
+    const demandes: unknown[] = [];
+    const s = new ServiceConsentements(new DepotMemoire(), 'dev', {
+      estActif: async (nom, contexte) => {
+        demandes.push({ nom, contexte });
+        return false;
+      },
+    });
+    const e = await s
+      .enregistrer(patient1, P1, {
+        ...soins,
+        categorie: 'C-PROCHE',
+        beneficiaire: 'RelatedPerson/fictif-proche-0001',
+      })
+      .catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ErreurFonctionInactive);
+    // Contexte d'évaluation sans donnée de santé : compte et type d'utilisateur.
+    expect(demandes).toEqual([
+      { nom: 'consentement.proche', contexte: { sujet: 'u-p1', typeUtilisateur: 'patient' } },
+    ]);
+    // Les autres consentements ne dépendent d'aucun flag.
+    expect((await s.enregistrer(patient1, P1, soins)).status).toBe('active');
   });
 });
