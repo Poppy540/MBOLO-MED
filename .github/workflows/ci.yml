@@ -19,7 +19,7 @@ jobs:
     name: Sécurité (gitleaks + contrôles pre-commit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -38,7 +38,7 @@ jobs:
     name: Dépendances (vulnérabilités connues)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -55,7 +55,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Une dépendance ajoutée ou mise à jour avec une faille haute ou critique connue est refusée.
       - uses: actions/dependency-review-action@v4
         with:
@@ -65,7 +65,7 @@ jobs:
     name: Conformité des skills
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -75,7 +75,7 @@ jobs:
     name: Code (format, lint, types, tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -94,7 +94,7 @@ jobs:
     name: FHIR (profils, exemples fictifs, garde-fous)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -115,7 +115,7 @@ jobs:
     name: E2E (Keycloak + identité, comptes fictifs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
