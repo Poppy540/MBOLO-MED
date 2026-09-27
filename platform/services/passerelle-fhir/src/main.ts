@@ -22,7 +22,8 @@ if (env === 'prod') {
   process.exit(1);
 }
 
-const app = creerPasserelle({
+const app = await creerPasserelle({
+  limiteParMinute: Number(process.env['PASSERELLE_LIMITE_PAR_MINUTE'] ?? '3000'),
   verifierJeton: creerVerificateur({ emetteur, audience }),
   amont,
   publique,

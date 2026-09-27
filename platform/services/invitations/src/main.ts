@@ -74,7 +74,8 @@ try {
   process.exit(1);
 }
 
-const app = creerServeur({
+const app = await creerServeur({
+  limiteParMinute: Number(env['INVITATIONS_LIMITE_PAR_MINUTE'] ?? '300'),
   verifierJeton: creerVerificateur({
     emetteur,
     audience: env['INVITATIONS_AUDIENCE'] ?? 'mbolo-invitations-api',

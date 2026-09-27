@@ -4,10 +4,10 @@ import { CanalSimule, ServiceNotifications } from './notifications.js';
 import { creerServeur } from './serveur.js';
 
 // Données FICTIVES ; vérification de jeton simulée (le vrai contrôle est testé en e2e).
-const monter = () => {
+const monter = async (limiteParMinute?: number) => {
   const canal = new CanalSimule();
   const lignes: string[] = [];
-  const app = creerServeur({
+  const app = await creerServeur({
     verifierAppelant: async (j) => {
       if (j !== 'jeton-valide') throw new Error('refusé');
       return 'mbolo-teleconsultation-service';
@@ -18,6 +18,7 @@ const monter = () => {
     ),
     journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
     simulation: canal,
+    ...(limiteParMinute ? { limiteParMinute } : {}),
   });
   return { app, canal, lignes };
 };
@@ -30,7 +31,7 @@ const corps = {
 
 describe('API notifications', () => {
   it('exige un jeton de service valide, y compris pour la boîte simulée', async () => {
-    const { app } = monter();
+    const { app } = await monter();
     for (const headers of [{}, { authorization: 'Bearer autre' }]) {
       expect(
         (await app.inject({ method: 'POST', url: '/notifications', headers, payload: corps }))
@@ -43,7 +44,7 @@ describe('API notifications', () => {
   });
 
   it('refuse un texte libre ou un gabarit inconnu', async () => {
-    const { app, canal } = monter();
+    const { app, canal } = await monter();
     const headers = { authorization: 'Bearer jeton-valide' };
     for (const payload of [
       { ...corps, texte: '[FICTIF] texte libre' },
@@ -58,7 +59,7 @@ describe('API notifications', () => {
   });
 
   it('envoie une notification conforme (202), sans numéro ni texte dans le journal', async () => {
-    const { app, canal, lignes } = monter();
+    const { app, canal, lignes } = await monter();
     const r = await app.inject({
       method: 'POST',
       url: '/notifications',
@@ -72,5 +73,14 @@ describe('API notifications', () => {
     expect(journal).toContain('notification traitée');
     expect(journal).not.toContain('00 00 00');
     expect(journal).not.toContain(canal.boite[0]?.texte ?? 'absent');
+  });
+
+  it('au-delà de la limite par minute, répond 429', async () => {
+    const { app } = await monter(2);
+    await app.inject({ method: 'GET', url: '/sante' });
+    await app.inject({ method: 'GET', url: '/sante' });
+    const r = await app.inject({ method: 'GET', url: '/sante' });
+    expect(r.statusCode).toBe(429);
+    expect(r.json()).toEqual({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
   });
 });

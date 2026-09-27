@@ -44,7 +44,8 @@ const entetes = creerFournisseurJeton({
   secret,
 });
 const canal = new CanalSimule();
-const app = creerServeur({
+const app = await creerServeur({
+  limiteParMinute: Number(env['NOTIFICATIONS_LIMITE_PAR_MINUTE'] ?? '600'),
   verifierAppelant: creerVerificateurAppelant({
     emetteur,
     audience: env['NOTIFICATIONS_AUDIENCE'] ?? 'mbolo-notifications',

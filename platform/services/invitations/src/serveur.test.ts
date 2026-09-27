@@ -22,9 +22,9 @@ const UTILISATEURS: Record<string, Utilisateur> = {
   },
 };
 
-function serveur(maxEssais = 10) {
+async function serveur(maxEssais = 10, limiteParMinute?: number) {
   const lignes: string[] = [];
-  const app = creerServeur({
+  const app = await creerServeur({
     verifierJeton: async (j) => {
       const u = UTILISATEURS[j];
       if (!u) throw new Error('jeton invalide');
@@ -42,11 +42,16 @@ function serveur(maxEssais = 10) {
       if (j !== 'extension') throw new Error('jeton de service invalide');
       return 'mbolo-keycloak-inscription';
     },
+    ...(limiteParMinute ? { limiteParMinute } : {}),
   });
   return { app, lignes };
 }
 
-const creer = (app: ReturnType<typeof serveur>['app'], jeton?: string, cohorte = 'ville-fictive') =>
+const creer = (
+  app: Awaited<ReturnType<typeof serveur>>['app'],
+  jeton?: string,
+  cohorte = 'ville-fictive',
+) =>
   app.inject({
     method: 'POST',
     url: '/invitations',
@@ -56,7 +61,7 @@ const creer = (app: ReturnType<typeof serveur>['app'], jeton?: string, cohorte =
 
 describe('API des invitations', () => {
   it('le gestionnaire crée un code, montré une seule fois et jamais journalisé', async () => {
-    const { app, lignes } = serveur();
+    const { app, lignes } = await serveur();
     const r = await creer(app, 'gestionnaire');
     expect(r.statusCode).toBe(201);
     expect(r.headers['cache-control']).toBe('no-store');
@@ -75,7 +80,7 @@ describe('API des invitations', () => {
   });
 
   it('refuse la création sans jeton, à un médecin et à un agent IA', async () => {
-    const { app } = serveur();
+    const { app } = await serveur();
     expect((await creer(app)).statusCode).toBe(401);
     expect((await creer(app, 'jeton-inconnu')).statusCode).toBe(401);
     expect((await creer(app, 'medecin')).statusCode).toBe(403);
@@ -83,7 +88,7 @@ describe('API des invitations', () => {
   });
 
   it('refuse une cohorte fermée et un champ inconnu', async () => {
-    const { app } = serveur();
+    const { app } = await serveur();
     expect((await creer(app, 'gestionnaire', 'autre-ville')).json()).toMatchObject({
       motif: 'cohorte-inconnue',
     });
@@ -97,7 +102,7 @@ describe('API des invitations', () => {
   });
 
   it('vérifie un code sans authentification, puis refuse un code révoqué', async () => {
-    const { app } = serveur();
+    const { app } = await serveur();
     const { code, id } = (await creer(app, 'gestionnaire')).json<{ code: string; id: string }>();
     const verifier = (c: string) =>
       app.inject({ method: 'POST', url: '/invitations/verification', payload: { code: c } });
@@ -113,7 +118,7 @@ describe('API des invitations', () => {
   });
 
   it('limite les essais de code', async () => {
-    const { app } = serveur(2);
+    const { app } = await serveur(2);
     const essai = () =>
       app.inject({
         method: 'POST',
@@ -128,7 +133,7 @@ describe('API des invitations', () => {
   });
 
   it('refuse la révocation à un médecin', async () => {
-    const { app } = serveur();
+    const { app } = await serveur();
     const { id } = (await creer(app, 'gestionnaire')).json<{ id: string }>();
     const r = await app.inject({
       method: 'POST',
@@ -141,7 +146,7 @@ describe('API des invitations', () => {
 
 describe('inscription par l’extension Keycloak', () => {
   const appel = (
-    app: ReturnType<typeof serveur>['app'],
+    app: Awaited<ReturnType<typeof serveur>>['app'],
     chemin: string,
     payload: Record<string, string>,
     jeton = 'extension',
@@ -154,7 +159,7 @@ describe('inscription par l’extension Keycloak', () => {
     });
 
   it('contrôle puis utilise un code une seule fois, sans jamais le journaliser', async () => {
-    const { app, lignes } = serveur();
+    const { app, lignes } = await serveur();
     const { code } = (await creer(app, 'gestionnaire')).json<{ code: string }>();
     const controle = await appel(app, 'controle', { code, adresse: '192.0.2.10' });
     expect(controle.json()).toEqual({ valide: true });
@@ -171,7 +176,7 @@ describe('inscription par l’extension Keycloak', () => {
   });
 
   it('refuse un jeton d’utilisateur, même celui d’un gestionnaire', async () => {
-    const { app } = serveur();
+    const { app } = await serveur();
     for (const jeton of ['gestionnaire', 'medecin', 'inconnu']) {
       const r = await appel(app, 'utilisation', { code: 'ABCD-EFGH', sujet: 'x' }, jeton);
       expect(r.statusCode).toBe(401);
@@ -179,7 +184,7 @@ describe('inscription par l’extension Keycloak', () => {
   });
 
   it('limite les essais par adresse du navigateur, pas par adresse de Keycloak', async () => {
-    const { app } = serveur(2);
+    const { app } = await serveur(2);
     const essai = (adresse: string) => appel(app, 'controle', { code: 'ZZZZ-ZZZZ', adresse });
     expect((await essai('192.0.2.1')).statusCode).toBe(200);
     expect((await essai('192.0.2.1')).statusCode).toBe(200);
@@ -188,8 +193,19 @@ describe('inscription par l’extension Keycloak', () => {
   });
 
   it('refuse un identifiant de compte mal formé', async () => {
-    const { app } = serveur();
+    const { app } = await serveur();
     const r = await appel(app, 'utilisation', { code: 'ABCD-EFGH', sujet: 'x; drop' });
     expect(r.statusCode).toBe(400);
+  });
+});
+
+describe('limite générale d’appels', () => {
+  it('au-delà de la limite par minute, répond 429 sur toutes les routes', async () => {
+    const { app } = await serveur(10, 2);
+    await app.inject({ method: 'GET', url: '/sante' });
+    await app.inject({ method: 'GET', url: '/sante' });
+    const r = await app.inject({ method: 'GET', url: '/sante' });
+    expect(r.statusCode).toBe(429);
+    expect(r.json()).toEqual({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
   });
 });

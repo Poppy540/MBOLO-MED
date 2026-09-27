@@ -62,7 +62,10 @@ interface Appel {
   entetes: Record<string, string>;
 }
 
-function passerelle(reponse: () => Response = () => new Response('{}', { status: 200 })) {
+async function passerelle(
+  reponse: () => Response = () => new Response('{}', { status: 200 }),
+  limiteParMinute?: number,
+) {
   const appels: Appel[] = [];
   const f = (async (url: string | URL | Request, init?: RequestInit) => {
     appels.push({
@@ -72,7 +75,7 @@ function passerelle(reponse: () => Response = () => new Response('{}', { status:
     });
     return reponse();
   }) as typeof fetch;
-  const app = creerPasserelle({
+  const app = await creerPasserelle({
     verifierJeton: creerVerificateur({
       emetteur: EMETTEUR,
       audience: 'mbolo-dossier-fhir',
@@ -83,6 +86,7 @@ function passerelle(reponse: () => Response = () => new Response('{}', { status:
     env: 'dev',
     journal,
     fetch: f,
+    ...(limiteParMinute ? { limiteParMinute } : {}),
   });
   return { app, appels };
 }
@@ -105,7 +109,7 @@ const consentFictif = () =>
 
 describe('passerelle du dossier', () => {
   it('401 sans jeton, avec un jeton d’une autre audience (jeton d’utilisateur) ou altéré', async () => {
-    const { app, appels } = passerelle();
+    const { app, appels } = await passerelle();
     expect((await app.inject({ method: 'GET', url: '/fhir/Consent/1' })).statusCode).toBe(401);
     const autre = await signer({ azp: 'mbolo-app-patient' }, 'mbolo-identite-api');
     const r1 = await app.inject({
@@ -127,7 +131,7 @@ describe('passerelle du dossier', () => {
   });
 
   it('403 hors des permissions : autre type, suppression, et le serveur interne n’est pas appelé', async () => {
-    const { app, appels } = passerelle();
+    const { app, appels } = await passerelle();
     const h = await auth();
     expect(
       (await app.inject({ method: 'GET', url: '/fhir/Patient/pat-fictif-001', headers: h }))
@@ -158,7 +162,7 @@ describe('passerelle du dossier', () => {
   });
 
   it('refuse les paramètres qui ramèneraient d’autres ressources (_include, _revinclude, chaînage)', async () => {
-    const { app, appels } = passerelle();
+    const { app, appels } = await passerelle();
     const h = await auth();
     for (const q of [
       '_include=Consent:patient',
@@ -179,7 +183,9 @@ describe('passerelle du dossier', () => {
       link: [{ relation: 'next', url: `${AMONT}?_getpages=abc&_getpagesoffset=100` }],
       entry: [{ resource: { resourceType: 'Consent', id: '1' } }],
     };
-    const { app, appels } = passerelle(() => new Response(JSON.stringify(bundle), { status: 200 }));
+    const { app, appels } = await passerelle(
+      () => new Response(JSON.stringify(bundle), { status: 200 }),
+    );
     const r = await app.inject({
       method: 'GET',
       url: '/fhir/Consent?patient=Patient%2Fpat-fictif-001&_count=100',
@@ -206,7 +212,7 @@ describe('passerelle du dossier', () => {
       mbolo_scopes: 'system/Patient.rs',
       mbolo_elements: 'Patient.telecom',
     });
-    const lecture = passerelle(() => new Response(JSON.stringify(patient), { status: 200 }));
+    const lecture = await passerelle(() => new Response(JSON.stringify(patient), { status: 200 }));
     const r = await lecture.app.inject({
       method: 'GET',
       url: '/fhir/Patient/pat-fictif-001?_elements=name',
@@ -221,7 +227,7 @@ describe('passerelle du dossier', () => {
     });
 
     const bundle = { resourceType: 'Bundle', type: 'searchset', entry: [{ resource: patient }] };
-    const recherche = passerelle(() => new Response(JSON.stringify(bundle), { status: 200 }));
+    const recherche = await passerelle(() => new Response(JSON.stringify(bundle), { status: 200 }));
     const s = await recherche.app.inject({
       method: 'GET',
       url: '/fhir/Patient?_id=pat-fictif-001&_elements=name,birthDate',
@@ -250,7 +256,7 @@ describe('passerelle du dossier', () => {
         status: 200,
       });
     }) as typeof fetch;
-    const app = creerPasserelle({
+    const app = await creerPasserelle({
       verifierJeton: creerVerificateur({
         emetteur: EMETTEUR,
         audience: 'mbolo-dossier-fhir',
@@ -333,7 +339,7 @@ describe('passerelle du dossier', () => {
         { resource: { resourceType: 'Patient', id: 'p' } },
       ],
     };
-    const { app } = passerelle(() => new Response(JSON.stringify(bundle), { status: 200 }));
+    const { app } = await passerelle(() => new Response(JSON.stringify(bundle), { status: 200 }));
     const r = await app.inject({
       method: 'GET',
       url: '/fhir/Consent?patient=Patient/x',
@@ -343,7 +349,7 @@ describe('passerelle du dossier', () => {
   });
 
   it('valide les écritures avec les règles Mbolo avant de les transmettre', async () => {
-    const { app, appels } = passerelle(
+    const { app, appels } = await passerelle(
       () =>
         new Response(JSON.stringify({ resourceType: 'Consent', id: '7' }), {
           status: 201,
@@ -380,7 +386,7 @@ describe('passerelle du dossier', () => {
   });
 
   it('502 si le serveur FHIR est injoignable, sans détail interne', async () => {
-    const { app } = passerelle(() => {
+    const { app } = await passerelle(() => {
       throw new TypeError('fetch failed');
     });
     const r = await app.inject({ method: 'GET', url: '/fhir/Consent/1', headers: await auth() });
@@ -391,7 +397,7 @@ describe('passerelle du dossier', () => {
   it('journalise les accès sans contenu médical ni jeton', async () => {
     lignes.length = 0;
     const jeton = await jetonIdentite();
-    const { app } = passerelle(
+    const { app } = await passerelle(
       () => new Response(JSON.stringify({ resourceType: 'Consent', id: '7' }), { status: 201 }),
     );
     await app.inject({
@@ -407,7 +413,7 @@ describe('passerelle du dossier', () => {
   });
 
   it('une trace (AuditEvent, Provenance) ne peut jamais être modifiée, même avec la permission', async () => {
-    const { app, appels } = passerelle();
+    const { app, appels } = await passerelle();
     const jeton = await signer({
       azp: 'client-de-test',
       mbolo_scopes: 'system/AuditEvent.cruds system/Provenance.cruds',
@@ -423,5 +429,19 @@ describe('passerelle du dossier', () => {
       expect(r.statusCode, type).toBe(403);
     }
     expect(appels).toHaveLength(0);
+  });
+});
+
+describe('limite d’appels de la passerelle', () => {
+  it('au-delà de la limite par minute, répond 429 en OperationOutcome', async () => {
+    const { app } = await passerelle(undefined, 2);
+    await app.inject({ method: 'GET', url: '/sante' });
+    await app.inject({ method: 'GET', url: '/sante' });
+    const r = await app.inject({ method: 'GET', url: '/sante' });
+    expect(r.statusCode).toBe(429);
+    expect(r.json()).toMatchObject({
+      resourceType: 'OperationOutcome',
+      issue: [{ diagnostics: 'Trop de requêtes. Réessayez dans une minute.' }],
+    });
   });
 });

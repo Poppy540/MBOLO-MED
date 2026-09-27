@@ -1,6 +1,7 @@
 // Passerelle du dossier médical : seul chemin vers le serveur FHIR (HAPI), qui n'est jamais exposé.
 // Pour chaque requête : jeton de service valide, permission SMART pour le type et l'interaction,
 // validation des écritures par les règles Mbolo, journal d'accès sans contenu médical.
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { Bundle, FhirResource } from 'fhir/r4.js';
 import { valider, type Environnement } from '@mbolo/dossier-fhir';
@@ -17,6 +18,11 @@ export interface OptionsPasserelle {
   env: Environnement;
   journal: Journal;
   fetch?: typeof fetch;
+  /**
+   * Appels permis par adresse et par minute (défaut : 3000) : les services appellent la passerelle
+   * pour chaque accès au dossier, la limite protège le serveur FHIR d'un service emballé.
+   */
+  limiteParMinute?: number;
 }
 
 const TYPE = /^[A-Z][A-Za-z]{1,63}$/;
@@ -38,8 +44,10 @@ class Refus extends Error {
   }
 }
 
-export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
+export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
+  // Toutes les routes sont limitées ; enregistré avant elles.
+  await app.register(rateLimit, { max: o.limiteParMinute ?? 3000, timeWindow: '1 minute' });
   const amont = o.amont.replace(/\/+$/, '');
   const publique = o.publique.replace(/\/+$/, '');
   const appeler = o.fetch ?? fetch;
@@ -69,6 +77,12 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof Refus) {
       return reply.code(err.statut).type(TYPE_FHIR).send(issue(err.message, err.regles));
+    }
+    if ((err as { statusCode?: number }).statusCode === 429) {
+      return reply
+        .code(429)
+        .type(TYPE_FHIR)
+        .send(issue('Trop de requêtes. Réessayez dans une minute.'));
     }
     if ((err as { statusCode?: number }).statusCode === 413) {
       return reply.code(413).type(TYPE_FHIR).send(issue('Ressource trop volumineuse.'));
