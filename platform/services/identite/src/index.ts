@@ -11,6 +11,8 @@ export {
 export type { DemandeConsentement, DepotConsentements } from './consentements.js';
 export { DepotFhir, ErreurDepot } from './depot-fhir.js';
 export type { OptionsDepotFhir } from './depot-fhir.js';
+export { ErreurJetonService, creerFournisseurJeton } from './jeton-service.js';
+export type { FournisseurJeton, OptionsJetonService } from './jeton-service.js';
 export { creerVerificateur } from './jeton.js';
 export type { OptionsJeton, VerifierJeton } from './jeton.js';
 export { creerServeur } from './serveur.js';

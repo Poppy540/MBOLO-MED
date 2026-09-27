@@ -17,7 +17,9 @@
 - **Dépôt :** fondations fusionnées dans `main` via [PR n°1](https://github.com/Poppy540/MBOLO-MED/pull/1) ; `main` protégée (pull request obligatoire, force-push et suppression interdits).
 - **Développement vague 0 (petites PR) :** A outillage — fusionnée ([PR n°2](https://github.com/Poppy540/MBOLO-MED/pull/2)) ; B `dossier-fhir` — fusionnée ([PR n°3](https://github.com/Poppy540/MBOLO-MED/pull/3)) ; C `identite` — fusionnée ([PR n°4](https://github.com/Poppy540/MBOLO-MED/pull/4)) ; D premiers e2e — fusionnée ([PR n°5](https://github.com/Poppy540/MBOLO-MED/pull/5)).
 - **Durcissement identité :** PR E fusionnée ([PR n°6](https://github.com/Poppy540/MBOLO-MED/pull/6)) — MFA OTP obligatoire pour les rôles professionnels, jeton sans e-mail ni nom, profil intégré au royaume.
-- **PR F en cours :** consentements stockés dans HAPI FHIR (`DepotFhir`, recherche sans cache, verrou optimiste) ; e2e avec HAPI réel (21 scénarios).
+- **PR F fusionnée** ([PR n°7](https://github.com/Poppy540/MBOLO-MED/pull/7)) : consentements stockés dans HAPI FHIR (`DepotFhir`, recherche sans cache, verrou optimiste).
+- **PR G en cours :** passerelle du dossier `passerelle-fhir` (ADR-0010, proposée) — jetons de service Keycloak, permissions SMART `system/<Type>.<cruds>` (revendication `mbolo_scopes`), validation des écritures ; `identite` y accède par client credentials ; 27 scénarios e2e.
+- **Protection de `main` à vérifier** : les PR E et F ont été fusionnées avant la fin de la CI (contrôles obligatoires non appliqués ou contournés par l'administrateur).
 - **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub, HAPI depuis la couche de l'image Docker Hub (`app/main.war`, Java 21) ; pas de démon Docker.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 
@@ -77,5 +79,6 @@
 - 2026-09-27 — Un test de refus doit utiliser des identifiants valides, sinon il réussit pour une autre raison (connexion directe : vrai mot de passe, erreur `unauthorized_client` attendue).
 - 2026-09-27 — Keycloak : le code OTP se calcule sur les octets bruts du champ caché `totpSecret`, et un code ne peut pas être réutilisé ; importer `authenticationFlows` conserve les flux par défaut.
 - 2026-09-27 — HAPI met en cache les recherches 60 s : toujours `Cache-Control: no-cache` pour une décision d'accès (sinon une révocation n'est pas vue). HAPI impose l'intégrité référentielle (un `Consent` vers un `Practitioner` inconnu est refusé).
+- 2026-09-27 — Keycloak : déclarer `clientScopes` dans un royaume importé supprime les portées par défaut ; les valeurs `${VAR}` du fichier sont remplacées par l'environnement à l'import (secrets hors dépôt). `tx.fhir.org` peut être indisponible : le validateur réessaie 3 fois.
 - 2026-09-27 — Ne jamais utiliser `pkill -f <motif>` dans une commande qui contient ce motif : elle se tue elle-même.
 - 2026-09-27 — `@types/fhir` s'importe via `'fhir/r4.js'` en `NodeNext` ; les fausses clés de test se construisent à l'exécution pour ne pas déclencher gitleaks.

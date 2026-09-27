@@ -12,6 +12,11 @@ interface Royaume {
     clientId: string;
     defaultClientScopes?: string[];
     directAccessGrantsEnabled?: boolean;
+    standardFlowEnabled?: boolean;
+    serviceAccountsEnabled?: boolean;
+    publicClient?: boolean;
+    secret?: string;
+    protocolMappers?: { protocolMapper: string; config: Record<string, string> }[];
   }[];
   components: Record<string, { config: Record<string, string[]> }[]>;
   authenticationFlows: { alias: string; authenticationExecutions: { authenticator?: string }[] }[];
@@ -54,6 +59,34 @@ describe('royaume mbolo', () => {
       expect(c.defaultClientScopes).not.toContain('email');
       expect(c.defaultClientScopes).not.toContain('profile');
       expect(c.directAccessGrantsEnabled).toBe(false);
+    }
+  });
+
+  it('compte de service identite : confidentiel, secret jamais écrit dans le royaume, accès minimal', () => {
+    const c = royaume.clients.find((x) => x.clientId === 'mbolo-identite-service');
+    expect(c).toMatchObject({
+      publicClient: false,
+      serviceAccountsEnabled: true,
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+    });
+    // Le secret est injecté à l'import depuis l'environnement (coffre-fort), jamais en clair.
+    expect(c?.secret).toBe('${IDENTITE_SERVICE_CLIENT_SECRET}');
+    const mappeurs = c?.protocolMappers ?? [];
+    expect(
+      mappeurs.find((m) => m.protocolMapper === 'oidc-audience-mapper')?.config[
+        'included.client.audience'
+      ],
+    ).toBe('mbolo-dossier-fhir');
+    // Consentements seulement : créer, lire, mettre à jour, rechercher ; jamais supprimer.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
+    ).toBe('system/Consent.crus');
+  });
+
+  it('aucun client ne contient de secret en clair', () => {
+    for (const c of royaume.clients) {
+      if (c.secret !== undefined) expect(c.secret).toMatch(/^\$\{[A-Z_]+\}$/);
     }
   });
 });

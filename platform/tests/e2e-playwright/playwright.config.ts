@@ -1,8 +1,9 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
-// Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`.
+// Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
+// et IDENTITE_SERVICE_CLIENT_SECRET identique à celui donné à Keycloak.
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
-import { EMETTEUR, FHIR_URL, IDENTITE_URL } from './configuration.js';
+import { EMETTEUR, FHIR_URL, IDENTITE_URL, PASSERELLE_URL } from './configuration.js';
 
 const testDir = defineBddConfig({
   featuresRoot: '../features-gherkin',
@@ -12,7 +13,7 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
-  // Le service identité garde les consentements en mémoire : exécution séquentielle.
+  // Scénarios dépendants du même dossier de test : exécution séquentielle.
   workers: 1,
   fullyParallel: false,
   forbidOnly: !!process.env['CI'],
@@ -21,15 +22,29 @@ export default defineConfig({
   globalSetup: './preparation-globale.ts',
   // Pas de trace ni de vidéo : elles contiendraient des jetons et des mots de passe de test.
   use: { locale: 'fr-FR', trace: 'off', video: 'off', screenshot: 'off' },
-  webServer: {
-    command: 'node ../../services/identite/dist/main.js',
-    url: `${IDENTITE_URL}/sante`,
-    reuseExistingServer: false,
-    env: {
-      KEYCLOAK_ISSUER: EMETTEUR,
-      FHIR_BASE_URL: FHIR_URL,
-      PORT: new URL(IDENTITE_URL).port,
-      MBOLO_ENV: 'dev',
+  webServer: [
+    {
+      command: 'node ../../services/passerelle-fhir/dist/main.js',
+      url: `${PASSERELLE_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        FHIR_AMONT_URL: FHIR_URL,
+        PORT: new URL(PASSERELLE_URL).port,
+        MBOLO_ENV: 'dev',
+      },
     },
-  },
+    {
+      command: 'node ../../services/identite/dist/main.js',
+      url: `${IDENTITE_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
+        IDENTITE_SERVICE_CLIENT_SECRET: process.env['IDENTITE_SERVICE_CLIENT_SECRET'] ?? '',
+        PORT: new URL(IDENTITE_URL).port,
+        MBOLO_ENV: 'dev',
+      },
+    },
+  ],
 });

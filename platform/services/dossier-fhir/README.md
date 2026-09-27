@@ -29,6 +29,6 @@ docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d   # HA
 
 ## Limites actuelles (vague 0)
 
-- Le service `identite` enregistre les consentements (`Consent`) dans ce serveur et décide des accès (ADR-0009). L'authentification SMART on FHIR du serveur lui-même reste à faire : **le serveur local ne doit jamais contenir de données réelles.**
+- Le service `identite` enregistre les consentements (`Consent`) dans ce serveur et décide des accès (ADR-0009). Le serveur HAPI n'est jamais exposé : les services y accèdent par la **passerelle** `services/passerelle-fhir` (jetons de service, permissions SMART, ADR-0010). **Le serveur local ne doit jamais contenir de données réelles.**
 - HAPI garde les résultats de recherche en cache 60 s par défaut : tout client qui décide d'un accès doit chercher avec `Cache-Control: no-cache`.
 - URL canonique provisoire (`mbolo-sante.example`) ; profils alignés plus tard sur eGabon-SIS si son standard le permet.

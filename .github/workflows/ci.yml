@@ -96,11 +96,14 @@ jobs:
       - run: pnpm build
       - name: Navigateur Chromium pour Playwright
         run: pnpm --filter @mbolo/e2e exec playwright install --with-deps chromium
-      - name: Mot de passe administrateur Keycloak éphémère (généré, masqué, jamais conservé)
+      - name: Secrets Keycloak éphémères (générés, masqués, jamais conservés)
         run: |
           MDP="$(openssl rand -hex 24)"
           echo "::add-mask::$MDP"
           echo "KC_BOOTSTRAP_ADMIN_PASSWORD=$MDP" >> "$GITHUB_ENV"
+          SECRET_SERVICE="$(openssl rand -hex 24)"
+          echo "::add-mask::$SECRET_SERVICE"
+          echo "IDENTITE_SERVICE_CLIENT_SECRET=$SECRET_SERVICE" >> "$GITHUB_ENV"
       - name: Démarrer Keycloak (royaume mbolo)
         run: docker compose -f platform/services/identite/docker-compose.yml up -d
       - name: Démarrer HAPI FHIR (données fictives, effacées à l'arrêt)
