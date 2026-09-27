@@ -45,7 +45,7 @@ const app = () => {
       audience: AUDIENCE,
       cles: createLocalJWKSet(jwks),
     }),
-    consentements: new ServiceConsentements(depot, 'dev'),
+    consentements: new ServiceConsentements(depot, 'dev', { estActif: async () => true }),
     depot,
     journal,
   });
@@ -243,7 +243,7 @@ describe('API identité', () => {
         audience: AUDIENCE,
         cles: createLocalJWKSet(jwks),
       }),
-      consentements: new ServiceConsentements(depot, 'dev'),
+      consentements: new ServiceConsentements(depot, 'dev', { estActif: async () => true }),
       depot,
       journal,
     });

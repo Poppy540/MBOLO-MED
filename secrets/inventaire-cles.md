@@ -114,6 +114,7 @@
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
 | `UNLEASH_BACKEND_TOKEN` | Unleash (ADR-0007) | Plateforme | Évaluer les flags | Jeton backend, évaluation seule | D R P | `mbolo/<env>/feature-flags/` | 90 j | RT | 0 |
+| `UNLEASH_ADMIN_TOKEN` / `UNLEASH_DB_PASSWORD` | Unleash (ADR-0007) | Tests e2e (local, CI) | Configurer les flags de test, base d'Unleash | **Jamais en recette ni en production** : générés à chaque exécution de la CI | D | poste local / CI éphémère | à chaque exécution | RT | 0 |
 | `UNLEASH_READONLY_TOKEN_PILOTE` | Unleash | **Agent 6** | Lire l'état des flags | **Lecture seule** — jamais d'activation | P | idem | 90 j | RT | 0 |
 
 ## Coffre-fort
@@ -135,3 +136,4 @@
 | 2026-09-27 | Ajout de la section Identité (Keycloak, ADR-0009) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | `FHIR_BASE_URL` inventoriée (utilisée aussi par `identite`) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Compte de service `IDENTITE_SERVICE_CLIENT_SECRET` et variables de la passerelle (ADR-0010) | En attente — responsable sécurité à nommer |
+| 2026-09-27 | Jeton d'administration et base d'Unleash pour les tests (ADR-0007) | En attente — responsable sécurité à nommer |

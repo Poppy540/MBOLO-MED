@@ -6,8 +6,10 @@ import {
   COMPTES,
   FHIR_URL,
   KEYCLOAK_URL,
+  COHORTE_CONSENTEMENT_PROCHE,
   RESSOURCES_FHIR,
   ROYAUME,
+  UNLEASH_URL,
   VARIABLE_MOTS_DE_PASSE,
 } from './configuration.js';
 
@@ -63,11 +65,50 @@ async function preparerDossier(): Promise<void> {
   }
 }
 
+/**
+ * Flag « consentement.proche » activé en développement pour la seule cohorte de test, ciblée par
+ * identifiant de compte (déploiement à 100 % limité par une contrainte sur userId). Les autres comptes le voient désactivé.
+ */
+async function preparerDrapeaux(sujets: string[]): Promise<void> {
+  const jeton = process.env['UNLEASH_ADMIN_TOKEN'];
+  if (!jeton) throw new Error('UNLEASH_ADMIN_TOKEN manquant (Unleash de test).');
+  const base = `${UNLEASH_URL}/admin/projects/default/features`;
+  const appeler = async (chemin: string, init: RequestInit = {}): Promise<Response> => {
+    const r = await fetch(`${base}${chemin}`, {
+      ...init,
+      headers: { authorization: jeton, 'content-type': 'application/json' },
+    });
+    if (!r.ok && r.status !== 409) {
+      throw new Error(`Unleash ${init.method ?? 'GET'} ${chemin} : ${r.status}`);
+    }
+    return r;
+  };
+  const nom = 'consentement.proche';
+  await appeler('', {
+    method: 'POST',
+    body: JSON.stringify({ name: nom, type: 'release', description: 'e2e [FICTIF]' }),
+  });
+  const env = `/${nom}/environments/development`;
+  const existantes = (await (await appeler(`${env}/strategies`)).json()) as { id: string }[];
+  for (const st of existantes) await appeler(`${env}/strategies/${st.id}`, { method: 'DELETE' });
+  await appeler(`${env}/strategies`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'flexibleRollout',
+      parameters: { rollout: '100', stickiness: 'default', groupId: nom },
+      constraints: [{ contextName: 'userId', operator: 'IN', values: sujets }],
+    }),
+  });
+  await appeler(`${env}/on`, { method: 'POST' });
+  // Laisse le service identite relire les flags (rafraîchissement de 500 ms en e2e).
+  await new Promise((r) => setTimeout(r, 1_500));
+}
+
 export default async function preparationGlobale(): Promise<void> {
   const local = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/;
-  if (!local.test(KEYCLOAK_URL) || !local.test(FHIR_URL)) {
+  if (!local.test(KEYCLOAK_URL) || !local.test(FHIR_URL) || !local.test(UNLEASH_URL)) {
     throw new Error(
-      'Les tests e2e ne s’exécutent que contre un Keycloak et un serveur FHIR locaux.',
+      'Les tests e2e ne s’exécutent que contre un Keycloak, un serveur FHIR et un Unleash locaux.',
     );
   }
   await preparerDossier();
@@ -85,6 +126,7 @@ export default async function preparationGlobale(): Promise<void> {
 
   // Comptes fictifs, recréés à chaque exécution avec un mot de passe aléatoire.
   const motsDePasse: Record<string, string> = {};
+  const sujets: Record<string, string> = {};
   for (const c of COMPTES) {
     const existants = (await (
       await admin(`/users?username=${c.identifiant}&exact=true`)
@@ -110,12 +152,14 @@ export default async function preparationGlobale(): Promise<void> {
       id: string;
     }[];
     if (!cree) throw new Error(`Création du compte ${c.identifiant} impossible.`);
+    sujets[c.identifiant] = cree.id;
     const role = await (await admin(`/roles/${c.role}`)).json();
     await admin(`/users/${cree.id}/role-mappings/realm`, {
       method: 'POST',
       body: JSON.stringify([role]),
     });
   }
+  await preparerDrapeaux(COHORTE_CONSENTEMENT_PROCHE.map((i) => sujets[i] ?? ''));
   // Transmis aux processus de test par l'environnement (jamais écrit sur disque).
   process.env[VARIABLE_MOTS_DE_PASSE] = JSON.stringify(motsDePasse);
 }

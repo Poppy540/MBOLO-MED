@@ -1,0 +1,33 @@
+# Unleash local pour le développement et les tests e2e — FLAGS FICTIFS UNIQUEMENT (ADR-0007).
+# Lancement : UNLEASH_DB_PASSWORD=<local> UNLEASH_ADMIN_TOKEN='*:*.<local>' \
+#   UNLEASH_BACKEND_TOKEN='default:development.<local>' docker compose -f platform/services/feature-flags/docker-compose.yml up -d
+# Aucun jeton ni mot de passe dans le dépôt : tout vient de l'environnement du poste ou de la CI.
+# Console : http://127.0.0.1:4242 (accessible uniquement depuis la machine locale).
+services:
+  base:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: unleash
+      POSTGRES_USER: unleash
+      POSTGRES_PASSWORD: ${UNLEASH_DB_PASSWORD:?Définir UNLEASH_DB_PASSWORD dans l'environnement local}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "unleash"]
+      interval: 3s
+      retries: 20
+  unleash:
+    image: unleashorg/unleash-server:7.6.5
+    depends_on:
+      base:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4242:4242"
+    environment:
+      DATABASE_HOST: base
+      DATABASE_NAME: unleash
+      DATABASE_USERNAME: unleash
+      DATABASE_PASSWORD: ${UNLEASH_DB_PASSWORD:?Définir UNLEASH_DB_PASSWORD dans l'environnement local}
+      DATABASE_SSL: "false"
+      # Jeton d'administration : environnements locaux et CI uniquement (en production, humains habilités).
+      INIT_ADMIN_API_TOKENS: ${UNLEASH_ADMIN_TOKEN:?Définir UNLEASH_ADMIN_TOKEN dans l'environnement local}
+      # Jeton backend (évaluation seule) utilisé par les services.
+      INIT_BACKEND_API_TOKENS: ${UNLEASH_BACKEND_TOKEN:?Définir UNLEASH_BACKEND_TOKEN dans l'environnement local}

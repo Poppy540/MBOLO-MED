@@ -5,6 +5,7 @@ export type { Decision, DemandeAcces, Motif } from './acces.js';
 export {
   DepotMemoire,
   ErreurAcces,
+  ErreurFonctionInactive,
   ErreurValidation,
   ServiceConsentements,
 } from './consentements.js';

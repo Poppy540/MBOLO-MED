@@ -1,0 +1,24 @@
+{
+  "name": "@mbolo/drapeaux",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Feature flags de Mbolo Santé : catalogue (désactivé par défaut), évaluation côté serveur via OpenFeature et Unleash (ADR-0003, ADR-0007).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openfeature/server-sdk": "^1.23.0",
+    "unleash-client": "^6.12.1"
+  }
+}

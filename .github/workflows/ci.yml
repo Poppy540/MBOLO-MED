@@ -96,7 +96,7 @@ jobs:
       - run: pnpm build
       - name: Navigateur Chromium pour Playwright
         run: pnpm --filter @mbolo/e2e exec playwright install --with-deps chromium
-      - name: Secrets Keycloak éphémères (générés, masqués, jamais conservés)
+      - name: Secrets de test éphémères (générés, masqués, jamais conservés)
         run: |
           MDP="$(openssl rand -hex 24)"
           echo "::add-mask::$MDP"
@@ -104,17 +104,31 @@ jobs:
           SECRET_SERVICE="$(openssl rand -hex 24)"
           echo "::add-mask::$SECRET_SERVICE"
           echo "IDENTITE_SERVICE_CLIENT_SECRET=$SECRET_SERVICE" >> "$GITHUB_ENV"
+          for NOM in UNLEASH_DB_PASSWORD UNLEASH_ADMIN_TOKEN UNLEASH_BACKEND_TOKEN; do
+            VALEUR="$(openssl rand -hex 24)"
+            echo "::add-mask::$VALEUR"
+            case "$NOM" in
+              UNLEASH_ADMIN_TOKEN) VALEUR="*:*.$VALEUR" ;;
+              UNLEASH_BACKEND_TOKEN) VALEUR="default:development.$VALEUR" ;;
+            esac
+            echo "$NOM=$VALEUR" >> "$GITHUB_ENV"
+          done
       - name: Démarrer Keycloak (royaume mbolo)
         run: docker compose -f platform/services/identite/docker-compose.yml up -d
       - name: Démarrer HAPI FHIR (données fictives, effacées à l'arrêt)
         run: docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d
+      - name: Démarrer Unleash (feature flags de test)
+        run: docker compose -f platform/services/feature-flags/docker-compose.yml up -d
       - name: Attendre Keycloak
         run: timeout 180 bash -c 'until curl -sf http://127.0.0.1:8081/realms/mbolo/.well-known/openid-configuration > /dev/null; do sleep 3; done'
       - name: Attendre HAPI FHIR
         run: timeout 300 bash -c 'until curl -sf http://127.0.0.1:8080/fhir/metadata > /dev/null; do sleep 5; done'
+      - name: Attendre Unleash
+        run: timeout 180 bash -c 'until curl -sf http://127.0.0.1:4242/health > /dev/null; do sleep 3; done'
       - run: pnpm e2e
-      - name: Journaux Keycloak et HAPI en cas d'échec
+      - name: Journaux Keycloak, HAPI et Unleash en cas d'échec
         if: failure()
         run: |
           docker compose -f platform/services/identite/docker-compose.yml logs --tail 200
           docker compose -f platform/services/dossier-fhir/docker-compose.yml logs --tail 200
+          docker compose -f platform/services/feature-flags/docker-compose.yml logs --tail 100

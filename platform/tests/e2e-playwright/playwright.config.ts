@@ -1,9 +1,10 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
 // Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
-// et IDENTITE_SERVICE_CLIENT_SECRET identique à celui donné à Keycloak.
+// IDENTITE_SERVICE_CLIENT_SECRET identique à celui donné à Keycloak, et un Unleash local
+// (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
-import { EMETTEUR, FHIR_URL, IDENTITE_URL, PASSERELLE_URL } from './configuration.js';
+import { EMETTEUR, FHIR_URL, IDENTITE_URL, PASSERELLE_URL, UNLEASH_URL } from './configuration.js';
 
 const testDir = defineBddConfig({
   featuresRoot: '../features-gherkin',
@@ -42,6 +43,9 @@ export default defineConfig({
         KEYCLOAK_ISSUER: EMETTEUR,
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
         IDENTITE_SERVICE_CLIENT_SECRET: process.env['IDENTITE_SERVICE_CLIENT_SECRET'] ?? '',
+        UNLEASH_API_URL: UNLEASH_URL,
+        UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
+        UNLEASH_REFRESH_MS: '500',
         PORT: new URL(IDENTITE_URL).port,
         MBOLO_ENV: 'dev',
       },

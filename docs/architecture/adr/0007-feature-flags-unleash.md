@@ -20,4 +20,10 @@ Unleash, auto-hébergé chez l'hébergeur retenu (offre gérée possible au dém
 - Plateforme : jeton **backend** (évaluation seule). Agent 6 : compte de service **lecture seule**.
 - Journal des modifications conservé pour l'audit.
 
+## Mise en œuvre (2026-09-27, PR H)
+- Paquet `@mbolo/drapeaux` : fournisseur OpenFeature maison au-dessus de `unleash-client`. Aucun fournisseur Unleash officiel n'existe pour OpenFeature côté serveur Node.
+- Catalogue typé des flags, dépendances, refus par défaut (Unleash injoignable → désactivé), pas de copie sur disque.
+- Ciblage de cohorte par `userId` (identifiant technique du compte) avec une contrainte : la stratégie `userWithId` n'existe plus dans Unleash 7.
+- Premier flag branché : `consentement.proche` (vague 2) dans `identite`. Registre : `docs/deploiement/flags.md`.
+
 Sources : Unleash — https://docs.getunleash.io/ ; OpenFeature — https://openfeature.dev/

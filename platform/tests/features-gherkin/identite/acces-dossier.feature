@@ -42,6 +42,11 @@ Fonctionnalité: Accès au dossier d'un patient selon ses consentements
     Et que "proche-fictif-01" demande l'accès au dossier "pat-fictif-001"
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
 
+  Scénario: Le partage avec un proche n'est proposé qu'aux patients de la cohorte activée
+    Étant donné que "patient-fictif-02" est connecté
+    Quand "patient-fictif-02" tente de donner son consentement "C-PROCHE" à "RelatedPerson/rp-fictif-001"
+    Alors la fonction n'est pas encore disponible pour ce patient
+
   Scénario: Un partage avec un professionnel inconnu du dossier est refusé
     Étant donné que "patient-fictif-01" est connecté
     Quand "patient-fictif-01" tente de donner son consentement "C-PARTAGE-PRO" à "Practitioner/prac-inconnu-999"

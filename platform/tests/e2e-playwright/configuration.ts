@@ -10,6 +10,10 @@ export const FHIR_URL = process.env['FHIR_AMONT_URL'] ?? 'http://127.0.0.1:8080/
 /** Passerelle du dossier : seul point d'entrée des services vers le dossier. */
 export const PASSERELLE_URL = process.env['PASSERELLE_URL'] ?? 'http://127.0.0.1:3002';
 export const CLIENT_SERVICE_IDENTITE = 'mbolo-identite-service';
+/** Unleash de test (feature flags, ADR-0007). */
+export const UNLEASH_URL = process.env['UNLEASH_API_URL'] ?? 'http://127.0.0.1:4242/api';
+/** [FICTIF] Seuls ces comptes voient le partage avec un proche (ciblage Unleash par compte). */
+export const COHORTE_CONSENTEMENT_PROCHE = ['patient-fictif-01'];
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
 export const APPLICATIONS = {

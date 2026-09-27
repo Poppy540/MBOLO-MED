@@ -52,6 +52,10 @@ KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_AMONT_URL=http://127.0.0
 KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:3002/fhir IDENTITE_SERVICE_CLIENT_SECRET=… pnpm --filter @mbolo/identite start
 ```
 
+## Feature flags
+
+Le partage du dossier avec un proche (`C-PROCHE`) n'est accepté que si le flag `consentement.proche` (vague 2) est actif pour le compte : sinon **403 « Fonction non disponible. »**. Les flags viennent d'Unleash (`UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN`). Sans Unleash, toutes les fonctions nouvelles sont désactivées. Aucun flag ne touche au contrôle d'accès ni aux consentements existants (voir `docs/deploiement/flags.md`).
+
 ## Tests de bout en bout
 
 Le royaume, le profil utilisateur et l'API sont vérifiés avec un vrai Keycloak par les scénarios de `platform/tests/features-gherkin/identite/` (`pnpm e2e`, job CI **E2E**).
