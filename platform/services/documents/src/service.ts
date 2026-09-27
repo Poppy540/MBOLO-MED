@@ -128,6 +128,19 @@ export class ServiceDocuments {
     });
   }
 
+  /** Rend illisibles et supprime toutes les photos présentes d'un patient (« à refaire »). */
+  async effacerDuPatient(patientId: string): Promise<number> {
+    const maintenant = this.horloge();
+    let n = 0;
+    for (const m of await this.depot.duPatient(patientId)) {
+      if (await this.depot.detruireCle(m.id, maintenant)) {
+        await this.stockage.supprimer(m.id).catch(() => undefined);
+        n++;
+      }
+    }
+    return n;
+  }
+
   /**
    * Suppression à échéance : la clé est détruite d'abord (le contenu devient illisible même si la
    * suppression de l'objet échouait), puis l'objet est supprimé. Retourne le nombre traité.

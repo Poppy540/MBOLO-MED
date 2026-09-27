@@ -1,6 +1,6 @@
 # Service `documents` (prototype, ADR-0015)
 
-Stockage chiffré des documents : d'abord les photos de vérification d'identité (pièce d'identité ou acte de naissance, et visage), puis, plus tard, les photos d'ordonnances et les résultats. Contenu : le cœur du service (PR AF) et **le dépôt des photos par le patient** (PR AG). L'écran du vérificateur arrive dans la PR suivante.
+Stockage chiffré des documents : d'abord les photos de vérification d'identité (pièce d'identité ou acte de naissance, et visage), puis, plus tard, les photos d'ordonnances et les résultats. Contenu : le cœur du service (PR AF), **le dépôt des photos par le patient** (PR AG) et **la vérification par une personne habilitée** (PR AH).
 
 ## API (patient)
 
@@ -22,9 +22,26 @@ La charte est acceptée **par le patient lui-même** auprès du service `identit
 Autres garanties :
 - **Traçabilité** : chaque dépôt et chaque refus sont tracés dans le journal sécurisé (compte, dossier, type, taille, motif), sans image ni nom.
 - **Limites** : 120 appels par minute et par adresse, dont 10 envois de photos.
-- **Compte de service** `mbolo-documents-service` : `system/Patient.r system/Consent.s`, seul `Patient.extension` sort de la passerelle ; aucune écriture dans le dossier.
+- **Compte de service** `mbolo-documents-service` : `system/Patient.ru system/Consent.s system/AuditEvent.c` ; seuls le nom, les prénoms, la naissance, le statut et les numéros sortent de la passerelle, et seuls le statut et les numéros peuvent être modifiés (`mbolo_elements_modifiables`).
 - **Suppression à échéance** : lancée au démarrage puis toutes les heures.
 - **Prototype** : le service refuse de démarrer en production.
+
+## API (vérificateur)
+
+Jeton de l'espace professionnel, **rôle `verification-identite`** (double authentification). Jamais un agent IA, un médecin ou un administrateur. Personne ne vérifie sa propre identité.
+
+| Route | Rôle |
+|---|---|
+| `GET /verifications` | Patients dont les photos (document **et** visage) attendent une décision, depuis la dernière décision ; les plus anciens d'abord. Références opaques et dates seulement |
+| `GET /verifications/:patientId` | Identité déclarée (nom, prénoms, naissance), statut, numéros, photos à examiner |
+| `GET /verifications/:patientId/documents/:id` | La photo déchiffrée (`cache-control: no-store`) |
+| `POST /verifications/:patientId/decision` | `verifiee` avec le numéro (assurance maladie ou provisoire), `refusee` avec un motif de la liste, ou `a-refaire` |
+
+- **Traçabilité** : chaque consultation (identité déclarée, chaque photo) est enregistrée dans le dossier du patient (`AuditEvent`, motif `verification-identite`) **avant** d'être montrée ; sans trace, rien n'est montré. Le patient la voit dans l'historique des accès à son dossier.
+- **Décision** : enregistrée dans le schéma `documents` (qui, quand, résultat, motif codé ; jamais le numéro ni de texte libre). Pour « vérifiée » et « refusée », le statut est reporté dans le dossier. La passerelle ne laisse modifier que le **statut et le numéro** : le reste du Patient est conservé.
+- **« À refaire »** : les photos deviennent illisibles (clé détruite) puis sont supprimées ; le patient peut en envoyer de nouvelles.
+- **Motifs de refus** (liste fermée) : `photo-illisible`, `document-non-conforme`, `visage-different`, `document-expire`, `autre-controle-en-personne`.
+- **Aucune reconnaissance faciale automatique** : la comparaison est faite à l'œil (ADR-0015, sous réserve de l'avis juridique).
 
 ## Configuration
 
@@ -35,6 +52,7 @@ Autres garanties :
 | `DOCUMENTS_DATABASE_URL`, `DOCUMENTS_MIGRATION_DATABASE_URL` | Base des services : rôle d'exécution et propriétaire du schéma (migrations au démarrage) |
 | `DOCUMENTS_CLE_MAITRE` | Clé maître (32 octets, base64), depuis le coffre-fort |
 | `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | Stockage objet ; hors production, le compartiment est créé s'il manque |
+| `DOCUMENTS_SYSTEME_ASSURANCE`, `DOCUMENTS_SYSTEME_PROVISOIRE` | Système (URI) des numéros d'assurance maladie et provisoires : dépend du pays |
 | `DOCUMENTS_VERSION_CHARTE` (défaut `0.1`) | Version de la charte en vigueur : une nouvelle version exige une nouvelle acceptation |
 | `DOCUMENTS_CONSERVATION_JOURS` (défaut 90), `DOCUMENTS_MAX_PAR_TYPE` (défaut 2) | Durée de conservation (à fixer par pays avec l'avis juridique) et nombre de photos par type |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flag `identite.photos` (sans Unleash : désactivé) |
@@ -74,6 +92,7 @@ Autres garanties :
   - suppression refusée au rôle d'exécution ;
   - cinq envois simultanés : deux seulement acceptés.
 - **API** (`serveur.test.ts`) : dépôt tracé sans image, refus sans charte ou après un refus, identité déjà vérifiée, agent IA et professionnel refusés, flag, contenu qui n'est pas une photo, taille, limite par type, limite d'appels.
-- **E2E** (`features-gherkin/identite/verification-identite.feature`) : parcours complet dans l'application patient et refus par l'API.
+- **API du vérificateur** : liste réservée au rôle, traces avant affichage, photo d'un autre patient refusée, pas d'auto-vérification, « vérifiée » avec numéro, motif obligatoire et sans texte libre, « à refaire ».
+- **E2E** (`features-gherkin/identite/verification-identite.feature`, `verification-par-un-humain.feature`) : parcours du patient, puis vérification dans l'espace professionnel (photos affichées, statut et numéro dans le dossier, consultations visibles par le patient), « à refaire », motif obligatoire, médecin refusé.
 
 En local, un SeaweedFS lancé avec `weed server -s3 -s3.config=<fichier d'identités> -volume.max=100 -master.volumeSizeLimitMB=64 -master.volumePreallocate=false` suffit (chaque compartiment de test crée 7 volumes : sans ces options, les places manquent dès la 2ᵉ exécution). Ses clés de test restent hors du dépôt.

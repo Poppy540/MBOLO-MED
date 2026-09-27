@@ -162,6 +162,8 @@ export default defineConfig({
         STORAGE_ACCESS_KEY_ID: process.env['MBOLO_TEST_S3_CLE'] ?? '',
         STORAGE_SECRET_ACCESS_KEY: process.env['MBOLO_TEST_S3_SECRET'] ?? '',
         STORAGE_BUCKET: 'mbolo-e2e-documents',
+        // Tous les envois viennent de la même adresse en e2e ; la limite est testée à part (unitaire).
+        DOCUMENTS_LIMITE_DEPOT_PAR_MINUTE: '100',
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',
@@ -182,7 +184,7 @@ export default defineConfig({
       cwd: '../../apps/professionnel',
       url: APP_PRO_URL,
       reuseExistingServer: false,
-      env: { TELECONSULTATION_URL, CONSULTATION_URL },
+      env: { TELECONSULTATION_URL, CONSULTATION_URL, DOCUMENTS_URL },
     },
   ],
 });

@@ -13,6 +13,11 @@ export interface ClientService {
   permissions: Permissions;
   /** Éléments lisibles par type (revendication mbolo_elements) ; vide : aucune restriction. */
   elements: ElementsAutorises;
+  /**
+   * Éléments modifiables par type (revendication mbolo_elements_modifiables), pour un type restreint :
+   * une mise à jour ne remplace que ceux-là, le reste de la ressource est conservé.
+   */
+  modifiables: ElementsAutorises;
 }
 
 export type VerifierJeton = (jeton: string) => Promise<ClientService>;
@@ -26,6 +31,8 @@ interface Revendications extends JWTPayload {
   mbolo_scopes?: string;
   /** Éléments autorisés par type, ex. « Patient.telecom » (minimisation, ADR-0012). */
   mbolo_elements?: string;
+  /** Éléments modifiables par type, ex. « Patient.extension » (ADR-0015). */
+  mbolo_elements_modifiables?: string;
 }
 
 export function creerVerificateur(o: {
@@ -45,6 +52,7 @@ export function creerVerificateur(o: {
       client: payload.azp,
       permissions: lirePermissions(payload.mbolo_scopes),
       elements: lireElements(payload.mbolo_elements),
+      modifiables: lireElements(payload.mbolo_elements_modifiables),
     };
   };
 }

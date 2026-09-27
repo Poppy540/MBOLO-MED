@@ -1,11 +1,13 @@
 // Espace professionnel (PWA faible débit). Port 5181 : les ports 5173 et 5174 servent de faux
-// retours de connexion aux tests e2e. APIs servies sous /api/teleconsultation et /api/consultation
+// retours de connexion aux tests e2e. APIs servies sous /api/teleconsultation, /api/consultation et /api/documents
 // (même origine).
 import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
 
 const api = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
 const consultation = process.env['CONSULTATION_URL'] ?? 'http://127.0.0.1:3005';
+// Vérification d'identité des patients (ADR-0015).
+const documents = process.env['DOCUMENTS_URL'] ?? 'http://127.0.0.1:3007';
 const relais = (prefixe: string, cible: string) => ({
   target: cible,
   changeOrigin: true,
@@ -14,6 +16,7 @@ const relais = (prefixe: string, cible: string) => ({
 const proxy = {
   '/api/teleconsultation': relais('/api/teleconsultation', api),
   '/api/consultation': relais('/api/consultation', consultation),
+  '/api/documents': relais('/api/documents', documents),
 };
 
 export default defineConfig({

@@ -12,6 +12,11 @@ export const ROLES = [
   'revue-acces',
   /** Crée et révoque les codes d'invitation (ADR-0013), aucun accès clinique. Jamais un agent IA. */
   'gestion-invitations',
+  /**
+   * Vérifie l'identité des patients à distance (ADR-0015) : voit leurs photos (chaque ouverture est
+   * tracée) et décide ; aucun accès clinique. Double authentification. Jamais un agent IA.
+   */
+  'verification-identite',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

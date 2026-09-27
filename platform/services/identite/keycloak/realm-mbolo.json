@@ -71,7 +71,7 @@
       },
       {
         "name": "mfa-requise",
-        "description": "Rôle technique : impose la double authentification (OTP) à la connexion. Inclus dans professionnel, infirmier, pharmacien, administrateur. Ne jamais l'attribuer ni le retirer à la main."
+        "description": "Rôle technique : impose la double authentification (OTP) à la connexion. Inclus dans les rôles professionnels et habilités. Ne jamais l'attribuer ni le retirer à la main."
       },
       {
         "name": "revue-acces",
@@ -84,6 +84,14 @@
       {
         "name": "gestion-invitations",
         "description": "Gestionnaire des invitations (ADR-0013) : crée et révoque les codes d'invitation, aucun accès clinique. MFA obligatoire. Attribué par un administrateur au porteur de projet et à la personne de confiance qu'il désigne ; jamais à un agent IA.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
+      },
+      {
+        "name": "verification-identite",
+        "description": "Vérificateur d'identité (ADR-0015) : voit les photos d'identité (chaque ouverture est tracée) et décide ; aucun accès clinique. MFA obligatoire. Jamais un agent IA.",
         "composite": true,
         "composites": {
           "realm": ["mfa-requise"]
@@ -237,6 +245,16 @@
             "access.token.claim": "true",
             "id.token.claim": "false",
             "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "audience-documents-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-documents-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
           }
         }
       ],
@@ -464,7 +482,7 @@
     },
     {
       "clientId": "mbolo-documents-service",
-      "name": "Compte de service du service documents (dossier : statut d'identité et charte C-IDENTITE, lecture seule)",
+      "name": "Compte de service du service documents (dossier : identité déclarée et statut du patient, charte C-IDENTITE ; modification du statut et du numéro seulement ; traces des photos consultées)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
@@ -496,7 +514,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Patient.r system/Consent.s",
+            "claim.value": "system/Patient.ru system/Consent.s system/AuditEvent.c",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",
@@ -510,7 +528,21 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements",
-            "claim.value": "Patient.extension",
+            "claim.value": "Patient.extension Patient.identifier Patient.name Patient.birthDate",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "elements-modifiables",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements_modifiables",
+            "claim.value": "Patient.extension Patient.identifier",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

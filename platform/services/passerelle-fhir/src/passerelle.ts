@@ -88,12 +88,14 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
     type: string,
     chemin: string,
     corps?: unknown,
+    entetesImposes: Record<string, string> = {},
   ) => {
     const entetes: Record<string, string> = { accept: TYPE_FHIR };
     for (const nom of ENTETES_TRANSMIS) {
       const v = req.headers[nom];
       if (typeof v === 'string') entetes[nom] = v;
     }
+    Object.assign(entetes, entetesImposes);
     if (corps !== undefined) entetes['content-type'] = TYPE_FHIR;
     let r: Response;
     try {
@@ -171,6 +173,58 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
         violations.map((v) => v.regle),
       );
     }
+  };
+
+  /** Ressource actuelle dont seuls les éléments modifiables présents dans `corps` sont remplacés. */
+  const fusionner = async (
+    c: ClientService,
+    type: string,
+    id: string,
+    corps: unknown,
+  ): Promise<{ fusion: FhirResource; version: string }> => {
+    const modifiables = c.modifiables.get(type);
+    const envoye = corps as Record<string, unknown> | undefined;
+    if (!modifiables) {
+      o.journal.avertissement('modification refusée (aucun élément modifiable)', {
+        client: c.client,
+        type,
+      });
+      throw new Refus(403, 'Accès refusé.');
+    }
+    if (
+      !envoye ||
+      typeof envoye !== 'object' ||
+      envoye['resourceType'] !== type ||
+      envoye['id'] !== id
+    ) {
+      throw new Refus(400, 'La ressource ne correspond pas à l’adresse.');
+    }
+    const interdits = Object.keys(envoye).filter(
+      (k) => !['resourceType', 'id', 'meta'].includes(k) && !modifiables.has(k),
+    );
+    if (interdits.length > 0) {
+      o.journal.avertissement('modification d’éléments non autorisés refusée', {
+        client: c.client,
+        type,
+        elements: interdits,
+      });
+      throw new Refus(403, 'Élément non modifiable.');
+    }
+    let r: Response;
+    try {
+      r = await appeler(`${amont}/${type}/${id}`, {
+        headers: { accept: TYPE_FHIR, 'cache-control': 'no-cache' },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new Error('serveur FHIR injoignable');
+    }
+    if (r.status === 404 || r.status === 410) throw new Refus(404, 'Ressource inconnue.');
+    if (!r.ok) throw new Error(`lecture avant modification impossible (${r.status})`);
+    const actuel = (await r.json()) as FhirResource & Record<string, unknown>;
+    const fusion: Record<string, unknown> = { ...actuel };
+    for (const k of modifiables) if (k in envoye) fusion[k] = envoye[k];
+    return { fusion: fusion as unknown as FhirResource, version: actuel.meta?.versionId ?? '' };
   };
 
   app.get('/sante', async () => ({ statut: 'ok' }));
@@ -252,6 +306,25 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
       throw new Refus(403, 'Une trace ne peut pas être modifiée.');
     }
     exiger(c, req.params.type, 'u');
+    // Type restreint en lecture : seuls les éléments modifiables du client sont remplacés, le reste
+    // de la ressource actuelle est conservé (le client ne l'a jamais vu).
+    if (c.elements.has(req.params.type)) {
+      const { fusion, version } = await fusionner(c, req.params.type, req.params.id, req.body);
+      verifierEcriture(req.params.type, req.params.id, fusion);
+      return relayer(
+        req,
+        reply,
+        c,
+        'u',
+        req.params.type,
+        `/${req.params.type}/${req.params.id}`,
+        fusion,
+        // Verrou optimiste : la version lue, sauf si le client en impose une.
+        typeof req.headers['if-match'] === 'string' || !version
+          ? {}
+          : { 'if-match': `W/"${version}"` },
+      );
+    }
     verifierEcriture(req.params.type, req.params.id, req.body);
     return relayer(
       req,

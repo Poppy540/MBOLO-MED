@@ -23,7 +23,7 @@ const differes = readdirSync(join(dist, 'assets'))
 
 process.stdout.write(
   `Budget : ${initial.toFixed(1)} Ko à l'ouverture (plafond ${PLAFOND_INITIAL_KO} Ko), ` +
-    `${differes.toFixed(1)} Ko chargés seulement pour la vidéo.\n`,
+    `${differes.toFixed(1)} Ko chargés à la demande (vidéo, vérification d'identité).\n`,
 );
 if (initial > PLAFOND_INITIAL_KO) {
   process.stderr.write('Budget de poids dépassé à l’ouverture.\n');

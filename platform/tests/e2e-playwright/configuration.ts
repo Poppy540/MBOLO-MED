@@ -56,7 +56,8 @@ export interface CompteFictif {
     | 'infirmier'
     | 'pharmacien'
     | 'revue-acces'
-    | 'gestion-invitations';
+    | 'gestion-invitations'
+    | 'verification-identite';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -117,6 +118,13 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'gestionnaire-fictif-01',
     prenom: 'Joël',
     role: 'gestion-invitations',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    identifiant: 'verificateur-fictif-01',
+    prenom: 'Amina',
+    role: 'verification-identite',
     application: 'pro',
     attributs: {},
   },

@@ -1,6 +1,6 @@
 // Configuration publique (aucun secret : l'application est un client public, PKCE obligatoire).
 // Le Gabon est le premier pays : tout ce qui dépend du pays (fuseau, langue) est paramétrable au
-// déploiement, sans modifier le code (VITE_FUSEAU, VITE_LANGUE).
+// déploiement, sans modifier le code (VITE_FUSEAU, VITE_LANGUE, VITE_NOM_ASSURANCE).
 const env = import.meta.env;
 const lire = (cle: string, defaut: string): string => (env[cle] as string | undefined) ?? defaut;
 
@@ -9,6 +9,10 @@ export const CONFIG = {
   client: lire('VITE_KEYCLOAK_CLIENT', 'mbolo-app-pro'),
   api: '/api/teleconsultation',
   apiConsultation: '/api/consultation',
+  /** Vérification d'identité des patients (ADR-0015), rôle verification-identite. */
+  apiDocuments: '/api/documents',
+  /** Nom de l'assurance maladie nationale du pays déployé (Gabon : CNAMGS). */
+  assurance: lire('VITE_NOM_ASSURANCE', 'CNAMGS'),
   /** Fuseau horaire du pays déployé (IANA). */
   fuseau: lire('VITE_FUSEAU', 'Africa/Libreville'),
   /** Langue et formats (BCP 47). */
