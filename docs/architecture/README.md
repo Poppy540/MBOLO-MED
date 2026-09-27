@@ -16,6 +16,7 @@
 | [0010](adr/0010-passerelle-dossier.md) | Passerelle du dossier médical, comptes de service, permissions SMART | Proposée |
 | [0011](adr/0011-serveur-webrtc.md) | Serveur de téléconsultation vidéo : LiveKit | Acceptée (prototype et test terrain à venir) |
 | [0012](adr/0012-notifications.md) | Service de notifications (SMS, WhatsApp), gabarits approuvés | Proposée (fournisseur à choisir) |
+| [0013](adr/0013-base-de-donnees-services.md) | Base de données des services (hors dossier médical), premier usage : codes d'invitation | Proposée |
 
 ## Vue d'ensemble (cible, à détailler)
 
