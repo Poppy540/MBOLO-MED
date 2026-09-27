@@ -8,7 +8,7 @@ import {
 } from '@mbolo/dossier-fhir';
 import type { Journal } from '@mbolo/journal-securise';
 import { creerVerificateur } from './jeton.js';
-import { creerPasserelle } from './passerelle.js';
+import { creerPasserelle, sansBarreFinale } from './passerelle.js';
 
 // Clés générées pour le test ; données FICTIVES ; faux serveur FHIR.
 const EMETTEUR = 'https://auth.mbolo-sante.example/realms/mbolo';
@@ -443,5 +443,13 @@ describe('limite d’appels de la passerelle', () => {
       resourceType: 'OperationOutcome',
       issue: [{ diagnostics: 'Trop de requêtes. Réessayez dans une minute.' }],
     });
+  });
+});
+
+describe('sansBarreFinale', () => {
+  it('retire les « / » finaux, même très nombreux, en temps linéaire', () => {
+    expect(sansBarreFinale(`${AMONT}///`)).toBe(AMONT);
+    expect(sansBarreFinale(AMONT)).toBe(AMONT);
+    expect(sansBarreFinale(`http://a${'/'.repeat(100_000)}`)).toBe('http://a');
   });
 });

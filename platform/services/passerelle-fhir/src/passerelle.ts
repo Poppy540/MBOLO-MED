@@ -48,8 +48,8 @@ export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInst
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: o.limiteParMinute ?? 3000, timeWindow: '1 minute' });
-  const amont = o.amont.replace(/\/+$/, '');
-  const publique = o.publique.replace(/\/+$/, '');
+  const amont = sansBarreFinale(o.amont);
+  const publique = sansBarreFinale(o.publique);
   const appeler = o.fetch ?? fetch;
 
   app.addContentTypeParser(
@@ -357,6 +357,13 @@ export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInst
   );
 
   return app;
+}
+
+/** Retire les « / » finaux, en temps linéaire (pas d'expression régulière sur une adresse fournie). */
+export function sansBarreFinale(url: string): string {
+  let fin = url.length;
+  while (fin > 0 && url.charCodeAt(fin - 1) === 47) fin -= 1;
+  return url.slice(0, fin);
 }
 
 function issue(message: string, regles?: string[]) {
