@@ -14,3 +14,12 @@ export { quand, versInstant } from './format.js';
 export { DecisionRepli } from './repli.js';
 export type { Qualite } from './repli.js';
 export type { EtatVisio, Visio } from './visio.js';
+export {
+  activerHorsLigne,
+  estHorsLigne,
+  oublierRendezVous,
+  rendezVousRetenus,
+  retenirRendezVous,
+} from './hors-ligne.js';
+export type { RendezVousHorsLigne as RendezVousRetenu, Stockage } from './hors-ligne.js';
+export { RendezVousHorsLigne } from './hors-ligne-vue.js';

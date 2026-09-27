@@ -1,6 +1,6 @@
 # Espace professionnel (prototype)
 
-PWA légère (Preact + Vite, **10,6 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
+PWA légère (Preact + Vite, **11,0 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
 
 ## Parcours
 
@@ -10,6 +10,15 @@ PWA légère (Preact + Vite, **10,6 Ko** compressés à l'ouverture) pour les pr
 4. **Téléconsultation** : même écran que le patient (vidéo 216p, repli audio automatique ou choisi).
 
 Aucune donnée de santé n'est affichée ici : le dossier du patient s'ouvre par ses consentements (service `identite`).
+
+## Hors ligne et économie de données
+
+- **Service worker** (`public/sw.js`, identique dans les deux applications, source dans `@mbolo/client-web`) :
+  - les fichiers de l'application (noms uniques par version) sont servis **depuis le téléphone** après la première visite : moins de données consommées ;
+  - la page est demandée au réseau d'abord, puis servie depuis le téléphone s'il n'y en a pas ;
+  - **l'API et la connexion (Keycloak) ne sont jamais mises en cache** (données personnelles, jetons).
+- **Dernière liste de rendez-vous connue** : gardée sur le téléphone réduite à l'identifiant, l'horaire et la durée (ni professionnel, ni patient, ni motif), affichée sans réseau avec sa date de mise à jour, **effacée à la déconnexion**.
+- Service worker actif seulement dans l'application construite (`pnpm build`), pas en développement.
 
 ## Déploiement dans un autre pays
 

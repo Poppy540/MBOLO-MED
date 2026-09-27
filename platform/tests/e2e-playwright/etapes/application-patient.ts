@@ -109,3 +109,38 @@ Then('l’application ne reçoit plus que le son', async ({ monde }) => {
   await expect(p.locator('[data-piste="video"]')).toHaveCount(0, { timeout: 10_000 });
   await expect(p.locator('[data-piste="audio"]')).toHaveCount(1);
 });
+
+Then('l’application affiche ce rendez-vous', async ({ monde }) => {
+  await expect(
+    page(monde).locator(`li[data-rendez-vous="${monde.rendezVousId ?? ''}"]`),
+  ).toBeVisible();
+});
+
+When('le téléphone du patient perd le réseau et rouvre l’application', async ({ monde }) => {
+  const p = page(monde);
+  // Le service worker doit contrôler la page avant la coupure (première visite : un rechargement).
+  await p.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  if (!(await p.evaluate(() => navigator.serviceWorker.controller !== null))) {
+    await p.reload();
+    await p.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+  }
+  await p.context().setOffline(true);
+  await p.reload();
+});
+
+Then('l’application affiche sans réseau les rendez-vous connus', async ({ monde }) => {
+  const p = page(monde);
+  const vue = p.locator('[data-hors-ligne]');
+  await expect(vue.getByRole('status')).toContainText('Pas de réseau.');
+  await expect(vue.locator('li')).not.toHaveCount(0);
+  await expect(p.getByRole('button', { name: 'Se connecter' })).toHaveCount(0);
+  // Seuls l'identifiant, l'horaire et la durée sont gardés sur le téléphone.
+  const garde = await p.evaluate(() => localStorage.getItem('mbolo.rendez-vous') ?? '');
+  expect(garde).toContain(monde.rendezVousId ?? 'absent');
+  expect(garde).not.toMatch(/prac-|pat-|praticien|patient/);
+  await p.context().setOffline(false);
+});

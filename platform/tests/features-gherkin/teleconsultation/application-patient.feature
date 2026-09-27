@@ -24,3 +24,11 @@ Fonctionnalité: Application patient
     Alors l’application indique que le professionnel de santé est connecté
     Quand le patient passe en audio seulement
     Alors l’application ne reçoit plus que le son
+
+  Scénario: Sans réseau, le patient retrouve ses rendez-vous déjà connus
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Quand "patient-fictif-01" ouvre l’application patient pour "prac-fictif-001"
+    Alors l’application affiche ce rendez-vous
+    Quand le téléphone du patient perd le réseau et rouvre l’application
+    Alors l’application affiche sans réseau les rendez-vous connus
