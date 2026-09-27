@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { AuteurAnnulation } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
 import type { Utilisateur } from '@mbolo/identite';
+import { aucunNotificateur, type Notificateur } from './notificateur.js';
 import { ErreurCreneau, type Creneau, type DepotCreneaux, type Plage } from './creneaux.js';
 
 export interface RendezVous {
@@ -117,7 +118,13 @@ export class ServiceTeleconsultation {
     private readonly salles: FournisseurSalle,
     private readonly drapeaux: Pick<Drapeaux, 'estActif'>,
     private readonly maintenant: () => Date = () => new Date(),
+    private readonly notificateur: Notificateur = aucunNotificateur,
   ) {}
+
+  /** L'autre participant du rendez-vous (celui qui n'a pas agi), en référence FHIR. */
+  private static autre(r: RendezVous, parPraticien: boolean): string {
+    return parPraticien ? `Patient/${r.patientId}` : `Practitioner/${r.praticienId}`;
+  }
 
   private async exigerFonction(u: Utilisateur): Promise<void> {
     const actif = await this.drapeaux.estActif('teleconsultation.video', {
@@ -228,7 +235,7 @@ export class ServiceTeleconsultation {
     rendezVousId: string,
     d: { creneauId: string },
   ): Promise<RendezVous> {
-    const { r } = await this.participant(u, rendezVousId);
+    const { r, estPraticien } = await this.participant(u, rendezVousId);
     await this.exigerFonction(u);
     const maintenant = this.maintenant().getTime();
     if (r.statut !== 'prevu') throw new ErreurTeleconsultation('Rendez-vous annulé.', 409);
@@ -265,6 +272,11 @@ export class ServiceTeleconsultation {
     }
     // Si la libération échoue, l'ancien créneau reste réservé : jamais de double réservation.
     if (r.creneauId) await this.creneaux.liberer(r.creneauId).catch(() => undefined);
+    await this.notificateur.prevenir(
+      ServiceTeleconsultation.autre(r, estPraticien),
+      'rendez-vous-reporte',
+      reporte.debut,
+    );
     return reporte;
   }
 
@@ -338,6 +350,11 @@ export class ServiceTeleconsultation {
     if (r.creneauId && new Date(r.debut).getTime() > maintenant.getTime()) {
       await this.creneaux.liberer(r.creneauId).catch(() => undefined);
     }
+    await this.notificateur.prevenir(
+      ServiceTeleconsultation.autre(r, estPraticien),
+      'rendez-vous-annule',
+      r.debut,
+    );
     return annule;
   }
 

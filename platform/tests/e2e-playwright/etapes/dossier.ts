@@ -19,7 +19,7 @@ const SERVICES = {
 } as const;
 type NomService = keyof typeof SERVICES;
 
-async function jetonService(nom: NomService): Promise<string> {
+export async function jetonService(nom: NomService): Promise<string> {
   const { client, variable } = SERVICES[nom];
   const secret = process.env[variable];
   if (!secret) throw new Error(`${variable} manquant (Keycloak de test).`);

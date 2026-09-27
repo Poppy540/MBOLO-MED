@@ -20,6 +20,8 @@ export interface Monde {
   creneaux?: string[];
   /** Créneau du rendez-vous avant un report. */
   creneauInitial?: string;
+  /** Début de la relève de la boîte des notifications simulées. */
+  depuis?: string;
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }

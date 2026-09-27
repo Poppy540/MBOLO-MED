@@ -1,0 +1,31 @@
+{
+  "name": "@mbolo/notifications",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Notifications de Mbolo Santé (ADR-0012) : gabarits approuvés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier au moment de l'envoi.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@mbolo/dossier-fhir": "workspace:*",
+    "@mbolo/identite": "workspace:*",
+    "@mbolo/journal-securise": "workspace:*",
+    "fastify": "^5.12.5",
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@types/fhir": "^0.0.41"
+  }
+}

@@ -13,6 +13,7 @@ export const CLIENT_SERVICE_IDENTITE = 'mbolo-identite-service';
 export const CLIENT_SERVICE_TELECONSULTATION = 'mbolo-teleconsultation-service';
 /** Service de téléconsultation et serveur LiveKit de test (ADR-0011). */
 export const TELECONSULTATION_URL = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
+export const NOTIFICATIONS_URL = process.env['NOTIFICATIONS_URL'] ?? 'http://127.0.0.1:3004';
 export const WEBRTC_URL = process.env['WEBRTC_SERVER_URL'] ?? 'ws://127.0.0.1:7880';
 /** Unleash de test (feature flags, ADR-0007). */
 export const UNLEASH_URL = process.env['UNLEASH_API_URL'] ?? 'http://127.0.0.1:4242/api';

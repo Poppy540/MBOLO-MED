@@ -51,16 +51,22 @@ async function monter(heure = '2026-09-27T09:00:00Z') {
   const depot = new DepotRendezVousMemoire();
   const creneaux = new DepotCreneauxMemoire();
   const etat = { heure, actif: true };
+  const notifications: { destinataire: string; evenement: string; instant: string }[] = [];
   const service = new ServiceTeleconsultation(
     depot,
     creneaux,
     s.f,
     { estActif: async () => etat.actif },
     () => new Date(etat.heure),
+    {
+      prevenir: async (destinataire, evenement, instant) => {
+        notifications.push({ destinataire, evenement, instant });
+      },
+    },
   );
   const [c] = await creneaux.publier('prac-fictif-001', [{ debut: DEBUT, dureeMinutes: 20 }]);
   if (!c) throw new Error('créneau non publié');
-  return { service, s, depot, creneaux, c, etat };
+  return { service, s, depot, creneaux, c, etat, notifications };
 }
 
 describe('créneaux', () => {
@@ -347,5 +353,42 @@ describe('retrait d’un créneau', () => {
     await expect(service.retirerCreneau(patient, c.id)).rejects.toMatchObject({ statut: 403 });
     await service.demander(patient, { creneauId: c.id });
     await expect(service.retirerCreneau(medecin, c.id)).rejects.toMatchObject({ statut: 409 });
+  });
+});
+
+describe('notification de l’autre participant', () => {
+  it('annulation par le patient : le médecin est prévenu ; par le médecin : le patient', async () => {
+    const m = await monter();
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    await m.service.annuler(patient, r.id);
+    expect(m.notifications).toEqual([
+      {
+        destinataire: 'Practitioner/prac-fictif-001',
+        evenement: 'rendez-vous-annule',
+        instant: DEBUT,
+      },
+    ]);
+    const m2 = await monter();
+    const r2 = await m2.service.demander(patient, { creneauId: m2.c.id });
+    await m2.service.annuler(medecin, r2.id);
+    expect(m2.notifications[0]?.destinataire).toBe('Patient/pat-fictif-001');
+  });
+
+  it('report : l’autre participant reçoit la nouvelle heure', async () => {
+    const m = await monter();
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    const [nouveau] = await m.service.publier(medecin, {
+      debut: '2026-09-28T10:00:00Z',
+      dureeMinutes: 20,
+      nombre: 1,
+    });
+    await m.service.reporter(medecin, r.id, { creneauId: nouveau?.id ?? '' });
+    expect(m.notifications).toEqual([
+      {
+        destinataire: 'Patient/pat-fictif-001',
+        evenement: 'rendez-vous-reporte',
+        instant: '2026-09-28T10:00:00.000Z',
+      },
+    ]);
   });
 });

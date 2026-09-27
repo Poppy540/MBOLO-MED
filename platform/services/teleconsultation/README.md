@@ -37,6 +37,7 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
   - identité technique (jamais le nom) et libellé neutre (« Patient » ou « Professionnel de santé ») ;
   - droit de publier et de recevoir le son et la vidéo ;
   - **pas de données, pas d'enregistrement, pas d'administration**.
+- **Notifications** (ADR-0012) : après une annulation ou un report, l'**autre participant** est prévenu par le service `notifications` (`NOTIFICATIONS_URL`), avec le même jeton de service. Un échec est journalisé et ne bloque jamais l'action.
 - **Journal** : demande de rendez-vous et entrée en salle (compte, rendez-vous). Le jeton n'est jamais journalisé.
 
 ## Configuration
@@ -47,6 +48,7 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 | `WEBRTC_SERVER_URL` | Adresse LiveKit pour les clients (ex. `wss://visio.mbolo-sante.example`) |
 | `WEBRTC_API_KEY`, `WEBRTC_API_SECRET` | Clé d'API LiveKit, depuis le coffre-fort (`secrets/templates/webrtc.env.example`) |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Feature flags ; sans eux, la fonction est désactivée |
+| `NOTIFICATIONS_URL` | Service de notifications (ex. `http://127.0.0.1:3004`) ; sans elle, personne n'est prévenu |
 | `FHIR_BASE_URL` | Adresse de la passerelle du dossier (ex. `https://passerelle.mbolo-sante.example/fhir`) ; sans elle, rendez-vous **en mémoire** (développement seulement) |
 | `TELECONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-teleconsultation-service`), `TELECONSULTATION_SERVICE_CLIENT_SECRET` | Compte de service pour la passerelle, secret depuis le coffre-fort |
 
@@ -80,7 +82,7 @@ En CI, le binaire LiveKit **1.12.0** est téléchargé depuis les versions GitHu
 
 ## Reste à faire avant la vague 1
 
-- Notification de l'annulation et du report à l'autre participant (service `notifications`).
+- Fournisseur SMS / WhatsApp réel pour les notifications (ADR-0012).
 - Applications patient et professionnel, avec le **repli audio automatique** quand la qualité baisse.
 - TURN et hébergement HDS, au plus près du Gabon.
 - **Test terrain** en 3G/4G, avec des seuils à fixer par le porteur de projet.

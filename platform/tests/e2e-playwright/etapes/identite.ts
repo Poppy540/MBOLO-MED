@@ -257,6 +257,19 @@ When(
   },
 );
 
+When('{string} accepte de recevoir les rappels', async ({ monde }, identifiant: string) => {
+  await appeler(monde, 'POST', `/patients/${patientId(identifiant)}/consentements`, {
+    jeton: jeton(monde, identifiant),
+    corps: {
+      categorie: 'C-RAPPELS',
+      mode: 'texte',
+      versionTexte: 'rappels-v0-FICTIF',
+      accepte: true,
+    },
+  });
+  expect(monde.reponse?.statut).toBe(201);
+});
+
 When(
   '{string} tente de donner son consentement {string} à {string}',
   async ({ monde }, identifiant: string, categorie: string, beneficiaire: string) => {
