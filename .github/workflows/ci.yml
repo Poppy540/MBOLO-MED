@@ -103,7 +103,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Cache du validateur et des paquets FHIR
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             platform/services/dossier-fhir/.cache
