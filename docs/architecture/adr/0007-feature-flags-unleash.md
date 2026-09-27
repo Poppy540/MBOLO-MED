@@ -26,4 +26,19 @@ Unleash, auto-hébergé chez l'hébergeur retenu (offre gérée possible au dém
 - Ciblage de cohorte par `userId` (identifiant technique du compte) avec une contrainte : la stratégie `userWithId` n'existe plus dans Unleash 7.
 - Premier flag branché : `consentement.proche` (vague 2) dans `identite`. Registre : `docs/deploiement/flags.md`.
 
+## Unleash 8 (2026-09-27)
+- **Licence** : à partir de la version 8, le code source d'Unleash passe sous **AGPLv3** (auparavant Apache 2.0). Les **images Docker officielles restent sous Apache 2.0**, et les SDK gardent leurs licences permissives.
+- **Notre usage** :
+  - Unleash tourne **sans modification**, uniquement pour nos équipes, pour piloter les flags ;
+  - la plateforme l'utilise à travers le SDK `unleash-client` ;
+  - l'AGPL n'impose de publier des modifications que si l'on modifie Unleash et qu'on le met à disposition de tiers par le réseau.
+- **Règles** :
+  - utiliser **l'image Docker officielle** en recette et en production ;
+  - ne jamais modifier Unleash ;
+  - faire confirmer ce point par le juriste avec l'avis sur les licences.
+- **Compatibilité** :
+  - PostgreSQL 15 minimum ; la plateforme utilise la version 16 ;
+  - suppression de propriétés dépréciées depuis la version 5, que nous n'utilisons pas ;
+  - suite e2e complète au vert sur 8.2.0, y compris avec une base migrée depuis la version 7.
+
 Sources : Unleash — https://docs.getunleash.io/ ; OpenFeature — https://openfeature.dev/
