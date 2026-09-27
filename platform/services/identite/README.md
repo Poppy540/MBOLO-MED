@@ -74,7 +74,7 @@ L'inscription passe par le **formulaire natif de Keycloak**, complété par l'ex
 
 ### Construction et configuration
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.
-- **Version de Keycloak** : épinglée à 26.0.8, identique dans `pom.xml` et `docker-compose.yml`. Toute montée de version se fait dans les deux fichiers, avec la suite e2e.
+- **Version de Keycloak** : épinglée à 26.7.4 (26.0.8 avait des failles hautes connues), identique dans `pom.xml` et `docker-compose.yml`. Toute montée de version se fait dans les deux fichiers, avec la suite e2e.
 - **Adresse du service des invitations** : variable `KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL`, par défaut `http://host.docker.internal:3006/` depuis le conteneur. Ce n'est pas un secret.
 
 ## MFA
