@@ -28,6 +28,13 @@ export const CATALOGUE = {
     dependances: [],
     branche: true,
   },
+  'identite.photos': {
+    description:
+      "Le patient accepte la charte de vérification d'identité et envoie les photos de son document et de son visage (ADR-0015).",
+    vague: 1,
+    dependances: [],
+    branche: true,
+  },
   'paiement.mobile-money': {
     description: 'Paiement des consultations par mobile money (Airtel Money, Moov Money).',
     vague: 1,

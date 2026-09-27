@@ -3,7 +3,8 @@
 // IDENTITE_SERVICE_CLIENT_SECRET, TELECONSULTATION_SERVICE_CLIENT_SECRET et NOTIFICATIONS_SERVICE_CLIENT_SECRET et CONSULTATION_SERVICE_CLIENT_SECRET identiques à ceux donnés à Keycloak, et un Unleash local
 // (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET), et un
 // PostgreSQL de test pour les invitations (INVITATIONS_DATABASE_URL, INVITATIONS_MIGRATION_DATABASE_URL,
-// INVITATIONS_CLE_EMPREINTE).
+// INVITATIONS_CLE_EMPREINTE) et les documents (DOCUMENTS_DATABASE_URL, DOCUMENTS_MIGRATION_DATABASE_URL,
+// DOCUMENTS_CLE_MAITRE, DOCUMENTS_SERVICE_CLIENT_SECRET), et un S3 de test (MBOLO_TEST_S3_*).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 import {
@@ -15,6 +16,7 @@ import {
   APP_PRO_URL,
   CONSULTATION_URL,
   COHORTE_TEST,
+  DOCUMENTS_URL,
   INVITATIONS_URL,
   NOTIFICATIONS_URL,
   TELECONSULTATION_URL,
@@ -145,12 +147,35 @@ export default defineConfig({
       },
     },
     {
-      // Application patient construite par `pnpm build`, servie avec le relais vers l'API.
+      command: 'node ../../services/documents/dist/main.js',
+      url: `${DOCUMENTS_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
+        DOCUMENTS_SERVICE_CLIENT_SECRET: process.env['DOCUMENTS_SERVICE_CLIENT_SECRET'] ?? '',
+        DOCUMENTS_DATABASE_URL: process.env['DOCUMENTS_DATABASE_URL'] ?? '',
+        DOCUMENTS_MIGRATION_DATABASE_URL: process.env['DOCUMENTS_MIGRATION_DATABASE_URL'] ?? '',
+        DOCUMENTS_CLE_MAITRE: process.env['DOCUMENTS_CLE_MAITRE'] ?? '',
+        // S3 de test (scripts/s3-test.sh) ; compartiment créé au démarrage hors production.
+        STORAGE_ENDPOINT: process.env['MBOLO_TEST_S3_URL'] ?? '',
+        STORAGE_ACCESS_KEY_ID: process.env['MBOLO_TEST_S3_CLE'] ?? '',
+        STORAGE_SECRET_ACCESS_KEY: process.env['MBOLO_TEST_S3_SECRET'] ?? '',
+        STORAGE_BUCKET: 'mbolo-e2e-documents',
+        UNLEASH_API_URL: UNLEASH_URL,
+        UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
+        UNLEASH_REFRESH_MS: '500',
+        PORT: new URL(DOCUMENTS_URL).port,
+        MBOLO_ENV: 'dev',
+      },
+    },
+    {
+      // Application patient construite par `pnpm build`, servie avec le relais vers les API.
       command: 'pnpm exec vite preview',
       cwd: '../../apps/patient',
       url: APP_PATIENT_URL,
       reuseExistingServer: false,
-      env: { TELECONSULTATION_URL },
+      env: { TELECONSULTATION_URL, IDENTITE_URL, DOCUMENTS_URL },
     },
     {
       command: 'pnpm exec vite preview',

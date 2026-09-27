@@ -88,6 +88,22 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
       expect(trace?.supprime_le).toBeInstanceOf(Date);
     });
 
+    it('deux envois simultanés ne dépassent pas la limite par type (verrou)', async () => {
+      const autre = `pat-fictif-conc-${randomBytes(4).toString('hex')}`;
+      const envois = await Promise.allSettled(
+        Array.from({ length: 5 }, () =>
+          service.deposer({
+            patientId: autre,
+            type: 'piece-identite',
+            octets: jpeg(),
+            versionCharte: '0.1',
+          }),
+        ),
+      );
+      expect(envois.filter((e) => e.status === 'fulfilled')).toHaveLength(2);
+      expect(await service.duPatient(autre)).toHaveLength(2);
+    });
+
     it('le service ne peut supprimer aucune ligne de la base', async () => {
       await expect(execution`delete from documents.documents`).rejects.toThrow(/permission/);
     });

@@ -13,6 +13,7 @@ Description: "Un consentement distinct par usage des données (skill recueil-con
 * #C-RAPPELS "Rappels" "Envoi de rappels de prise et de rendez-vous."
 * #C-OBSERVATION "Observation par un étudiant" "Présence d'un étudiant de l'Académie Mbolo pendant une consultation."
 * #C-PHOTOS "Conservation de photos" "Conservation de photos de documents médicaux dans le dossier."
+* #C-IDENTITE "Vérification d'identité" "Photos du document d'identité et du visage, vérifiées par une personne habilitée et conservées comme preuve (charte versionnée, ADR-0015)."
 
 ValueSet: MboloConsentementVS
 Id: mbolo-consentement

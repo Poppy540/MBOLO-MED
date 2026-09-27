@@ -94,4 +94,24 @@ describe('ServiceConsentements', () => {
     // Les autres consentements ne dépendent d'aucun flag.
     expect((await s.enregistrer(patient1, P1, soins)).status).toBe('active');
   });
+
+  it('charte d’identité : acceptée par le patient lui-même, jamais par un agent IA (ADR-0015)', async () => {
+    const s = service();
+    const charte = {
+      ...soins,
+      categorie: 'C-IDENTITE',
+      mode: 'texte',
+      versionTexte: '0.1',
+    } as const;
+    const agent: Utilisateur = {
+      sujet: 'u-agent',
+      roles: ['agent-ia'],
+      agent: { nom: 'agent-01-accueil', patientSession: P1 },
+    };
+    // L'agent peut gérer d'autres consentements dans la session du patient, pas celui-ci.
+    await expect(s.enregistrer(agent, P1, charte)).rejects.toBeInstanceOf(ErreurAcces);
+    const c = await s.enregistrer(patient1, P1, charte);
+    expect(c.category?.[0]?.coding?.[0]?.code).toBe('C-IDENTITE');
+    expect(c.policyRule?.text).toBe('0.1');
+  });
 });

@@ -2,7 +2,7 @@
   "name": "@mbolo/documents",
   "version": "0.1.0",
   "private": true,
-  "description": "Stockage chiffré des documents de Mbolo Santé (ADR-0015) : chiffrement par enveloppe, stockage objet compatible S3, métadonnées sans donnée personnelle, suppression à échéance.",
+  "description": "Stockage chiffré des documents de Mbolo Santé (ADR-0015) : chiffrement par enveloppe, stockage objet compatible S3, métadonnées sans donnée personnelle, suppression à échéance ; dépôt des photos de vérification d'identité par le patient, derrière le flag identite.photos.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,10 +15,20 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",
-    "@mbolo/base-donnees": "workspace:*"
+    "@fastify/rate-limit": "^11.2.0",
+    "@mbolo/base-donnees": "workspace:*",
+    "@mbolo/dossier-fhir": "workspace:*",
+    "@mbolo/drapeaux": "workspace:*",
+    "@mbolo/identite": "workspace:*",
+    "@mbolo/journal-securise": "workspace:*",
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/fhir": "^0.0.41"
   }
 }

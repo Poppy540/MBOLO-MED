@@ -121,6 +121,32 @@ describe('royaume mbolo', () => {
     ).toBe('Practitioner.name Practitioner.qualification Patient.extension');
   });
 
+  it('compte de service documents : statut d’identité et charte, en lecture seule (ADR-0015)', () => {
+    const c = royaume.clients.find((x) => x.clientId === 'mbolo-documents-service');
+    expect(c).toMatchObject({
+      publicClient: false,
+      serviceAccountsEnabled: true,
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+    });
+    expect(c?.secret).toBe('${DOCUMENTS_SERVICE_CLIENT_SECRET}');
+    const mappeurs = c?.protocolMappers ?? [];
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
+    ).toBe('system/Patient.r system/Consent.s');
+    // Du patient, seul le statut de vérification d'identité sort de la passerelle.
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
+    ).toBe('Patient.extension');
+    // Les photos sont déposées avec le jeton de l'application patient, jamais de l'espace pro.
+    const audiences = (id: string) =>
+      (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
+        .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
+        .map((m) => m.config['included.client.audience']);
+    expect(audiences('mbolo-app-patient')).toContain('mbolo-documents-api');
+    expect(audiences('mbolo-app-pro')).not.toContain('mbolo-documents-api');
+  });
+
   it('compte de service notifications : lecture du contact et du consentement seulement', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-notifications-service');
     expect(c).toMatchObject({

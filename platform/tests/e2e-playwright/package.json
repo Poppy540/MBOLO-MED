@@ -9,6 +9,7 @@
     "e2e": "bddgen && playwright test"
   },
   "devDependencies": {
+    "@mbolo/base-donnees": "workspace:*",
     "@mbolo/dossier-fhir": "workspace:*",
     "@playwright/test": "1.56.1",
     "livekit-client": "^2.22.3",

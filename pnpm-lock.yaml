@@ -115,9 +115,31 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1141.0
         version: 3.1141.0
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
       '@mbolo/base-donnees':
         specifier: workspace:*
         version: link:../../packages/base-donnees
+      '@mbolo/dossier-fhir':
+        specifier: workspace:*
+        version: link:../dossier-fhir
+      '@mbolo/drapeaux':
+        specifier: workspace:*
+        version: link:../../packages/drapeaux
+      '@mbolo/identite':
+        specifier: workspace:*
+        version: link:../identite
+      '@mbolo/journal-securise':
+        specifier: workspace:*
+        version: link:../../packages/journal-securise
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+    devDependencies:
+      '@types/fhir':
+        specifier: ^0.0.41
+        version: 0.0.41
 
   platform/services/dossier-fhir:
     devDependencies:
@@ -239,6 +261,9 @@ importers:
 
   platform/tests/e2e-playwright:
     devDependencies:
+      '@mbolo/base-donnees':
+        specifier: workspace:*
+        version: link:../../packages/base-donnees
       '@mbolo/dossier-fhir':
         specifier: workspace:*
         version: link:../../services/dossier-fhir

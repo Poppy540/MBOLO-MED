@@ -1,6 +1,7 @@
 // Préparation du Keycloak de test : comptes FICTIFS. Le profil utilisateur (attributs réservés à
 // l'administrateur) est déjà dans le royaume importé : il n'est pas réappliqué ici, pour le vérifier. N'agit que sur un Keycloak local ou de CI, jamais sur un environnement réel.
 import { randomBytes } from 'node:crypto';
+import { connecter } from '@mbolo/base-donnees';
 import {
   agendaVideo,
   EXTENSION_STATUT_IDENTITE,
@@ -12,6 +13,7 @@ import {
   FHIR_URL,
   KEYCLOAK_URL,
   COHORTES,
+  PATIENTS_A_VERIFIER,
   PREFIXE_INSCRITS,
   RESSOURCES_FHIR,
   ROYAUME,
@@ -53,7 +55,12 @@ async function preparerDossier(): Promise<void> {
           ? {
               telecom: [{ system: 'phone', value: '+241 00 00 00 01' }],
               birthDate: '1990-01-01',
-              extension: [{ url: EXTENSION_STATUT_IDENTITE, valueCode: 'verifiee' }],
+              extension: [
+                {
+                  url: EXTENSION_STATUT_IDENTITE,
+                  valueCode: PATIENTS_A_VERIFIER.includes(id) ? 'a-verifier' : 'verifiee',
+                },
+              ],
               identifier: [
                 {
                   system: `${SYSTEMES.identifiantPatient}/assurance-maladie`,
@@ -126,6 +133,31 @@ async function preparerDossier(): Promise<void> {
 }
 
 /**
+ * Photos des exécutions précédentes (patients fictifs) : retirées comme à échéance, clé détruite et
+ * ligne gardée (jamais supprimées), pour que les scénarios de dépôt soient reproductibles.
+ */
+async function retirerPhotos(): Promise<void> {
+  const url = process.env['DOCUMENTS_MIGRATION_DATABASE_URL'];
+  if (!url) throw new Error('DOCUMENTS_MIGRATION_DATABASE_URL manquant (base de test).');
+  if (!/@(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)) {
+    throw new Error('Les tests e2e ne s’exécutent que contre une base locale.');
+  }
+  const sql = connecter({ url, application: 'e2e-preparation', production: false, max: 1 });
+  try {
+    const [table] = await sql<
+      { t: string | null }[]
+    >`select to_regclass('documents.documents') as t`;
+    if (table?.t) {
+      await sql`
+        update documents.documents set cle_enveloppee = null, supprime_le = now()
+         where patient_id like 'pat-fictif-%' and supprime_le is null`;
+    }
+  } finally {
+    await sql.end();
+  }
+}
+
+/**
  * Flags activés en développement pour leur seule cohorte de test, ciblée par identifiant de compte
  * (déploiement à 100 % limité par une contrainte sur userId). Les autres comptes les voient désactivés.
  */
@@ -175,6 +207,7 @@ export default async function preparationGlobale(): Promise<void> {
     );
   }
   await preparerDossier();
+  await retirerPhotos();
   const jeton = await jetonAdministrateur();
   const admin = async (chemin: string, init: RequestInit = {}): Promise<Response> => {
     const r = await fetch(`${KEYCLOAK_URL}/admin/realms/${ROYAUME}${chemin}`, {

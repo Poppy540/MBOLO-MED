@@ -3,6 +3,7 @@
 // (dépôt en mémoire pour les tests, dépôt FHIR `DepotFhir` pour le dossier médical).
 import type { Consent } from 'fhir/r4.js';
 import {
+  CATEGORIES_PATIENT_SEUL,
   consentement,
   revoquer,
   valider,
@@ -94,6 +95,10 @@ export class ServiceConsentements {
 
   async enregistrer(u: Utilisateur, patientId: string, d: DemandeConsentement): Promise<Consent> {
     if (!peutGererConsentements(u, patientId)) throw new ErreurAcces('Accès refusé.');
+    // Charte d'identité (ADR-0015) : acceptée par le patient lui-même, jamais par un agent IA.
+    if (CATEGORIES_PATIENT_SEUL.includes(d.categorie) && !u.roles.includes('patient')) {
+      throw new ErreurAcces('Accès refusé.');
+    }
     if (
       d.categorie === 'C-PROCHE' &&
       !(await this.drapeaux.estActif('consentement.proche', {

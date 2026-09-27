@@ -135,10 +135,17 @@ describe('service des documents', () => {
 
   it('retire le contenu si les métadonnées ne peuvent pas être enregistrées', async () => {
     const { service, stockage, depot: d } = monter();
-    d.inserer = async () => {
+    d.insererSiPlace = async () => {
       throw new Error('base indisponible');
     };
     await expect(service.deposer(depot())).rejects.toThrow('base indisponible');
+    expect(stockage.objets.size).toBe(0);
+  });
+
+  it('limite atteinte entre le contrôle et l’insertion : le contenu est retiré', async () => {
+    const { service, stockage, depot: d } = monter();
+    d.insererSiPlace = async () => false;
+    await expect(service.deposer(depot())).rejects.toMatchObject({ motif: 'trop-de-documents' });
     expect(stockage.objets.size).toBe(0);
   });
 
