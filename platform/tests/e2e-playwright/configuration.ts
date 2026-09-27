@@ -18,6 +18,8 @@ export const NOTIFICATIONS_URL = process.env['NOTIFICATIONS_URL'] ?? 'http://127
 export const CONSULTATION_URL = process.env['CONSULTATION_URL'] ?? 'http://127.0.0.1:3005';
 /** Service des invitations (ADR-0013) et sa base PostgreSQL de test. */
 export const INVITATIONS_URL = process.env['INVITATIONS_URL'] ?? 'http://127.0.0.1:3006';
+/** Service documents (ADR-0015) : photos d'identité chiffrées, base PostgreSQL et S3 de test. */
+export const DOCUMENTS_URL = process.env['DOCUMENTS_URL'] ?? 'http://127.0.0.1:3007';
 /** [FICTIF] Cohorte ouverte par le déploiement de test. */
 export const COHORTE_TEST = 'ville-fictive';
 /** [FICTIF] Préfixe des comptes créés par les scénarios d'inscription (retirés à la préparation). */
@@ -35,6 +37,7 @@ export const UNLEASH_URL = process.env['UNLEASH_API_URL'] ?? 'http://127.0.0.1:4
 export const COHORTES: Record<string, string[]> = {
   'consentement.proche': ['patient-fictif-01'],
   'teleconsultation.video': ['patient-fictif-01', 'medecin-fictif-01'],
+  'identite.photos': ['patient-fictif-01', 'patient-fictif-03'],
 };
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
@@ -73,6 +76,14 @@ export const COMPTES: CompteFictif[] = [
     role: 'patient',
     application: 'patient',
     attributs: { patient_id: 'pat-fictif-002' },
+  },
+  {
+    // Identité encore à vérifier (préparation) : parcours « Vérifier mon identité » (ADR-0015).
+    identifiant: 'patient-fictif-03',
+    prenom: 'Inès',
+    role: 'patient',
+    application: 'patient',
+    attributs: { patient_id: 'pat-fictif-003' },
   },
   {
     identifiant: 'medecin-fictif-01',
@@ -131,6 +142,9 @@ export const RESSOURCES_FHIR = [
     })),
   ),
 ];
+
+/** [FICTIF] Patients dont l'identité reste « à vérifier » après la préparation. */
+export const PATIENTS_A_VERIFIER = ['pat-fictif-003'];
 
 export const VARIABLE_MOTS_DE_PASSE = 'MBOLO_E2E_MOTS_DE_PASSE';
 

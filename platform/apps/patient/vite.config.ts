@@ -1,15 +1,21 @@
 // Application patient (PWA faible débit). Port 5180 : les ports 5173 et 5174 servent de faux
-// retours de connexion aux tests e2e. L'API de téléconsultation est servie sous /api/teleconsultation (même origine).
+// retours de connexion aux tests e2e. Les API (téléconsultation, identite, documents) sont servies sous /api/<service> (même origine).
 import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
 
-const api = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
-const proxy = {
-  '/api/teleconsultation': {
-    target: api,
+// Relais de même origine vers chaque API : /api/<service>/… → <service>/…
+const relais = (service: string, cible: string) => ({
+  [`/api/${service}`]: {
+    target: cible,
     changeOrigin: true,
-    rewrite: (chemin: string) => chemin.replace(/^\/api\/teleconsultation/, ''),
+    rewrite: (chemin: string) => chemin.replace(new RegExp(`^/api/${service}`), ''),
   },
+});
+const proxy = {
+  ...relais('teleconsultation', process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003'),
+  // Charte d'identité (consentement C-IDENTITE) et photos d'identité (ADR-0015).
+  ...relais('identite', process.env['IDENTITE_URL'] ?? 'http://127.0.0.1:3001'),
+  ...relais('documents', process.env['DOCUMENTS_URL'] ?? 'http://127.0.0.1:3007'),
 };
 
 export default defineConfig({

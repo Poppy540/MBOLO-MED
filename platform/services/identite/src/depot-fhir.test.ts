@@ -1,6 +1,7 @@
 import type { Bundle, Consent } from 'fhir/r4.js';
 import { describe, expect, it } from 'vitest';
 import { DepotFhir, ErreurDepot } from './depot-fhir.js';
+import { sansBarreFinale } from './client-fhir.js';
 
 // Données FICTIVES. Faux serveur FHIR : enregistre les requêtes et renvoie des réponses préparées.
 const BASE = 'http://fhir.test/fhir';
@@ -153,5 +154,18 @@ describe('DepotFhir', () => {
     const { appels, f } = fauxServeur([json(200, page)]);
     await new DepotFhir({ base: BASE, fetch: f }).parPatient('pat-fictif-001');
     expect(appels).toHaveLength(1);
+  });
+});
+
+describe('sansBarreFinale', () => {
+  it('retire les « / » finaux, même très nombreux, sans toucher au reste', () => {
+    expect(sansBarreFinale('http://fhir.exemple.invalid/fhir///')).toBe(
+      'http://fhir.exemple.invalid/fhir',
+    );
+    expect(sansBarreFinale('http://fhir.exemple.invalid/fhir')).toBe(
+      'http://fhir.exemple.invalid/fhir',
+    );
+    const longue = `http://a${'/'.repeat(100_000)}`;
+    expect(sansBarreFinale(longue)).toBe('http://a');
   });
 });

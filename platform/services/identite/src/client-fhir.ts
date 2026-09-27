@@ -35,12 +35,19 @@ export const memeOrigine = (a: string, b: string): boolean => {
   }
 };
 
+/** Retire les « / » finaux, en temps linéaire (pas d'expression régulière sur une adresse fournie). */
+export function sansBarreFinale(url: string): string {
+  let fin = url.length;
+  while (fin > 0 && url.charCodeAt(fin - 1) === 47) fin -= 1;
+  return url.slice(0, fin);
+}
+
 export abstract class ClientFhir {
   protected readonly base: string;
   private readonly fetch: typeof fetch;
 
   constructor(private readonly o: OptionsDepotFhir) {
-    this.base = o.base.replace(/\/+$/, '');
+    this.base = sansBarreFinale(o.base);
     this.fetch = o.fetch ?? fetch;
   }
 

@@ -1,5 +1,6 @@
 // Application patient : connexion, mes rendez-vous, créneaux libres, téléconsultation.
 // Écrans simples, gros boutons, peu de texte, pictogrammes (faible littératie, petits écrans).
+import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import {
   Consultation,
@@ -33,6 +34,7 @@ const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
 type Ecran =
   | { nom: 'accueil' }
   | { nom: 'dossier-a-completer'; refusee?: boolean }
+  | { nom: 'verification' }
   | { nom: 'rendez-vous' }
   | { nom: 'praticiens' }
   | { nom: 'creneaux'; praticienId: string }
@@ -110,7 +112,15 @@ export function App() {
       ) : ecran.nom === 'accueil' ? (
         <Accueil />
       ) : ecran.nom === 'dossier-a-completer' ? (
-        <DossierACompleter refusee={ecran.refusee === true} />
+        <DossierACompleter
+          refusee={ecran.refusee === true}
+          verifier={() => {
+            setMessage(undefined);
+            setEcran({ nom: 'verification' });
+          }}
+        />
+      ) : ecran.nom === 'verification' ? (
+        <EcranVerification retour={() => setEcran({ nom: 'dossier-a-completer' })} />
       ) : ecran.nom === 'rendez-vous' ? (
         <MesRendezVous
           allerA={(e) => {
@@ -173,7 +183,9 @@ function Accueil() {
   );
 }
 
-function DossierACompleter(p: { refusee: boolean }) {
+function DossierACompleter(p: { refusee: boolean; verifier: () => void }) {
+  // Photos possibles une fois le dossier créé (identité saisie), tant que l'identité n'est pas vérifiée.
+  const dossier = jeton !== undefined && Boolean(revendications(jeton)['patient_id']);
   return (
     <section>
       {p.refusee ? (
@@ -192,10 +204,39 @@ function DossierACompleter(p: { refusee: boolean }) {
           </p>
         </>
       )}
+      {dossier && (
+        <button class="principal" onClick={p.verifier}>
+          <span aria-hidden="true">📷</span> Vérifier mon identité
+        </button>
+      )}
       <p>
         <strong>En cas d'urgence, appelez les secours.</strong>
       </p>
     </section>
+  );
+}
+
+/** Écran chargé à la demande : il ne pèse rien à l'ouverture de l'application. */
+function EcranVerification(p: { retour: () => void }) {
+  const [Ecran, setEcran] = useState<ComponentType<{ jeton: string; retour: () => void }>>();
+  const [echec, setEchec] = useState(false);
+  useEffect(() => {
+    import('./verification.js')
+      .then((m) => setEcran(() => m.Verification))
+      .catch(() => setEchec(true));
+  }, []);
+  if (echec) {
+    return (
+      <section>
+        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
+        <button onClick={p.retour}>Retour</button>
+      </section>
+    );
+  }
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} retour={p.retour} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
   );
 }
 

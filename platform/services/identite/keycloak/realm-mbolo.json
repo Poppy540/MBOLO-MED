@@ -130,6 +130,16 @@
           }
         },
         {
+          "name": "audience-documents-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-documents-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "patient_id",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
@@ -444,6 +454,71 @@
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false
+    },
+    {
+      "clientId": "mbolo-documents-api",
+      "name": "API du service documents (ressource)",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "mbolo-documents-service",
+      "name": "Compte de service du service documents (dossier : statut d'identité et charte C-IDENTITE, lecture seule)",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${DOCUMENTS_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": false,
+      "defaultClientScopes": ["basic"],
+      "optionalClientScopes": [],
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-dossier-fhir",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-dossier-fhir",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "permissions-smart",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_scopes",
+            "claim.value": "system/Patient.r system/Consent.s",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "elements-autorises",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements",
+            "claim.value": "Patient.extension",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "mbolo-consultation-service",

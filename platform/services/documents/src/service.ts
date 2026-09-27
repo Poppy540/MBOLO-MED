@@ -1,5 +1,5 @@
 // Règles des documents (ADR-0015). Contrôle d'accès, charte et journal des accès sont appliqués par
-// l'API (étape suivante) : ce service chiffre, range, relit et supprime à échéance.
+// l'API (serveur.ts) : ce service chiffre, range, relit et supprime à échéance.
 import { randomUUID } from 'node:crypto';
 import { chiffrer, dechiffrer, type CleMaitre } from './chiffrement.js';
 import {
@@ -28,6 +28,9 @@ export class ErreurDocument extends Error {
 }
 
 const PATIENT = /^[A-Za-z0-9.-]{1,64}$/;
+
+const trop = () =>
+  new ErreurDocument('trop-de-documents', 'Nombre maximal de photos atteint pour ce type.');
 
 export interface DocumentDepose {
   id: string;
@@ -69,18 +72,9 @@ export class ServiceDocuments {
     const format = reconnaitre(o.octets);
     if (!format)
       throw new ErreurDocument('format', 'Seules les photos JPEG ou PNG sont acceptées.');
-    const deja = (await this.depot.duPatient(o.patientId)).filter((d) => d.type === type);
-    if (deja.length >= this.parametres.maxParType) {
-      throw new ErreurDocument(
-        'trop-de-documents',
-        'Nombre maximal de photos atteint pour ce type.',
-      );
-    }
-
     const id = randomUUID();
     const maintenant = this.horloge();
     const { donnees, cleEnveloppee } = await chiffrer(o.octets, id, this.maitre);
-    await this.stockage.ecrire(id, donnees);
     const m: Metadonnees = {
       id,
       patientId: o.patientId,
@@ -92,12 +86,21 @@ export class ServiceDocuments {
       deposeLe: maintenant,
       supprimerLe: new Date(maintenant.getTime() + this.parametres.conservationJours * 86_400_000),
     };
+    // Contrôle rapide avant l'écriture ; la limite est garantie par l'insertion sous verrou.
+    const deja = (await this.depot.duPatient(o.patientId)).filter((d) => d.type === type);
+    if (deja.length >= this.parametres.maxParType) throw trop();
+    await this.stockage.ecrire(id, donnees);
+    let insere: boolean;
     try {
-      await this.depot.inserer(m);
+      insere = await this.depot.insererSiPlace(m, this.parametres.maxParType);
     } catch (e) {
       // Sans métadonnées, le contenu chiffré n'a plus de clé : on le retire.
       await this.stockage.supprimer(id).catch(() => undefined);
       throw e;
+    }
+    if (!insere) {
+      await this.stockage.supprimer(id).catch(() => undefined);
+      throw trop();
     }
     return { id, type, format, supprimerLe: m.supprimerLe.toISOString() };
   }

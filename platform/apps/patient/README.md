@@ -15,6 +15,12 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - vidéo en basse définition (216p), flux adaptatif ;
    - **repli audio automatique** si la qualité reste mauvaise 5 secondes ou si la connexion est perdue ; bouton « Audio seulement » / « Réactiver la vidéo ».
 
+5. **Vérifier mon identité** (ADR-0014, ADR-0015), tant que l'identité est « à vérifier » ou « refusée » ; écran chargé **seulement à la demande** (2,3 Ko compressés) :
+   - le patient lit la **charte** et choisit « J'accepte » ou « Je refuse » : consentement `C-IDENTITE` enregistré par le service `identite`, avec la version du texte ;
+   - puis il envoie **deux photos** : son document (pièce d'identité avec son numéro d'assurance maladie, ou acte de naissance) et son visage ;
+   - chaque photo est **réduite (1 600 px au plus) et recompressée en JPEG sur le téléphone**, ce qui retire aussi ses métadonnées (lieu, appareil) ; elle n'est jamais gardée dans le navigateur ;
+   - derrière le flag `identite.photos`, désactivé tant que la charte n'est pas validée. Le texte affiché reprend le **brouillon** v0.1 et sera remplacé mot pour mot par le texte validé.
+
 Les erreurs sont affichées en phrases simples, sans jargon.
 
 ## Hors ligne et économie de données
@@ -36,12 +42,13 @@ Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur
 | `VITE_KEYCLOAK_CLIENT` | `mbolo-app-patient` | Client public |
 | `VITE_FUSEAU` | `Africa/Libreville` | Fuseau horaire affiché (IANA) |
 | `VITE_LANGUE` | `fr-FR` | Langue et formats (BCP 47) |
+| `VITE_NOM_ASSURANCE` | `CNAMGS` | Nom de l'assurance maladie nationale, affiché dans la vérification d'identité |
 
-L'API de téléconsultation est servie sous `/api/teleconsultation` (même origine). En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`).
+Les API sont servies sous `/api/<service>` (même origine). En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`) et `DOCUMENTS_URL` (`3007`).
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **10,5 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **11,2 Ko**.
 
 ## Lancer
 
@@ -57,6 +64,7 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
   - connexion par le formulaire Keycloak, réservation d'un créneau puis annulation ;
   - rejoindre la consultation, voir la vidéo du professionnel, passer en audio seulement ;
   - sans réseau, l'application rouvre et affiche les rendez-vous connus (rien d'autre n'est gardé).
+- **E2E** (`features-gherkin/identite/verification-identite.feature`) : charte acceptée, puis envoi des deux photos (images générées, jamais de vraie personne).
 
 ## Reste à faire
 

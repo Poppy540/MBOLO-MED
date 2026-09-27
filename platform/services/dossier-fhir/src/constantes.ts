@@ -66,8 +66,15 @@ export const CATEGORIES_CONSENTEMENT = [
   'C-RAPPELS',
   'C-OBSERVATION',
   'C-PHOTOS',
+  'C-IDENTITE',
 ] as const;
 export type CategorieConsentement = (typeof CATEGORIES_CONSENTEMENT)[number];
+
+/**
+ * Catégories qu'un patient accepte lui-même, jamais un agent IA ni un proche à sa place :
+ * charte de vérification d'identité (photos du document et du visage, ADR-0015).
+ */
+export const CATEGORIES_PATIENT_SEUL: readonly CategorieConsentement[] = ['C-IDENTITE'];
 
 /** Conclusions possibles de la revue humaine d'un bris de glace. */
 export const CONCLUSIONS_REVUE = ['justifie', 'injustifie', 'a-approfondir'] as const;

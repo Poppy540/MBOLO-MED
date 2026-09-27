@@ -1,5 +1,5 @@
 # Keycloak local pour le développement — COMPTES FICTIFS UNIQUEMENT.
-# Lancement : KC_BOOTSTRAP_ADMIN_PASSWORD=<local> IDENTITE_SERVICE_CLIENT_SECRET=<local> TELECONSULTATION_SERVICE_CLIENT_SECRET=<local> NOTIFICATIONS_SERVICE_CLIENT_SECRET=<local> CONSULTATION_SERVICE_CLIENT_SECRET=<local> docker compose -f platform/services/identite/docker-compose.yml up -d
+# Lancement : KC_BOOTSTRAP_ADMIN_PASSWORD=<local> IDENTITE_SERVICE_CLIENT_SECRET=<local> TELECONSULTATION_SERVICE_CLIENT_SECRET=<local> NOTIFICATIONS_SERVICE_CLIENT_SECRET=<local> CONSULTATION_SERVICE_CLIENT_SECRET=<local> DOCUMENTS_SERVICE_CLIENT_SECRET=<local> docker compose -f platform/services/identite/docker-compose.yml up -d
 # Le mot de passe administrateur n'est jamais écrit dans le dépôt : il est lu dans l'environnement du poste.
 # Console : http://127.0.0.1:8081 (accessible uniquement depuis la machine locale).
 services:
@@ -18,6 +18,7 @@ services:
       TELECONSULTATION_SERVICE_CLIENT_SECRET: ${TELECONSULTATION_SERVICE_CLIENT_SECRET:?Définir TELECONSULTATION_SERVICE_CLIENT_SECRET dans l'environnement local}
       NOTIFICATIONS_SERVICE_CLIENT_SECRET: ${NOTIFICATIONS_SERVICE_CLIENT_SECRET:?Définir NOTIFICATIONS_SERVICE_CLIENT_SECRET dans l'environnement local}
       CONSULTATION_SERVICE_CLIENT_SECRET: ${CONSULTATION_SERVICE_CLIENT_SECRET:?Définir CONSULTATION_SERVICE_CLIENT_SECRET dans l'environnement local}
+      DOCUMENTS_SERVICE_CLIENT_SECRET: ${DOCUMENTS_SERVICE_CLIENT_SECRET:?Définir DOCUMENTS_SERVICE_CLIENT_SECRET dans l'environnement local}
       # Extension d'inscription (ADR-0014) : adresse du service des invitations, vue depuis le conteneur.
       KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL: ${INVITATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3006/}
       # Identité saisie après l'inscription : dossier créé par la passerelle (ADR-0014).

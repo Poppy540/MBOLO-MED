@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostgreSQL éphémère pour la CI (base des services, ADR-0013) — DONNÉES DE TEST UNIQUEMENT.
 # Mots de passe et clé d'empreinte tirés au hasard, masqués dans les journaux, jamais conservés.
-# Deux rôles, comme en production : propriétaire du schéma (migrations) et rôle d'exécution du service.
+# Comme en production : un propriétaire des schémas (migrations) et un rôle d'exécution par service.
 set -euo pipefail
 
 if [[ -z "${GITHUB_ENV:-}" ]]; then
@@ -14,8 +14,9 @@ fi
 MDP_ADMIN="$(openssl rand -hex 24)"
 MDP_MIGRATION="$(openssl rand -hex 24)"
 MDP_EXECUTION="$(openssl rand -hex 24)"
+MDP_DOCUMENTS="$(openssl rand -hex 24)"
 CLE="$(openssl rand -hex 24)"
-for v in "$MDP_ADMIN" "$MDP_MIGRATION" "$MDP_EXECUTION" "$CLE"; do
+for v in "$MDP_ADMIN" "$MDP_MIGRATION" "$MDP_EXECUTION" "$MDP_DOCUMENTS" "$CLE"; do
   echo "::add-mask::$v"
 done
 
@@ -28,6 +29,7 @@ timeout 90 bash -c 'until docker exec mbolo-postgres-test pg_isready -h 127.0.0.
 docker exec -i -e PGPASSWORD="$MDP_ADMIN" mbolo-postgres-test psql -h 127.0.0.1 -v ON_ERROR_STOP=1 -U postgres > /dev/null <<SQL
 create role mbolo_migration login password '$MDP_MIGRATION';
 create role mbolo_invitations login password '$MDP_EXECUTION';
+create role mbolo_documents login password '$MDP_DOCUMENTS';
 create database mbolo owner mbolo_migration;
 \c mbolo
 revoke create on schema public from public;
@@ -40,5 +42,7 @@ BASE="127.0.0.1:5432/mbolo"
   echo "INVITATIONS_MIGRATION_DATABASE_URL=postgres://mbolo_migration:$MDP_MIGRATION@$BASE"
   echo "INVITATIONS_DATABASE_URL=postgres://mbolo_invitations:$MDP_EXECUTION@$BASE"
   echo "INVITATIONS_CLE_EMPREINTE=$CLE"
+  echo "DOCUMENTS_MIGRATION_DATABASE_URL=postgres://mbolo_migration:$MDP_MIGRATION@$BASE"
+  echo "DOCUMENTS_DATABASE_URL=postgres://mbolo_documents:$MDP_DOCUMENTS@$BASE"
 } >> "$GITHUB_ENV"
 echo "PostgreSQL de test prêt."

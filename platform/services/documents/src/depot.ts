@@ -21,6 +21,11 @@ export interface Metadonnees {
 
 export interface DepotDocuments {
   inserer(m: Metadonnees): Promise<void>;
+  /**
+   * Insère si le patient a moins de `max` documents présents de ce type ; faux sinon. Compter puis
+   * insérer se fait sous verrou : deux envois simultanés ne dépassent pas la limite.
+   */
+  insererSiPlace(m: Metadonnees, max: number): Promise<boolean>;
   lire(id: string): Promise<Metadonnees | undefined>;
   /** Documents encore présents d'un patient, les plus récents d'abord. */
   duPatient(patientId: string): Promise<Metadonnees[]>;
@@ -37,6 +42,15 @@ export class DepotMemoire implements DepotDocuments {
 
   async inserer(m: Metadonnees): Promise<void> {
     this.lignes.push({ ...m });
+  }
+
+  async insererSiPlace(m: Metadonnees, max: number): Promise<boolean> {
+    const n = this.lignes.filter(
+      (x) => x.patientId === m.patientId && x.type === m.type && present(x),
+    ).length;
+    if (n >= max) return false;
+    this.lignes.push({ ...m });
+    return true;
   }
 
   async lire(id: string): Promise<Metadonnees | undefined> {
@@ -103,6 +117,23 @@ export class DepotPostgres implements DepotDocuments {
         (id, patient_id, type, format, taille, version_charte, cle_enveloppee, depose_le, supprimer_le)
       values (${m.id}, ${m.patientId}, ${m.type}, ${m.format}, ${m.taille}, ${m.versionCharte},
               ${m.cleEnveloppee ?? null}, ${m.deposeLe}, ${m.supprimerLe})`;
+  }
+
+  async insererSiPlace(m: Metadonnees, max: number): Promise<boolean> {
+    return this.sql.begin(async (tx) => {
+      // Verrou par patient et par type, libéré à la fin de la transaction.
+      await tx`select pg_advisory_xact_lock(hashtext(${`documents:${m.patientId}:${m.type}`}))`;
+      const [compte] = await tx<{ n: number }[]>`
+        select count(*)::int as n from documents.documents
+         where patient_id = ${m.patientId} and type = ${m.type} and supprime_le is null`;
+      if ((compte?.n ?? 0) >= max) return false;
+      await tx`
+        insert into documents.documents
+          (id, patient_id, type, format, taille, version_charte, cle_enveloppee, depose_le, supprimer_le)
+        values (${m.id}, ${m.patientId}, ${m.type}, ${m.format}, ${m.taille}, ${m.versionCharte},
+                ${m.cleEnveloppee ?? null}, ${m.deposeLe}, ${m.supprimerLe})`;
+      return true;
+    });
   }
 
   async lire(id: string): Promise<Metadonnees | undefined> {

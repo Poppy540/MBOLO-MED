@@ -2,8 +2,10 @@
 // production, SeaweedFS en local et en CI). Le nom d'un objet est l'identifiant du document :
 // ni nom de patient, ni type de document.
 import {
+  CreateBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   NoSuchKey,
   PutObjectCommand,
   S3Client,
@@ -51,6 +53,18 @@ export class StockageS3 implements Stockage {
       forcePathStyle: true,
       credentials: { accessKeyId: o.cleAcces, secretAccessKey: o.secret },
     });
+  }
+
+  /**
+   * Crée le compartiment s'il n'existe pas — développement et tests seulement : en production, il est
+   * créé par l'exploitant, privé, avec ses règles d'accès.
+   */
+  async creerCompartimentSiAbsent(): Promise<void> {
+    try {
+      await this.client.send(new HeadBucketCommand({ Bucket: this.o.compartiment }));
+    } catch {
+      await this.client.send(new CreateBucketCommand({ Bucket: this.o.compartiment }));
+    }
   }
 
   async ecrire(nom: string, octets: Buffer): Promise<void> {
