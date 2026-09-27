@@ -35,6 +35,7 @@ Option 1.
 - **HAPI est interne** : seules la passerelle et l'exploitation y accèdent. Les liens de pagination sont réécrits vers l'adresse de la passerelle.
 
 ## Conséquences
+- Ajout (PR Q) : **minimisation par élément**. La revendication `mbolo_elements` (ex. `Patient.telecom`) restreint ce que la passerelle renvoie pour un type : `_elements` imposé au serveur, puis filtrage de la réponse par la passerelle elle-même.
 - `identite` obtient et renouvelle son jeton de service automatiquement (30 s avant expiration). Sans jeton, il répond 503 et ne décide jamais d'un accès sans lire les consentements.
 - Chaque nouveau client (agents 1, 2, 4…) = un client Keycloak + une revendication `mbolo_scopes` minimale, revue par le responsable sécurité.
 - À faire avant la production :

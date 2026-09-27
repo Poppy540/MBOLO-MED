@@ -18,12 +18,15 @@ Tout le reste est refusé : `DELETE`, `_history`, `$opérations`, transactions e
 
 ## Clients et permissions
 
-| Client Keycloak | Service | Permissions |
-|---|---|---|
-| `mbolo-identite-service` | `identite` (consentements, journal des accès) | `system/Consent.crus system/AuditEvent.cs` |
-| `mbolo-teleconsultation-service` | `teleconsultation` (rendez-vous, agendas et créneaux) | `system/Appointment.crus system/Schedule.crus system/Slot.crus` |
+| Client Keycloak | Service | Permissions (`mbolo_scopes`) | Éléments lisibles (`mbolo_elements`) |
+|---|---|---|---|
+| `mbolo-identite-service` | `identite` (consentements, journal des accès) | `system/Consent.crus system/AuditEvent.cs` | tous |
+| `mbolo-teleconsultation-service` | `teleconsultation` (rendez-vous, agendas et créneaux) | `system/Appointment.crus system/Schedule.crus system/Slot.crus` | tous |
+| `mbolo-notifications-service` | `notifications` (numéro, consentement aux rappels) | `system/Patient.r system/Practitioner.r system/Consent.s` | `Patient.telecom Practitioner.telecom` |
 
-Ajouter un client (ex. agent IA) : un client confidentiel dans `keycloak/realm-mbolo.json` avec le secret en `${VARIABLE}`, une audience `mbolo-dossier-fhir` et une revendication `mbolo_scopes` **minimale**. Le responsable sécurité revoit chaque ajout.
+**Minimisation par élément** : pour un type listé dans `mbolo_elements`, la passerelle impose `_elements` au serveur FHIR, puis **filtre elle-même la réponse** : lecture, recherche et pages suivantes. Seuls sortent `resourceType`, `id`, `meta` et les éléments autorisés, quels que soient les paramètres de la requête. Un type non listé n'est pas restreint.
+
+Ajouter un client (ex. agent IA) : un client confidentiel dans `keycloak/realm-mbolo.json` avec le secret en `${VARIABLE}`, une audience `mbolo-dossier-fhir`, une revendication `mbolo_scopes` **minimale** et, si le client n'a besoin que d'une partie d'une ressource, une revendication `mbolo_elements`. Le responsable sécurité revoit chaque ajout.
 
 ## Commandes
 

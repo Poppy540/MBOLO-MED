@@ -24,3 +24,35 @@ export function lirePermissions(texte: string | undefined): Permissions {
 export function autorise(p: Permissions, type: string, interaction: Interaction): boolean {
   return p.get(type)?.has(interaction) ?? false;
 }
+
+/**
+ * Éléments autorisés par type (minimisation) : « Patient.telecom Practitioner.telecom ».
+ * Un type absent de la liste n'est pas restreint (ses permissions SMART s'appliquent seules).
+ */
+export type ElementsAutorises = ReadonlyMap<string, ReadonlySet<string>>;
+
+const ELEMENT = /^([A-Z][A-Za-z]{1,63})\.([a-z][A-Za-z]{0,63})$/;
+
+export function lireElements(texte: string | undefined): ElementsAutorises {
+  const resultat = new Map<string, Set<string>>();
+  for (const morceau of (texte ?? '').split(/\s+/)) {
+    const m = ELEMENT.exec(morceau);
+    if (!m?.[1] || !m[2]) continue;
+    const ensemble = resultat.get(m[1]) ?? new Set<string>();
+    ensemble.add(m[2]);
+    resultat.set(m[1], ensemble);
+  }
+  return resultat;
+}
+
+/** Toujours conservés : type, identifiant et métadonnées (version, marqueurs). */
+const ELEMENTS_TECHNIQUES = new Set(['resourceType', 'id', 'meta']);
+
+/** Ne garde d'une ressource que ses éléments autorisés (sans effet si le type n'est pas restreint). */
+export function restreindre<T extends { resourceType: string }>(r: T, e: ElementsAutorises): T {
+  const autorises = e.get(r.resourceType);
+  if (!autorises) return r;
+  return Object.fromEntries(
+    Object.entries(r).filter(([cle]) => ELEMENTS_TECHNIQUES.has(cle) || autorises.has(cle)),
+  ) as T;
+}

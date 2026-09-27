@@ -372,6 +372,20 @@
             "userinfo.token.claim": "false",
             "introspection.token.claim": "true"
           }
+        },
+        {
+          "name": "elements-autorises",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements",
+            "claim.value": "Patient.telecom Practitioner.telecom",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
         }
       ]
     }

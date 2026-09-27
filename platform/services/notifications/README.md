@@ -11,7 +11,7 @@ Prévient une personne par SMS ou WhatsApp (ADR-0012). **Canal simulé** tant qu
   - Toute modification est relue par le porteur de projet avant la production.
 - **Appelants** : `POST /notifications` (`destinataire` `Patient/…` ou `Practitioner/…`, `gabarit`, `instant`) exige un jeton de service Keycloak d'audience `mbolo-notifications`, d'un client autorisé (`NOTIFICATIONS_CLIENTS_AUTORISES`, d'abord `mbolo-teleconsultation-service`).
 - **Consentement** : un patient n'est prévenu qu'avec un consentement `C-RAPPELS` actif et accepté, lu sans cache (une révocation prend effet aussitôt). Sinon : `ignoree-sans-consentement`. Les professionnels sont prévenus sans condition.
-- **Numéro** : lu dans le dossier au moment de l'envoi (`telecom`, mobile de préférence), via la passerelle avec le compte `mbolo-notifications-service` (`system/Patient.r system/Practitioner.r system/Consent.s`). Il n'est conservé nulle part.
+- **Numéro** : lu dans le dossier au moment de l'envoi (`telecom`, mobile de préférence), via la passerelle avec le compte `mbolo-notifications-service` (`system/Patient.r system/Practitioner.r system/Consent.s`). La passerelle ne lui renvoie **que** `telecom` (revendication `mbolo_elements`). Le numéro n'est conservé nulle part.
 - **Réponse** : 202 avec `envoyee`, `ignoree-sans-consentement`, `ignoree-sans-numero` ou `echec`. Pour l'appelant, une notification **ne bloque jamais** l'action.
 - **Journal** : appelant, gabarit, type de destinataire et résultat. **Jamais le numéro ni le texte.**
 - **Canal simulé** : `GET /simulation/boite` (développement et tests), avec la même authentification que l'envoi.
@@ -33,4 +33,3 @@ Prévient une personne par SMS ou WhatsApp (ADR-0012). **Canal simulé** tant qu
 ## Reste à faire avant la production
 
 - Choix du fournisseur SMS et WhatsApp (porteur de projet), expéditeur, relecture des gabarits, langues locales, pas d'envoi la nuit.
-- Restreindre dans la passerelle les éléments lisibles par ce compte (`telecom` seulement).

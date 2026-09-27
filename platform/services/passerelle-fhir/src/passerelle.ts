@@ -6,7 +6,7 @@ import type { Bundle, FhirResource } from 'fhir/r4.js';
 import { valider, type Environnement } from '@mbolo/dossier-fhir';
 import type { Journal } from '@mbolo/journal-securise';
 import type { ClientService, VerifierJeton } from './jeton.js';
-import { autorise, type Interaction } from './permissions.js';
+import { autorise, restreindre, type Interaction } from './permissions.js';
 
 export interface OptionsPasserelle {
   verifierJeton: VerifierJeton;
@@ -107,7 +107,7 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
       o.journal.erreur('serveur FHIR injoignable', { client: c.client, type, interaction });
       return reply.code(502).type(TYPE_FHIR).send(issue('Dossier médical indisponible.'));
     }
-    const texte = await r.text();
+    let texte = await r.text();
     // Une recherche ne peut rendre que des ressources que le client a le droit de lire.
     if (r.ok && texte) {
       const reponse = JSON.parse(texte) as FhirResource;
@@ -116,6 +116,20 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
           (e) => e.resource && !autorise(c.permissions, e.resource.resourceType, 's'),
         );
         if (horsPerimetre) throw new Refus(403, 'Résultat hors du périmètre autorisé.');
+      }
+      // Minimisation : seuls les éléments autorisés au client sortent de la passerelle, quels que
+      // soient les paramètres de la requête (_elements n'est qu'une économie de transfert).
+      if (c.elements.size > 0) {
+        const filtre =
+          reponse.resourceType === 'Bundle'
+            ? {
+                ...reponse,
+                entry: (reponse.entry ?? []).map((e) =>
+                  e.resource ? { ...e, resource: restreindre(e.resource, c.elements) } : e,
+                ),
+              }
+            : restreindre(reponse, c.elements);
+        texte = JSON.stringify(filtre);
       }
     }
     o.journal.info('accès au dossier', {
@@ -173,6 +187,8 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
           throw new Refus(403, 'Paramètre de recherche non autorisé.');
         }
       }
+      const elements = c.elements.get(req.params.type);
+      if (elements) requete.set('_elements', [...elements].join(','));
       const qs = requete.toString();
       return relayer(
         req,
@@ -205,7 +221,16 @@ export function creerPasserelle(o: OptionsPasserelle): FastifyInstance {
     const c = await authentifier(req);
     verifierType(req.params.type, req.params.id);
     exiger(c, req.params.type, 'r');
-    return relayer(req, reply, c, 'r', req.params.type, `/${req.params.type}/${req.params.id}`);
+    const elements = c.elements.get(req.params.type);
+    const qs = elements ? `?_elements=${encodeURIComponent([...elements].join(','))}` : '';
+    return relayer(
+      req,
+      reply,
+      c,
+      'r',
+      req.params.type,
+      `/${req.params.type}/${req.params.id}${qs}`,
+    );
   });
 
   app.post<{ Params: { type: string } }>('/fhir/:type', async (req, reply) => {
