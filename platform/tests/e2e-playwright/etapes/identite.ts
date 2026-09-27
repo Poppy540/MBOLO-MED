@@ -1,6 +1,13 @@
 // Étapes des scénarios « identité et accès au dossier ». Données FICTIVES uniquement.
 import { expect } from '@playwright/test';
-import { APPLICATIONS, EMETTEUR, IDENTITE_URL, compte, motDePasse } from '../configuration.js';
+import {
+  APPLICATIONS,
+  EMETTEUR,
+  FHIR_URL,
+  IDENTITE_URL,
+  compte,
+  motDePasse,
+} from '../configuration.js';
 import {
   Given,
   Then,
@@ -247,6 +254,40 @@ When(
     });
     expect(monde.reponse?.statut).toBe(201);
     monde.consentementId = String(monde.reponse?.corps['id']);
+  },
+);
+
+When(
+  '{string} tente de donner son consentement {string} à {string}',
+  async ({ monde }, identifiant: string, categorie: string, beneficiaire: string) => {
+    await appeler(monde, 'POST', `/patients/${patientId(identifiant)}/consentements`, {
+      jeton: jeton(monde, identifiant),
+      corps: {
+        categorie,
+        mode: 'texte',
+        versionTexte: 'consentement-v0-FICTIF',
+        accepte: true,
+        beneficiaire,
+      },
+    });
+  },
+);
+
+Then('le consentement est refusé par le dossier médical', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(422);
+});
+
+Then(
+  'le dossier médical contient ce consentement avec le statut {string}',
+  async ({ monde }, statut: string) => {
+    // Lecture directe dans le serveur FHIR : le consentement y est conservé, même révoqué.
+    const r = await fetch(`${FHIR_URL}/Consent/${monde.consentementId ?? ''}`, {
+      headers: { accept: 'application/fhir+json' },
+    });
+    expect(r.status).toBe(200);
+    const c = (await r.json()) as { status?: string; meta?: { tag?: { code?: string }[] } };
+    expect(c.status).toBe(statut);
+    expect(c.meta?.tag?.map((t) => t.code)).toContain('fictif');
   },
 );
 

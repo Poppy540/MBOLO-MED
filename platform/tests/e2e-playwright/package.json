@@ -9,6 +9,7 @@
     "e2e": "bddgen && playwright test"
   },
   "devDependencies": {
+    "@mbolo/dossier-fhir": "workspace:*",
     "@playwright/test": "1.56.1",
     "playwright-bdd": "^9.2.1"
   }

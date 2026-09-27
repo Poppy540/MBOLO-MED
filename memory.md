@@ -16,8 +16,9 @@
 - **Bilan des skills :** 88 (46 plateforme dont `garde-fous-communs`, 42 salle de contrôle) — 24 `complet`, 64 `v1`. Chaque agent a des cas de refus ou d'escalade.
 - **Dépôt :** fondations fusionnées dans `main` via [PR n°1](https://github.com/Poppy540/MBOLO-MED/pull/1) ; `main` protégée (pull request obligatoire, force-push et suppression interdits).
 - **Développement vague 0 (petites PR) :** A outillage — fusionnée ([PR n°2](https://github.com/Poppy540/MBOLO-MED/pull/2)) ; B `dossier-fhir` — fusionnée ([PR n°3](https://github.com/Poppy540/MBOLO-MED/pull/3)) ; C `identite` — fusionnée ([PR n°4](https://github.com/Poppy540/MBOLO-MED/pull/4)) ; D premiers e2e — fusionnée ([PR n°5](https://github.com/Poppy540/MBOLO-MED/pull/5)).
-- **Durcissement identité (PR E, en cours) :** MFA OTP obligatoire pour les rôles professionnels (rôle `mfa-requise`, flux `navigateur-mbolo`), jeton sans e-mail ni nom, profil utilisateur intégré au royaume ; 20 scénarios e2e.
-- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub (Java 21).
+- **Durcissement identité :** PR E fusionnée ([PR n°6](https://github.com/Poppy540/MBOLO-MED/pull/6)) — MFA OTP obligatoire pour les rôles professionnels, jeton sans e-mail ni nom, profil intégré au royaume.
+- **PR F en cours :** consentements stockés dans HAPI FHIR (`DepotFhir`, recherche sans cache, verrou optimiste) ; e2e avec HAPI réel (21 scénarios).
+- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub, HAPI depuis la couche de l'image Docker Hub (`app/main.war`, Java 21) ; pas de démon Docker.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 
 ## 2. Décisions validées
@@ -75,4 +76,6 @@
 - 2026-09-27 — Playwright n'intercepte pas (`page.route`) une redirection qui suit un POST : relever l'URL de retour avec l'événement `request`.
 - 2026-09-27 — Un test de refus doit utiliser des identifiants valides, sinon il réussit pour une autre raison (connexion directe : vrai mot de passe, erreur `unauthorized_client` attendue).
 - 2026-09-27 — Keycloak : le code OTP se calcule sur les octets bruts du champ caché `totpSecret`, et un code ne peut pas être réutilisé ; importer `authenticationFlows` conserve les flux par défaut.
+- 2026-09-27 — HAPI met en cache les recherches 60 s : toujours `Cache-Control: no-cache` pour une décision d'accès (sinon une révocation n'est pas vue). HAPI impose l'intégrité référentielle (un `Consent` vers un `Practitioner` inconnu est refusé).
+- 2026-09-27 — Ne jamais utiliser `pkill -f <motif>` dans une commande qui contient ce motif : elle se tue elle-même.
 - 2026-09-27 — `@types/fhir` s'importe via `'fhir/r4.js'` en `NodeNext` ; les fausses clés de test se construisent à l'exécution pour ne pas déclencher gitleaks.

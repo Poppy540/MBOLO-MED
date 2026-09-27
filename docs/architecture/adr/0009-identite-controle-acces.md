@@ -33,7 +33,7 @@ Option 1.
 - **Profil utilisateur intégré au royaume** : les attributs de rattachement au dossier ne sont modifiables que par l'administrateur, dès l'import.
 
 ## Conséquences
-- Le dépôt de consentements est **en mémoire** en vague 0 : le service refuse de démarrer en production. Il sera remplacé par le serveur FHIR (HAPI) avant la vague 1.
+- Les consentements sont stockés dans le **serveur FHIR du dossier** (HAPI, `DepotFhir`). Les recherches se font sans cache, pour qu'une révocation soit immédiate. Le service refuse encore de démarrer en production tant que l'accès authentifié (SMART on FHIR) au dossier n'est pas en place.
 - Keycloak doit être hébergé chez l'hébergeur HDS (ADR-0004) ; le mot de passe d'administration initial vient du coffre-fort (ADR-0005), jamais du dépôt.
 - La revue des bris de glace (qui, sous quel délai) est à définir avec le comité médical et le responsable sécurité.
 - La traduction complète des écrans Keycloak et le parcours de récupération d'un appareil OTP perdu (procédure humaine vérifiée) restent à faire.

@@ -1,6 +1,6 @@
 // Gestion des consentements (skill recueil-consentement) : enregistrer, révoquer, lister.
 // Les ressources sont construites et vérifiées par @mbolo/dossier-fhir ; le stockage est abstrait
-// (dépôt en mémoire pour les tests, dépôt FHIR plus tard).
+// (dépôt en mémoire pour les tests, dépôt FHIR `DepotFhir` pour le dossier médical).
 import type { Consent } from 'fhir/r4.js';
 import {
   consentement,

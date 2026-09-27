@@ -51,6 +51,7 @@
 
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
+| `FHIR_BASE_URL` | Serveur FHIR | Plateforme (dossier-fhir, identite) | Adresse du dossier ; `identite` y stocke les consentements (pas un secret, suivie pour cohérence) | — | D R P | `mbolo/<env>/fhir/` | — | RS | 0 |
 | `FHIR_CLIENT_ID_PLATFORM` / `_SECRET_PLATFORM` | Serveur FHIR | Plateforme | Service dossier-fhir | Selon rôle de l'utilisateur authentifié (SMART on FHIR) | D R P | `mbolo/<env>/fhir/` | 90 j | RS | 0 |
 | `FHIR_CLIENT_ID_AGENT01` / `_SECRET_AGENT01` | Serveur FHIR | **Agent 1** | Créer et compléter le dossier du patient en cours d'interaction | Écriture : Patient, Observation, Condition, AllergyIntolerance, Encounter, Consent, QuestionnaireResponse ; **lecture limitée au patient de la session** | D R P | idem | 90 j | RS | 0 (fictif) / 1 |
 | `FHIR_CLIENT_ID_AGENT02` / `_SECRET_AGENT02` | Serveur FHIR | **Agent 2** | Lire ordonnances et rendez-vous, créer des rappels | Lecture : MedicationRequest, Appointment, ServiceRequest, CarePlan ; écriture : Communication, AdverseEvent (brouillon) | D R P | idem | 90 j | RS | 2 |
@@ -130,3 +131,4 @@
 | 2026-09-26 | Création initiale (vague 0) | En attente — responsable sécurité à nommer |
 | 2026-09-26 | Outils choisis (D-0002) : Infisical, Slack + Grafana OnCall, Unleash ; variables renommées en conséquence | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Ajout de la section Identité (Keycloak, ADR-0009) | En attente — responsable sécurité à nommer |
+| 2026-09-27 | `FHIR_BASE_URL` inventoriée (utilisée aussi par `identite`) | En attente — responsable sécurité à nommer |

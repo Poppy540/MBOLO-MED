@@ -8,6 +8,7 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 |---|---|
 | `src/acces.ts` | Point de décision d'accès au dossier d'un patient. **Refus par défaut.** |
 | `src/consentements.ts` | Enregistrer, lister, révoquer un consentement (ressources FHIR `Consent` construites et vérifiées par `@mbolo/dossier-fhir`) |
+| `src/depot-fhir.ts` | Stockage des consentements dans le serveur FHIR du dossier (`FHIR_BASE_URL`) : création, lecture, révocation avec verrou optimiste (`If-Match`), recherche **sans cache** pour qu'une révocation prenne effet immédiatement |
 | `src/jeton.ts` | Vérification des jetons Keycloak (signature, émetteur, audience, expiration) |
 | `src/serveur.ts` | API HTTP (Fastify) : `/patients/:id/consentements`, `/consentements/:id/revocation`, `/acces/dossier` |
 | `keycloak/realm-mbolo.json` | Royaume « mbolo » : rôles, clients (PKCE), protection contre la force brute, politique de mot de passe |
@@ -43,9 +44,10 @@ Le jeton d'accès des applications ne contient **ni e-mail ni nom** : les porté
 ## Commandes
 
 ```bash
-pnpm --filter @mbolo/identite test     # 31 tests : accès, consentements, API (jetons signés par des clés de test)
+pnpm --filter @mbolo/identite test     # accès, consentements, dépôt FHIR, royaume, API (jetons signés par des clés de test)
 KC_BOOTSTRAP_ADMIN_PASSWORD=… docker compose -f platform/services/identite/docker-compose.yml up -d
-KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo pnpm --filter @mbolo/identite start
+docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d   # HAPI FHIR local
+KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:8080/fhir pnpm --filter @mbolo/identite start
 ```
 
 ## Tests de bout en bout
@@ -54,5 +56,7 @@ Le royaume, le profil utilisateur et l'API sont vérifiés avec un vrai Keycloak
 
 ## Limites (vague 0)
 
-- Dépôt de consentements **en mémoire** : le service refuse de démarrer en production. Le stockage FHIR arrive avec la passerelle du dossier.
+- Les consentements sont stockés dans le serveur FHIR si `FHIR_BASE_URL` est défini, sinon **en mémoire** (développement seulement, avec un avertissement au démarrage).
+- Le service refuse de démarrer en production : l'accès authentifié (SMART on FHIR, client `FHIR_CLIENT_ID_PLATFORM`) au dossier de production n'est pas encore en place. Le dépôt FHIR accepte déjà des en-têtes d'authentification (`entetes`).
+- Si le dossier médical est indisponible, l'API répond **503**. Elle ne décide jamais d'un accès sans avoir pu lire les consentements.
 - Comptes de service des agents IA (un client par agent, portée minimale) : avec l'intégration des agents.

@@ -22,10 +22,12 @@ Fonctionnalité: Accès au dossier d'un patient selon ses consentements
     Quand "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
     Quand "patient-fictif-02" donne son consentement "C-PARTAGE-PRO" à "Practitioner/prac-fictif-001"
-    Et que "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
+    Alors le dossier médical contient ce consentement avec le statut "active"
+    Quand "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
     Alors l'accès est accordé avec le motif "consentement-partage-pro"
     Quand "patient-fictif-02" retire ce consentement
-    Et que "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
+    Alors le dossier médical contient ce consentement avec le statut "inactive"
+    Quand "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
 
   Scénario: Un proche de la diaspora accède au dossier seulement avec un consentement qui le désigne
@@ -39,6 +41,11 @@ Fonctionnalité: Accès au dossier d'un patient selon ses consentements
     Quand "patient-fictif-01" retire ce consentement
     Et que "proche-fictif-01" demande l'accès au dossier "pat-fictif-001"
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
+
+  Scénario: Un partage avec un professionnel inconnu du dossier est refusé
+    Étant donné que "patient-fictif-01" est connecté
+    Quand "patient-fictif-01" tente de donner son consentement "C-PARTAGE-PRO" à "Practitioner/prac-inconnu-999"
+    Alors le consentement est refusé par le dossier médical
 
   Scénario: Accès d'urgence (bris de glace) motivé : accordé et signalé pour revue humaine
     Étant donné que "medecin-fictif-01" est connecté

@@ -103,9 +103,15 @@ jobs:
           echo "KC_BOOTSTRAP_ADMIN_PASSWORD=$MDP" >> "$GITHUB_ENV"
       - name: Démarrer Keycloak (royaume mbolo)
         run: docker compose -f platform/services/identite/docker-compose.yml up -d
+      - name: Démarrer HAPI FHIR (données fictives, effacées à l'arrêt)
+        run: docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d
       - name: Attendre Keycloak
         run: timeout 180 bash -c 'until curl -sf http://127.0.0.1:8081/realms/mbolo/.well-known/openid-configuration > /dev/null; do sleep 3; done'
+      - name: Attendre HAPI FHIR
+        run: timeout 300 bash -c 'until curl -sf http://127.0.0.1:8080/fhir/metadata > /dev/null; do sleep 5; done'
       - run: pnpm e2e
-      - name: Journaux Keycloak en cas d'échec
+      - name: Journaux Keycloak et HAPI en cas d'échec
         if: failure()
-        run: docker compose -f platform/services/identite/docker-compose.yml logs --tail 200
+        run: |
+          docker compose -f platform/services/identite/docker-compose.yml logs --tail 200
+          docker compose -f platform/services/dossier-fhir/docker-compose.yml logs --tail 200

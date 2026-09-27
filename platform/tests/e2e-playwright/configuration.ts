@@ -5,6 +5,7 @@ export const KEYCLOAK_URL = process.env['KEYCLOAK_URL'] ?? 'http://127.0.0.1:808
 export const ROYAUME = 'mbolo';
 export const EMETTEUR = `${KEYCLOAK_URL}/realms/${ROYAUME}`;
 export const IDENTITE_URL = process.env['IDENTITE_URL'] ?? 'http://127.0.0.1:3001';
+export const FHIR_URL = process.env['FHIR_BASE_URL'] ?? 'http://127.0.0.1:8080/fhir';
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
 export const APPLICATIONS = {
@@ -64,6 +65,20 @@ export const COMPTES: CompteFictif[] = [
     application: 'pro',
     attributs: {},
   },
+];
+
+/** [FICTIF] Ressources du dossier référencées par les comptes (créées dans le serveur FHIR de test). */
+export const RESSOURCES_FHIR = [
+  ...COMPTES.flatMap((c) =>
+    Object.entries(c.attributs).map(([attribut, id]) => ({
+      type: {
+        patient_id: 'Patient',
+        practitioner_id: 'Practitioner',
+        related_person_id: 'RelatedPerson',
+      }[attribut] as 'Patient' | 'Practitioner' | 'RelatedPerson',
+      id,
+    })),
+  ),
 ];
 
 export const VARIABLE_MOTS_DE_PASSE = 'MBOLO_E2E_MOTS_DE_PASSE';
