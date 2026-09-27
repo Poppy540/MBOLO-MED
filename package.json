@@ -14,7 +14,8 @@
     "test": "pnpm -r --if-present test",
     "verifier:skills": "python3 scripts/verifier_skills.py .",
     "verifier": "pnpm format:check && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm verifier:skills",
-    "build": "pnpm -r --if-present build"
+    "build": "pnpm -r --if-present build",
+    "e2e": "pnpm --filter @mbolo/e2e e2e"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

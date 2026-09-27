@@ -2,3 +2,4 @@ packages:
   - "platform/apps/*"
   - "platform/services/*"
   - "platform/packages/*"
+  - "platform/tests/e2e-playwright"

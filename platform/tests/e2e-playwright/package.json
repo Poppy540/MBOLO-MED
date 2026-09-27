@@ -1,0 +1,15 @@
+{
+  "name": "@mbolo/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tests de bout en bout de Mbolo Santé : scénarios Gherkin en français exécutés par Playwright, comptes fictifs uniquement.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "e2e": "bddgen && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "playwright-bdd": "^9.2.1"
+  }
+}

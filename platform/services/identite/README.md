@@ -32,7 +32,7 @@ Les revendications `patient_id`, `practitioner_id`, `related_person_id` du jeton
 
 ## MFA
 
-Obligatoire pour professionnel, infirmier, pharmacien, administrateur : action requise **Configure OTP** posée à la création du compte (vague 0). Un flux d'authentification conditionnel par rôle sera configuré et testé avant la vague 1 (Keycloak n'a pas pu être démarré dans l'environnement de Claude Code : `quay.io` bloqué).
+Obligatoire pour professionnel, infirmier, pharmacien, administrateur : action requise **Configure OTP** posée à la création du compte (vague 0). Un flux d'authentification conditionnel par rôle sera configuré et testé avant la vague 1.
 
 ## Commandes
 
@@ -41,6 +41,10 @@ pnpm --filter @mbolo/identite test     # 31 tests : accès, consentements, API (
 KC_BOOTSTRAP_ADMIN_PASSWORD=… docker compose -f platform/services/identite/docker-compose.yml up -d
 KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo pnpm --filter @mbolo/identite start
 ```
+
+## Tests de bout en bout
+
+Le royaume, le profil utilisateur et l'API sont vérifiés avec un vrai Keycloak par les scénarios de `platform/tests/features-gherkin/identite/` (`pnpm e2e`, job CI **E2E**).
 
 ## Limites (vague 0)
 

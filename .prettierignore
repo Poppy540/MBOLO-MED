@@ -7,3 +7,6 @@ node_modules
 dist
 coverage
 secrets
+.features-gen
+test-results
+playwright-report
