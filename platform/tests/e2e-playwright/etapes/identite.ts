@@ -1,7 +1,17 @@
 // Étapes des scénarios « identité et accès au dossier ». Données FICTIVES uniquement.
 import { expect } from '@playwright/test';
 import { APPLICATIONS, EMETTEUR, IDENTITE_URL, compte, motDePasse } from '../configuration.js';
-import { Given, Then, When, autoriser, connecter, revendications, type Monde } from './fixtures.js';
+import {
+  Given,
+  Then,
+  When,
+  autoriser,
+  connecter,
+  revendications,
+  saisirIdentifiants,
+  urlAutorisation,
+  type Monde,
+} from './fixtures.js';
 
 const jeton = (monde: Monde, identifiant: string): string => {
   const j = monde.jetons.get(identifiant);
@@ -34,8 +44,53 @@ const patientId = (identifiant: string): string => {
 
 // ── Connexion ────────────────────────────────────────────────────────────────
 
+// Jetons réutilisés d'un scénario à l'autre pendant 4 minutes (durée de vie Keycloak : 5 minutes) :
+// limite le nombre de codes OTP à produire (un code ne peut servir qu'une fois par période de 30 s).
+const cacheJetons = new Map<string, { jeton: string; obtenuA: number }>();
+
 Given('{string} est connecté', async ({ page, monde }, identifiant: string) => {
-  monde.jetons.set(identifiant, await connecter(page, identifiant));
+  const cache = cacheJetons.get(identifiant);
+  if (cache && Date.now() - cache.obtenuA < 240_000) {
+    monde.jetons.set(identifiant, cache.jeton);
+    return;
+  }
+  const jeton = await connecter(page, identifiant);
+  cacheJetons.set(identifiant, { jeton, obtenuA: Date.now() });
+  monde.jetons.set(identifiant, jeton);
+});
+
+// ── Double authentification et minimisation ──────────────────────────────────
+
+When(
+  '{string} saisit seulement son identifiant et son mot de passe',
+  async ({ page, monde }, identifiant: string) => {
+    const { redirection } = APPLICATIONS[compte(identifiant).application];
+    let retour: string | undefined;
+    page.on('request', (r) => {
+      if (r.url().startsWith(redirection)) retour = r.url();
+    });
+    await page
+      .goto(urlAutorisation(compte(identifiant).application, true).url)
+      .catch(() => undefined);
+    const etat = await saisirIdentifiants(page, identifiant, false);
+    monde.reponse = { statut: 200, corps: { etat, retour: retour ?? null } };
+  },
+);
+
+Then('un code de double authentification est exigé', ({ monde }) => {
+  expect(monde.reponse?.corps).toMatchObject({ etat: 'otp-exige', retour: null });
+});
+
+Then("aucun code de double authentification n'est exigé", ({ monde }) => {
+  expect(monde.reponse?.corps['etat']).toBe('connecte');
+  expect(monde.reponse?.corps['retour']).toEqual(expect.stringContaining('code='));
+});
+
+Then('le jeton de {string} ne contient ni e-mail ni nom', ({ monde }, identifiant: string) => {
+  const r = revendications(jeton(monde, identifiant));
+  for (const cle of ['email', 'name', 'given_name', 'family_name', 'preferred_username']) {
+    expect(r, `revendication ${cle}`).not.toHaveProperty(cle);
+  }
 });
 
 Then(

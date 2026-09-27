@@ -4,16 +4,18 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 
 ## Données
 
-- **Comptes fictifs uniquement** (`configuration.ts`, marqués `[FICTIF]`) : `patient-fictif-01`, `patient-fictif-02`, `medecin-fictif-01`, `proche-fictif-01`, `pharmacien-fictif-01`.
+- **Comptes fictifs uniquement** (`configuration.ts`, marqués `[FICTIF]`) : `patient-fictif-01`, `patient-fictif-02`, `medecin-fictif-01`, `infirmier-fictif-01`, `proche-fictif-01`, `pharmacien-fictif-01`.
 - Recréés à chaque exécution par `preparation-globale.ts`, avec des **mots de passe aléatoires**. Ils sont transmis aux tests par l'environnement du processus et ne sont jamais écrits sur disque.
 - `preparation-globale.ts` refuse de s'exécuter contre un Keycloak qui n'est pas local (`127.0.0.1` ou `localhost`).
+- Un jeton obtenu est réutilisé pendant 4 minutes d'un scénario à l'autre : Keycloak refuse de réutiliser un code OTP, cela évite d'attendre la période suivante.
 - Pas de trace, de vidéo ni de capture Playwright : elles contiendraient des jetons et des mots de passe de test.
 
 ## Ce qui est vérifié
 
 | Fonctionnalité | Scénarios |
 |---|---|
-| `identite/connexion-keycloak.feature` | Connexion réelle par la page Keycloak avec PKCE S256 ; refus sans PKCE ; connexion directe par mot de passe désactivée ; un patient ne peut pas modifier lui-même son `patient_id` (profil utilisateur `keycloak/profil-utilisateur.json`) |
+| `identite/connexion-keycloak.feature` | Connexion réelle par la page Keycloak avec PKCE S256 ; refus sans PKCE ; connexion directe par mot de passe désactivée ; un patient ne peut pas modifier lui-même son `patient_id` (profil utilisateur intégré au royaume) ; le jeton ne contient ni e-mail ni nom |
+| `identite/double-authentification.feature` | Code à usage unique exigé pour infirmier, médecin et pharmacien (configuration imposée à la première connexion) ; aucun code pour un patient. Les codes TOTP sont calculés par `etapes/totp.ts`, avec un secret gardé en mémoire |
 | `identite/acces-dossier.feature` | Refus par défaut ; accès du patient à son dossier ; partage avec un médecin puis révocation ; proche (diaspora) ; bris de glace motivé (revue humaine demandée) ou non motivé ; pharmacien sans accès clinique ; 403 et 401 (sans jeton, jeton altéré) |
 
 ## Lancer en local

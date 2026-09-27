@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { expect, type Page, type Request } from '@playwright/test';
 import { test as base, createBdd } from 'playwright-bdd';
 import { APPLICATIONS, EMETTEUR, compte, motDePasse } from '../configuration.js';
+import { codeUnique, retenirSecret } from './totp.js';
 
 export interface Reponse {
   statut: number;
@@ -17,12 +18,41 @@ export interface Monde {
 
 const base64url = (b: Buffer): string => b.toString('base64url');
 
-/** Résultat du retour de Keycloak vers l'application (code ou erreur). */
-export async function autoriser(
+/**
+ * Page de connexion Keycloak : identifiant et mot de passe, puis, pour les rôles à MFA obligatoire,
+ * configuration de l'OTP (première connexion) ou saisie du code. Avec `mfa: false`, on s'arrête
+ * avant l'étape OTP pour vérifier qu'elle est bien exigée.
+ */
+export async function saisirIdentifiants(
   page: Page,
+  identifiant: string,
+  mfa: boolean,
+): Promise<'connecte' | 'otp-exige'> {
+  await page.locator('#username').fill(identifiant);
+  await page.locator('#password').fill(motDePasse(identifiant));
+  await page.locator('#kc-login').click();
+  await page.waitForLoadState();
+  const configuration = page.locator('#totpSecret');
+  const saisie = page.locator('#otp');
+  if (!(await configuration.count()) && !(await saisie.count())) return 'connecte';
+  if (!mfa) return 'otp-exige';
+  if (await configuration.count()) {
+    retenirSecret(identifiant, await configuration.inputValue());
+    await page.locator('#totp').fill(await codeUnique(identifiant));
+    await page.locator('#userLabel').fill('Téléphone de test [FICTIF]');
+    await page.locator('#saveTOTPBtn').click();
+  } else {
+    await saisie.fill(await codeUnique(identifiant));
+    await page.locator('#kc-login').click();
+  }
+  return 'connecte';
+}
+
+/** Adresse de la page de connexion Keycloak pour une application, avec ou sans défi PKCE. */
+export function urlAutorisation(
   application: keyof typeof APPLICATIONS,
-  options: { pkce: boolean; identifiant?: string },
-): Promise<{ code?: string; erreur?: string; verificateur: string }> {
+  pkce: boolean,
+): { url: string; verificateur: string } {
   const { clientId, redirection } = APPLICATIONS[application];
   const verificateur = base64url(randomBytes(32));
   const parametres = new URLSearchParams({
@@ -32,10 +62,21 @@ export async function autoriser(
     redirect_uri: redirection,
     state: randomUUID(),
   });
-  if (options.pkce) {
+  if (pkce) {
     parametres.set('code_challenge', base64url(createHash('sha256').update(verificateur).digest()));
     parametres.set('code_challenge_method', 'S256');
   }
+  return { url: `${EMETTEUR}/protocol/openid-connect/auth?${parametres.toString()}`, verificateur };
+}
+
+/** Résultat du retour de Keycloak vers l'application (code ou erreur). */
+export async function autoriser(
+  page: Page,
+  application: keyof typeof APPLICATIONS,
+  options: { pkce: boolean; identifiant?: string },
+): Promise<{ code?: string; erreur?: string; verificateur: string }> {
+  const { redirection } = APPLICATIONS[application];
+  const { url, verificateur } = urlAutorisation(application, options.pkce);
   // L'application n'existe pas encore : on relève l'adresse de retour demandée par Keycloak
   // (la navigation vers cette adresse échoue ensuite, sans conséquence).
   let retour: URL | undefined;
@@ -43,13 +84,9 @@ export async function autoriser(
     if (r.url().startsWith(redirection)) retour = new URL(r.url());
   };
   page.on('request', surRequete);
-  await page
-    .goto(`${EMETTEUR}/protocol/openid-connect/auth?${parametres.toString()}`)
-    .catch(() => undefined);
+  await page.goto(url).catch(() => undefined);
   if (options.identifiant && !retour) {
-    await page.locator('#username').fill(options.identifiant);
-    await page.locator('#password').fill(motDePasse(options.identifiant));
-    await page.locator('#kc-login').click();
+    await saisirIdentifiants(page, options.identifiant, true);
   }
   await expect.poll(() => retour, { timeout: 10_000 }).toBeDefined();
   page.off('request', surRequete);

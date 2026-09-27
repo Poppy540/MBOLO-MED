@@ -28,11 +28,17 @@ Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses
 
 ## ⚠️ Sécurité : identifiants FHIR des comptes
 
-Les revendications `patient_id`, `practitioner_id`, `related_person_id` du jeton déterminent **à quel dossier** un compte est rattaché. Elles doivent être **posées par un administrateur habilité** après vérification, **jamais modifiables par l'utilisateur**. Après import du royaume : *Realm settings → User profile → JSON editor* → coller `keycloak/profil-utilisateur.json` (droits `edit: ["admin"]`).
+Les revendications `patient_id`, `practitioner_id`, `related_person_id` du jeton déterminent **à quel dossier** un compte est rattaché. Elles doivent être **posées par un administrateur habilité** après vérification, **jamais modifiables par l'utilisateur**.
+
+Le profil utilisateur qui l'impose (droits `edit: ["admin"]`) est **intégré au royaume** : il s'applique dès l'import, sans étape manuelle. La source lisible est `keycloak/profil-utilisateur.json`. Un test (`src/royaume.test.ts`) vérifie que le royaume en contient exactement la même version : toute modification se fait dans les deux fichiers.
 
 ## MFA
 
-Obligatoire pour professionnel, infirmier, pharmacien, administrateur : action requise **Configure OTP** posée à la création du compte (vague 0). Un flux d'authentification conditionnel par rôle sera configuré et testé avant la vague 1.
+Obligatoire pour **professionnel, infirmier, pharmacien, administrateur**. Ces rôles incluent le rôle technique `mfa-requise`. Le flux de connexion `navigateur-mbolo` exige alors un code à usage unique (TOTP, 6 chiffres, 30 s, code non réutilisable). À la première connexion, Keycloak impose de configurer l'application d'authentification. Les patients et les proches n'ont pas de code à saisir.
+
+## Minimisation du jeton
+
+Le jeton d'accès des applications ne contient **ni e-mail ni nom** : les portées `profile` et `email` sont **optionnelles**. Une application ne les demande que si l'écran en a besoin. Le jeton contient seulement le sujet, les rôles et l'identifiant FHIR rattaché.
 
 ## Commandes
 
