@@ -8,6 +8,8 @@
 | Dossier médical FHIR | Très élevée (données de santé) |
 | Conversations patients avec les agents IA | Très élevée |
 | Ordonnances électroniques | Très élevée (intégrité critique) |
+| Photos d'identité (document et visage) | Très élevée (identité, image du visage) |
+| Clé maître des documents | Critique |
 | Identifiants et secrets | Critique |
 | Paiements | Élevée |
 
@@ -37,11 +39,26 @@
 | T | Suppression ou modification de traces et de consentements | Suppression jamais relayée ; `AuditEvent` et `Provenance` non modifiables | tests de la passerelle + e2e |
 | E | Fonction activée trop tôt | Feature flags désactivés par défaut, refus si Unleash est injoignable, aucun flag sur la sécurité | tests `@mbolo/drapeaux` + e2e |
 | I | Fuite de secrets | Aucun secret dans le dépôt (gitleaks, modèles `CHANGEME`, secrets injectés à l'import) ; secrets de CI générés et masqués | CI « Sécurité » |
+| D | Saturation d'un service ou du dossier | Limites d'appels par adresse sur tous les services (`@fastify/rate-limit`), limite plus stricte sur les envois de photos | tests unitaires de chaque service |
+
+## Vérification d'identité par photos (ADR-0015)
+
+| STRIDE | Menace | Exemple | Mesure | Preuve / reste à faire |
+|---|---|---|---|---|
+| I | **Vol du stockage objet ou de la base** | Compartiment exposé, sauvegarde volée | Chaque photo chiffrée avec sa propre clé (AES-256-GCM), clé enveloppée par une clé maître hors stockage ; noms d'objets opaques ; base sans image ni nom | tests `documents` (aucune image en clair) ; **reste** : clé maître dans le KMS de l'hébergeur |
+| I / E | **Abus du rôle de vérificateur** | Consultation par curiosité, capture d'écran | Rôle dédié, double authentification, aucun accès clinique ; chaque consultation tracée **avant** affichage et visible par le patient ; photos jamais gardées par le navigateur (`no-store`) | e2e `verification-par-un-humain.feature` ; **reste** : revue régulière des consultations, désignation des vérificateurs |
+| S | **Photo truquée ou empruntée** | Photo d'une autre personne, document falsifié | Comparaison humaine document ↔ visage ↔ identité déclarée ; « à refaire » ou « refusée » ; vérification en personne en dernier recours | **reste** : consignes écrites pour les vérificateurs |
+| S | **Réutilisation d'un compte** | Un tiers se connecte avec le compte d'un patient vérifié | Invitation à usage unique, mot de passe jamais hors de Keycloak | **reste** : double authentification facultative pour les patients (à étudier) |
+| E | **Auto-vérification** | Un vérificateur valide sa propre identité | Refus si le compte est le patient concerné | test unitaire |
+| T | **Modification étendue du dossier** | Le service documents réécrit le nom du patient | Passerelle : seuls le statut et le numéro sont modifiables (`mbolo_elements_modifiables`) ; ressource complète revalidée ; verrou de version | tests de la passerelle + e2e |
+| T | **Fichier piégé** | PDF ou SVG présenté comme une photo | Format reconnu sur le contenu (JPEG, PNG), 2 Mo au plus ; recompression sur le téléphone | tests unitaires + e2e |
+| R | **Contestation d'une décision** | « Je n'ai jamais refusé ce patient » | Décision enregistrée : qui, quand, résultat, motif codé ; traces des consultations | tests d'intégration PostgreSQL |
+| E | **Agent IA dans le parcours** | Un agent accepte la charte à la place du patient | Charte acceptée par le patient lui-même uniquement ; agents IA refusés partout | tests unitaires `identite` et `documents` |
+| D | **Envois massifs** | Remplissage du stockage | Deux photos au plus par type (sous verrou), 10 envois par minute | tests unitaires et d'intégration |
 
 **Reste à traiter avant la vague 1 :**
 - authentification des services par clé asymétrique ;
 - réseau privé et TLS ;
 - revue humaine des bris de glace : désigner les relecteurs et fixer le délai (l'outil est prêt) ;
-- limitation de débit (déni de service) ;
 - supervision ;
 - test d'intrusion externe.
