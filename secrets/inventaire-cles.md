@@ -79,6 +79,7 @@
 | `INVITATIONS_MIGRATION_DATABASE_URL` | Base des services, schéma `invitations` (ADR-0013) | **Infrastructure uniquement** (démarrage ou déploiement) | Appliquer les migrations versionnées | Propriétaire du schéma `invitations` seulement ; jamais utilisée pour les requêtes du service | D R P | idem | 30 j | RT | 1 |
 | `INVITATIONS_CLE_EMPREINTE` | Service des invitations (ADR-0013) | Plateforme (invitations) | Clé HMAC des empreintes de codes d'invitation (aucun code en clair en base) | 32 octets au moins ; la changer invalide les codes en cours | D R P | `mbolo/<env>/base-donnees/` | à chaque vague (codes en cours à réémettre) | RS | 1 |
 | `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | Stockage objet chiffré | Plateforme | Documents médicaux (photos d'ordonnances, résultats) | Un seul compartiment, pas de listing public | D R P | `mbolo/<env>/stockage/` | 90 j | RT | 0 |
+| `DOCUMENTS_CLE_MAITRE` | Service documents (ADR-0015) | Plateforme (documents) | Clé maître locale (32 octets, base64) qui enveloppe la clé de chaque document, en attendant le KMS de l'hébergeur | Envelopper et désenvelopper les clés de documents ; jamais les documents eux-mêmes | D R | `mbolo/<env>/stockage/` | annuelle (ré-envelopper les clés) | RS | 1 |
 | `STORAGE_KMS_KEY_REFERENCE` | KMS | Plateforme | Référence de la clé de chiffrement (pas la clé elle-même) | Chiffrer / déchiffrer | D R P | idem | rotation annuelle de la clé KMS | RS | 0 |
 
 ## Pharmacies et laboratoires
@@ -147,3 +148,4 @@
 | 2026-09-27 | Compte de service `NOTIFICATIONS_SERVICE_CLIENT_SECRET` (ADR-0012, PR P) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Compte de service `CONSULTATION_SERVICE_CLIENT_SECRET` (consultation clinique, PR V) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Base des services et invitations : `INVITATIONS_DATABASE_URL`, `INVITATIONS_MIGRATION_DATABASE_URL`, `INVITATIONS_CLE_EMPREINTE` (ADR-0013, PR Z) | En attente — responsable sécurité à nommer |
+| 2026-09-27 | Documents chiffrés : `DOCUMENTS_CLE_MAITRE` (clé maître locale), `STORAGE_*` utilisées par le service documents (ADR-0015, PR AF) | En attente — responsable sécurité à nommer |

@@ -16,6 +16,7 @@
 | `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
 | `services/consultation` | Prototype : lecture du dossier par le professionnel après décision d'`identite` (consentement, bris de glace), compte-rendu rédigé par le professionnel (`Composition`, jamais par une IA) — voir son README | 1 |
 | `services/invitations` | Prototype (ADR-0013) : codes d'invitation à usage unique créés par le rôle `gestion-invitations`, empreinte HMAC (jamais le code en clair), quota par cohorte, vérification limitée ; PostgreSQL — voir son README | 1 |
+| `services/documents` | Prototype (ADR-0015) : stockage chiffré des documents (enveloppe AES-256-GCM, S3 compatible, métadonnées sans image, suppression à échéance par destruction de clé) ; API à venir — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
 | `services/notifications` | Prototype (ADR-0012) : gabarits fermés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier, canal simulé en attendant le fournisseur — voir son README | 1 |
