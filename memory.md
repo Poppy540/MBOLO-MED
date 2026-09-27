@@ -21,9 +21,10 @@
 - **PR G fusionnée** ([PR n°8](https://github.com/Poppy540/MBOLO-MED/pull/8)) : passerelle du dossier `passerelle-fhir` (ADR-0010, proposée), jetons de service, permissions SMART (`mbolo_scopes`).
 - **PR H fusionnée** ([PR n°9](https://github.com/Poppy540/MBOLO-MED/pull/9)) : feature flags `@mbolo/drapeaux` (OpenFeature + Unleash 7), registre `docs/deploiement/flags.md`, flag `consentement.proche`.
 - **PR I fusionnée** ([PR n°10](https://github.com/Poppy540/MBOLO-MED/pull/10)) : journal des accès (`AuditEvent`, aucun accès sans trace, traces immuables, historique visible par le patient).
-- **PR J en cours :** revue humaine des bris de glace — rôle `revue-acces` (MFA, aucun accès clinique), liste à revoir et retards (délai `REVUE_BRIS_DE_GLACE_DELAI_HEURES`, 24 h proposé), conclusion tracée, pas d'auto-revue ; 34 scénarios e2e.
+- **PR J fusionnée** ([PR n°11](https://github.com/Poppy540/MBOLO-MED/pull/11)) : revue humaine des bris de glace (rôle `revue-acces`, retards, conclusion tracée, pas d'auto-revue) ; 34 scénarios e2e.
+- **Vague 1 — téléconsultation :** LiveKit retenu (ADR-0011, décision du porteur de projet du 2026-09-27). **Prototype en cours (PR K)** : service `teleconsultation` (rendez-vous en mémoire, jeton de salle réservé aux 2 participants, flag `teleconsultation.video`), appel réel entre deux navigateurs en e2e ; 38 scénarios. Ensuite : `Appointment` FHIR, applications, repli audio, test terrain.
 - **Protection de `main` à vérifier** : les PR E, F et H ont été fusionnées avant la fin de la CI (contrôles obligatoires non appliqués ou contournés par l'administrateur).
-- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub, HAPI depuis la couche de l'image Docker Hub (`app/main.war`, Java 21) ; Unleash 7 via npm sur un Postgres 16 local (port 5433) ; pas de démon Docker ; script de relance dans le dossier de travail.
+- **Réseau de l'environnement Claude Code :** `packages.fhir.org`, `hl7.org`, `build.fhir.org`, `quay.io` bloqués → validation FHIR officielle uniquement en CI GitHub ; Keycloak lancé localement depuis l'archive des versions GitHub, HAPI depuis la couche de l'image Docker Hub (`app/main.war`, Java 21) ; Unleash 7 via npm sur un Postgres 16 local (port 5433) ; LiveKit 1.12.0 (binaire GitHub, empreinte vérifiée en CI) ; pas de démon Docker ; script de relance dans le dossier de travail.
 - **Avis juridique :** annoncé comme validé par le porteur de projet (2026-09-26) ; conclusions détaillées à consigner (D-0003) avant de lever la réserve de l'ADR-0004.
 
 ## 2. Décisions validées
@@ -53,6 +54,7 @@
 | 2026-09-26 | Messagerie salle de contrôle : Slack + astreinte Grafana OnCall (appel / SMS) | D-0002, [ADR-0006](docs/architecture/adr/0006-messagerie-salle-de-controle.md) |
 | 2026-09-26 | Feature flags : Unleash via OpenFeature | D-0002, [ADR-0007](docs/architecture/adr/0007-feature-flags-unleash.md) |
 | 2026-09-26 | Socle : monorepo TypeScript (Node 22, pnpm), CI GitHub Actions ; identité via Keycloak (ADR à venir) | [ADR-0008](docs/architecture/adr/0008-socle-technique.md) |
+| 2026-09-27 | Téléconsultation vidéo : LiveKit (Jitsi en repli), sous réserve d'un prototype et d'un test terrain ; aucun enregistrement par défaut | [ADR-0011](docs/architecture/adr/0011-serveur-webrtc.md) |
 | 2026-09-27 | Identité Keycloak ; refus par défaut ; accès au dossier sur consentement FHIR révocable ; bris de glace avec motif et revue humaine (proposée, PR C) | [ADR-0009](docs/architecture/adr/0009-identite-controle-acces.md) |
 
 ## 3. Hypothèses en attente de confirmation

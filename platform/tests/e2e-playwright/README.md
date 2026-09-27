@@ -1,6 +1,6 @@
 # Tests de bout en bout (`@mbolo/e2e`)
 
-Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécutés par **Playwright** via `playwright-bdd` (décision D-0001). Ils utilisent un **vrai Keycloak** avec le royaume `mbolo`, un **vrai serveur HAPI FHIR**, la **vraie passerelle du dossier**, un **vrai Unleash** et le **vrai service `identite`** : aucun jeton n'est fabriqué à la main.
+Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécutés par **Playwright** via `playwright-bdd` (décision D-0001). Ils utilisent un **vrai Keycloak** avec le royaume `mbolo`, un **vrai serveur HAPI FHIR**, la **vraie passerelle du dossier**, un **vrai Unleash**, un **vrai LiveKit** et le **vrai service `identite`** : aucun jeton n'est fabriqué à la main.
 
 ## Données
 
@@ -18,6 +18,7 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 |---|---|
 | `identite/connexion-keycloak.feature` | Connexion réelle par la page Keycloak avec PKCE S256 ; refus sans PKCE ; connexion directe par mot de passe désactivée ; un patient ne peut pas modifier lui-même son `patient_id` (profil utilisateur intégré au royaume) ; le jeton ne contient ni e-mail ni nom |
 | `dossier/passerelle.feature` | Le dossier n'est ouvert qu'avec un jeton de service : 401 sans jeton ou avec le jeton d'un patient ; le service `identite` lit les consentements, mais pas les autres ressources (403), ne peut pas élargir une recherche (`_include`) ni supprimer |
+| `teleconsultation/visio.feature` | Le patient et le médecin du rendez-vous rejoignent une vraie salle LiveKit depuis deux navigateurs (micro simulé) et s'entendent ; personne d'autre n'entre ; fonction refusée hors cohorte ; 401 sans jeton |
 | `identite/revue-bris-de-glace.feature` | Un bris de glace apparaît dans la liste à revoir du relecteur (`relecteur-fictif-01`, rôle `revue-acces`), puis en sort une fois revu ; un médecin ne peut pas consulter cette liste ; le relecteur n'a aucun accès au dossier |
 | `identite/double-authentification.feature` | Code à usage unique exigé pour infirmier, médecin et pharmacien (configuration imposée à la première connexion) ; aucun code pour un patient. Les codes TOTP sont calculés par `etapes/totp.ts`, avec un secret gardé en mémoire |
 | `identite/acces-dossier.feature` | Refus par défaut ; partage avec un proche refusé hors de la cohorte activée (flag `consentement.proche`) ; consentement enregistré puis révoqué **dans le dossier FHIR** (statut `active` puis `inactive`) ; partage avec un professionnel inconnu du dossier refusé ; accès du patient à son dossier ; partage avec un médecin puis révocation ; proche (diaspora) ; bris de glace motivé (revue humaine demandée) ou non motivé ; pharmacien sans accès clinique ; 403 et 401 (sans jeton, jeton altéré) |
@@ -31,7 +32,8 @@ docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d
 UNLEASH_DB_PASSWORD=… UNLEASH_ADMIN_TOKEN='*:*.…' UNLEASH_BACKEND_TOKEN='default:development.…' docker compose -f platform/services/feature-flags/docker-compose.yml up -d
 # 2. Construire les services puis lancer les scénarios (Playwright démarre lui-même le service identite)
 pnpm build
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… pnpm e2e
+LIVEKIT_KEYS="<clé>: <secret>" livekit-server --config platform/services/teleconsultation/livekit/config-local.yaml &
+KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… WEBRTC_API_KEY=<clé> WEBRTC_API_SECRET=<secret> pnpm e2e
 ```
 
 Variables facultatives : `KEYCLOAK_URL` (défaut `http://127.0.0.1:8081`), `FHIR_AMONT_URL` (HAPI, défaut `http://127.0.0.1:8080/fhir`), `PASSERELLE_URL` (défaut `http://127.0.0.1:3002`) et `IDENTITE_URL` (défaut `http://127.0.0.1:3001`).

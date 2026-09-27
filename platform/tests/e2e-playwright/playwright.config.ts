@@ -1,10 +1,18 @@
 // Tests de bout en bout de Mbolo Santé : Gherkin (français) → Playwright.
 // Prérequis : Keycloak et HAPI FHIR locaux (docker-compose.yml de identite et dossier-fhir), `pnpm build`,
 // IDENTITE_SERVICE_CLIENT_SECRET identique à celui donné à Keycloak, et un Unleash local
-// (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN).
+// (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), et un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
-import { EMETTEUR, FHIR_URL, IDENTITE_URL, PASSERELLE_URL, UNLEASH_URL } from './configuration.js';
+import {
+  EMETTEUR,
+  FHIR_URL,
+  IDENTITE_URL,
+  PASSERELLE_URL,
+  TELECONSULTATION_URL,
+  UNLEASH_URL,
+  WEBRTC_URL,
+} from './configuration.js';
 
 const testDir = defineBddConfig({
   featuresRoot: '../features-gherkin',
@@ -22,7 +30,16 @@ export default defineConfig({
   reporter: 'list',
   globalSetup: './preparation-globale.ts',
   // Pas de trace ni de vidéo : elles contiendraient des jetons et des mots de passe de test.
-  use: { locale: 'fr-FR', trace: 'off', video: 'off', screenshot: 'off' },
+  use: {
+    locale: 'fr-FR',
+    trace: 'off',
+    video: 'off',
+    screenshot: 'off',
+    // Micro et caméra simulés pour la visioconsultation (aucun média réel).
+    launchOptions: {
+      args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+    },
+  },
   webServer: [
     {
       command: 'node ../../services/passerelle-fhir/dist/main.js',
@@ -47,6 +64,22 @@ export default defineConfig({
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',
         PORT: new URL(IDENTITE_URL).port,
+        MBOLO_ENV: 'dev',
+      },
+    },
+    {
+      command: 'node ../../services/teleconsultation/dist/main.js',
+      url: `${TELECONSULTATION_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        WEBRTC_SERVER_URL: WEBRTC_URL,
+        WEBRTC_API_KEY: process.env['WEBRTC_API_KEY'] ?? '',
+        WEBRTC_API_SECRET: process.env['WEBRTC_API_SECRET'] ?? '',
+        UNLEASH_API_URL: UNLEASH_URL,
+        UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
+        UNLEASH_REFRESH_MS: '500',
+        PORT: new URL(TELECONSULTATION_URL).port,
         MBOLO_ENV: 'dev',
       },
     },

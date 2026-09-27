@@ -26,7 +26,7 @@ export const CATALOGUE = {
     description: 'Téléconsultation de médecine générale en vidéo, avec repli audio.',
     vague: 1,
     dependances: [],
-    branche: false,
+    branche: true,
   },
   'paiement.mobile-money': {
     description: 'Paiement des consultations par mobile money (Airtel Money, Moov Money).',
