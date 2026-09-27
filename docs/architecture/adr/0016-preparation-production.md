@@ -1,7 +1,7 @@
 # ADR-0016 — Préparation de la production : clé maître, supervision, authentification des services
 
 - **Date :** 2026-09-27
-- **Statut :** acceptée (porteur de projet, 2026-09-27) ; destinataires des alertes à désigner
+- **Statut :** acceptée (porteur de projet, 2026-09-27) ; schéma des destinataires accepté, titulaires à désigner
 - **Décideurs :** porteur de projet, responsable sécurité (à nommer)
 
 ## Contexte
@@ -97,9 +97,26 @@ Les trois recommandations sont acceptées : **A.1**, **B.1** avec les seuils pro
   - si le KMS est indisponible, plus aucune photo ne peut être déposée ni lue ; la téléconsultation n'en dépend pas ;
   - des alertes trop nombreuses finissent ignorées : seuils à ajuster après un mois de vague 1.
 
+## Destinataires des alertes (rôles ; titulaires désignés plus tard par le porteur de projet)
+
+Les noms et numéros restent dans l'outil d'astreinte (Grafana OnCall), jamais dans le dépôt.
+
+| Alerte | 1ᵉʳ destinataire | Escalade | Canal |
+|---|---|---|---|
+| Sécurité des données (photos consultées en masse, refus en rafale, secret exposé) | Responsable sécurité | Porteur de projet après 15 min | Appel ou SMS 24 h/24 + `#alertes-securite` |
+| Bris de glace | Relecteur des accès (`revue-acces`), revue sous 24 h | Responsable sécurité si non revu à 24 h | `#alertes-securite`, sans appel |
+| Exploitation (service injoignable, erreurs 5xx, pics de 429) | Astreinte technique (développeur ou infogérance de l'hébergeur) | Porteur de projet après 30 min | Appel si service injoignable, sinon `#alertes-exploitation` |
+| Sécurité patient (agents IA, plus tard) | Directeur médical de garde | Porteur de projet | Appel immédiat + `#alertes-patients` |
+
+Règles :
+- le responsable sécurité n'est ni vérificateur d'identité ni relecteur des bris de glace ;
+- une alerte sur un compte n'est jamais envoyée à ce compte ;
+- seules les alertes critiques déclenchent un appel la nuit ; les autres attendent les heures ouvrées du pays ;
+- l'Agent 6 reçoit une copie pour le brief et les fiches, n'agit jamais et ne retarde jamais une alerte.
+
 ## Reste à décider
 
-- Qui reçoit les alertes de sécurité (responsable sécurité) et d'exploitation ?
+- Titulaires de chaque rôle (porteur de projet, plus tard).
 - Ajuster les seuils après un mois de vague 1.
 
 Sources : ADR-0004, ADR-0005, ADR-0006, ADR-0010, ADR-0015 ; [AIPD n°1](../../securite/aipd-verification-identite.md) ; [modèle de menaces](../../securite/modele-menaces.md) ; RFC 7523 (JWT pour l'authentification des clients OAuth 2.0) ; documentation OVHcloud KMS ; documentation Grafana Loki, Prometheus et OnCall ; OWASP Logging Cheat Sheet.

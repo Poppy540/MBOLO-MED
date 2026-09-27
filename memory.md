@@ -83,7 +83,7 @@
 5. **Fournisseur SMS / WhatsApp** (ADR-0012) et relecture des gabarits de notification.
 6. Désigner la **personne de confiance** qui partage le rôle `gestion-invitations` (ADR-0013).
 7. **ADR-0014/0015** — relire avec le juriste le **brouillon de charte** et l'**AIPD n°1** (`docs/securite/aipd-verification-identite.md`) (`docs/securite/charte-verification-identite.md`, v0.1 : base légale, durée de conservation des photos, exclusion de la reconnaissance faciale automatique, mineurs, coordonnées DPO et CNPDCP) ; désigner les titulaires du rôle `verification-identite`.
-8. **ADR-0016** (acceptée) : désigner les destinataires des alertes de sécurité et d'exploitation.
+8. **ADR-0016** (acceptée, schéma des destinataires accepté) : désigner plus tard les titulaires : responsable sécurité, astreinte technique, relecteur des bris de glace.
 9. Activer les **alertes et mises à jour de sécurité Dependabot** dans les réglages du dépôt (Settings → Code security).
 10. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
 
