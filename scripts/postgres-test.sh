@@ -21,11 +21,11 @@ done
 
 docker run -d --name mbolo-postgres-test -p 127.0.0.1:5432:5432 \
   -e POSTGRES_PASSWORD="$MDP_ADMIN" postgres:16-alpine > /dev/null
-timeout 60 bash -c 'until docker exec mbolo-postgres-test pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done'
-# pg_isready répond pendant l'initialisation : on attend une vraie requête.
-timeout 60 bash -c 'until docker exec mbolo-postgres-test psql -U postgres -tc "select 1" > /dev/null 2>&1; do sleep 1; done'
+# À la première initialisation, l'image lance un serveur temporaire (socket local seulement), puis le
+# redémarre : attendre la connexion TCP, que seul le serveur définitif accepte, et passer par TCP.
+timeout 90 bash -c 'until docker exec mbolo-postgres-test pg_isready -h 127.0.0.1 -U postgres > /dev/null 2>&1; do sleep 1; done'
 
-docker exec -i mbolo-postgres-test psql -v ON_ERROR_STOP=1 -U postgres > /dev/null <<SQL
+docker exec -i -e PGPASSWORD="$MDP_ADMIN" mbolo-postgres-test psql -h 127.0.0.1 -v ON_ERROR_STOP=1 -U postgres > /dev/null <<SQL
 create role mbolo_migration login password '$MDP_MIGRATION';
 create role mbolo_invitations login password '$MDP_EXECUTION';
 create database mbolo owner mbolo_migration;
