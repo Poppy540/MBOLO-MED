@@ -1,39 +1,74 @@
 // Gabarits de notification approuvés (ADR-0012). Liste fermée : aucun texte libre, aucune donnée
 // de santé (ni motif, ni spécialité, ni nom du professionnel). Un SMS : 160 caractères au plus.
-// Toute modification est relue par le porteur de projet avant la mise en production.
+// Toute modification, et toute nouvelle langue, est relue par le porteur de projet avant la
+// mise en production.
+//
+// Le Gabon est le premier pays : fuseau et langue sont des paramètres de déploiement
+// (NOTIFICATIONS_FUSEAU, NOTIFICATIONS_LANGUE), jamais codés en dur dans les textes.
 
-export const GABARITS = {
-  'rendez-vous-annule':
-    'Mbolo Santé : votre rendez-vous du {date} à {heure} est annulé. Ouvrez l’application pour en choisir un autre.',
-  'rendez-vous-reporte':
-    'Mbolo Santé : votre rendez-vous est déplacé au {date} à {heure}. Détails dans l’application.',
-} as const;
+export const IDENTIFIANTS_GABARITS = ['rendez-vous-annule', 'rendez-vous-reporte'] as const;
+export type Gabarit = (typeof IDENTIFIANTS_GABARITS)[number];
 
-export type Gabarit = keyof typeof GABARITS;
+export const estGabarit = (x: string): x is Gabarit =>
+  (IDENTIFIANTS_GABARITS as readonly string[]).includes(x);
 
-export const estGabarit = (x: string): x is Gabarit => Object.hasOwn(GABARITS, x);
+/**
+ * Textes par langue (code ISO 639-1). Chaque langue fournit tous les gabarits ; {date} et {heure}
+ * sont remplacés au fuseau et dans les formats du pays.
+ */
+export const CATALOGUE: Readonly<Record<string, Readonly<Record<Gabarit, string>>>> = {
+  fr: {
+    'rendez-vous-annule':
+      'Mbolo Santé : votre rendez-vous du {date} à {heure} est annulé. Ouvrez l’application pour en choisir un autre.',
+    'rendez-vous-reporte':
+      'Mbolo Santé : votre rendez-vous est déplacé au {date} à {heure}. Détails dans l’application.',
+  },
+};
 
-/** Variables autorisées : une date (JJ/MM) et une heure (HH:MM), calculées à partir d'un instant. */
+/** Paramètres du pays déployé. */
+export interface Pays {
+  /** Fuseau horaire IANA, ex. Africa/Libreville. */
+  fuseau: string;
+  /** Langue et formats (BCP 47), ex. fr-FR. */
+  langue: string;
+}
+
+export const PAYS_PAR_DEFAUT: Pays = { fuseau: 'Africa/Libreville', langue: 'fr-FR' };
+
+const textes = (langue: string) => CATALOGUE[langue.split('-')[0]?.toLowerCase() ?? ''];
+
+/** Vérifie au démarrage que le pays est utilisable (fuseau connu, textes approuvés). */
+export function verifierPays(p: Pays): void {
+  try {
+    new Intl.DateTimeFormat(p.langue, { timeZone: p.fuseau });
+  } catch {
+    throw new Error(`Fuseau ou langue invalide : ${p.fuseau}, ${p.langue}.`);
+  }
+  if (!textes(p.langue)) {
+    throw new Error(`Aucun gabarit approuvé pour la langue ${p.langue}.`);
+  }
+}
+
+/** Variables autorisées : une date et une heure, calculées à partir d'un instant. */
 export interface Variables {
   /** Instant du rendez-vous (ISO 8601). */
   instant: string;
 }
 
-/** Fuseau du Gabon (UTC+1, sans heure d'été). */
-const FUSEAU = 'Africa/Libreville';
-
-export function rediger(g: Gabarit, v: Variables): string {
+export function rediger(g: Gabarit, v: Variables, pays: Pays = PAYS_PAR_DEFAUT): string {
+  const catalogue = textes(pays.langue);
+  if (!catalogue) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
   const t = new Date(v.instant);
   if (Number.isNaN(t.getTime())) throw new Error('Instant invalide.');
-  const date = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: FUSEAU,
+  const date = new Intl.DateTimeFormat(pays.langue, {
+    timeZone: pays.fuseau,
     day: '2-digit',
     month: '2-digit',
   }).format(t);
-  const heure = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: FUSEAU,
+  const heure = new Intl.DateTimeFormat(pays.langue, {
+    timeZone: pays.fuseau,
     hour: '2-digit',
     minute: '2-digit',
   }).format(t);
-  return GABARITS[g].replace('{date}', date).replace('{heure}', heure);
+  return catalogue[g].replace('{date}', date).replace('{heure}', heure);
 }

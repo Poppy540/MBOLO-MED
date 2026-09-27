@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GABARITS, rediger } from './gabarits.js';
+import { CATALOGUE, IDENTIFIANTS_GABARITS, rediger, verifierPays } from './gabarits.js';
 import { CanalSimule, ServiceNotifications, type SourceContacts } from './notifications.js';
 
 // Données FICTIVES.
@@ -15,19 +15,38 @@ const demande = {
 } as const;
 
 describe('gabarits', () => {
-  it('tiennent dans un SMS et ne contiennent aucune donnée de santé', () => {
-    for (const g of Object.keys(GABARITS) as (keyof typeof GABARITS)[]) {
-      const texte = rediger(g, { instant: '2026-12-31T23:59:00Z' });
-      expect(texte.length).toBeLessThanOrEqual(160);
-      expect(texte).toMatch(/^Mbolo Santé : /);
-      expect(texte).not.toMatch(/\{|\}|Dr|docteur|médecin|motif|spécialit/i);
+  it('chaque langue fournit tous les gabarits, dans un SMS, sans donnée de santé', () => {
+    for (const [langue, textes] of Object.entries(CATALOGUE)) {
+      expect(Object.keys(textes).sort()).toEqual([...IDENTIFIANTS_GABARITS].sort());
+      for (const g of IDENTIFIANTS_GABARITS) {
+        const texte = rediger(g, { instant: '2026-12-31T23:59:00Z' }, { fuseau: 'UTC', langue });
+        expect(texte.length).toBeLessThanOrEqual(160);
+        expect(texte).toMatch(/^Mbolo Santé : /);
+        expect(texte).not.toMatch(/\{|\}|Dr|docteur|médecin|motif|spécialit/i);
+      }
     }
   });
 
-  it('donnent la date et l’heure du Gabon (UTC+1)', () => {
+  it('donnent la date et l’heure du pays déployé (Gabon par défaut)', () => {
     expect(rediger('rendez-vous-reporte', { instant: '2026-10-01T08:30:00Z' })).toBe(
       'Mbolo Santé : votre rendez-vous est déplacé au 01/10 à 09:30. Détails dans l’application.',
     );
+    // Autre pays, même code : Sénégal (UTC+0).
+    expect(
+      rediger(
+        'rendez-vous-reporte',
+        { instant: '2026-10-01T08:30:00Z' },
+        { fuseau: 'Africa/Dakar', langue: 'fr-SN' },
+      ),
+    ).toContain('01/10 à 08:30');
+  });
+
+  it('refuse au démarrage une langue sans gabarits approuvés ou un fuseau inconnu', () => {
+    expect(() => verifierPays({ fuseau: 'Africa/Libreville', langue: 'fr-GA' })).not.toThrow();
+    expect(() => verifierPays({ fuseau: 'Africa/Libreville', langue: 'en-GB' })).toThrow(
+      'Aucun gabarit approuvé',
+    );
+    expect(() => verifierPays({ fuseau: 'Afrique/Inconnue', langue: 'fr-FR' })).toThrow('invalide');
   });
 });
 
