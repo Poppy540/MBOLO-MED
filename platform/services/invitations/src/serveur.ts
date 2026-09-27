@@ -1,8 +1,10 @@
 // API des invitations. Création, liste et révocation : rôle gestion-invitations uniquement (humain,
 // double authentification). Vérification d'un code : publique, mais limitée en nombre d'essais.
+// Inscription (ADR-0014) : contrôle et utilisation d'un code par l'extension Keycloak seulement.
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
 import type { Journal } from '@mbolo/journal-securise';
+import type { VerifierService } from './jeton-service.js';
 import type { Limiteur } from './limiteur.js';
 import { COHORTE, ErreurInvitation, type ServiceInvitations } from './service.js';
 
@@ -16,6 +18,8 @@ export function creerServeur(o: {
   service: ServiceInvitations;
   limiteur: Limiteur;
   journal: Journal;
+  /** Jetons de l'extension d'inscription de Keycloak ; sans lui, les routes /inscription sont absentes. */
+  verifierService?: VerifierService;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
 }): FastifyInstance {
@@ -147,6 +151,72 @@ export function creerServeur(o: {
       return { valide: await o.service.verifier(req.body.code) };
     },
   );
+
+  if (o.verifierService) {
+    const verifierService = o.verifierService;
+    const extension = async (req: FastifyRequest): Promise<string> => {
+      const entete = req.headers.authorization;
+      if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+      try {
+        return await verifierService(entete.slice('Bearer '.length));
+      } catch {
+        throw new ErreurAuthentification();
+      }
+    };
+    const code = { type: 'string', maxLength: 32 } as const;
+
+    // Contrôle avant la création du compte : les essais sont limités par adresse du navigateur,
+    // transmise par Keycloak (sinon tous les patients partageraient l'adresse de Keycloak).
+    app.post<{ Body: { code: string; adresse: string } }>(
+      '/inscription/controle',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['code', 'adresse'],
+            properties: { code, adresse: { type: 'string', minLength: 1, maxLength: 64 } },
+          },
+        },
+      },
+      async (req, reply) => {
+        await extension(req);
+        if (!o.limiteur.essayer(`inscription:${req.body.adresse}`)) {
+          o.journal.avertissement('trop d’essais de code à l’inscription');
+          return reply.code(429).send({ erreur: 'Trop d’essais.', motif: 'trop-d-essais' });
+        }
+        return { valide: await o.service.verifier(req.body.code) };
+      },
+    );
+
+    // Utilisation atomique pour le compte créé ; 409 si le code ne peut plus servir.
+    app.post<{ Body: { code: string; sujet: string } }>(
+      '/inscription/utilisation',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['code', 'sujet'],
+            properties: {
+              code,
+              sujet: { type: 'string', pattern: '^[A-Za-z0-9-]{1,64}$' },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        await extension(req);
+        const cohorte = await o.service.utiliser(req.body.code, req.body.sujet);
+        if (!cohorte) {
+          return reply.code(409).send({ erreur: 'Code non reconnu.', motif: 'code-non-reconnu' });
+        }
+        // Jamais le code : le compte et la cohorte suffisent.
+        o.journal.info('code d’invitation utilisé', { sujet: req.body.sujet, cohorte });
+        return { cohorte };
+      },
+    );
+  }
 
   return app;
 }

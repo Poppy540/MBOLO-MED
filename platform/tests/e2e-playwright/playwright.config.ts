@@ -136,6 +136,8 @@ export default defineConfig({
         INVITATIONS_COHORTES: COHORTE_TEST,
         // La base de test garde les codes des exécutions précédentes : quota large ici, testé à part.
         INVITATIONS_QUOTA_PAR_COHORTE: '1000000',
+        // En CI, Keycloak (conteneur) appelle le service : écoute sur toutes les interfaces.
+        INVITATIONS_HOST: process.env['INVITATIONS_HOST'] ?? '127.0.0.1',
         PORT: new URL(INVITATIONS_URL).port,
         MBOLO_ENV: 'dev',
       },

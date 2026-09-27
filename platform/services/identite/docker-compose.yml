@@ -4,7 +4,8 @@
 # Console : http://127.0.0.1:8081 (accessible uniquement depuis la machine locale).
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    # Version exacte : l'extension d'inscription (keycloak-extension/) est compilée pour elle.
+    image: quay.io/keycloak/keycloak:26.0.8
     command: ["start-dev", "--import-realm"]
     ports:
       - "127.0.0.1:8081:8080"
@@ -17,5 +18,11 @@ services:
       TELECONSULTATION_SERVICE_CLIENT_SECRET: ${TELECONSULTATION_SERVICE_CLIENT_SECRET:?Définir TELECONSULTATION_SERVICE_CLIENT_SECRET dans l'environnement local}
       NOTIFICATIONS_SERVICE_CLIENT_SECRET: ${NOTIFICATIONS_SERVICE_CLIENT_SECRET:?Définir NOTIFICATIONS_SERVICE_CLIENT_SECRET dans l'environnement local}
       CONSULTATION_SERVICE_CLIENT_SECRET: ${CONSULTATION_SERVICE_CLIENT_SECRET:?Définir CONSULTATION_SERVICE_CLIENT_SECRET dans l'environnement local}
+      # Extension d'inscription (ADR-0014) : adresse du service des invitations, vue depuis le conteneur.
+      KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL: ${INVITATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3006/}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./keycloak/realm-mbolo.json:/opt/keycloak/data/import/realm-mbolo.json:ro
+      # Construire d'abord : mvn -f platform/services/identite/keycloak-extension/pom.xml package
+      - ./keycloak-extension/target/mbolo-keycloak-inscription.jar:/opt/keycloak/providers/mbolo-keycloak-inscription.jar:ro

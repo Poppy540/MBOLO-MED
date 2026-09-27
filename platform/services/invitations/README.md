@@ -12,7 +12,10 @@ Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des co
   - `POST /invitations/:id/revocation` → un code encore inutilisé ne peut plus servir.
 - **Quota** : nombre maximal d'invitations par cohorte (révoquées comprises). Un verrou par cohorte empêche de le dépasser, même avec des créations simultanées.
 - **Vérification** : `POST /invitations/verification` `{ code }` → `{ valide }`. Publique, **même réponse** pour un code inconnu, expiré, révoqué ou déjà utilisé. Limitée à `INVITATIONS_ESSAIS_MAX` essais par adresse et par fenêtre.
-- **Usage unique** : `ServiceInvitations.utiliser` marque le code utilisé par un compte, de façon atomique (un même code ne sert jamais deux fois). Il sera appelé par la création de compte patient (prochaine étape).
+- **Usage unique** : `ServiceInvitations.utiliser` marque le code utilisé par un compte, de façon atomique (un même code ne sert jamais deux fois).
+- **Inscription (ADR-0014)** : routes réservées à l'extension Keycloak. Elles exigent un jeton signé par le royaume, d'audience `mbolo-invitations-api` et de client `mbolo-keycloak-inscription` ; un jeton d'utilisateur est refusé.
+  - `POST /inscription/controle` `{ code, adresse }` → `{ valide }`. Essais limités par adresse du navigateur.
+  - `POST /inscription/utilisation` `{ code, sujet }` → 200 `{ cohorte }`, ou 409 si le code ne peut plus servir.
 - **Journal** : créateur, identifiant d'invitation, cohorte. **Jamais le code.**
 
 ## Base de données (ADR-0013)
@@ -33,6 +36,7 @@ Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des co
 | `INVITATIONS_QUOTA_PAR_COHORTE` (défaut `100`) | Invitations par cohorte |
 | `INVITATIONS_VALIDITE_JOURS` (défaut `14`) | Durée de validité d'un code (1 à 90 jours) |
 | `INVITATIONS_ESSAIS_MAX` (défaut `10`), `INVITATIONS_ESSAIS_FENETRE_MINUTES` (défaut `15`) | Limite des essais de code par adresse |
+| `INVITATIONS_HOST` (défaut `127.0.0.1`) | Adresse d'écoute ; `0.0.0.0` en CI pour qu'un Keycloak en conteneur joigne le service |
 | `INVITATIONS_TRUST_PROXY` (défaut `false`) | `true` derrière un proxy de confiance, pour lire l'adresse réelle du client |
 
 Aucune valeur propre à un pays n'est codée en dur : cohortes, quota et durée sont des paramètres du déploiement.
@@ -47,6 +51,6 @@ En local, un PostgreSQL 16 avec une base `mbolo` appartenant à un rôle de migr
 
 ## Reste à faire
 
-- Création du compte patient à partir d'un code (appel de `utiliser`), et écran de saisie du code dans l'application patient.
+- Saisie de l'identité dans le dossier FHIR après l'inscription, puis vérification (photos, charte, rôle `verification-identite`, ADR-0014).
 - Écran de gestion des invitations (backoffice), désignation nominative de la personne de confiance.
 - Limite des essais partagée entre plusieurs instances (aujourd'hui en mémoire, par instance).

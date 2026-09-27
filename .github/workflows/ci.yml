@@ -145,6 +145,13 @@ jobs:
           echo "WEBRTC_API_KEY=mbolo-ci-$(openssl rand -hex 6)" >> "$GITHUB_ENV"
       - name: PostgreSQL de test (invitations, ADR-0013)
         run: bash scripts/postgres-test.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Extension Keycloak d'inscription (compilation et tests, ADR-0014)
+        run: mvn -B -q -f platform/services/identite/keycloak-extension/pom.xml package
       - name: Démarrer Keycloak (royaume mbolo)
         run: docker compose -f platform/services/identite/docker-compose.yml up -d
       - name: Démarrer HAPI FHIR (données fictives, effacées à l'arrêt)
@@ -169,6 +176,9 @@ jobs:
       - name: Attendre LiveKit
         run: timeout 60 bash -c 'until curl -sf http://127.0.0.1:7880 > /dev/null; do sleep 2; done'
       - run: pnpm e2e
+        env:
+          # Keycloak (conteneur) joint le service des invitations par la passerelle Docker.
+          INVITATIONS_HOST: 0.0.0.0
       - name: Journaux Keycloak, HAPI, Unleash et LiveKit en cas d'échec
         if: failure()
         run: |

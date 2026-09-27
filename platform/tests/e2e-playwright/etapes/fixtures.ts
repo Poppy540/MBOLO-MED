@@ -26,6 +26,8 @@ export interface Monde {
   conclusion?: string;
   /** Invitation créée pendant le scénario (le code n'existe que dans cette mémoire de test). */
   invitation?: { id: string; code: string };
+  /** Inscription pendant le scénario : identifiant fictif et jeton obtenu, ou page d'erreur. */
+  inscription?: { identifiant: string; jeton?: string; page?: Page };
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }

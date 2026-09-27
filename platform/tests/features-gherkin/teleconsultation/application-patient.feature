@@ -39,3 +39,9 @@ Fonctionnalité: Application patient
     Et que le patient choisit "prac-fictif-001" dans l’annuaire
     Et que le patient réserve ce créneau
     Alors l’application confirme le rendez-vous
+
+  Scénario: Une personne invitée crée son compte depuis l'application et attend la vérification de son identité
+    Étant donné que "gestionnaire-fictif-01" est connecté
+    Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
+    Quand une personne s'inscrit avec ce code depuis l'application patient
+    Alors l'application indique que son identité doit être vérifiée avant toute consultation

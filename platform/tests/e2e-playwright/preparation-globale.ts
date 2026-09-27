@@ -7,6 +7,7 @@ import {
   FHIR_URL,
   KEYCLOAK_URL,
   COHORTES,
+  PREFIXE_INSCRITS,
   RESSOURCES_FHIR,
   ROYAUME,
   UNLEASH_URL,
@@ -164,6 +165,15 @@ export default async function preparationGlobale(): Promise<void> {
     }
     return r;
   };
+
+  // Comptes créés par les scénarios d'inscription des exécutions précédentes (ADR-0014).
+  const inscrits = (await (await admin(`/users?search=${PREFIXE_INSCRITS}&max=1000`)).json()) as {
+    id: string;
+    username: string;
+  }[];
+  for (const u of inscrits.filter((x) => x.username.startsWith(PREFIXE_INSCRITS))) {
+    await admin(`/users/${u.id}`, { method: 'DELETE' });
+  }
 
   // Comptes fictifs, recréés à chaque exécution avec un mot de passe aléatoire.
   const motsDePasse: Record<string, string> = {};

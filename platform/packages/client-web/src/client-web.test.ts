@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { creerRequete, ErreurApi } from './api.js';
-import { defiPkce, demarrerConnexion, terminerConnexion, type Memoire } from './auth.js';
+import {
+  defiPkce,
+  demarrerConnexion,
+  revendications,
+  terminerConnexion,
+  type Memoire,
+} from './auth.js';
 import { quand, versInstant } from './format.js';
 import { oublierRendezVous, rendezVousRetenus, retenirRendezVous } from './hors-ligne.js';
 import { DecisionRepli } from './repli.js';
@@ -54,6 +60,38 @@ describe('connexion PKCE', () => {
 
   it('ignore une adresse qui n’est pas un retour de connexion', async () => {
     expect(await terminerConnexion(P, new URL(P.retour), memoire())).toBeUndefined();
+  });
+});
+
+describe('inscription avec un code (ADR-0014)', () => {
+  const p = {
+    emetteur: 'http://kc.invalid/realms/mbolo',
+    client: 'app',
+    retour: 'http://app.invalid/',
+  };
+  const memoire = (): Memoire => {
+    const m = new Map<string, string>();
+    return {
+      getItem: (c) => m.get(c) ?? null,
+      setItem: (c, v) => m.set(c, v),
+      removeItem: (c) => m.delete(c),
+    };
+  };
+
+  it('ouvre le formulaire d’inscription de Keycloak, avec PKCE', async () => {
+    const url = new URL(await demarrerConnexion(p, memoire(), true));
+    expect(url.pathname).toBe('/realms/mbolo/protocol/openid-connect/registrations');
+    expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+    const connexion = new URL(await demarrerConnexion(p, memoire()));
+    expect(connexion.pathname).toBe('/realms/mbolo/protocol/openid-connect/auth');
+  });
+
+  it('lit les revendications d’un jeton pour l’affichage, sans planter sur un jeton illisible', () => {
+    const corps = Buffer.from(JSON.stringify({ sub: 'x', patient_id: 'pat-fictif-é' })).toString(
+      'base64url',
+    );
+    expect(revendications(`e.${corps}.s`)['patient_id']).toBe('pat-fictif-é');
+    expect(revendications('pas-un-jeton')).toEqual({});
   });
 });
 

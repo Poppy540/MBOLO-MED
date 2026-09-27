@@ -20,6 +20,8 @@ export const CONSULTATION_URL = process.env['CONSULTATION_URL'] ?? 'http://127.0
 export const INVITATIONS_URL = process.env['INVITATIONS_URL'] ?? 'http://127.0.0.1:3006';
 /** [FICTIF] Cohorte ouverte par le déploiement de test. */
 export const COHORTE_TEST = 'ville-fictive';
+/** [FICTIF] Préfixe des comptes créés par les scénarios d'inscription (retirés à la préparation). */
+export const PREFIXE_INSCRITS = 'inscrit-fictif-';
 /**
  * Applications (vite preview). Les ports 5173 et 5174 restent les faux retours de connexion des
  * étapes de test (clients patient et professionnel) : une vraie application y consommerait leurs codes.
