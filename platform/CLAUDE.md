@@ -14,6 +14,7 @@
 | `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
 | `services/passerelle-fhir` | Seul point d'entrée des services vers le dossier FHIR : jetons de service, permissions SMART, validation des écritures (ADR-0010) — voir son README | 0 |
 | `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
+| `services/consultation` | Prototype : lecture du dossier par le professionnel après décision d'`identite` (consentement, bris de glace), compte-rendu rédigé par le professionnel (`Composition`, jamais par une IA) — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
 | `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
 | `services/notifications` | Prototype (ADR-0012) : gabarits fermés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier, canal simulé en attendant le fournisseur — voir son README | 1 |

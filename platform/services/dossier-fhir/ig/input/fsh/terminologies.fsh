@@ -85,3 +85,32 @@ Description: "Tous les auteurs possibles d'une annulation."
 * ^status = #draft
 * ^experimental = true
 * include codes from system MboloAnnulationCS
+
+CodeSystem: MboloTypeDocumentCS
+Id: mbolo-type-document
+Title: "Types de documents cliniques Mbolo Santé"
+Description: "Documents rédigés par les professionnels dans le dossier (correspondance LOINC à établir)."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #compte-rendu-teleconsultation "Compte-rendu de téléconsultation" "Compte-rendu rédigé par le professionnel après une téléconsultation."
+
+CodeSystem: MboloSectionCompteRenduCS
+Id: mbolo-section-compte-rendu
+Title: "Sections du compte-rendu de téléconsultation"
+Description: "Sections fixes du compte-rendu, dans cet ordre."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #motif "Motif de consultation" "Motif exprimé par le patient, reformulé par le professionnel."
+* #observations "Observations" "Éléments recueillis pendant la téléconsultation."
+* #conclusion "Conclusion" "Conclusion du professionnel."
+* #conduite-a-tenir "Conduite à tenir" "Suite donnée : conseils, orientation, examens, suivi."
+
+ValueSet: MboloSectionCompteRenduVS
+Id: mbolo-section-compte-rendu
+Title: "Sections du compte-rendu de téléconsultation"
+Description: "Toutes les sections du compte-rendu."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloSectionCompteRenduCS

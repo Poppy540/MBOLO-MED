@@ -11,6 +11,7 @@ export const PROFILS = {
   rendezVous: `${CANONIQUE}/StructureDefinition/mbolo-rendez-vous`,
   agenda: `${CANONIQUE}/StructureDefinition/mbolo-agenda`,
   creneau: `${CANONIQUE}/StructureDefinition/mbolo-creneau`,
+  compteRendu: `${CANONIQUE}/StructureDefinition/mbolo-compte-rendu`,
 } as const;
 
 export const SYSTEMES = {
@@ -33,6 +34,8 @@ export const SYSTEMES = {
   sousTypeAudit: `${CANONIQUE}/CodeSystem/mbolo-audit`,
   modeConsultation: `${CANONIQUE}/CodeSystem/mbolo-mode-consultation`,
   annulation: `${CANONIQUE}/CodeSystem/mbolo-annulation`,
+  typeDocument: `${CANONIQUE}/CodeSystem/mbolo-type-document`,
+  sectionCompteRendu: `${CANONIQUE}/CodeSystem/mbolo-section-compte-rendu`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;
@@ -70,3 +73,12 @@ export const CATEGORIES_AVEC_BENEFICIAIRE: readonly CategorieConsentement[] = [
   'C-PARTAGE-PRO',
   'C-PROCHE',
 ];
+
+/** Sections du compte-rendu de téléconsultation, dans l'ordre d'affichage. */
+export const SECTIONS_COMPTE_RENDU = [
+  'motif',
+  'observations',
+  'conclusion',
+  'conduite-a-tenir',
+] as const;
+export type SectionCompteRendu = (typeof SECTIONS_COMPTE_RENDU)[number];

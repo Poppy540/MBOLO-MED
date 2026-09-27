@@ -3,6 +3,7 @@ import { creerRequete, type AccesSalle } from '@mbolo/client-web';
 
 export interface RendezVous {
   id: string;
+  patientId: string;
   debut: string;
   dureeMinutes: number;
   statut: 'prevu' | 'annule';
@@ -32,5 +33,44 @@ export function creerApi(base: string, jeton: () => string | undefined, appeler?
       requete<RendezVous>('POST', `/rendez-vous/${encodeURIComponent(id)}/report`, { creneauId }),
     salle: (id: string) =>
       requete<AccesSalle>('POST', `/rendez-vous/${encodeURIComponent(id)}/salle`),
+  };
+}
+
+export interface ResumeDossier {
+  motifAcces: string;
+  problemes: { texte: string; verification: string; date?: string; parProfessionnel: boolean }[];
+  comptesRendus: {
+    id: string;
+    date: string;
+    sections: Partial<Record<'motif' | 'observations' | 'conclusion' | 'conduite-a-tenir', string>>;
+  }[];
+}
+
+export interface SaisieCompteRendu {
+  motif?: string;
+  observations?: string;
+  conclusion?: string;
+  conduiteATenir?: string;
+}
+
+/** API de consultation clinique : dossier (après décision d'accès) et compte-rendu. */
+export function creerApiConsultation(
+  base: string,
+  jeton: () => string | undefined,
+  appeler?: typeof fetch,
+) {
+  const requete = creerRequete(base, jeton, appeler);
+  return {
+    lireDossier: (patientId: string, brisDeGlace?: { motif: string }) =>
+      requete<ResumeDossier>('POST', '/dossiers/lecture', {
+        patientId,
+        ...(brisDeGlace ? { brisDeGlace } : {}),
+      }),
+    ecrireCompteRendu: (rendezVousId: string, s: SaisieCompteRendu) =>
+      requete<{ id: string }>(
+        'POST',
+        `/rendez-vous/${encodeURIComponent(rendezVousId)}/compte-rendu`,
+        s,
+      ),
   };
 }

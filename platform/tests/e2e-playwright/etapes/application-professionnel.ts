@@ -134,3 +134,74 @@ Then('l’espace professionnel indique que le patient est connecté', async ({ m
   });
   await expect(page(monde).locator('[data-piste="video"]')).toHaveCount(1, { timeout: 20_000 });
 });
+
+When('le professionnel ouvre le dossier de ce rendez-vous', async ({ monde }) => {
+  await page(monde)
+    .locator(`li[data-rendez-vous="${monde.rendezVousId ?? ''}"]`)
+    .getByRole('button', { name: /Dossier/ })
+    .click();
+});
+
+Then('l’espace professionnel indique que le dossier n’est pas partagé', async ({ monde }) => {
+  const refus = page(monde).locator('[data-acces-refuse]');
+  await expect(refus.getByRole('status')).toHaveText(
+    'Le patient n’a pas partagé son dossier avec vous.',
+  );
+  await expect(page(monde).locator('[data-dossier]')).toHaveCount(0);
+});
+
+When(
+  'le professionnel accède en urgence avec le motif {string}',
+  async ({ monde }, motif: string) => {
+    const p = page(monde);
+    await p.getByText('Accès d’urgence (bris de glace)').click();
+    await p.getByLabel('Motif', { exact: true }).fill(motif);
+    await p.getByRole('button', { name: 'Accéder en urgence' }).click();
+  },
+);
+
+Then('l’espace professionnel affiche le dossier du patient', async ({ monde }) => {
+  await expect(page(monde).locator('[data-dossier]')).toBeVisible();
+});
+
+Then('l’espace professionnel signale un accès d’urgence', async ({ monde }) => {
+  await expect(page(monde).locator('[data-dossier]').getByRole('status')).toContainText(
+    'Accès d’urgence',
+  );
+});
+
+When(
+  'le professionnel rédige le compte-rendu avec la conclusion {string}',
+  async ({ monde }, conclusion: string) => {
+    const p = page(monde);
+    await p.getByLabel('Motif de consultation').fill('[FICTIF] Toux depuis 5 jours');
+    await p.getByLabel('Conclusion').fill(conclusion);
+    await p.getByRole('button', { name: /Enregistrer le compte-rendu/ }).click();
+    await expect(p.getByText('Compte-rendu enregistré dans le dossier.')).toBeVisible();
+    await expect(p.locator('li[data-compte-rendu]', { hasText: conclusion })).toHaveCount(1);
+  },
+);
+
+Then(
+  'le dossier médical contient ce compte-rendu, signé par {string}',
+  async ({ monde }, praticien: string) => {
+    const r = await fetch(
+      `${FHIR_URL}/Composition?subject=Patient/pat-fictif-001&_sort=-_lastUpdated&_count=1`,
+      { headers: { accept: 'application/fhir+json', 'cache-control': 'no-cache' } },
+    );
+    const lot = (await r.json()) as {
+      entry?: {
+        resource: {
+          author: { reference: string }[];
+          event?: { detail?: { reference: string }[] }[];
+          meta?: { tag?: { code?: string }[] };
+        };
+      }[];
+    };
+    const c = lot.entry?.[0]?.resource;
+    // Principe n°1 : l'auteur est le professionnel, jamais un agent IA.
+    expect(c?.author).toEqual([{ reference: `Practitioner/${praticien}` }]);
+    expect(c?.event?.[0]?.detail?.[0]?.reference).toBe(`Appointment/${monde.rendezVousId ?? ''}`);
+    expect(c?.meta?.tag?.some((t) => t.code === 'fictif')).toBe(true);
+  },
+);

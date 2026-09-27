@@ -123,3 +123,22 @@ Usage: #example
 * participant[0].status = #declined
 * participant[1].actor = Reference(fictif-praticien-0001)
 * participant[1].status = #accepted
+
+Instance: fictif-compte-rendu-0001
+InstanceOf: MboloCompteRendu
+Title: "[FICTIF] Compte-rendu de téléconsultation"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* status = #final
+* type = MboloTypeDocumentCS#compte-rendu-teleconsultation
+* subject = Reference(fictif-patient-0001)
+* date = "2026-10-01T09:25:00+01:00"
+* author = Reference(fictif-praticien-0001)
+* title = "Compte-rendu de téléconsultation"
+* event.detail = Reference(fictif-rendez-vous-0001)
+* section[0].code = MboloSectionCompteRenduCS#motif
+* section[0].text.status = #generated
+* section[0].text.div = "<div xmlns=\"http://www.w3.org/1999/xhtml\">[FICTIF] Toux depuis 5 jours.</div>"
+* section[1].code = MboloSectionCompteRenduCS#conclusion
+* section[1].text.status = #generated
+* section[1].text.div = "<div xmlns=\"http://www.w3.org/1999/xhtml\">[FICTIF] Conclusion du médecin test.</div>"
