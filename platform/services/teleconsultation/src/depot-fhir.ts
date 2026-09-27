@@ -322,6 +322,20 @@ export class DepotCreneauxFhir extends ClientFhir implements DepotCreneaux {
     await this.changerStatut(id, 'busy', 'free');
   }
 
+  /** Professionnels titulaires d'un agenda actif (annuaire). */
+  async praticiensAvecAgenda(): Promise<string[]> {
+    const agendas = await this.rechercher(
+      `${this.base}/Schedule?active=true&_count=100`,
+      'Agenda',
+      (r): r is Schedule => estSchedule(r),
+    );
+    const ids = agendas
+      .map((a) => a.actor?.[0]?.reference ?? '')
+      .filter((ref) => ref.startsWith('Practitioner/'))
+      .map((ref) => ref.slice('Practitioner/'.length));
+    return [...new Set(ids)];
+  }
+
   /** Retrait : « busy-unavailable », le créneau reste dans l'agenda mais n'est plus proposé. */
   retirer(id: string): Promise<Creneau> {
     return this.changerStatut(id, 'free', 'busy-unavailable');

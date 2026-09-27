@@ -1,5 +1,6 @@
 import type { Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
+import { AnnuaireMemoire, versFiche } from './annuaire.js';
 import { DepotCreneauxMemoire } from './creneaux.js';
 import {
   DepotRendezVousMemoire,
@@ -414,5 +415,58 @@ describe('créneaux du professionnel', () => {
     for (const u of [patient, pharmacien]) {
       await expect(service.mesCreneaux(u)).rejects.toMatchObject({ statut: 403 });
     }
+  });
+});
+
+describe('annuaire', () => {
+  it('liste les médecins qui ont un agenda, avec leur prochain créneau libre, les plus proches d’abord', async () => {
+    const creneaux = new DepotCreneauxMemoire();
+    await creneaux.publier('prac-fictif-001', [
+      { debut: '2026-09-29T08:00:00Z', dureeMinutes: 20 },
+    ]);
+    await creneaux.publier('prac-fictif-002', [
+      { debut: '2026-09-28T08:00:00Z', dureeMinutes: 20 },
+    ]);
+    const service = new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      creneaux,
+      salles().f,
+      { estActif: async () => true },
+      () => new Date('2026-09-27T09:00:00Z'),
+      undefined,
+      new AnnuaireMemoire(
+        new Map([
+          ['prac-fictif-001', { nom: 'Dr Test A [FICTIF]', specialite: 'Médecine générale' }],
+          ['prac-fictif-002', { nom: 'Dr Test B [FICTIF]' }],
+        ]),
+      ),
+    );
+    expect(await service.praticiens(patient)).toEqual([
+      {
+        id: 'prac-fictif-002',
+        nom: 'Dr Test B [FICTIF]',
+        prochainCreneau: '2026-09-28T08:00:00.000Z',
+      },
+      {
+        id: 'prac-fictif-001',
+        nom: 'Dr Test A [FICTIF]',
+        specialite: 'Médecine générale',
+        prochainCreneau: '2026-09-29T08:00:00.000Z',
+      },
+    ]);
+    await expect(service.praticiens(medecin)).rejects.toMatchObject({ statut: 403 });
+  });
+});
+
+describe('fiche d’annuaire', () => {
+  it('nom et spécialité seulement, avec un libellé par défaut', () => {
+    expect(
+      versFiche({
+        resourceType: 'Practitioner',
+        name: [{ prefix: ['Dr'], given: ['Test'], family: 'Fictif' }],
+        qualification: [{ code: { text: 'Médecine générale' } }],
+      }),
+    ).toEqual({ nom: 'Dr Test Fictif', specialite: 'Médecine générale' });
+    expect(versFiche({ resourceType: 'Practitioner' })).toEqual({ nom: 'Professionnel de santé' });
   });
 });

@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { AuteurAnnulation } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
 import type { Utilisateur } from '@mbolo/identite';
+import { AnnuaireMemoire, type Annuaire, type Fiche } from './annuaire.js';
 import { aucunNotificateur, type Notificateur } from './notificateur.js';
 import { ErreurCreneau, type Creneau, type DepotCreneaux, type Plage } from './creneaux.js';
 
@@ -119,7 +120,43 @@ export class ServiceTeleconsultation {
     private readonly drapeaux: Pick<Drapeaux, 'estActif'>,
     private readonly maintenant: () => Date = () => new Date(),
     private readonly notificateur: Notificateur = aucunNotificateur,
+    private readonly annuaire: Annuaire = new AnnuaireMemoire(),
   ) {}
+
+  /**
+   * Annuaire pour les patients de la cohorte : professionnels qui ont un agenda, avec leur prochain
+   * créneau libre (14 jours), les plus proches d'abord. Ni téléphone ni adresse.
+   */
+  async praticiens(u: Utilisateur): Promise<(Fiche & { id: string; prochainCreneau?: string })[]> {
+    if (!u.roles.includes('patient') || !u.patientId) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    await this.exigerFonction(u);
+    const t = this.maintenant().getTime();
+    const ids = await this.creneaux.praticiensAvecAgenda();
+    const liste = await Promise.all(
+      ids.map(async (id) => {
+        const [fiche, creneaux] = await Promise.all([
+          this.annuaire.fiche(id),
+          this.creneaux.duPraticien(
+            id,
+            new Date(t).toISOString(),
+            new Date(t + HORIZON_MS).toISOString(),
+          ),
+        ]);
+        const prochain = creneaux
+          .filter((c) => c.statut === 'libre' && new Date(c.debut).getTime() > t)
+          .map((c) => c.debut)
+          .sort()[0];
+        return fiche
+          ? { id, ...fiche, ...(prochain ? { prochainCreneau: prochain } : {}) }
+          : undefined;
+      }),
+    );
+    return liste
+      .filter((x): x is NonNullable<typeof x> => x !== undefined)
+      .sort((a, b) => (a.prochainCreneau ?? '~').localeCompare(b.prochainCreneau ?? '~'));
+  }
 
   /** L'autre participant du rendez-vous (celui qui n'a pas agi), en référence FHIR. */
   private static autre(r: RendezVous, parPraticien: boolean): string {

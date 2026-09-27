@@ -21,7 +21,7 @@ Tout le reste est refusé : `DELETE`, `_history`, `$opérations`, transactions e
 | Client Keycloak | Service | Permissions (`mbolo_scopes`) | Éléments lisibles (`mbolo_elements`) |
 |---|---|---|---|
 | `mbolo-identite-service` | `identite` (consentements, journal des accès) | `system/Consent.crus system/AuditEvent.cs` | tous |
-| `mbolo-teleconsultation-service` | `teleconsultation` (rendez-vous, agendas et créneaux) | `system/Appointment.crus system/Schedule.crus system/Slot.crus` | tous |
+| `mbolo-teleconsultation-service` | `teleconsultation` (rendez-vous, agendas, créneaux, annuaire) | `system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r` | `Practitioner.name Practitioner.qualification` |
 | `mbolo-consultation-service` | `consultation` (problèmes, comptes-rendus, rendez-vous en lecture) | `system/Condition.rs system/Composition.crs system/Appointment.r` | tous |
 | `mbolo-notifications-service` | `notifications` (numéro, consentement aux rappels) | `system/Patient.r system/Practitioner.r system/Consent.s` | `Patient.telecom Practitioner.telecom` |
 

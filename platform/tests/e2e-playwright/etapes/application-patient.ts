@@ -35,6 +35,17 @@ Given(
   },
 );
 
+async function ouvrir(monde: Monde, browser: Browser, identifiant: string, adresse: string) {
+  // Le patient autorise le micro et la caméra (comme à la demande du navigateur).
+  const contexte = await browser.newContext({ permissions: ['microphone', 'camera'] });
+  const p = await contexte.newPage();
+  monde.visio.set(APP, { contexte, page: p });
+  await p.goto(adresse);
+  await p.getByRole('button', { name: 'Se connecter' }).click();
+  await saisirIdentifiants(p, identifiant, false);
+  await expect(p.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
+}
+
 When(
   '{string} ouvre l’application patient pour {string}',
   async (
@@ -42,16 +53,32 @@ When(
     identifiant: string,
     praticien: string,
   ) => {
-    // Le patient autorise le micro et la caméra (comme à la demande du navigateur).
-    const contexte = await browser.newContext({ permissions: ['microphone', 'camera'] });
-    const p = await contexte.newPage();
-    monde.visio.set(APP, { contexte, page: p });
-    await p.goto(`${APP_PATIENT_URL}/?praticien=${praticien}`);
-    await p.getByRole('button', { name: 'Se connecter' }).click();
-    await saisirIdentifiants(p, identifiant, false);
-    await expect(p.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
+    await ouvrir(monde, browser, identifiant, `${APP_PATIENT_URL}/?praticien=${praticien}`);
   },
 );
+
+When(
+  '{string} ouvre l’application patient',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    await ouvrir(monde, browser, identifiant, `${APP_PATIENT_URL}/`);
+  },
+);
+
+When('le patient choisit {string} dans l’annuaire', async ({ monde }, praticien: string) => {
+  const p = page(monde);
+  await p.getByRole('button', { name: 'Prendre rendez-vous' }).click();
+  const fiche = p.locator(`[data-praticien="${praticien}"]`);
+  // Nom et prochain créneau, sans autre information sur le professionnel.
+  await expect(fiche).toContainText(`${praticien} [FICTIF]`);
+  await expect(fiche).toContainText('Prochain créneau');
+  await fiche.click();
+});
+
+When('le patient réserve ce créneau', async ({ monde }) => {
+  const p = page(monde);
+  await p.locator(`[data-creneau="${monde.creneaux?.[0] ?? ''}"]`).click();
+  await p.getByRole('button', { name: 'Réserver' }).click();
+});
 
 When('le patient réserve ce créneau dans l’application', async ({ monde }) => {
   const p = page(monde);

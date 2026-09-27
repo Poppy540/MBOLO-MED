@@ -16,11 +16,20 @@ export interface Creneau {
   dureeMinutes: number;
 }
 
+export interface Praticien {
+  id: string;
+  nom: string;
+  specialite?: string;
+  prochainCreneau?: string;
+}
+
 export function creerApi(base: string, jeton: () => string | undefined, appeler?: typeof fetch) {
   const requete = creerRequete(base, jeton, appeler);
   return {
     mesRendezVous: async () =>
       (await requete<{ rendezVous: RendezVous[] }>('GET', '/rendez-vous')).rendezVous,
+    praticiens: async () =>
+      (await requete<{ praticiens: Praticien[] }>('GET', '/praticiens')).praticiens,
     creneauxLibres: async (praticienId: string) =>
       (
         await requete<{ creneaux: Creneau[] }>(
