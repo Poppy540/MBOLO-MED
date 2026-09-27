@@ -3,9 +3,10 @@
 // de l'heure prévue, et seulement si la fonction est activée pour eux (flag teleconsultation.video).
 // Aucune donnée de santé ici : un rendez-vous ne contient ni motif ni symptôme.
 import { randomUUID } from 'node:crypto';
-import type { AuteurAnnulation } from '@mbolo/dossier-fhir';
+import type { AuteurAnnulation, StatutIdentite } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
 import type { Utilisateur } from '@mbolo/identite';
+import { IdentitesMemoire, type Identites } from './identites.js';
 import { AnnuaireMemoire, type Annuaire, type Fiche } from './annuaire.js';
 import { aucunNotificateur, type Notificateur } from './notificateur.js';
 import { ErreurCreneau, type Creneau, type DepotCreneaux, type Plage } from './creneaux.js';
@@ -121,7 +122,27 @@ export class ServiceTeleconsultation {
     private readonly maintenant: () => Date = () => new Date(),
     private readonly notificateur: Notificateur = aucunNotificateur,
     private readonly annuaire: Annuaire = new AnnuaireMemoire(),
+    /** Par défaut, aucune identité n'est connue : aucune réservation (sécurité d'abord). */
+    private readonly identites: Identites = new IdentitesMemoire(),
   ) {}
+
+  /** Statut de vérification de l'identité du patient connecté (affichage dans l'application). */
+  async statutIdentite(u: Utilisateur): Promise<StatutIdentite | 'inconnu'> {
+    if (!u.roles.includes('patient') || !u.patientId) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    return (await this.identites.statut(u.patientId)) ?? 'inconnu';
+  }
+
+  /** ADR-0014 : pas de consultation tant que l'identité du patient n'est pas vérifiée. */
+  private async exigerIdentiteVerifiee(patientId: string): Promise<void> {
+    if ((await this.identites.statut(patientId)) !== 'verifiee') {
+      throw new ErreurTeleconsultation(
+        'Votre identité doit être vérifiée avant de réserver une consultation.',
+        403,
+      );
+    }
+  }
 
   /**
    * Annuaire pour les patients de la cohorte : professionnels qui ont un agenda, avec leur prochain
@@ -234,6 +255,7 @@ export class ServiceTeleconsultation {
       throw new ErreurTeleconsultation('Accès refusé.', 403);
     }
     await this.exigerFonction(u);
+    await this.exigerIdentiteVerifiee(u.patientId);
     const c = await this.creneaux.lire(d.creneauId);
     if (!c) throw new ErreurTeleconsultation('Créneau introuvable.', 404);
     if (c.statut !== 'libre' || new Date(c.debut).getTime() <= this.maintenant().getTime()) {

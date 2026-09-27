@@ -32,7 +32,7 @@ const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
 
 type Ecran =
   | { nom: 'accueil' }
-  | { nom: 'dossier-a-completer' }
+  | { nom: 'dossier-a-completer'; refusee?: boolean }
   | { nom: 'rendez-vous' }
   | { nom: 'praticiens' }
   | { nom: 'creneaux'; praticienId: string }
@@ -54,13 +54,20 @@ export function App() {
         if (j) {
           jeton = j;
           history.replaceState(null, '', '/');
-          // Compte créé avec un code, identité pas encore vérifiée : pas de dossier, pas de
-          // consultation (ADR-0014).
-          setEcran(
-            revendications(j)['patient_id']
-              ? { nom: 'rendez-vous' }
-              : { nom: 'dossier-a-completer' },
-          );
+          // Pas de consultation tant que l'identité n'est pas vérifiée par l'équipe (ADR-0014).
+          if (!revendications(j)['patient_id']) {
+            setEcran({ nom: 'dossier-a-completer' });
+            return;
+          }
+          return api
+            .identite()
+            .then((statut) =>
+              setEcran(
+                statut === 'verifiee'
+                  ? { nom: 'rendez-vous' }
+                  : { nom: 'dossier-a-completer', refusee: statut === 'refusee' },
+              ),
+            );
         }
       })
       .catch(() => setMessage('La connexion a échoué. Réessayez.'))
@@ -103,7 +110,7 @@ export function App() {
       ) : ecran.nom === 'accueil' ? (
         <Accueil />
       ) : ecran.nom === 'dossier-a-completer' ? (
-        <DossierACompleter />
+        <DossierACompleter refusee={ecran.refusee === true} />
       ) : ecran.nom === 'rendez-vous' ? (
         <MesRendezVous
           allerA={(e) => {
@@ -166,16 +173,25 @@ function Accueil() {
   );
 }
 
-function DossierACompleter() {
+function DossierACompleter(p: { refusee: boolean }) {
   return (
     <section>
-      <p>
-        <span aria-hidden="true">✅</span> Votre compte est créé.
-      </p>
-      <p>
-        Avant votre première consultation, votre identité doit être vérifiée. L'équipe Mbolo Santé
-        vous contactera.
-      </p>
+      {p.refusee ? (
+        <p>
+          <span aria-hidden="true">⚠️</span> Votre identité n'a pas pu être confirmée. L'équipe
+          Mbolo Santé va vous recontacter.
+        </p>
+      ) : (
+        <>
+          <p>
+            <span aria-hidden="true">✅</span> Votre compte est créé.
+          </p>
+          <p>
+            Avant votre première consultation, votre identité doit être vérifiée. L'équipe Mbolo
+            Santé vous contactera.
+          </p>
+        </>
+      )}
       <p>
         <strong>En cas d'urgence, appelez les secours.</strong>
       </p>

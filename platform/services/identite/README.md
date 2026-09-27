@@ -72,6 +72,18 @@ L'inscription passe par le **formulaire natif de Keycloak**, complété par l'ex
 - **Jeton de service** : l'extension signe elle-même un jeton de 60 s (audience `mbolo-invitations-api`, client `mbolo-keycloak-inscription`) avec la clé du royaume. Aucun secret supplémentaire n'est nécessaire.
 - **En cas de doute, on refuse** : service injoignable ou réponse inattendue entraînent un refus.
 
+### Saisie de l'identité juste après l'inscription
+Action requise `mbolo-identite-patient` :
+- **Formulaire « Mon identité »** : nom, prénom, date de naissance, sexe (facultatif), téléphone, numéro d'assurance maladie (facultatif).
+- **Validation** : dans l'extension, avec des messages en français. Une date de naissance dans le futur est refusée.
+- **Dossier** : créé au statut « à vérifier » par la passerelle (`system/Patient.c` seulement). L'extension pose ensuite `patient_id` sur le compte.
+- **Journal** : le compte et la création du dossier, jamais l'identité.
+- **Configuration** (variables d'environnement de Keycloak, pas des secrets) :
+  - `KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_DOSSIER_URL` : adresse de la passerelle, suivie de `/fhir/` ;
+  - `..._ENVIRONNEMENT` : `prod` en production, sinon les dossiers portent le marqueur `fictif` ;
+  - `..._IDENTIFIANT_ASSURANCE_SYSTEME` : système du numéro d'assurance du pays (Gabon : CNAMGS). Sans lui, le numéro saisi n'est pas retenu, et un professionnel attribuera un numéro provisoire.
+- **Actions requises du royaume** : déclarer une action dans le royaume supprime celles qui ne sont pas déclarées. Les actions par défaut (dont `CONFIGURE_TOTP`) sont donc listées explicitement, et un test le vérifie.
+
 ### Construction et configuration
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.
 - **Version de Keycloak** : épinglée à 26.7.4 (26.0.8 avait des failles hautes connues), identique dans `pom.xml` et `docker-compose.yml`. Toute montée de version se fait dans les deux fichiers, avec la suite e2e.

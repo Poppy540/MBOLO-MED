@@ -60,6 +60,8 @@ export default defineConfig({
         KEYCLOAK_ISSUER: EMETTEUR,
         FHIR_AMONT_URL: FHIR_URL,
         PORT: new URL(PASSERELLE_URL).port,
+        // En CI, Keycloak (conteneur) crée le dossier à l'inscription par la passerelle.
+        PASSERELLE_HOST: process.env['PASSERELLE_HOST'] ?? '127.0.0.1',
         MBOLO_ENV: 'dev',
       },
     },

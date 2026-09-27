@@ -116,6 +116,11 @@ export function creerServeur(o: {
     },
   );
 
+  // Statut de la vérification d'identité du patient (ADR-0014), sans aucune donnée d'identité.
+  app.get('/identite', async (req) => ({
+    statut: await o.service.statutIdentite(await authentifier(req)),
+  }));
+
   app.get('/rendez-vous', async (req) => {
     const u = await authentifier(req);
     return { rendezVous: await o.service.mesRendezVous(u) };

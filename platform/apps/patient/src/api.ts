@@ -26,6 +26,14 @@ export interface Praticien {
 export function creerApi(base: string, jeton: () => string | undefined, appeler?: typeof fetch) {
   const requete = creerRequete(base, jeton, appeler);
   return {
+    /** Statut de la vérification d'identité (ADR-0014) : « verifiee » ouvre les consultations. */
+    identite: async () =>
+      (
+        await requete<{ statut: 'a-verifier' | 'verifiee' | 'refusee' | 'inconnu' }>(
+          'GET',
+          '/identite',
+        )
+      ).statut,
     mesRendezVous: async () =>
       (await requete<{ rendezVous: RendezVous[] }>('GET', '/rendez-vous')).rendezVous,
     praticiens: async () =>

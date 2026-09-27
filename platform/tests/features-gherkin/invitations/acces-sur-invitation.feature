@@ -41,7 +41,7 @@ Fonctionnalité: Accès sur invitation
     Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
     Quand une personne s'inscrit avec ce code
     Alors son compte est créé avec le seul rôle patient, sans nom ni e-mail dans le jeton
-    Et son dossier reste à compléter avant toute consultation
+    Et son dossier est créé avec une identité à vérifier
     Et le code n'est pas reconnu
 
   Scénario: Un code déjà utilisé ne permet pas une seconde inscription
@@ -59,3 +59,15 @@ Fonctionnalité: Accès sur invitation
   Scénario: Le formulaire d'inscription ne demande ni nom ni e-mail
     Quand une personne ouvre le formulaire d'inscription
     Alors le formulaire demande un code d'invitation, un identifiant et un mot de passe seulement
+
+  Scénario: L'identité saisie après l'inscription est contrôlée avant de créer le dossier
+    Étant donné que "gestionnaire-fictif-01" est connecté
+    Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
+    Quand une personne s'inscrit avec ce code en indiquant une naissance dans le futur
+    Alors le formulaire d'identité signale la date de naissance
+
+  Scénario: Un patient dont l'identité n'est pas vérifiée ne peut pas réserver
+    Étant donné un créneau libre de "prac-fictif-001" est publié dans 6 jours
+    Et que "patient-fictif-01" est connecté
+    Quand "patient-fictif-01" tente de réserver ce créneau alors que son identité est à vérifier
+    Alors la réservation est refusée car son identité n'est pas vérifiée

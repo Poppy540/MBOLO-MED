@@ -1,7 +1,12 @@
 // Préparation du Keycloak de test : comptes FICTIFS. Le profil utilisateur (attributs réservés à
 // l'administrateur) est déjà dans le royaume importé : il n'est pas réappliqué ici, pour le vérifier. N'agit que sur un Keycloak local ou de CI, jamais sur un environnement réel.
 import { randomBytes } from 'node:crypto';
-import { agendaVideo, MARQUEUR_FICTIF } from '@mbolo/dossier-fhir';
+import {
+  agendaVideo,
+  EXTENSION_STATUT_IDENTITE,
+  MARQUEUR_FICTIF,
+  SYSTEMES,
+} from '@mbolo/dossier-fhir';
 import {
   COMPTES,
   FHIR_URL,
@@ -43,8 +48,24 @@ async function preparerDossier(): Promise<void> {
         ...(type === 'RelatedPerson' ? { patient: { reference: 'Patient/pat-fictif-001' } } : {}),
         name: [{ text: `${id} [FICTIF]` }],
         // Numéros manifestement fictifs, distincts pour savoir qui est prévenu.
+        // Patients déjà vérifiés (ADR-0014) : identité contrôlée, numéro d'assurance fictif.
         ...(type === 'Patient'
-          ? { telecom: [{ system: 'phone', value: '+241 00 00 00 01' }] }
+          ? {
+              telecom: [{ system: 'phone', value: '+241 00 00 00 01' }],
+              birthDate: '1990-01-01',
+              extension: [{ url: EXTENSION_STATUT_IDENTITE, valueCode: 'verifiee' }],
+              identifier: [
+                {
+                  system: `${SYSTEMES.identifiantPatient}/assurance-maladie`,
+                  type: {
+                    coding: [
+                      { system: SYSTEMES.typeIdentifiantPatient, code: 'assurance-maladie' },
+                    ],
+                  },
+                  value: `FICTIF-${id}`,
+                },
+              ],
+            }
           : {}),
         ...(type === 'Practitioner'
           ? { telecom: [{ system: 'phone', value: '+241 00 00 00 02' }] }
