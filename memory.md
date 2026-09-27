@@ -57,6 +57,7 @@
 | 2026-09-27 | **Gabon = premier pays test ; la plateforme a vocation à s'exporter** : tout ce qui dépend du pays (fuseau, langue, formats, indicatif, cadre légal, hébergement) est paramétrable, jamais codé en dur. Gabarits de notification paramétrables depuis la PR S ; restent : numéros d'exemple, langue choisie par patient | Porteur de projet |
 | 2026-09-27 | Base des services : PostgreSQL 16, un schéma et un rôle par service, pilote `postgres`, aucune donnée de santé ; invitations : code de 8 caractères valable 14 jours, usage unique, 100 patients à Libreville en vague 1 (paramétrable), rôle `gestion-invitations` humain avec MFA, jamais une IA | [ADR-0013](docs/architecture/adr/0013-base-de-donnees-services.md) |
 | 2026-09-27 | Inscription par extension Keycloak (mot de passe jamais hors de Keycloak) ; code remis par téléphone au patient ou à son aidant ; identité vérifiée dès la vague 1 (CNAMGS + pièce d'identité, ou numéro provisoire via un professionnel et l'acte de naissance) ; photos du document et du visage, vérifiées à distance par le rôle `verification-identite` (MFA), conservées comme preuve après acceptation d'une charte (sous réserve de l'avis juridique) ; données : nom, prénom, date de naissance, sexe facultatif, téléphone | [ADR-0014](docs/architecture/adr/0014-inscription-patient.md) |
+| 2026-09-27 | Dependabot (npm, Maven, docker-compose, actions) et délais de correction des failles : critique 48 h, haute 7 j, modérée 30 j | [scans](docs/securite/scans.md) |
 | 2026-09-27 | Téléconsultation vidéo : LiveKit (Jitsi en repli), sous réserve d'un prototype et d'un test terrain ; aucun enregistrement par défaut | [ADR-0011](docs/architecture/adr/0011-serveur-webrtc.md) |
 | 2026-09-27 | Identité Keycloak ; refus par défaut ; accès au dossier sur consentement FHIR révocable ; bris de glace avec motif et revue humaine (proposée, PR C) | [ADR-0009](docs/architecture/adr/0009-identite-controle-acces.md) |
 
@@ -80,7 +81,8 @@
 5. **Fournisseur SMS / WhatsApp** (ADR-0012) et relecture des gabarits de notification.
 6. Désigner la **personne de confiance** qui partage le rôle `gestion-invitations` (ADR-0013).
 7. **ADR-0014** — durée de conservation des photos (document + visage) et texte de la **charte** à accepter avant l'envoi : à valider avec l'avis juridique ; désigner les titulaires du rôle `verification-identite`.
-8. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
+8. Activer les **alertes et mises à jour de sécurité Dependabot** dans les réglages du dépôt (Settings → Code security).
+9. Ajouter le tableur `docs/business-plan/Mbolo_Sante_Business_Plan.xlsx`.
 
 ## 5. Leçons apprises
 

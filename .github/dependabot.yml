@@ -1,0 +1,56 @@
+# Mises à jour proposées automatiquement (docs/securite/scans.md). Chaque PR de Dependabot passe par
+# la CI complète et n'est fusionnée qu'après revue humaine. Aucun secret n'est donné à Dependabot.
+version: 2
+updates:
+  # Dépendances Node (pnpm) de tout le monorepo.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Africa/Libreville
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Correctifs et versions mineures regroupés ; une version majeure reste une PR à part.
+      mineures:
+        update-types: [minor, patch]
+
+  # Extension Keycloak (Java). Keycloak doit changer en même temps dans le pom.xml et dans
+  # docker-compose.yml : fusionner les deux PR ensemble, avec la suite e2e.
+  - package-ecosystem: maven
+    directory: /platform/services/identite/keycloak-extension
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Africa/Libreville
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Images des serveurs locaux et de CI : Keycloak, HAPI FHIR, Unleash, PostgreSQL.
+  - package-ecosystem: docker-compose
+    directories:
+      - /platform/services/identite
+      - /platform/services/dossier-fhir
+      - /platform/services/feature-flags
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Africa/Libreville
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Actions GitHub utilisées par la CI.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Africa/Libreville
+    commit-message:
+      prefix: chore
+      include: scope
