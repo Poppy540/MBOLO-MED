@@ -350,3 +350,46 @@ Then("l'historique contient un accès refusé pour le motif {string}", ({ monde 
   const acces = (monde.reponse?.corps['acces'] ?? []) as Record<string, unknown>[];
   expect(acces).toContainEqual(expect.objectContaining({ autorise: false, motif }));
 });
+
+// ── Revue des bris de glace ──────────────────────────────────────────────────
+
+When('{string} consulte les bris de glace à revoir', async ({ monde }, identifiant: string) => {
+  await appeler(monde, 'GET', '/revue/bris-de-glace?statut=a-revoir', {
+    jeton: jeton(monde, identifiant),
+  });
+});
+
+Then(
+  "la liste contient l'accès en urgence justifié par {string}",
+  ({ monde }, justification: string) => {
+    expect(monde.reponse?.statut).toBe(200);
+    const liste = (monde.reponse?.corps['brisDeGlace'] ?? []) as {
+      traceId: string;
+      justification: string;
+      patientId: string;
+      enRetard: boolean;
+    }[];
+    // Le plus récent en premier : celui du scénario en cours.
+    const trouve = liste.find((x) => x.justification === justification);
+    expect(trouve, 'bris de glace à revoir').toBeDefined();
+    expect(trouve?.enRetard).toBe(false);
+    if (trouve) monde.traceId = trouve.traceId;
+  },
+);
+
+When(
+  '{string} conclut que cet accès est {string}',
+  async ({ monde }, identifiant: string, conclusion: string) => {
+    await appeler(monde, 'POST', `/revue/bris-de-glace/${monde.traceId ?? ''}`, {
+      jeton: jeton(monde, identifiant),
+      corps: { conclusion, commentaire: 'Revue e2e [FICTIF]' },
+    });
+    expect(monde.reponse?.statut).toBe(201);
+  },
+);
+
+Then("cet accès n'est plus à revoir", ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  const liste = (monde.reponse?.corps['brisDeGlace'] ?? []) as { traceId: string }[];
+  expect(liste.map((x) => x.traceId)).not.toContain(monde.traceId);
+});

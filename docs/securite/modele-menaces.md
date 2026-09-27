@@ -33,6 +33,7 @@
 | I | Un service lit plus que nécessaire | Passerelle : permissions SMART par type ; `_include` et chaînage refusés ; HAPI jamais exposé | e2e `dossier/passerelle.feature` |
 | I | Données personnelles dans le jeton | Jeton sans e-mail ni nom | e2e |
 | R | Contestation d'un accès (bris de glace) | `AuditEvent` pour chaque décision, justification conservée, traces immuables, historique visible par le patient | e2e + tests unitaires |
+| E | Bris de glace abusif | Revue humaine outillée (rôle `revue-acces`), retards signalés, conclusion tracée, pas d'auto-revue, alerte si l'accès est contesté | e2e `identite/revue-bris-de-glace.feature` + tests unitaires |
 | T | Suppression ou modification de traces et de consentements | Suppression jamais relayée ; `AuditEvent` et `Provenance` non modifiables | tests de la passerelle + e2e |
 | E | Fonction activée trop tôt | Feature flags désactivés par défaut, refus si Unleash est injoignable, aucun flag sur la sécurité | tests `@mbolo/drapeaux` + e2e |
 | I | Fuite de secrets | Aucun secret dans le dépôt (gitleaks, modèles `CHANGEME`, secrets injectés à l'import) ; secrets de CI générés et masqués | CI « Sécurité » |
@@ -40,7 +41,7 @@
 **Reste à traiter avant la vague 1 :**
 - authentification des services par clé asymétrique ;
 - réseau privé et TLS ;
-- revue humaine des bris de glace (outil et responsables) ;
+- revue humaine des bris de glace : désigner les relecteurs et fixer le délai (l'outil est prêt) ;
 - limitation de débit (déni de service) ;
 - supervision ;
 - test d'intrusion externe.

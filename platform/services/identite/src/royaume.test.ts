@@ -31,7 +31,7 @@ describe('royaume mbolo', () => {
     expect(embarque).toEqual(lire('profil-utilisateur.json'));
   });
 
-  it.each(['professionnel', 'infirmier', 'pharmacien', 'administrateur'])(
+  it.each(['professionnel', 'infirmier', 'pharmacien', 'administrateur', 'revue-acces'])(
     'impose la double authentification au rôle %s',
     (nom) => {
       const role = royaume.roles.realm.find((r) => r.name === nom);

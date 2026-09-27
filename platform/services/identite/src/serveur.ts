@@ -20,6 +20,7 @@ import {
 import { ErreurDepot } from './depot-fhir.js';
 import type { VerifierJeton } from './jeton.js';
 import type { JournalAcces } from './journal-acces.js';
+import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
 
 export interface OptionsServeur {
@@ -28,6 +29,7 @@ export interface OptionsServeur {
   depot: DepotConsentements;
   /** Journal des accès au dossier (AuditEvent FHIR). */
   journalAcces: JournalAcces;
+  revue: ServiceRevue;
   env: Environnement;
   journal: Journal;
   maintenant?: () => Date;
@@ -59,6 +61,7 @@ export function creerServeur(o: OptionsServeur): FastifyInstance {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurAcces) return reply.code(403).send({ erreur: 'Accès refusé.' });
+    if (err instanceof ErreurRevue) return reply.code(err.statut).send({ erreur: err.message });
     if (err instanceof ErreurFonctionInactive) {
       return reply.code(403).send({ erreur: 'Fonction non disponible.' });
     }
@@ -155,6 +158,66 @@ export function creerServeur(o: OptionsServeur): FastifyInstance {
             .find((d) => d.type === 'justification-bris-de-glace')?.valueString,
         })),
       };
+    },
+  );
+
+  // Revue humaine des bris de glace : rôle revue-acces uniquement (MFA obligatoire).
+  app.get<{ Querystring: { statut?: 'a-revoir' | 'toutes' } }>(
+    '/revue/bris-de-glace',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { statut: { type: 'string', enum: ['a-revoir', 'toutes'] } },
+        },
+      },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const liste = await o.revue.lister(u, req.query.statut ?? 'a-revoir');
+      o.journal.info('bris de glace consultés pour revue', {
+        sujet: u.sujet,
+        nombre: liste.length,
+      });
+      return { brisDeGlace: liste };
+    },
+  );
+
+  app.post<{
+    Params: { traceId: string };
+    Body: { conclusion: (typeof CONCLUSIONS_REVUE)[number]; commentaire?: string };
+  }>(
+    '/revue/bris-de-glace/:traceId',
+    {
+      schema: {
+        params: { type: 'object', properties: { traceId: ID }, required: ['traceId'] },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['conclusion'],
+          properties: {
+            conclusion: { type: 'string', enum: [...CONCLUSIONS_REVUE] },
+            commentaire: { type: 'string', maxLength: 1000 },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const u = await authentifier(req);
+      await o.revue.revoir(u, req.params.traceId, req.body.conclusion, req.body.commentaire);
+      const contexte = {
+        sujet: u.sujet,
+        traceId: req.params.traceId,
+        conclusion: req.body.conclusion,
+      };
+      if (req.body.conclusion === 'justifie') {
+        o.journal.info('bris de glace revu', contexte);
+      } else {
+        // Accès d'urgence contesté : suite à donner par un humain (responsable sécurité, DPO).
+        o.journal.avertissement('BRIS DE GLACE CONTESTÉ — suite à donner', contexte);
+      }
+      return reply.code(201).send({ enregistre: true });
     },
   );
 

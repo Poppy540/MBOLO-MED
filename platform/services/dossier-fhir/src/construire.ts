@@ -4,6 +4,7 @@
 import type { AuditEvent, Condition, Consent, Provenance } from 'fhir/r4.js';
 import {
   EXTENSION_MODE_RECUEIL,
+  type ConclusionRevue,
   MARQUEUR_FICTIF,
   PROFILS,
   SYSTEMES,
@@ -143,6 +144,10 @@ export function evenementAccesDossier(o: OptionsEvenementAcces): AuditEvent {
     resourceType: 'AuditEvent',
     ...(o.env === 'prod' ? {} : { meta: { tag: [MARQUEUR_FICTIF] } }),
     type: { system: SYSTEMES.auditType, code: '110110', display: 'Patient Record' },
+    // Sous-type recherchable : permet de retrouver les bris de glace à revoir.
+    subtype: [
+      { system: SYSTEMES.sousTypeAudit, code: o.brisDeGlace ? 'bris-de-glace' : 'acces-dossier' },
+    ],
     action: 'R',
     recorded: o.date,
     // 0 : succès (accès accordé) ; 4 : échec mineur (accès refusé).
@@ -176,6 +181,50 @@ export function evenementAccesDossier(o: OptionsEvenementAcces): AuditEvent {
                 { type: 'justification-bris-de-glace', valueString: o.brisDeGlace.justification },
               ],
             }
+          : {}),
+      },
+    ],
+  };
+}
+
+export interface OptionsRevueBrisDeGlace {
+  /** Identifiant de l'AuditEvent du bris de glace revu. */
+  traceId: string;
+  /** Identifiant technique du relecteur (sujet Keycloak). */
+  sujet: string;
+  conclusion: ConclusionRevue;
+  commentaire?: string;
+  date: string;
+  env: Environnement;
+}
+
+/**
+ * Revue humaine d'un bris de glace : nouvelle trace qui désigne la trace revue (les traces ne sont
+ * jamais modifiées). Une revue « injustifie » ou « a-approfondir » doit être suivie par un humain.
+ */
+export function revueBrisDeGlace(o: OptionsRevueBrisDeGlace): AuditEvent {
+  return {
+    resourceType: 'AuditEvent',
+    ...(o.env === 'prod' ? {} : { meta: { tag: [MARQUEUR_FICTIF] } }),
+    type: { system: SYSTEMES.auditType, code: '110100', display: 'Application Activity' },
+    subtype: [{ system: SYSTEMES.sousTypeAudit, code: 'revue-bris-de-glace' }],
+    action: 'E',
+    recorded: o.date,
+    outcome: '0',
+    outcomeDesc: o.conclusion,
+    agent: [
+      {
+        who: { identifier: { system: SYSTEMES.sujetCompte, value: o.sujet } },
+        requestor: true,
+        role: [{ coding: [{ system: SYSTEMES.role, code: 'revue-acces' }] }],
+      },
+    ],
+    source: { observer: { display: 'identite' } },
+    entity: [
+      {
+        what: { reference: `AuditEvent/${o.traceId}` },
+        ...(o.commentaire
+          ? { detail: [{ type: 'commentaire-revue', valueString: o.commentaire }] }
           : {}),
       },
     ],

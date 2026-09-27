@@ -5,11 +5,13 @@ export {
   evenementAccesDossier,
   provenanceAgent,
   revoquer,
+  revueBrisDeGlace,
 } from './construire.js';
 export type {
   OptionsConditionDeclaree,
   OptionsConsentement,
   OptionsEvenementAcces,
+  OptionsRevueBrisDeGlace,
   OptionsProvenanceAgent,
 } from './construire.js';
 export { jeuFictif } from './donnees-fictives.js';

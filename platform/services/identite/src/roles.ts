@@ -8,6 +8,8 @@ export const ROLES = [
   'pharmacien',
   'administrateur',
   'agent-ia',
+  /** Relecteur des accès d'urgence : revoit les bris de glace, aucun accès clinique. */
+  'revue-acces',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

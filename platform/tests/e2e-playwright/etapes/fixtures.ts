@@ -14,6 +14,7 @@ export interface Monde {
   jetons: Map<string, string>;
   reponse?: Reponse;
   consentementId?: string;
+  traceId?: string;
 }
 
 const base64url = (b: Buffer): string => b.toString('base64url');
