@@ -9,16 +9,15 @@ if [[ -z "${GITHUB_ENV:-}" ]]; then
   exit 1
 fi
 
-secret() {
-  local v
-  v="$(openssl rand -hex 24)"
+# Chaque valeur est masquée avant tout autre usage. Pas de sous-shell « $(…) » autour du masquage :
+# la ligne ::add-mask:: serait capturée avec la valeur au lieu d'atteindre le runner.
+MDP_ADMIN="$(openssl rand -hex 24)"
+MDP_MIGRATION="$(openssl rand -hex 24)"
+MDP_EXECUTION="$(openssl rand -hex 24)"
+CLE="$(openssl rand -hex 24)"
+for v in "$MDP_ADMIN" "$MDP_MIGRATION" "$MDP_EXECUTION" "$CLE"; do
   echo "::add-mask::$v"
-  echo "$v"
-}
-MDP_ADMIN="$(secret)"
-MDP_MIGRATION="$(secret)"
-MDP_EXECUTION="$(secret)"
-CLE="$(secret)"
+done
 
 docker run -d --name mbolo-postgres-test -p 127.0.0.1:5432:5432 \
   -e POSTGRES_PASSWORD="$MDP_ADMIN" postgres:16-alpine > /dev/null
