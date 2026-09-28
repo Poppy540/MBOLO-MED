@@ -39,10 +39,18 @@ export class DossierProchesFhir extends ClientFhir implements DossierProches {
     return DossierProchesFhir.fiche(await r.json());
   }
 
-  async activer(id: string): Promise<void> {
+  activer(id: string): Promise<void> {
+    return this.changerActivation(id, true);
+  }
+
+  desactiver(id: string): Promise<void> {
+    return this.changerActivation(id, false);
+  }
+
+  private async changerActivation(id: string, actif: boolean): Promise<void> {
     const fiche = await this.lire(id);
     if (!fiche) throw new ErreurDepot('Fiche du proche introuvable.', 409);
-    if (fiche.active) return;
+    if (fiche.active === actif) return;
     const version = fiche.meta?.versionId;
     const r = await this.appeler(`${this.base}/RelatedPerson/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -50,7 +58,7 @@ export class DossierProchesFhir extends ClientFhir implements DossierProches {
         'content-type': TYPE_FHIR,
         ...(version ? { 'if-match': `W/"${version}"` } : {}),
       },
-      body: JSON.stringify({ ...fiche, active: true }),
+      body: JSON.stringify({ ...fiche, active: actif }),
     });
     if (!r.ok) throw ClientFhir.echec(r, 'Proche');
   }
@@ -99,6 +107,55 @@ export class ConsentementsIdentite implements ConsentementsProche {
       throw new ErreurServiceAppele(503);
     }
     if (r.status !== 201) throw new ErreurServiceAppele(r.status === 403 ? 403 : 503);
+  }
+
+  async retirer(o: {
+    jetonPatient: string;
+    patientId: string;
+    relatedPersonId: string;
+  }): Promise<void> {
+    const cible = `RelatedPerson/${o.relatedPersonId}`;
+    const liste = await this.demander(
+      `/patients/${encodeURIComponent(o.patientId)}/consentements`,
+      o.jetonPatient,
+    );
+    const { consentements } = (await liste.json()) as {
+      consentements?: {
+        id?: string;
+        status?: string;
+        category?: { coding?: { code?: string }[] }[];
+        provision?: { actor?: { reference?: { reference?: string } }[] };
+      }[];
+    };
+    for (const c of consentements ?? []) {
+      if (
+        c.id &&
+        c.status === 'active' &&
+        c.category?.[0]?.coding?.[0]?.code === 'C-PROCHE' &&
+        c.provision?.actor?.[0]?.reference?.reference === cible
+      ) {
+        await this.demander(
+          `/consentements/${encodeURIComponent(c.id)}/revocation`,
+          o.jetonPatient,
+          'POST',
+        );
+      }
+    }
+  }
+
+  private async demander(chemin: string, jeton: string, methode: 'GET' | 'POST' = 'GET') {
+    let r: Response;
+    try {
+      r = await this.appeler(`${this.url}${chemin}`, {
+        method: methode,
+        headers: { authorization: `Bearer ${jeton}` },
+        signal: AbortSignal.timeout(5_000),
+      });
+    } catch {
+      throw new ErreurServiceAppele(503);
+    }
+    if (!r.ok) throw new ErreurServiceAppele(r.status === 403 ? 403 : 503);
+    return r;
   }
 }
 

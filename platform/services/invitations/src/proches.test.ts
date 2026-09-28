@@ -30,7 +30,12 @@ function monter(o: { ouvert?: boolean; smsEnPanne?: boolean; consentementRefuse?
       const f = fiches.get(id);
       if (f) fiches.set(id, { ...f, active: true });
     },
+    desactiver: async (id) => {
+      const f = fiches.get(id);
+      if (f) fiches.set(id, { ...f, active: false });
+    },
   };
+  const retraits: string[] = [];
   const consentements: { jeton: string; beneficiaire: string }[] = [];
   const sms: { telephone: string; code: string; jours: number }[] = [];
   let maintenant = new Date('2026-10-01T08:00:00Z');
@@ -42,6 +47,9 @@ function monter(o: { ouvert?: boolean; smsEnPanne?: boolean; consentementRefuse?
       accorder: async (c) => {
         if (o.consentementRefuse) throw new Error('refusé');
         consentements.push({ jeton: c.jetonPatient, beneficiaire: c.relatedPersonId });
+      },
+      retirer: async (c) => {
+        retraits.push(`${c.jetonPatient}:${c.relatedPersonId}`);
       },
     },
     {
@@ -68,6 +76,7 @@ function monter(o: { ouvert?: boolean; smsEnPanne?: boolean; consentementRefuse?
     depot,
     fiches,
     consentements,
+    retraits,
     sms,
     avancer: (jours: number) => {
       maintenant = new Date(maintenant.getTime() + jours * 86_400_000);
@@ -114,7 +123,7 @@ describe('invitation d’un proche par le patient (ADR-0019)', () => {
       statut: 409,
       motif: 'limite-atteinte',
     });
-    await m.proches.revoquer(patient, a?.id ?? '');
+    await m.proches.revoquer(patient, 'j', a?.id ?? '');
     await expect(m.proches.inviter(patient, 'j', demande)).resolves.toBeDefined();
     m.avancer(8);
     await expect(m.proches.inviter(patient, 'j', demande)).resolves.toBeDefined();
@@ -160,7 +169,7 @@ describe('invitation d’un proche par le patient (ADR-0019)', () => {
       }),
     ]);
     const autre: Utilisateur = { sujet: 'u-p2', roles: ['patient'], patientId: 'pat-fictif-002' };
-    await expect(m.proches.revoquer(autre, r.id)).rejects.toMatchObject({ statut: 404 });
+    await expect(m.proches.revoquer(autre, 'j', r.id)).rejects.toMatchObject({ statut: 404 });
     expect(await m.proches.lister(autre)).toEqual([]);
   });
 });
@@ -195,5 +204,23 @@ describe('inscription avec un code de proche', () => {
       cohorte: 'ville-fictive',
       type: 'patient',
     });
+  });
+});
+
+describe('le patient retire un proche qui a déjà son compte', () => {
+  it('partage retiré, fiche désactivée, place libérée ; une seule fois', async () => {
+    const m = monter();
+    const r = await m.proches.inviter(patient, 'jeton-p1', demande);
+    await m.invitations.utiliser(r.code, 'u-proche', ['patient', 'proche']);
+    expect(m.fiches.get('rp-1')?.active).toBe(true);
+    await m.proches.revoquer(patient, 'jeton-p1', r.id);
+    expect(m.retraits).toEqual(['jeton-p1:rp-1']);
+    expect(m.fiches.get('rp-1')?.active).toBe(false);
+    expect((await m.proches.lister(patient))[0]?.statut).toBe('revoque');
+    await expect(m.proches.revoquer(patient, 'jeton-p1', r.id)).rejects.toMatchObject({
+      statut: 404,
+    });
+    // Place libérée : 3 nouvelles invitations possibles.
+    for (let i = 0; i < 3; i++) await m.proches.inviter(patient, 'j', demande);
   });
 });

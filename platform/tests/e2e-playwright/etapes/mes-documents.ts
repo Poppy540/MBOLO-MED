@@ -124,7 +124,8 @@ When(
     monde.visio.set('application patient', { contexte, page: p });
     await p.goto(`${APP_PATIENT_URL}/`);
     await p.getByRole('button', { name: 'Se connecter' }).click();
-    await saisirIdentifiants(p, identifiant, false);
+    // Double authentification obligatoire pour un proche (ADR-0019).
+    await saisirIdentifiants(p, identifiant, true);
     await expect(
       p.getByRole('heading', { name: 'Ordonnances et consignes de votre proche' }),
     ).toBeVisible();

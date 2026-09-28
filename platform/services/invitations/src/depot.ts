@@ -58,7 +58,10 @@ export interface DepotInvitations {
   ): Promise<'cree' | 'limite-atteinte' | 'doublon'>;
   /** Invitations de proches créées par ce patient, les plus récentes d'abord. */
   listerProches(creePar: string): Promise<Invitation[]>;
-  /** Révoque l'invitation d'un proche encore inutilisée, seulement par le patient qui l'a créée. */
+  /**
+   * Révoque l'invitation d'un proche, utilisée ou non (le patient retire ce proche), seulement par
+   * le patient qui l'a créée ; une invitation révoquée ne compte plus dans la limite.
+   */
   revoquerProche(id: string, creePar: string, maintenant: Date): Promise<boolean>;
 }
 
@@ -134,7 +137,7 @@ export class DepotMemoire implements DepotInvitations {
     const i = this.invitations.find(
       (x) => x.id === id && x.creePar === creePar && x.type === 'proche',
     );
-    if (!i || i.utiliseLe || i.revoqueLe) return false;
+    if (!i || i.revoqueLe) return false;
     i.revoqueLe = maintenant;
     return true;
   }
@@ -257,8 +260,7 @@ export class DepotPostgres implements DepotInvitations {
   async revoquerProche(id: string, creePar: string, maintenant: Date): Promise<boolean> {
     const r = await this.sql`
       update invitations.codes set revoque_le = ${maintenant}
-       where id = ${id} and cree_par = ${creePar} and type = 'proche'
-         and utilise_le is null and revoque_le is null`;
+       where id = ${id} and cree_par = ${creePar} and type = 'proche' and revoque_le is null`;
     return r.count === 1;
   }
 }

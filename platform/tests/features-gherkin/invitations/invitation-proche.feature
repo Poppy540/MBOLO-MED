@@ -4,7 +4,7 @@
 Fonctionnalité: Le patient invite un proche
   Afin qu'un proche, parfois à l'étranger, m'aide à suivre mon traitement
   En tant que patient
-  Je veux inviter ce proche : il reçoit un code par SMS, et je peux annuler l'invitation.
+  Je veux inviter ce proche : il reçoit un code par SMS, crée son compte, et je peux le retirer.
 
   Scénario: Le patient invite un proche, qui reçoit son code par SMS ; le dossier ne garde que son prénom et le lien
     Étant donné que "patient-fictif-01" est connecté
@@ -19,6 +19,19 @@ Fonctionnalité: Le patient invite un proche
     Quand "patient-fictif-01" annule cette invitation de proche
     Alors l'invitation du proche est "revoque"
     Et "patient-fictif-01" retire le partage avec ce proche
+
+  Scénario: Le proche crée son compte avec son code, puis le patient le retire
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "patient-fictif-01" n'a aucune invitation de proche en cours
+    Et que "patient-fictif-01" invite son proche "Serge [FICTIF]", son enfant, au numéro "+33000000009"
+    Quand le proche crée son compte avec ce code depuis l’application patient
+    Alors il configure la double authentification et arrive sur les documents partagés par son proche
+    Et son compte a le seul rôle proche, rattaché à la fiche du proche, avec la double authentification
+    Et la fiche du proche est active dans le dossier
+    Et l'invitation du proche est "utilise"
+    Quand "patient-fictif-01" retire ce proche
+    Alors l'invitation du proche est "revoque"
+    Et la fiche du proche est inactive et le partage retiré
 
   Scénario: Trois proches au plus par patient
     Étant donné que "patient-fictif-01" est connecté

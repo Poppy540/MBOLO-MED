@@ -31,7 +31,11 @@
       },
       {
         "name": "proche",
-        "description": "Proche ou aidant (dont diaspora) : accès limité, uniquement avec un consentement C-PROCHE qui le désigne."
+        "description": "Proche ou aidant (dont diaspora) : accès limité, uniquement avec un consentement C-PROCHE qui le désigne. MFA obligatoire (ADR-0019).",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       },
       {
         "name": "professionnel",

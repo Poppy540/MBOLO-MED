@@ -59,6 +59,8 @@ describe('royaume mbolo', () => {
     'gestion-invitations',
     'verification-identite',
     'validation-remboursement',
+    // Le proche voit des données de santé d'une autre personne (ADR-0019, porteur de projet).
+    'proche',
   ])('impose la double authentification au rôle %s', (nom) => {
     const role = royaume.roles.realm.find((r) => r.name === nom);
     expect(role?.composites?.realm).toContain('mfa-requise');
@@ -70,10 +72,8 @@ describe('royaume mbolo', () => {
     }
   });
 
-  it("n'impose pas la double authentification aux patients et proches", () => {
-    for (const nom of ['patient', 'proche']) {
-      expect(royaume.roles.realm.find((r) => r.name === nom)?.composites).toBeUndefined();
-    }
+  it("n'impose pas la double authentification aux patients", () => {
+    expect(royaume.roles.realm.find((r) => r.name === 'patient')?.composites).toBeUndefined();
   });
 
   it('utilise le flux de connexion avec OTP conditionnel', () => {

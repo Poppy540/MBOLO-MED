@@ -7,11 +7,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.keycloak.util.JsonSerialization;
 
 /**
- * Appels au service des invitations (ADR-0013, ADR-0014), avec un jeton de service. En cas de doute
+ * Appels au service des invitations (ADR-0013, ADR-0014, ADR-0019), avec un jeton de service. En cas de doute
  * (service injoignable, réponse inattendue), la réponse est toujours un refus : jamais d'inscription
  * sans code utilisé.
  */
@@ -37,11 +38,25 @@ public final class ClientInvitations {
     this.http = HttpClient.newBuilder().connectTimeout(DELAI).build();
   }
 
-  /** Le code peut-il encore servir ? L'adresse du navigateur sert à limiter les essais. */
+  /** Code utilisé : type (patient ou proche) et, pour un proche, sa fiche dans le dossier. */
+  public record Utilisation(String type, String relatedPersonId) {}
+
+  /**
+   * Le code peut-il encore servir ? L'adresse du navigateur sert à limiter les essais. Les types de
+   * codes que l'extension sait traiter sont déclarés (ADR-0019).
+   */
   public Controle controler(String code, String adresse) {
     try {
       HttpResponse<String> r =
-          poster("/inscription/controle", Map.of("code", valeur(code), "adresse", valeur(adresse)));
+          poster(
+              "/inscription/controle",
+              Map.of(
+                  "code",
+                  valeur(code),
+                  "adresse",
+                  valeur(adresse),
+                  "types",
+                  RolesInscription.TYPES));
       if (r.statusCode() == 429) return Controle.TROP_D_ESSAIS;
       if (r.statusCode() != 200) return Controle.INDISPONIBLE;
       Object valide = JsonSerialization.readValue(r.body(), Map.class).get("valide");
@@ -54,21 +69,34 @@ public final class ClientInvitations {
     }
   }
 
-  /** Utilise le code pour le compte {@code sujet} ; vrai seulement si le service l'a accepté. */
-  public boolean utiliser(String code, String sujet) {
+  /**
+   * Utilise le code pour le compte {@code sujet} ; présent seulement si le service l'a accepté et que
+   * la réponse est cohérente (type de la liste fermée, fiche valide pour un proche).
+   */
+  public Optional<Utilisation> utiliser(String code, String sujet) {
     try {
-      return poster("/inscription/utilisation", Map.of("code", valeur(code), "sujet", sujet))
-              .statusCode()
-          == 200;
+      HttpResponse<String> r =
+          poster(
+              "/inscription/utilisation",
+              Map.of("code", valeur(code), "sujet", sujet, "types", RolesInscription.TYPES));
+      if (r.statusCode() != 200) return Optional.empty();
+      Map<?, ?> corps = JsonSerialization.readValue(r.body(), Map.class);
+      Object type = corps.get("type");
+      Object fiche = corps.get("relatedPersonId");
+      String t = type instanceof String s ? s : null;
+      String f = fiche instanceof String s ? s : null;
+      return RolesInscription.coherente(t, f)
+          ? Optional.of(new Utilisation(t, f))
+          : Optional.empty();
     } catch (IOException | RuntimeException e) {
-      return false;
+      return Optional.empty();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return false;
+      return Optional.empty();
     }
   }
 
-  private HttpResponse<String> poster(String chemin, Map<String, String> corps)
+  private HttpResponse<String> poster(String chemin, Map<String, ?> corps)
       throws IOException, InterruptedException {
     HttpRequest requete =
         HttpRequest.newBuilder(base.resolve(chemin))

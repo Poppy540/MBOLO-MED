@@ -1,10 +1,10 @@
 # language: fr
-# Données FICTIVES uniquement. Règle : ADR-0009 (MFA obligatoire pour les professionnels).
+# Données FICTIVES uniquement. Règles : ADR-0009 (MFA obligatoire pour les professionnels), ADR-0019 (et pour les proches).
 @identite @securite @mfa
 Fonctionnalité: Double authentification des professionnels
   Afin de protéger l'accès aux dossiers médicaux contre le vol de mot de passe
   En tant que plateforme Mbolo Santé
-  Je veux que les professionnels, infirmiers, pharmaciens et administrateurs
+  Je veux que les professionnels, infirmiers, pharmaciens, administrateurs et proches
   ne puissent se connecter qu'avec un code à usage unique, sans l'imposer aux patients.
 
   Scénario: Un infirmier doit configurer la double authentification à sa première connexion
@@ -24,6 +24,10 @@ Fonctionnalité: Double authentification des professionnels
     Étant donné que "infirmier-fictif-01" est connecté
     Quand "infirmier-fictif-01" demande l'accès au dossier "pat-fictif-001"
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
+
+  Scénario: Un proche ne se connecte pas avec son seul mot de passe
+    Quand "proche-fictif-01" saisit seulement son identifiant et son mot de passe
+    Alors un code de double authentification est exigé
 
   Scénario: Un patient n'a pas de code à saisir
     Quand "patient-fictif-02" saisit seulement son identifiant et son mot de passe

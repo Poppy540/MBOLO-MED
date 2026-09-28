@@ -22,9 +22,11 @@ import org.keycloak.models.utils.FormMessage;
 import org.keycloak.provider.ProviderConfigProperty;
 
 /**
- * Étape du formulaire d'inscription (ADR-0014) : exige un code d'invitation, l'utilise une seule fois
- * pour le compte créé et n'attribue que le rôle {@code patient}. Le mot de passe reste dans Keycloak ;
- * l'identité du patient n'est pas demandée ici (elle va dans le dossier FHIR, étape suivante).
+ * Étape du formulaire d'inscription (ADR-0014, ADR-0019) : exige un code d'invitation, l'utilise une
+ * seule fois pour le compte créé et n'attribue que le rôle fixé par le type du code : {@code patient}
+ * ou {@code proche} (liste fermée, {@link RolesInscription}). Le mot de passe reste dans Keycloak ;
+ * l'identité du patient n'est pas demandée ici (elle va dans le dossier FHIR, étape suivante). Un
+ * proche est rattaché à sa fiche et doit configurer la double authentification.
  */
 public final class CodeInvitationFormAction implements FormAction, FormActionFactory {
 
@@ -83,13 +85,29 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
     String code = context.getHttpRequest().getDecodedFormParameters().getFirst(CHAMP);
     // Utilisation atomique côté service : si un autre compte l'a pris entre-temps, l'exception annule
     // la transaction, donc la création du compte.
-    if (!client(context.getSession(), context.getRealm()).utiliser(code, utilisateur.getId())) {
-      throw new IllegalStateException("Code d'invitation non utilisable : inscription annulée.");
+    ClientInvitations.Utilisation utilisation =
+        client(context.getSession(), context.getRealm())
+            .utiliser(code, utilisateur.getId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Code d'invitation non utilisable : inscription annulée."));
+    // Le rôle vient du type du code, fixé par le service ; liste fermée (patient ou proche).
+    String nomRole =
+        RolesInscription.role(utilisation.type())
+            .orElseThrow(() -> new IllegalStateException("Type de code inconnu."));
+    RoleModel role = context.getRealm().getRole(nomRole);
+    if (role == null) throw new IllegalStateException("Rôle " + nomRole + " absent du royaume.");
+    utilisateur.grantRole(role);
+    if ("proche".equals(utilisation.type())) {
+      // Proche (ADR-0019) : rattaché à sa fiche, fixée par le service ; double authentification
+      // configurée dès l'inscription (le rôle proche impose ensuite l'OTP à chaque connexion).
+      utilisateur.setSingleAttribute(
+          RolesInscription.ATTRIBUT_PROCHE, utilisation.relatedPersonId());
+      utilisateur.addRequiredAction(UserModel.RequiredAction.CONFIGURE_TOTP);
     }
-    RoleModel patient = context.getRealm().getRole(ROLE);
-    if (patient == null) throw new IllegalStateException("Rôle patient absent du royaume.");
-    utilisateur.grantRole(patient);
-    JOURNAL.infof("inscription avec code d'invitation : compte %s", utilisateur.getId());
+    JOURNAL.infof(
+        "inscription avec code d'invitation : compte %s, rôle %s", utilisateur.getId(), nomRole);
   }
 
   private ClientInvitations client(KeycloakSession session, RealmModel realm) {
@@ -142,7 +160,7 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
 
   @Override
   public String getHelpText() {
-    return "Exige un code d'invitation valable, l'utilise une fois et attribue le rôle patient.";
+    return "Exige un code d'invitation valable, l'utilise une fois et attribue le rôle patient ou proche.";
   }
 
   @Override

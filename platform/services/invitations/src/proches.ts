@@ -25,6 +25,8 @@ export interface DossierProches {
   lire(id: string): Promise<RelatedPerson | undefined>;
   /** Marque la fiche active : le proche a créé son compte. */
   activer(id: string): Promise<void>;
+  /** Marque la fiche inactive : le patient a retiré ce proche. */
+  desactiver(id: string): Promise<void>;
 }
 
 /** Consentement C-PROCHE du patient, par le service identite avec le jeton du patient. */
@@ -35,6 +37,8 @@ export interface ConsentementsProche {
     relatedPersonId: string;
     versionTexte: string;
   }): Promise<void>;
+  /** Retire les partages C-PROCHE actifs avec cette fiche (le proche n'a plus accès). */
+  retirer(o: { jetonPatient: string; patientId: string; relatedPersonId: string }): Promise<void>;
 }
 
 /** Envoi du code par SMS (service notifications, gabarit fermé). */
@@ -202,11 +206,26 @@ export class ServiceProches {
     );
   }
 
-  /** Une invitation pas encore utilisée ne peut plus servir ; celle d'un autre est « introuvable ». */
-  async revoquer(u: Utilisateur, id: string): Promise<void> {
-    await this.exigerPatient(u);
+  /**
+   * Le patient retire un proche : une invitation en cours ne peut plus servir ; un proche qui a déjà
+   * son compte perd l'accès (partage retiré, fiche inactive). La place est libérée. L'invitation d'un
+   * autre patient est « introuvable ».
+   */
+  async revoquer(u: Utilisateur, jetonPatient: string, id: string): Promise<void> {
+    const patientId = await this.exigerPatient(u);
+    const i = (await this.depot.listerProches(u.sujet)).find((x) => x.id === id);
+    if (!i || i.revoqueLe) throw new ErreurProche(404, 'Invitation introuvable ou déjà annulée.');
+    if (i.relatedPersonId) {
+      // D'abord l'accès (partage), puis la fiche : en cas d'échec, rien n'est marqué révoqué.
+      await this.consentements.retirer({
+        jetonPatient,
+        patientId,
+        relatedPersonId: i.relatedPersonId,
+      });
+      if (i.utiliseLe) await this.dossier.desactiver(i.relatedPersonId);
+    }
     if (!(await this.depot.revoquerProche(id, u.sujet, this.horloge()))) {
-      throw new ErreurProche(404, 'Invitation introuvable ou déjà utilisée.');
+      throw new ErreurProche(404, 'Invitation introuvable ou déjà annulée.');
     }
   }
 
