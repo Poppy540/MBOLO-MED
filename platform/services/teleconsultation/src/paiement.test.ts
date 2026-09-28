@@ -1,6 +1,6 @@
 // Réservation payante (ADR-0017) : créneau retenu, confirmation après paiement, expiration du délai.
 // Données FICTIVES.
-import type { Utilisateur } from '@mbolo/identite';
+import { ErreurDepot, type Utilisateur } from '@mbolo/identite';
 import { creerJournal, type Evenement } from '@mbolo/journal-securise';
 import { describe, expect, it } from 'vitest';
 import { DepotCreneauxMemoire } from './creneaux.js';
@@ -236,5 +236,40 @@ describe('client HTTP du service de paiement', () => {
     await expect(
       refus.creer({ reference: 'x', sujet: 'u', type: 'generaliste' }),
     ).rejects.toMatchObject({ statut: 503 });
+  });
+});
+
+describe('annulation au moment où le paiement confirme le rendez-vous', () => {
+  it('le rendez-vous a changé entre-temps : relu, puis annulé au second essai', async () => {
+    const m = await monter();
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    // Le passage périodique confirme le rendez-vous juste avant l'écriture de l'annulation.
+    const annuler = m.depot.annuler.bind(m.depot);
+    let essais = 0;
+    m.depot.annuler = async (...args) => {
+      essais += 1;
+      if (essais === 1) {
+        await m.depot.confirmer(r.id);
+        throw new ErreurDepot('Le rendez-vous a changé.', 409);
+      }
+      return annuler(...args);
+    };
+    expect((await m.service.annuler(patient, r.id)).statut).toBe('annule');
+    expect(essais).toBe(2);
+    expect(m.paiements.annules.has(r.id)).toBe(true);
+  });
+
+  it('déjà annulé entre-temps : le conflit est rendu, sans second essai', async () => {
+    const m = await monter();
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    const annuler = m.depot.annuler.bind(m.depot);
+    let essais = 0;
+    m.depot.annuler = async (...args) => {
+      essais += 1;
+      await annuler(...args);
+      throw new ErreurDepot('Le rendez-vous a changé.', 409);
+    };
+    await expect(m.service.annuler(patient, r.id)).rejects.toMatchObject({ statut: 409 });
+    expect(essais).toBe(1);
   });
 });
