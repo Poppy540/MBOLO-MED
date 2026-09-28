@@ -233,7 +233,7 @@ describe('API des proches (ADR-0019)', () => {
       { accorder: async () => undefined, retirer: async () => undefined },
       { envoyer: async () => 'envoyee' },
       { estActif: async () => true },
-      { max: 3, validiteJours: 7, env: 'dev' },
+      { max: 3, validiteJours: 7, parJour: 5, env: 'dev' },
     );
     const app = await creerServeur({
       verifierJeton: async (j) => {

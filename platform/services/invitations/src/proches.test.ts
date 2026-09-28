@@ -15,7 +15,14 @@ const demande = {
   versionTexte: 'c-proche-v0.1-brouillon',
 };
 
-function monter(o: { ouvert?: boolean; smsEnPanne?: boolean; consentementRefuse?: boolean } = {}) {
+function monter(
+  o: {
+    ouvert?: boolean;
+    smsEnPanne?: boolean;
+    consentementRefuse?: boolean;
+    parJour?: number;
+  } = {},
+) {
   const depot = new DepotMemoire();
   const empreinte = creerEmpreinte('cle-de-test-fictive-de-32-octets-au-moins!!');
   const fiches = new Map<string, RelatedPerson>();
@@ -60,7 +67,7 @@ function monter(o: { ouvert?: boolean; smsEnPanne?: boolean; consentementRefuse?
       },
     },
     { estActif: async (nom) => nom === 'consentement.proche' && o.ouvert !== false },
-    { max: 3, validiteJours: 7, env: 'dev' },
+    { max: 3, validiteJours: 7, parJour: o.parJour ?? 20, env: 'dev' },
     () => maintenant,
   );
   const invitations = new ServiceInvitations(
@@ -223,5 +230,22 @@ describe('le patient retire un proche qui a déjà son compte', () => {
     });
     // Place libérée : 3 nouvelles invitations possibles.
     for (let i = 0; i < 3; i++) await m.proches.inviter(patient, 'j', demande);
+  });
+});
+
+describe('limite d’invitations par jour (SMS, parfois internationaux)', () => {
+  it('annuler puis réinviter en boucle ne dépasse pas la limite sur 24 heures', async () => {
+    const m = monter({ parJour: 5 });
+    for (let i = 0; i < 5; i++) {
+      const r = await m.proches.inviter(patient, 'j', demande);
+      await m.proches.revoquer(patient, 'j', r.id);
+    }
+    await expect(m.proches.inviter(patient, 'j', demande)).rejects.toMatchObject({
+      statut: 429,
+      motif: 'limite-jour',
+    });
+    expect(m.sms).toHaveLength(5);
+    m.avancer(1.01);
+    await expect(m.proches.inviter(patient, 'j', demande)).resolves.toBeDefined();
   });
 });

@@ -55,7 +55,8 @@ export interface DepotInvitations {
     i: Invitation,
     max: number,
     maintenant: Date,
-  ): Promise<'cree' | 'limite-atteinte' | 'doublon'>;
+    parJour: { max: number; depuis: Date },
+  ): Promise<'cree' | 'limite-atteinte' | 'limite-jour' | 'doublon'>;
   /** Invitations de proches créées par ce patient, les plus récentes d'abord. */
   listerProches(creePar: string): Promise<Invitation[]>;
   /**
@@ -116,8 +117,13 @@ export class DepotMemoire implements DepotInvitations {
     i: Invitation,
     max: number,
     maintenant: Date,
-  ): Promise<'cree' | 'limite-atteinte' | 'doublon'> {
+    parJour: { max: number; depuis: Date },
+  ): Promise<'cree' | 'limite-atteinte' | 'limite-jour' | 'doublon'> {
     if (this.invitations.some((x) => x.empreinte.equals(i.empreinte))) return 'doublon';
+    const recentes = this.invitations.filter(
+      (x) => x.creePar === i.creePar && x.type === 'proche' && x.creeLe > parJour.depuis,
+    ).length;
+    if (recentes >= parJour.max) return 'limite-jour';
     const n = this.invitations.filter(
       (x) => x.creePar === i.creePar && compteDansLimite(x, maintenant),
     ).length;
@@ -231,10 +237,15 @@ export class DepotPostgres implements DepotInvitations {
     i: Invitation,
     max: number,
     maintenant: Date,
-  ): Promise<'cree' | 'limite-atteinte' | 'doublon'> {
+    parJour: { max: number; depuis: Date },
+  ): Promise<'cree' | 'limite-atteinte' | 'limite-jour' | 'doublon'> {
     return this.sql.begin(async (tx) => {
       // Un verrou par patient : le comptage et l'insertion restent cohérents.
       await tx`select pg_advisory_xact_lock(hashtext(${`mbolo-proches:${i.creePar}`}))`;
+      const [jour] = await tx<{ n: number }[]>`
+        select count(*)::int as n from invitations.codes
+         where cree_par = ${i.creePar} and type = 'proche' and cree_le > ${parJour.depuis}`;
+      if ((jour?.n ?? 0) >= parJour.max) return 'limite-jour' as const;
       const [compte] = await tx<{ n: number }[]>`
         select count(*)::int as n from invitations.codes
          where cree_par = ${i.creePar} and type = 'proche' and revoque_le is null

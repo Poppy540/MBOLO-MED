@@ -100,6 +100,7 @@ try {
       {
         max: Number(env['INVITATIONS_PROCHES_MAX'] ?? '3'),
         validiteJours: Number(env['INVITATIONS_VALIDITE_PROCHE_JOURS'] ?? '7'),
+        parJour: Number(env['INVITATIONS_PROCHES_PAR_JOUR'] ?? '5'),
         env: production ? 'prod' : 'dev',
       },
     );

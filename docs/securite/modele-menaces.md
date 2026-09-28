@@ -3,60 +3,79 @@
 > Squelette, méthode STRIDE (skill `modelisation-menaces-stride` du sous-agent `pilote-securite`). À compléter module par module et à revoir à chaque vague.
 
 ## Périmètre et actifs
-| Actif | Sensibilité |
-|---|---|
-| Dossier médical FHIR | Très élevée (données de santé) |
-| Conversations patients avec les agents IA | Très élevée |
-| Ordonnances électroniques | Très élevée (intégrité critique) |
-| Photos d'identité (document et visage) | Très élevée (identité, image du visage) |
-| Clé maître des documents | Critique |
-| Identifiants et secrets | Critique |
-| Paiements | Élevée |
+
+| Actif                                     | Sensibilité                             |
+| ----------------------------------------- | --------------------------------------- |
+| Dossier médical FHIR                      | Très élevée (données de santé)          |
+| Conversations patients avec les agents IA | Très élevée                             |
+| Ordonnances électroniques                 | Très élevée (intégrité critique)        |
+| Photos d'identité (document et visage)    | Très élevée (identité, image du visage) |
+| Clé maître des documents                  | Critique                                |
+| Identifiants et secrets                   | Critique                                |
+| Paiements                                 | Élevée                                  |
 
 ## Menaces prioritaires initiales (à détailler)
-| STRIDE | Menace | Exemple | Mesure prévue |
-|---|---|---|---|
-| S (usurpation) | Faux professionnel de santé | Diplôme falsifié | Vérification humaine de l'inscription ordinale |
-| T (altération) | Ordonnance modifiée | Posologie changée en transit | Signature électronique, intégrité vérifiée par la pharmacie |
-| R (répudiation) | Contestation d'un acte | « Je n'ai pas prescrit cela » | AuditEvent / Provenance FHIR, journaux immuables |
-| I (divulgation) | Fuite de données de santé | Accès à un autre dossier | Contrôle d'accès par patient, chiffrement, journalisation |
-| D (déni de service) | Plateforme indisponible | Pic ou attaque | Supervision, dégradation vers audio/SMS |
-| E (élévation) | Injection de prompt sur un agent | Message patient « ignore tes consignes » | `garde-fous-communs`, outils à portée minimale, OWASP LLM01 |
+
+| STRIDE              | Menace                           | Exemple                                  | Mesure prévue                                               |
+| ------------------- | -------------------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| S (usurpation)      | Faux professionnel de santé      | Diplôme falsifié                         | Vérification humaine de l'inscription ordinale              |
+| T (altération)      | Ordonnance modifiée              | Posologie changée en transit             | Signature électronique, intégrité vérifiée par la pharmacie |
+| R (répudiation)     | Contestation d'un acte           | « Je n'ai pas prescrit cela »            | AuditEvent / Provenance FHIR, journaux immuables            |
+| I (divulgation)     | Fuite de données de santé        | Accès à un autre dossier                 | Contrôle d'accès par patient, chiffrement, journalisation   |
+| D (déni de service) | Plateforme indisponible          | Pic ou attaque                           | Supervision, dégradation vers audio/SMS                     |
+| E (élévation)       | Injection de prompt sur un agent | Message patient « ignore tes consignes » | `garde-fous-communs`, outils à portée minimale, OWASP LLM01 |
 
 ## Mesures en place (vague 0, données fictives) — vérifiées par des tests automatisés
 
-| STRIDE | Menace | Mesure | Preuve |
-|---|---|---|---|
-| S | Vol de mot de passe d'un professionnel | Double authentification (TOTP) obligatoire pour les rôles professionnels | e2e `identite/double-authentification.feature` |
-| S | Interception du code d'autorisation | PKCE S256 obligatoire, connexion directe par mot de passe désactivée | e2e `identite/connexion-keycloak.feature` |
-| S / E | Un utilisateur se rattache au dossier d'un autre | `patient_id`, `practitioner_id` et `related_person_id` modifiables par l'administrateur seul | e2e + test `royaume.test.ts` |
-| T | Jeton forgé ou altéré | Signature, émetteur et audience vérifiés (`identite`, passerelle) | tests unitaires + e2e (401) |
-| I | Accès au dossier sans consentement | Refus par défaut ; consentement actif qui désigne le bénéficiaire ; révocation immédiate (recherche sans cache) | e2e `identite/acces-dossier.feature` |
-| I | Un service lit plus que nécessaire | Passerelle : permissions SMART par type ; `_include` et chaînage refusés ; HAPI jamais exposé | e2e `dossier/passerelle.feature` |
-| I | Données personnelles dans le jeton | Jeton sans e-mail ni nom | e2e |
-| R | Contestation d'un accès (bris de glace) | `AuditEvent` pour chaque décision, justification conservée, traces immuables, historique visible par le patient | e2e + tests unitaires |
-| E | Bris de glace abusif | Revue humaine outillée (rôle `revue-acces`), retards signalés, conclusion tracée, pas d'auto-revue, alerte si l'accès est contesté | e2e `identite/revue-bris-de-glace.feature` + tests unitaires |
-| T | Suppression ou modification de traces et de consentements | Suppression jamais relayée ; `AuditEvent` et `Provenance` non modifiables | tests de la passerelle + e2e |
-| E | Fonction activée trop tôt | Feature flags désactivés par défaut, refus si Unleash est injoignable, aucun flag sur la sécurité | tests `@mbolo/drapeaux` + e2e |
-| I | Fuite de secrets | Aucun secret dans le dépôt (gitleaks, modèles `CHANGEME`, secrets injectés à l'import) ; secrets de CI générés et masqués | CI « Sécurité » |
-| D | Saturation d'un service ou du dossier | Limites d'appels par adresse sur tous les services (`@fastify/rate-limit`), limite plus stricte sur les envois de photos | tests unitaires de chaque service |
+| STRIDE | Menace                                                    | Mesure                                                                                                                             | Preuve                                                       |
+| ------ | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| S      | Vol de mot de passe d'un professionnel                    | Double authentification (TOTP) obligatoire pour les rôles professionnels                                                           | e2e `identite/double-authentification.feature`               |
+| S      | Interception du code d'autorisation                       | PKCE S256 obligatoire, connexion directe par mot de passe désactivée                                                               | e2e `identite/connexion-keycloak.feature`                    |
+| S / E  | Un utilisateur se rattache au dossier d'un autre          | `patient_id`, `practitioner_id` et `related_person_id` modifiables par l'administrateur seul                                       | e2e + test `royaume.test.ts`                                 |
+| T      | Jeton forgé ou altéré                                     | Signature, émetteur et audience vérifiés (`identite`, passerelle)                                                                  | tests unitaires + e2e (401)                                  |
+| I      | Accès au dossier sans consentement                        | Refus par défaut ; consentement actif qui désigne le bénéficiaire ; révocation immédiate (recherche sans cache)                    | e2e `identite/acces-dossier.feature`                         |
+| I      | Un service lit plus que nécessaire                        | Passerelle : permissions SMART par type ; `_include` et chaînage refusés ; HAPI jamais exposé                                      | e2e `dossier/passerelle.feature`                             |
+| I      | Données personnelles dans le jeton                        | Jeton sans e-mail ni nom                                                                                                           | e2e                                                          |
+| R      | Contestation d'un accès (bris de glace)                   | `AuditEvent` pour chaque décision, justification conservée, traces immuables, historique visible par le patient                    | e2e + tests unitaires                                        |
+| E      | Bris de glace abusif                                      | Revue humaine outillée (rôle `revue-acces`), retards signalés, conclusion tracée, pas d'auto-revue, alerte si l'accès est contesté | e2e `identite/revue-bris-de-glace.feature` + tests unitaires |
+| T      | Suppression ou modification de traces et de consentements | Suppression jamais relayée ; `AuditEvent` et `Provenance` non modifiables                                                          | tests de la passerelle + e2e                                 |
+| E      | Fonction activée trop tôt                                 | Feature flags désactivés par défaut, refus si Unleash est injoignable, aucun flag sur la sécurité                                  | tests `@mbolo/drapeaux` + e2e                                |
+| I      | Fuite de secrets                                          | Aucun secret dans le dépôt (gitleaks, modèles `CHANGEME`, secrets injectés à l'import) ; secrets de CI générés et masqués          | CI « Sécurité »                                              |
+| D      | Saturation d'un service ou du dossier                     | Limites d'appels par adresse sur tous les services (`@fastify/rate-limit`), limite plus stricte sur les envois de photos           | tests unitaires de chaque service                            |
 
 ## Vérification d'identité par photos (ADR-0015)
 
-| STRIDE | Menace | Exemple | Mesure | Preuve / reste à faire |
-|---|---|---|---|---|
-| I | **Vol du stockage objet ou de la base** | Compartiment exposé, sauvegarde volée | Chaque photo chiffrée avec sa propre clé (AES-256-GCM), clé enveloppée par une clé maître hors stockage ; noms d'objets opaques ; base sans image ni nom | tests `documents` (aucune image en clair) ; **reste** : clé maître dans le KMS de l'hébergeur |
-| I / E | **Abus du rôle de vérificateur** | Consultation par curiosité, capture d'écran | Rôle dédié, double authentification, aucun accès clinique ; chaque consultation tracée **avant** affichage et visible par le patient ; photos jamais gardées par le navigateur (`no-store`) | e2e `verification-par-un-humain.feature` ; **reste** : revue régulière des consultations, désignation des vérificateurs |
-| S | **Photo truquée ou empruntée** | Photo d'une autre personne, document falsifié | Comparaison humaine document ↔ visage ↔ identité déclarée ; « à refaire » ou « refusée » ; vérification en personne en dernier recours | **reste** : consignes écrites pour les vérificateurs |
-| S | **Réutilisation d'un compte** | Un tiers se connecte avec le compte d'un patient vérifié | Invitation à usage unique, mot de passe jamais hors de Keycloak | **reste** : double authentification facultative pour les patients (à étudier) |
-| E | **Auto-vérification** | Un vérificateur valide sa propre identité | Refus si le compte est le patient concerné | test unitaire |
-| T | **Modification étendue du dossier** | Le service documents réécrit le nom du patient | Passerelle : seuls le statut et le numéro sont modifiables (`mbolo_elements_modifiables`) ; ressource complète revalidée ; verrou de version | tests de la passerelle + e2e |
-| T | **Fichier piégé** | PDF ou SVG présenté comme une photo | Format reconnu sur le contenu (JPEG, PNG), 2 Mo au plus ; recompression sur le téléphone | tests unitaires + e2e |
-| R | **Contestation d'une décision** | « Je n'ai jamais refusé ce patient » | Décision enregistrée : qui, quand, résultat, motif codé ; traces des consultations | tests d'intégration PostgreSQL |
-| E | **Agent IA dans le parcours** | Un agent accepte la charte à la place du patient | Charte acceptée par le patient lui-même uniquement ; agents IA refusés partout | tests unitaires `identite` et `documents` |
-| D | **Envois massifs** | Remplissage du stockage | Deux photos au plus par type (sous verrou), 10 envois par minute | tests unitaires et d'intégration |
+| STRIDE | Menace                                  | Exemple                                                  | Mesure                                                                                                                                                                                      | Preuve / reste à faire                                                                                                  |
+| ------ | --------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| I      | **Vol du stockage objet ou de la base** | Compartiment exposé, sauvegarde volée                    | Chaque photo chiffrée avec sa propre clé (AES-256-GCM), clé enveloppée par une clé maître hors stockage ; noms d'objets opaques ; base sans image ni nom                                    | tests `documents` (aucune image en clair) ; **reste** : clé maître dans le KMS de l'hébergeur                           |
+| I / E  | **Abus du rôle de vérificateur**        | Consultation par curiosité, capture d'écran              | Rôle dédié, double authentification, aucun accès clinique ; chaque consultation tracée **avant** affichage et visible par le patient ; photos jamais gardées par le navigateur (`no-store`) | e2e `verification-par-un-humain.feature` ; **reste** : revue régulière des consultations, désignation des vérificateurs |
+| S      | **Photo truquée ou empruntée**          | Photo d'une autre personne, document falsifié            | Comparaison humaine document ↔ visage ↔ identité déclarée ; « à refaire » ou « refusée » ; vérification en personne en dernier recours                                                      | **reste** : consignes écrites pour les vérificateurs                                                                    |
+| S      | **Réutilisation d'un compte**           | Un tiers se connecte avec le compte d'un patient vérifié | Invitation à usage unique, mot de passe jamais hors de Keycloak                                                                                                                             | **reste** : double authentification facultative pour les patients (à étudier)                                           |
+| E      | **Auto-vérification**                   | Un vérificateur valide sa propre identité                | Refus si le compte est le patient concerné                                                                                                                                                  | test unitaire                                                                                                           |
+| T      | **Modification étendue du dossier**     | Le service documents réécrit le nom du patient           | Passerelle : seuls le statut et le numéro sont modifiables (`mbolo_elements_modifiables`) ; ressource complète revalidée ; verrou de version                                                | tests de la passerelle + e2e                                                                                            |
+| T      | **Fichier piégé**                       | PDF ou SVG présenté comme une photo                      | Format reconnu sur le contenu (JPEG, PNG), 2 Mo au plus ; recompression sur le téléphone                                                                                                    | tests unitaires + e2e                                                                                                   |
+| R      | **Contestation d'une décision**         | « Je n'ai jamais refusé ce patient »                     | Décision enregistrée : qui, quand, résultat, motif codé ; traces des consultations                                                                                                          | tests d'intégration PostgreSQL                                                                                          |
+| E      | **Agent IA dans le parcours**           | Un agent accepte la charte à la place du patient         | Charte acceptée par le patient lui-même uniquement ; agents IA refusés partout                                                                                                              | tests unitaires `identite` et `documents`                                                                               |
+| D      | **Envois massifs**                      | Remplissage du stockage                                  | Deux photos au plus par type (sous verrou), 10 envois par minute                                                                                                                            | tests unitaires et d'intégration                                                                                        |
+
+## Proches invités par le patient (ADR-0019)
+
+Actif : l'accès d'un proche aux ordonnances et à la « conduite à tenir » d'un patient (données de santé), et les SMS envoyés à l'étranger (coût).
+
+| STRIDE | Menace                                                 | Exemple                                                        | Mesure                                                                                                                                                                                                                                                         | Preuve / reste à faire                                                                                                                                          |
+| ------ | ------------------------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S      | **Code intercepté ou envoyé au mauvais numéro**        | Faute de frappe dans le numéro ; SMS lu par un tiers           | Code à usage unique, valable 7 jours, empreinte seulement ; **double authentification obligatoire** du proche ; accès limité aux ordonnances et à la « conduite à tenir » ; « A créé son compte » et chaque lecture visibles par le patient ; retrait immédiat | e2e `invitations/*.feature`, `dossier/documents-proche.feature` ; **reste** : prévenir aussi le patient par SMS quand son proche crée son compte                |
+| S      | **Force brute sur les codes**                          | Essais en série à l'inscription                                | 31⁸ codes possibles, essais limités par adresse du navigateur, même réponse pour tout code refusé                                                                                                                                                              | tests `invitations`                                                                                                                                             |
+| E      | **Code de proche utilisé pour obtenir un autre rôle**  | Formulaire modifié, réponse falsifiée                          | Rôle fixé par le type du code côté serveur, liste fermée `patient` / `proche` ; réponse incohérente → inscription annulée ; code de proche refusé si l'appelant ne le déclare pas                                                                              | tests Java `RolesInscriptionTest`, `ClientInvitationsTest`, tests `invitations`                                                                                 |
+| E      | **Agent IA ou tiers qui invite à la place du patient** | Agent qui désigne un proche                                    | Invitation par le patient lui-même, avec son jeton ; agents IA, proches et professionnels refusés                                                                                                                                                              | tests unitaires et e2e                                                                                                                                          |
+| E      | **Patient sous pression d'un proche**                  | Proche qui exige l'accès, ou qui garde le téléphone du patient | Invitation depuis le compte du patient seulement ; retrait possible à tout moment ; accès réduit                                                                                                                                                               | **reste** : procédure pour retirer un proche par téléphone avec l'équipe, sans passer par le téléphone du patient ; consignes d'accompagnement (comité médical) |
+| I      | **Proche qui divulgue ce qu'il voit**                  | Capture d'écran partagée                                       | Minimisation (ni motif, ni observations, ni conclusion) ; rien gardé sur le téléphone ; lectures tracées                                                                                                                                                       | **reste** : conditions d'utilisation acceptées par le proche à l'inscription (juriste)                                                                          |
+| I      | **Données du proche collectées**                       | Numéro, nom, date de naissance                                 | Prénom et lien seulement (règles `mbolo-proche-1` à `-3`) ; **numéro jamais enregistré ni journalisé**                                                                                                                                                         | tests `dossier-fhir`, `invitations`, `notifications`                                                                                                            |
+| D      | **Envoi massif de SMS** (coût, harcèlement)            | Annuler et réinviter en boucle vers n'importe quel numéro      | 3 proches actifs au plus et **5 invitations par patient sur 24 heures**, annulées comprises (verrou) ; limite d'appels par adresse                                                                                                                             | tests unitaires et PostgreSQL                                                                                                                                   |
+| R      | **Contestation d'un partage**                          | « Je n'ai jamais invité cette personne »                       | Consentement `C-PROCHE` enregistré avec la version du texte ; invitation (qui, quand) conservée ; lectures tracées                                                                                                                                             | tests `identite` et `invitations`                                                                                                                               |
 
 **Reste à traiter avant la vague 1 :**
+
 - authentification des services par clé asymétrique ;
 - réseau privé et TLS ;
 - revue humaine des bris de glace : désigner les relecteurs et fixer le délai (l'outil est prêt) ;
