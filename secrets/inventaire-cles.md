@@ -84,6 +84,9 @@
 | `DOCUMENTS_MIGRATION_DATABASE_URL` | Base des services, schéma `documents` | **Infrastructure uniquement** (démarrage ou déploiement) | Appliquer les migrations versionnées | Propriétaire du schéma `documents` seulement ; jamais utilisée pour les requêtes du service | D R P | idem | 30 j | RT | 1 |
 | `DOCUMENTS_CLE_MAITRE` | Service documents (ADR-0015) | Plateforme (documents) | Clé maître locale (32 octets, base64) qui enveloppe la clé de chaque document, en attendant le KMS de l'hébergeur | Envelopper et désenvelopper les clés de documents ; jamais les documents eux-mêmes | D R | `mbolo/<env>/stockage/` | annuelle (ré-envelopper les clés) | RS | 1 |
 | `STORAGE_KMS_KEY_REFERENCE` | KMS | Plateforme | Référence de la clé de chiffrement (pas la clé elle-même) | Chiffrer / déchiffrer | D R P | idem | rotation annuelle de la clé KMS | RS | 0 |
+| `DOCUMENTS_KMS_URL` | KMS de l'hébergeur (ADR-0016) | Plateforme (documents) | Adresse de l'API du KMS (pas un secret) ; si elle est définie, la clé maître actuelle est celle du KMS | — | R P | `mbolo/<env>/stockage/` | — | RS | 1 |
+| `DOCUMENTS_KMS_CLE_PRIVEE` (et `DOCUMENTS_KMS_CERTIFICAT`, public ; `DOCUMENTS_KMS_AUTORITE`, facultatif) | KMS de l'hébergeur (ADR-0016) | Plateforme (documents) | Certificat client du service pour le TLS mutuel avec le KMS | Envelopper et désenvelopper les clés de documents avec la seule clé `STORAGE_KMS_KEY_REFERENCE` ; aucune autre opération | R P | `mbolo/<env>/stockage/` | annuelle, ou immédiate en cas de doute | RS | 1 |
+| `DOCUMENTS_CLES_MAITRES_ANCIENNES` (et `DOCUMENTS_CLE_MAITRE_ID`) | Service documents (ADR-0016) | **Infrastructure uniquement** (rotation) | Anciennes clés maîtres locales (« id:base64 »), le temps de ré-envelopper les clés des documents | Relire seulement ; retirées dès la rotation terminée | D R | `mbolo/<env>/stockage/` | supprimées après chaque rotation | RS | 1 |
 
 ## Pharmacies et laboratoires
 
@@ -154,4 +157,5 @@
 | 2026-09-27 | Documents chiffrés : `DOCUMENTS_CLE_MAITRE` (clé maître locale), `STORAGE_*` utilisées par le service documents (ADR-0015, PR AF) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Dépôt des photos d'identité : compte de service `DOCUMENTS_SERVICE_CLIENT_SECRET`, `DOCUMENTS_DATABASE_URL`, `DOCUMENTS_MIGRATION_DATABASE_URL` (ADR-0015, PR AG) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Vérificateur d'identité : portée de `DOCUMENTS_SERVICE_CLIENT_SECRET` étendue (statut et numéro, traces), aucune nouvelle clé (ADR-0015, PR AH) | En attente — responsable sécurité à nommer |
+| 2026-09-28 | Clé maître des documents : KMS de l'hébergeur (`DOCUMENTS_KMS_*`, `STORAGE_KMS_KEY_REFERENCE`), trousseau et rotation (ADR-0016, PR AO) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Comptes de service : secrets partagés `*_SERVICE_CLIENT_SECRET` remplacés par des clés privées `*_SERVICE_CLE_PRIVEE` (`private_key_jwt`), certificats publics `*_SERVICE_CERTIFICAT` déclarés à Keycloak (ADR-0016, PR AM) | En attente — responsable sécurité à nommer |

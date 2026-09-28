@@ -30,7 +30,7 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 1. **Désactiver le flag `identite.photos`** : plus aucun nouvel envoi.
 2. **Retirer le rôle `verification-identite`** au compte en cause, ou à tous, et révoquer ses sessions dans Keycloak.
 3. **Changer les clés du stockage** (`STORAGE_*`) et, si la base est touchée, les mots de passe de la base.
-4. **Si la clé maître est exposée** : la remplacer, puis ré-envelopper les clés des photos. **Dernier recours** : détruire la clé maître, ce qui rend toutes les photos illisibles pour toujours. Les patients devront alors renvoyer leurs photos ; le résultat des vérifications déjà faites reste dans le dossier.
+4. **Si la clé maître est exposée** : configurer une nouvelle clé comme actuelle, lancer la commande de rotation du service `documents` (ré-enveloppement sans déchiffrer les photos, reprise possible), puis retirer l'ancienne. **Dernier recours** : détruire la clé maître dans le KMS (opération réservée à deux personnes), ce qui rend toutes les photos illisibles pour toujours. Les patients devront alors renvoyer leurs photos ; le résultat des vérifications déjà faites reste dans le dossier.
 
 **Évaluer** : quelles photos, quels patients, depuis quand (traces `AuditEvent` de motif `verification-identite`, décisions du schéma `documents`, journaux du stockage).
 

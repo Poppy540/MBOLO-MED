@@ -2,6 +2,12 @@
 
 Stockage chiffré des documents : d'abord les photos de vérification d'identité (pièce d'identité ou acte de naissance, et visage), puis, plus tard, les photos d'ordonnances et les résultats. Contenu : le cœur du service (PR AF), **le dépôt des photos par le patient** (PR AG) et **la vérification par une personne habilitée** (PR AH).
 
+## Clé maître, trousseau et rotation (ADR-0016)
+
+- **Trousseau** : chaque clé de document enveloppée commence par l'identifiant de la clé maître qui l'a protégée (`locale`, `kms:<référence>`…). La clé actuelle enveloppe ; les anciennes relisent. Les enveloppes écrites avant le trousseau (sans identifiant) sont relues par la clé locale.
+- **KMS de l'hébergeur** (`CleMaitreKms`) : la clé maître ne quitte jamais le KMS ; le service lui envoie la clé de chaque document à envelopper ou désenvelopper, en TLS mutuel, avec un contexte fixe. KMS injoignable : dépôt et lecture refusés (503) et alerte `erreur-serveur` ; la téléconsultation n'en dépend pas. Format d'API retenu pour OVHcloud KMS (`/v1/servicekey/<clé>/encrypt|decrypt`) **à confronter à la documentation officielle au moment du contrat**.
+- **Rotation** (humain habilité) : configurer la nouvelle clé comme actuelle et l'ancienne dans le trousseau, puis `node dist/rotation-commande.js`. Les clés des documents sont ré-enveloppées par paquets, **sans jamais déchiffrer les documents** ; une clé changée entre-temps est ignorée ; relancer la commande reprend là où elle s'est arrêtée. Retirer ensuite l'ancienne clé du coffre-fort.
+
 ## API (patient)
 
 Jeton de l'application patient (audience `mbolo-documents-api`). Toute route, hors `/sante`, exige un jeton valide.
@@ -50,7 +56,9 @@ Jeton de l'espace professionnel, **rôle `verification-identite`** (double authe
 | `KEYCLOAK_ISSUER`, `DOCUMENTS_AUDIENCE` (défaut `mbolo-documents-api`) | Vérification des jetons |
 | `FHIR_BASE_URL`, `DOCUMENTS_SERVICE_CLIENT_ID` (défaut `mbolo-documents-service`), `DOCUMENTS_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Lecture du statut d'identité et de la charte par la passerelle |
 | `DOCUMENTS_DATABASE_URL`, `DOCUMENTS_MIGRATION_DATABASE_URL` | Base des services : rôle d'exécution et propriétaire du schéma (migrations au démarrage) |
-| `DOCUMENTS_CLE_MAITRE` | Clé maître (32 octets, base64), depuis le coffre-fort |
+| `DOCUMENTS_CLE_MAITRE` (et `DOCUMENTS_CLE_MAITRE_ID`, défaut `locale`) | Clé maître locale (32 octets, base64), depuis le coffre-fort ; clé actuelle tant que le KMS n'est pas configuré, puis lecture des anciennes enveloppes |
+| `DOCUMENTS_KMS_URL`, `STORAGE_KMS_KEY_REFERENCE`, `DOCUMENTS_KMS_CERTIFICAT`, `DOCUMENTS_KMS_CLE_PRIVEE`, `DOCUMENTS_KMS_AUTORITE` (facultatif) | Clé maître dans le KMS de l'hébergeur (ADR-0016), en TLS mutuel ; si `DOCUMENTS_KMS_URL` est défini, elle devient la clé actuelle |
+| `DOCUMENTS_CLES_MAITRES_ANCIENNES` | Anciennes clés locales (« id:base64,… »), le temps d'une rotation |
 | `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | Stockage objet ; hors production, le compartiment est créé s'il manque |
 | `DOCUMENTS_SYSTEME_ASSURANCE`, `DOCUMENTS_SYSTEME_PROVISOIRE` | Système (URI) des numéros d'assurance maladie et provisoires : dépend du pays |
 | `DOCUMENTS_VERSION_CHARTE` (défaut `0.1`) | Version de la charte en vigueur : une nouvelle version exige une nouvelle acceptation |

@@ -2,7 +2,13 @@
 // de test uniquement. Exécuté si les variables MBOLO_TEST_* sont définies (toujours en CI).
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
-import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CreateBucketCommand,
+  DeleteBucketCommand,
+  DeleteObjectsCommand,
+  ListObjectsV2Command,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connecter, migrer, roleDe, type Sql } from '@mbolo/base-donnees';
 import { CleMaitreLocale } from './chiffrement.js';
@@ -26,6 +32,7 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
     let proprietaire: Sql;
     let execution: Sql;
     let service: ServiceDocuments;
+    let client: S3Client;
     let horloge = new Date('2026-10-01T08:00:00Z');
     const compartiment = `mbolo-test-${randomBytes(4).toString('hex')}`;
     const patientId = `pat-fictif-${randomUUID().slice(0, 8)}`;
@@ -48,12 +55,13 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
           sql: readFileSync(new URL(nom, dossier), 'utf8'),
         })),
       });
-      await new S3Client({
+      client = new S3Client({
         endpoint: s3.url,
         region: s3.region,
         forcePathStyle: true,
         credentials: { accessKeyId: s3.cleAcces, secretAccessKey: s3.secret },
-      }).send(new CreateBucketCommand({ Bucket: compartiment }));
+      });
+      await client.send(new CreateBucketCommand({ Bucket: compartiment }));
       service = new ServiceDocuments(
         new DepotPostgres(execution),
         new StockageS3({ ...s3, compartiment }),
@@ -64,6 +72,16 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
     });
 
     afterAll(async () => {
+      // Le compartiment de test est vidé puis supprimé : sinon chaque exécution en laisse un, et un
+      // stockage local finit par manquer de place (SeaweedFS : 7 volumes par compartiment).
+      const objets = await client.send(new ListObjectsV2Command({ Bucket: compartiment }));
+      const cles = (objets.Contents ?? []).flatMap((o) => (o.Key ? [{ Key: o.Key }] : []));
+      if (cles.length > 0) {
+        await client.send(
+          new DeleteObjectsCommand({ Bucket: compartiment, Delete: { Objects: cles } }),
+        );
+      }
+      await client.send(new DeleteBucketCommand({ Bucket: compartiment }));
       await Promise.all([proprietaire.end(), execution.end()]);
     });
 
@@ -139,6 +157,31 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
           decideLe: horloge,
         }),
       ).rejects.toThrow();
+    });
+
+    it('rotation : parcours par paquets et remplacement de clé seulement si elle n’a pas changé', async () => {
+      const depot = new DepotPostgres(execution);
+      const r = await service.deposer({
+        patientId: `pat-fictif-rot-${randomBytes(4).toString('hex')}`,
+        type: 'visage',
+        octets: jpeg(),
+        versionCharte: '0.1',
+      });
+      const tous: string[] = [];
+      let apres: string | undefined;
+      for (;;) {
+        const paquet = await depot.clesPresentes(apres, 2);
+        if (paquet.length === 0) break;
+        tous.push(...paquet.map((x) => x.id));
+        apres = paquet[paquet.length - 1]?.id;
+      }
+      expect(tous).toContain(r.id);
+      expect([...tous].sort()).toEqual(tous);
+      const actuelle = (await depot.lire(r.id))?.cleEnveloppee ?? Buffer.alloc(0);
+      const nouvelle = Buffer.from('enveloppe-fictive');
+      expect(await depot.remplacerCle(r.id, Buffer.from('autre'), nouvelle)).toBe(false);
+      expect(await depot.remplacerCle(r.id, actuelle, nouvelle)).toBe(true);
+      expect((await depot.lire(r.id))?.cleEnveloppee).toEqual(nouvelle);
     });
 
     it('le service ne peut supprimer aucune ligne de la base', async () => {
