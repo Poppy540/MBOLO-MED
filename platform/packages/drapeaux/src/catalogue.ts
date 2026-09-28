@@ -49,6 +49,13 @@ export const CATALOGUE = {
     dependances: [],
     branche: true,
   },
+  'facturation.recus': {
+    description:
+      'Reçu numéroté à chaque paiement reçu et avoir à chaque remboursement versé, consultables par le patient (ADR-0020).',
+    vague: 1,
+    dependances: ['paiement.mobile-money'],
+    branche: true,
+  },
   'ordonnances.electroniques': {
     description:
       "Le professionnel prescrit une ordonnance électronique à l'issue d'une consultation (ADR-0018).",

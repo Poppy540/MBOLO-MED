@@ -216,6 +216,7 @@ describe('rendez-vous annulé après paiement', () => {
       relues: 1,
       prepares: 1,
       effectues: 0,
+      recus: 0,
       erreurs: 0,
     });
     expect(m.prepares).toHaveLength(1);

@@ -10,6 +10,7 @@ import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurFournisseur, type FournisseurSimule } from './fournisseur.js';
 import type { VerifierAppelant } from './jeton.js';
+import { ErreurRecus, type ServiceRecus } from './recus.js';
 import { ErreurPaiement, estAgent, type ServicePaiement } from './service.js';
 import { TYPES_CONSULTATION, type TypeConsultation } from './tarifs.js';
 
@@ -43,6 +44,8 @@ export async function creerServeur(o: {
   verifierJeton: VerifierJeton;
   verifierAppelant: VerifierAppelant;
   service: ServicePaiement;
+  /** Reçus et avoirs du patient (ADR-0020) ; sans lui, la route /recus est absente. */
+  recus?: ServiceRecus;
   journal: Journal;
   limites?: Limites;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
@@ -109,6 +112,9 @@ export async function creerServeur(o: {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
+    if (err instanceof ErreurRecus) {
+      return reply.code(403).send({ erreur: err.message, motif: err.motif });
+    }
     if (err instanceof ErreurPaiement) {
       return reply.code(STATUT_ERREUR[err.motif]).send({ erreur: err.message, motif: err.motif });
     }
@@ -223,6 +229,15 @@ export async function creerServeur(o: {
     { schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } } },
     async (req) => o.service.lire(await patient(req), req.params.id),
   );
+
+  const recus = o.recus;
+  if (recus) {
+    // Le patient lui-même : ses reçus et avoirs (flag facturation.recus).
+    app.get('/recus', async (req, reply) => {
+      const liste = await recus.lister(await patient(req));
+      return reply.header('cache-control', 'no-store').send({ recus: liste });
+    });
+  }
 
   app.post<{ Params: { id: string }; Body: { operateur: string; numero: string } }>(
     '/paiements/:id/collecte',
