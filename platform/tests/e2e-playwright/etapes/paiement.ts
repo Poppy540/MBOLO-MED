@@ -177,3 +177,111 @@ Then('le rendez-vous est confirmé sans paiement', ({ monde }) => {
   expect(monde.reponse?.corps['paiement']).toBeUndefined();
   expect(monde.paiementId).toBeUndefined();
 });
+
+// ── Remboursements (rôle validation-remboursement) ─────────────────────────────
+
+Then(
+  '{string} voit un remboursement de {int} {string} à valider pour ce rendez-vous',
+  async ({ monde }, identifiant: string, montant: number, devise: string) => {
+    // Préparé dès l'annulation d'un rendez-vous payé (ou au rapprochement suivant, 2 s en e2e).
+    await expect
+      .poll(
+        async () => {
+          await appeler(
+            monde,
+            PAIEMENT_URL,
+            'GET',
+            '/remboursements',
+            monde.jetons.get(identifiant),
+          );
+          const liste = (monde.reponse?.corps['remboursements'] ?? []) as {
+            id: string;
+            reference: string;
+            montant: number;
+            devise: string;
+          }[];
+          const r = liste.find((x) => x.reference === monde.rendezVousId);
+          if (r) monde.remboursementId = r.id;
+          return r ? { montant: r.montant, devise: r.devise } : undefined;
+        },
+        { timeout: 15_000, intervals: [1_000] },
+      )
+      .toEqual({ montant, devise });
+  },
+);
+
+async function decider(monde: Monde, identifiant: string, decision: 'valide' | 'refuse') {
+  if (!monde.remboursementId) {
+    // Le valideur retrouve d'abord le remboursement du rendez-vous annulé.
+    await expect
+      .poll(
+        async () => {
+          await appeler(
+            monde,
+            PAIEMENT_URL,
+            'GET',
+            '/remboursements',
+            monde.jetons.get(identifiant),
+          );
+          const liste = (monde.reponse?.corps['remboursements'] ?? []) as {
+            id: string;
+            reference: string;
+          }[];
+          const id = liste.find((x) => x.reference === monde.rendezVousId)?.id;
+          if (id) monde.remboursementId = id;
+          return id;
+        },
+        { timeout: 15_000, intervals: [1_000] },
+      )
+      .toEqual(expect.any(String));
+  }
+  await appeler(
+    monde,
+    PAIEMENT_URL,
+    'POST',
+    `/remboursements/${monde.remboursementId ?? ''}/decision`,
+    monde.jetons.get(identifiant),
+    { decision },
+  );
+}
+
+When('{string} valide ce remboursement', async ({ monde }, identifiant: string) => {
+  await decider(monde, identifiant, 'valide');
+});
+
+When('{string} refuse ce remboursement', async ({ monde }, identifiant: string) => {
+  await decider(monde, identifiant, 'refuse');
+});
+
+Then('le remboursement est effectué', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  expect(monde.reponse?.corps).toMatchObject({ statut: 'effectue', montant: 10000 });
+});
+
+Then('le remboursement est refusé', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  expect(monde.reponse?.corps).toMatchObject({ statut: 'refuse' });
+});
+
+Then('{string} ne voit plus ce remboursement à valider', async ({ monde }, identifiant: string) => {
+  await appeler(monde, PAIEMENT_URL, 'GET', '/remboursements', monde.jetons.get(identifiant));
+  const liste = (monde.reponse?.corps['remboursements'] ?? []) as { id: string }[];
+  expect(liste.map((x) => x.id)).not.toContain(monde.remboursementId);
+});
+
+Then('la décision de remboursement est refusée', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(403);
+});
+
+Then(
+  '{string} ne peut pas voir les remboursements à valider',
+  async ({ monde }, identifiant: string) => {
+    await appeler(monde, PAIEMENT_URL, 'GET', '/remboursements', monde.jetons.get(identifiant));
+    expect(monde.reponse?.statut).toBe(403);
+  },
+);
+
+Then('le paiement est refusé car le rendez-vous est annulé', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(409);
+  expect(monde.reponse?.corps).toMatchObject({ motif: 'annule' });
+});

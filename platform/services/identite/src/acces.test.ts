@@ -152,6 +152,7 @@ describe('rôles sans accès clinique', () => {
     'revue-acces',
     'gestion-invitations',
     'verification-identite',
+    'validation-remboursement',
   ] as const)('%s : toujours refusé', (role) => {
     const u: Utilisateur = { sujet: 'x', roles: [role], practitionerId: 'fictif-medecin-0001' };
     expect(

@@ -17,6 +17,15 @@ export interface DemandeCollecte {
   libelle: string;
 }
 
+export interface DemandeRemboursement {
+  /** Identifiant du remboursement, choisi par Mbolo Santé : clé d'idempotence. */
+  remboursement: string;
+  /** Tentative de collecte réussie à rembourser (vers le même portefeuille, chez le prestataire). */
+  tentative: string;
+  montant: number;
+  devise: string;
+}
+
 export class ErreurFournisseur extends Error {
   constructor() {
     super('Prestataire de paiement indisponible.');
@@ -29,6 +38,11 @@ export interface Fournisseur {
   initier(d: DemandeCollecte): Promise<void>;
   /** Statut de la tentative chez le prestataire : seule source de vérité. Lève `ErreurFournisseur`. */
   statut(tentative: string): Promise<ResultatFournisseur>;
+  /**
+   * Rembourse une collecte réussie, après la décision d'un humain. Le prestataire renvoie l'argent
+   * au portefeuille qui a payé : Mbolo Santé ne connaît pas le numéro. Lève `ErreurFournisseur`.
+   */
+  rembourser(d: DemandeRemboursement): Promise<void>;
   /**
    * Vérifie la signature d'une notification et renvoie la tentative concernée, sinon `undefined`.
    * Le contenu n'est jamais cru sur parole : le statut est ensuite relu avec `statut`.
@@ -74,6 +88,8 @@ export class FournisseurSimule implements Fournisseur {
     string,
     { resultat: ResultatFournisseur; montant: number; devise: string; libelle: string }
   >();
+  /** Remboursements exécutés (identifiant → tentative et montant), sans numéro. */
+  readonly remboursements = new Map<string, { tentative: string; montant: number }>();
   /** Pour les tests : le prochain appel échoue comme un prestataire injoignable. */
   indisponible = false;
 
@@ -97,6 +113,17 @@ export class FournisseurSimule implements Fournisseur {
   async statut(tentative: string): Promise<ResultatFournisseur> {
     if (this.indisponible) throw new ErreurFournisseur();
     return this.tentatives.get(tentative)?.resultat ?? 'echoue';
+  }
+
+  async rembourser(d: DemandeRemboursement): Promise<void> {
+    if (this.indisponible) throw new ErreurFournisseur();
+    const t = this.tentatives.get(d.tentative);
+    // Seule une collecte réussie, du même montant au plus, peut être remboursée.
+    if (!t || t.resultat !== 'reussi' || d.montant > t.montant) throw new ErreurFournisseur();
+    // Idempotence : un même remboursement n'est jamais versé deux fois.
+    if (!this.remboursements.has(d.remboursement)) {
+      this.remboursements.set(d.remboursement, { tentative: d.tentative, montant: d.montant });
+    }
   }
 
   verifierNotification(

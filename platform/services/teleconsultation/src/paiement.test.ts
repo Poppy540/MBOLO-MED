@@ -1,6 +1,7 @@
 // Réservation payante (ADR-0017) : créneau retenu, confirmation après paiement, expiration du délai.
 // Données FICTIVES.
 import type { Utilisateur } from '@mbolo/identite';
+import { creerJournal, type Evenement } from '@mbolo/journal-securise';
 import { describe, expect, it } from 'vitest';
 import { DepotCreneauxMemoire } from './creneaux.js';
 import { IdentitesMemoire } from './identites.js';
@@ -81,6 +82,8 @@ describe('réservation payante (flag paiement.mobile-money)', () => {
     const apres = await m.depot.lire(r.id);
     expect(apres).toMatchObject({ statut: 'annule', annulation: { par: 'plateforme' } });
     expect((await m.creneaux.lire(m.c.id))?.statut).toBe('libre');
+    // Le paiement est prévenu : plus de collecte, remboursement préparé si payé après coup.
+    expect(m.paiements.annules.has(r.id)).toBe(true);
   });
 
   it('payé juste avant l’expiration : le passage périodique confirme au lieu d’annuler', async () => {
@@ -143,6 +146,7 @@ describe('réservation payante (flag paiement.mobile-money)', () => {
     expect((await m.service.verifierPaiement(medecin, r.id)).statut).toBe('a-payer');
     expect((await m.service.annuler(patient, r.id)).statut).toBe('annule');
     expect((await m.creneaux.lire(m.c.id))?.statut).toBe('libre');
+    expect(m.paiements.annules.has(r.id)).toBe(true);
   });
 });
 
@@ -175,6 +179,26 @@ describe('client HTTP du service de paiement', () => {
     expect(appels.every((a) => (a.init.headers as Record<string, string>)['authorization'])).toBe(
       true,
     );
+  });
+
+  it('annulation non transmise : jamais d’erreur pour l’appelant, alerte d’exploitation', async () => {
+    const evenements: Evenement[] = [];
+    const client = new PaiementsHttp({
+      url: 'http://paiement.test',
+      entetes: async () => ({}),
+      journal: creerJournal({
+        service: 'teleconsultation',
+        ecrire: (l) => evenements.push(JSON.parse(l) as Evenement),
+      }),
+      fetch: async () => {
+        throw new Error('réseau');
+      },
+    });
+    await expect(client.annulation('rdv-fictif-1')).resolves.toBeUndefined();
+    expect(evenements[0]).toMatchObject({
+      message: 'annulation non transmise au paiement',
+      contexte: { alerte: 'erreur-serveur', rendezVousId: 'rdv-fictif-1' },
+    });
   });
 
   it('service injoignable ou réponse inattendue : 503, jamais « non payé » par défaut', async () => {

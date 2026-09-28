@@ -9,6 +9,8 @@ export const DESTINATAIRES = [
   'responsable-securite',
   'revue-acces',
   'astreinte-technique',
+  /** Valideurs des remboursements (ADR-0017), heures ouvrées. */
+  'validation-remboursement',
 ] as const;
 export type Destinataire = (typeof DESTINATAIRES)[number];
 
@@ -111,6 +113,20 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
           annotations: {
             resume: 'Plus de 10 erreurs internes en 5 minutes sur un service.',
             conduite: 'Lire le journal du service ; vérifier le dossier médical et la base.',
+          },
+        },
+        {
+          alert: 'RemboursementsAValider',
+          expr: `${compter('remboursement-a-valider', '1h')} > 0`,
+          labels: {
+            gravite: 'normale',
+            destinataire: 'validation-remboursement',
+            alerte: 'remboursement-a-valider',
+          },
+          annotations: {
+            resume: 'Un paiement a été reçu pour un rendez-vous annulé : remboursement à valider.',
+            conduite:
+              'Espace des remboursements (rôle validation-remboursement) : valider ou refuser selon les règles du porteur de projet.',
           },
         },
       ],

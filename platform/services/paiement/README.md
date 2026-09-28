@@ -28,6 +28,22 @@ Paiement des consultations par mobile money (ADR-0017, **proposée**). Le presta
 
 Statuts : `a-payer` → `en-attente` → `paye` ou `echoue` (un paiement échoué peut être retenté).
 
+## Annulation, rapprochement et remboursement
+
+- **Annulation** : `POST /rendez-vous/:reference/annulation` (jeton de service de la téléconsultation) → `{ connu, aRembourser }`.
+  - Plus aucune collecte pour ce rendez-vous (409 `annule`, aussi face à une collecte simultanée).
+  - Si le paiement est déjà reçu, ou arrive plus tard, un **remboursement est préparé** (un seul par paiement) et les valideurs sont prévenus (alerte `remboursement-a-valider`).
+- **Rapprochement** (toutes les 15 min par défaut) :
+  - les collectes en attente sont relues chez le prestataire, pour rattraper une notification perdue ;
+  - les paiements reçus pour un rendez-vous annulé sont mis en remboursement ;
+  - les remboursements validés mais pas encore versés (prestataire injoignable) sont exécutés.
+- **Décision humaine** (rôle `validation-remboursement`, double authentification, jamais un agent IA, jamais sur son propre paiement) :
+  - `GET /remboursements` → remboursements à valider : montant, devise, date, référence opaque du rendez-vous, opérateur. Jamais le patient ni le numéro.
+  - `POST /remboursements/:id/decision` `{ decision: "valide" | "refuse" }` → **aucun texte libre**. Une décision ne se prend qu'une fois (409 `deja-decide`).
+  - Validé : le prestataire rend l'argent au portefeuille qui a payé (Mbolo Santé ne connaît pas le numéro), avec l'identifiant du remboursement comme clé d'idempotence.
+  - Qui a décidé et quand est conservé ; le journal trace la décision et le montant.
+- **Règles de remboursement** : décision du porteur de projet (ADR-0017). La plateforme prépare seulement le cas « payé mais rendez-vous annulé » ; le valideur décide selon ces règles.
+
 ## Fournisseur simulé
 
 - Il garde les tentatives en mémoire et ne conserve pas le numéro.
@@ -44,9 +60,8 @@ Le service `teleconsultation` crée le paiement à la réservation et demande «
 
 ## Pas encore fait (PR suivantes, ADR-0017)
 
-- Écran de paiement dans l'application patient.
-- Rapprochement quotidien avec le prestataire. Il rattrape les notifications perdues et une tentative ancienne confirmée après un nouvel essai.
-- Remboursement validé par un humain (rôle à créer).
+- Écran de paiement dans l'application patient ; écran des remboursements dans l'espace professionnel (l'API existe).
+- Tentative ancienne confirmée après un nouvel essai : à rapprocher avec l'export du vrai prestataire.
 - Vrai fournisseur, après le contrat.
 
 ## Base de données (ADR-0013)
@@ -70,6 +85,7 @@ Le service `teleconsultation` crée le paiement à la réservation et demande «
 | `PAIEMENT_LIMITE_PAR_MINUTE` (défaut `300`), `PAIEMENT_COLLECTE_PAR_MINUTE` (défaut `5`) | Limites d'appels par adresse |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flags ; sans eux, tout est désactivé |
 | `PAIEMENT_TRUST_PROXY` (défaut `false`), `PORT` (défaut `3008`) | Réseau |
+| `PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS` (défaut `900000`) | Fréquence du rapprochement avec le prestataire |
 | `PAIEMENT_SIMULATION` (défaut absent) | `true` : route de simulation du payeur (développement et e2e seulement) |
 
 ## Tests

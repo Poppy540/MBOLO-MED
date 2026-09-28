@@ -201,6 +201,10 @@ export default defineConfig({
         PAIEMENT_INDICATIF: '241',
         // Le payeur simulé valide ou refuse (développement et e2e seulement).
         PAIEMENT_SIMULATION: 'true',
+        // Rapprochement fréquent en e2e (15 min par défaut).
+        PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS: '2000',
+        // Tous les paiements viennent de la même adresse en e2e ; la limite est testée à part (unitaire).
+        PAIEMENT_COLLECTE_PAR_MINUTE: '100',
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',

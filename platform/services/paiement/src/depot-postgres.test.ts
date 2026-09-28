@@ -89,4 +89,52 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des paiements
       /permission/,
     );
   });
+
+  it('un seul remboursement par paiement, une seule décision, aucune collecte après annulation', async () => {
+    const p = await depot.creer(nouveau());
+    const tentative = randomUUID();
+    await depot.demarrer(
+      p.id,
+      { tentative, operateur: 'airtel', fournisseur: 'simule' },
+      new Date(),
+    );
+    await depot.conclure(tentative, 'paye', new Date());
+    await depot.annuler(p.reference, new Date());
+    expect((await depot.payesAnnulesSansRemboursement()).map((x) => x.id)).toContain(p.id);
+
+    const preparations = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        depot.preparerRemboursement({
+          id: randomUUID(),
+          paiementId: p.id,
+          montant: p.montant,
+          devise: p.devise,
+          statut: 'a-valider',
+          prepareLe: new Date(),
+        }),
+      ),
+    );
+    const prepares = preparations.filter(Boolean);
+    expect(prepares).toHaveLength(1);
+    const id = prepares[0]?.id ?? '';
+    const decisions = await Promise.all([
+      depot.deciderRemboursement(id, 'valide', 'sujet-valideur-fictif-1', new Date()),
+      depot.deciderRemboursement(id, 'refuse', 'sujet-valideur-fictif-2', new Date()),
+    ]);
+    expect(decisions.filter(Boolean)).toHaveLength(1);
+
+    // Rendez-vous annulé : plus aucune collecte, même après un échec.
+    const q = await depot.creer(nouveau());
+    await depot.annuler(q.reference, new Date());
+    expect(
+      await depot.demarrer(
+        q.id,
+        { tentative: randomUUID(), operateur: 'airtel', fournisseur: 'simule' },
+        new Date(),
+      ),
+    ).toBeUndefined();
+    await expect(execution`delete from paiement.remboursements where id = ${id}`).rejects.toThrow(
+      /permission/,
+    );
+  });
 });

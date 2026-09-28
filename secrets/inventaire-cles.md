@@ -13,7 +13,7 @@
 
 | Variable | Service | Agent(s) | Usage | Portée minimale | Env. | Emplacement | Rotation | Resp. | Vague |
 |---|---|---|---|---|---|---|---|---|---|
-| `MOBILE_MONEY_AGGREGATOR_API_KEY` / `_API_SECRET` | Agrégateur mobile money | Plateforme | Initier un paiement, lire son statut | Collecte uniquement ; pas de décaissement | D R P | `mbolo/<env>/paiement-mobile-money/` | 90 j | RT | 1 |
+| `MOBILE_MONEY_AGGREGATOR_API_KEY` / `_API_SECRET` | Agrégateur mobile money | Plateforme | Initier un paiement, lire son statut, rembourser une collecte (après validation humaine, ADR-0017) | Collecte et remboursement d'une collecte existante ; **aucun versement libre** vers un autre numéro | D R P | `mbolo/<env>/paiement-mobile-money/` | 90 j | RT | 1 |
 | `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET` | Agrégateur mobile money (fournisseur simulé en D, ADR-0017) | Plateforme (paiement) | Vérifier la signature des notifications | Vérification uniquement ; 32 caractères au moins | D R P | idem | 180 j | RT | 1 |
 | `AIRTEL_MONEY_CLIENT_ID` / `_SECRET` | Airtel Money (si intégration directe) | Plateforme | Paiement | Collecte uniquement | D R P | `mbolo/<env>/paiement-mobile-money/` | 90 j | RT | 1 |
 | `MOOV_MONEY_CLIENT_ID` / `_SECRET` | Moov Money (si intégration directe) | Plateforme | Paiement | Collecte uniquement | D R P | idem | 90 j | RT | 1 |
@@ -160,5 +160,6 @@
 | 2026-09-27 | Dépôt des photos d'identité : compte de service `DOCUMENTS_SERVICE_CLIENT_SECRET`, `DOCUMENTS_DATABASE_URL`, `DOCUMENTS_MIGRATION_DATABASE_URL` (ADR-0015, PR AG) | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Vérificateur d'identité : portée de `DOCUMENTS_SERVICE_CLIENT_SECRET` étendue (statut et numéro, traces), aucune nouvelle clé (ADR-0015, PR AH) | En attente — responsable sécurité à nommer |
 | 2026-09-28 | Clé maître des documents : KMS de l'hébergeur (`DOCUMENTS_KMS_*`, `STORAGE_KMS_KEY_REFERENCE`), trousseau et rotation (ADR-0016, PR AO) | En attente — responsable sécurité à nommer |
+| 2026-09-28 | Remboursement (ADR-0017, PR AS) : portée de `MOBILE_MONEY_AGGREGATOR_API_KEY` étendue au remboursement d'une collecte existante, après validation humaine ; aucune nouvelle clé | En attente — responsable sécurité à nommer |
 | 2026-09-28 | Service de paiement (ADR-0017, PR AQ) : `PAIEMENT_DATABASE_URL`, `PAIEMENT_MIGRATION_DATABASE_URL` ; `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET` utilisé par le fournisseur simulé | En attente — responsable sécurité à nommer |
 | 2026-09-27 | Comptes de service : secrets partagés `*_SERVICE_CLIENT_SECRET` remplacés par des clés privées `*_SERVICE_CLE_PRIVEE` (`private_key_jwt`), certificats publics `*_SERVICE_CERTIFICAT` déclarés à Keycloak (ADR-0016, PR AM) | En attente — responsable sécurité à nommer |
