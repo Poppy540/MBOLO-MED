@@ -1,10 +1,21 @@
 // Étapes « invitation d'un proche » (ADR-0019) : API du service invitations avec le jeton du
 // patient, vérifications dans le dossier FHIR de test et la boîte des SMS simulés.
 // Données FICTIVES uniquement (numéros manifestement inventés).
-import { expect } from '@playwright/test';
-import { FHIR_URL, IDENTITE_URL, INVITATIONS_URL, NOTIFICATIONS_URL } from '../configuration.js';
+import { randomBytes } from 'node:crypto';
+import { expect, type Page } from '@playwright/test';
+import {
+  APP_PATIENT_URL,
+  FHIR_URL,
+  IDENTITE_URL,
+  INVITATIONS_URL,
+  KEYCLOAK_URL,
+  NOTIFICATIONS_URL,
+  PREFIXE_INSCRITS,
+  ROYAUME,
+} from '../configuration.js';
 import { jetonService } from './dossier.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
+import { codeUnique, retenirSecret } from './totp.js';
 
 const LIENS: Record<string, string> = { enfant: 'CHILD', conjoint: 'SPS', parent: 'PRN' };
 /** Proche de test permanent (autres scénarios) : jamais retiré ici. */
@@ -92,13 +103,14 @@ async function retirer(jeton: string, c: Consentement): Promise<void> {
   expect(r.status).toBe(200);
 }
 
-/** Annule les invitations encore valables et retire les partages avec les proches invités ici. */
+/** Retire les proches invités ici (invitations en cours ou comptes créés) et leurs partages. */
 async function nettoyer(monde: Monde, identifiant: string): Promise<void> {
   const jeton = monde.jetons.get(identifiant) ?? '';
   await appeler(monde, 'GET', '/proches', jeton);
   expect(monde.reponse?.statut).toBe(200);
   const proches = (monde.reponse?.corps['proches'] ?? []) as { id: string; statut: string }[];
-  for (const p of proches.filter((x) => x.statut === 'valide')) {
+  // Invitations en cours et proches qui ont déjà leur compte : tous comptent dans la limite.
+  for (const p of proches.filter((x) => x.statut === 'valide' || x.statut === 'utilise')) {
     await appeler(monde, 'POST', `/proches/${p.id}/revocation`, jeton);
     expect(monde.reponse?.statut).toBe(200);
   }
@@ -228,4 +240,115 @@ When(
 Then("l'invitation du proche est refusée avec le statut {int}", ({ monde }, statut: number) => {
   expect(monde.reponse?.statut).toBe(statut);
   expect(monde.reponse?.corps['code']).toBeUndefined();
+});
+
+// ── Inscription du proche avec son code (ADR-0019) ───────────────────────────
+
+When(
+  'le proche crée son compte avec ce code depuis l’application patient',
+  async ({ page, monde }) => {
+    const identifiant = `${PREFIXE_INSCRITS}${randomBytes(4).toString('hex')}`;
+    const motDePasse = `Fictif-${randomBytes(12).toString('base64url')}`;
+    await page.goto(`${APP_PATIENT_URL}/`);
+    await page.getByRole('button', { name: /J'ai un code d'invitation/ }).click();
+    await page.locator('#code_invitation').fill(monde.proche?.code ?? '');
+    await page.locator('#username').fill(identifiant);
+    await page.locator('#password').fill(motDePasse);
+    await page.locator('#password-confirm').fill(motDePasse);
+    await page.locator('#kc-register-form [type=submit]').click();
+    await page.waitForLoadState().catch(() => undefined);
+    monde.inscription = { identifiant, page };
+  },
+);
+
+Then(
+  'il configure la double authentification et arrive sur les documents partagés par son proche',
+  async ({ monde }) => {
+    const page: Page | undefined = monde.inscription?.page;
+    const identifiant = monde.inscription?.identifiant ?? '';
+    if (!page) throw new Error('inscription non tentée');
+    // Aucune saisie d'identité (réservée aux patients) : la configuration de l'OTP vient aussitôt.
+    await expect(page.locator('#kc-identite-form')).toHaveCount(0);
+    const secret = page.locator('#totpSecret');
+    await expect(secret).toHaveCount(1, { timeout: 15_000 });
+    retenirSecret(identifiant, await secret.inputValue());
+    await page.locator('#totp').fill(await codeUnique(identifiant));
+    await page.locator('#userLabel').fill('Téléphone de test [FICTIF]');
+    await page.locator('#saveTOTPBtn').click();
+    await expect(
+      page.getByRole('heading', { name: 'Ordonnances et consignes de votre proche' }),
+    ).toBeVisible({ timeout: 15_000 });
+  },
+);
+
+async function jetonAdministrateur(): Promise<string> {
+  const r = await fetch(`${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token`, {
+    method: 'POST',
+    body: new URLSearchParams({
+      grant_type: 'password',
+      client_id: 'admin-cli',
+      username: process.env['KC_BOOTSTRAP_ADMIN_USERNAME'] ?? 'admin',
+      password: process.env['KC_BOOTSTRAP_ADMIN_PASSWORD'] ?? '',
+    }),
+  });
+  expect(r.status).toBe(200);
+  return ((await r.json()) as { access_token: string }).access_token;
+}
+
+Then(
+  'son compte a le seul rôle proche, rattaché à la fiche du proche, avec la double authentification',
+  async ({ monde }) => {
+    const jeton = await jetonAdministrateur();
+    const admin = (chemin: string) =>
+      fetch(`${KEYCLOAK_URL}/admin/realms/${ROYAUME}${chemin}`, {
+        headers: { authorization: `Bearer ${jeton}` },
+      }).then((r) => r.json());
+    const [compte] = (await admin(
+      `/users?username=${monde.inscription?.identifiant ?? ''}&exact=true`,
+    )) as { id: string; attributes?: Record<string, string[]> }[];
+    expect(compte?.attributes?.['related_person_id']).toEqual([monde.proche?.relatedPersonId]);
+    expect(compte?.attributes?.['patient_id']).toBeUndefined();
+    const roles = (
+      (await admin(`/users/${compte?.id ?? ''}/role-mappings/realm/composite`)) as {
+        name: string;
+      }[]
+    ).map((r) => r.name);
+    expect(roles).toContain('proche');
+    expect(roles).toContain('mfa-requise');
+    for (const autre of ['patient', 'professionnel', 'infirmier', 'administrateur', 'agent-ia']) {
+      expect(roles).not.toContain(autre);
+    }
+    const identifiants = (await admin(`/users/${compte?.id ?? ''}/credentials`)) as {
+      type: string;
+    }[];
+    expect(identifiants.map((c) => c.type)).toContain('otp');
+  },
+);
+
+async function fiche(monde: Monde): Promise<Record<string, unknown>> {
+  const r = await fetch(`${FHIR_URL}/RelatedPerson/${monde.proche?.relatedPersonId ?? 'absente'}`, {
+    headers: { 'cache-control': 'no-cache' },
+  });
+  expect(r.status).toBe(200);
+  return (await r.json()) as Record<string, unknown>;
+}
+
+Then('la fiche du proche est active dans le dossier', async ({ monde }) => {
+  expect((await fiche(monde))['active']).toBe(true);
+});
+
+When('{string} retire ce proche', async ({ monde }, identifiant: string) => {
+  await appeler(
+    monde,
+    'POST',
+    `/proches/${monde.proche?.id ?? ''}/revocation`,
+    monde.jetons.get(identifiant),
+  );
+  expect(monde.reponse?.statut).toBe(200);
+});
+
+Then('la fiche du proche est inactive et le partage retiré', async ({ monde }) => {
+  expect((await fiche(monde))['active']).toBe(false);
+  const cible = `RelatedPerson/${monde.proche?.relatedPersonId ?? 'absente'}`;
+  expect((await partagesProches()).filter((c) => beneficiaire(c) === cible)).toHaveLength(0);
 });

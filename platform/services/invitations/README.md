@@ -23,7 +23,7 @@ Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des co
     2. consentement `C-PROCHE` du patient, enregistré par `identite` **avec le jeton du patient** (texte `versionTexte`, brouillon à valider par le juriste) ;
     3. code à usage unique, valable **7 jours**, **3 proches au plus** par patient (invitations en cours ou utilisées ; verrou par patient) ;
     4. code envoyé **par SMS** au numéro saisi (format international), par le service `notifications` ; le numéro n'est **ni enregistré ni journalisé**. Le code est aussi rendu au patient, **en secours** si le SMS n'arrive pas (`sms: "echec"`).
-  - `GET /proches` → prénom et lien (lus dans le dossier), statut, dates ; `POST /proches/:id/revocation` → annule une invitation encore inutilisée (celle d'un autre patient : 404).
+  - `GET /proches` → prénom et lien (lus dans le dossier), statut, dates ; `POST /proches/:id/revocation` → le patient **retire un proche** : une invitation en cours ne sert plus ; un proche qui a déjà son compte perd l'accès (partages `C-PROCHE` retirés par `identite` avec le jeton du patient, fiche désactivée). La place est libérée. L'invitation d'un autre patient : 404.
 - **Journal** : créateur, identifiant d'invitation, cohorte, type. **Jamais le code, le prénom ni le numéro.**
 
 ## Base de données (ADR-0013)
@@ -66,7 +66,7 @@ En local, un PostgreSQL 16 avec une base `mbolo` appartenant à un rôle de migr
 
 ## Reste à faire
 
-- Inscription du proche avec son code (extension Keycloak : rôle `proche`, `related_person_id`, double authentification obligatoire) et écran « Inviter un proche » de l'application patient (ADR-0019).
+- Écran « Inviter un proche » de l'application patient (ADR-0019).
 
 - Saisie de l'identité dans le dossier FHIR après l'inscription, puis vérification (photos, charte, rôle `verification-identite`, ADR-0014).
 - Écran de gestion des invitations (backoffice), désignation nominative de la personne de confiance.

@@ -86,6 +86,7 @@ Contraintes :
 ## Suivi
 
 - **Invitations de proches** (PR BG) : service `invitations` (routes `/proches`, 3 proches, 7 jours, verrou par patient), fiche `RelatedPerson` minimale (règles `mbolo-proche-1` à `-3`), consentement `C-PROCHE` avec le jeton du patient, SMS par le gabarit fermé `invitation-proche` (numéro jamais gardé), compte de service `mbolo-invitations-service` (`system/RelatedPerson.cru`). **Tant que l'extension Keycloak n'est pas à jour, un code de proche est refusé à l'inscription** : il ne peut jamais créer un compte patient.
+- **Inscription du proche** (PR BH) : l'extension Keycloak déclare les types de codes qu'elle traite ; le type fixé par le service donne le rôle (liste fermée `patient` / `proche`, testée) ; un proche reçoit `related_person_id`, configure la double authentification dès l'inscription (le rôle `proche` inclut `mfa-requise`), sans saisie d'identité ; sa fiche est activée. Le patient peut **retirer un proche** qui a déjà son compte : partage retiré, fiche désactivée, place libérée.
 
 ## Réponses du porteur de projet (2026-09-28)
 

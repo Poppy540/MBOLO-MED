@@ -11,6 +11,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -82,14 +83,47 @@ class ClientInvitationsTest {
     ClientInvitations injoignable =
         new ClientInvitations(URI.create("http://127.0.0.1:1/"), () -> "jeton-fictif");
     assertEquals(ClientInvitations.Controle.INDISPONIBLE, injoignable.controler("ABCD-EFGH", "x"));
-    assertFalse(injoignable.utiliser("ABCD-EFGH", "sujet-fictif"));
+    assertTrue(injoignable.utiliser("ABCD-EFGH", "sujet-fictif").isEmpty());
+  }
+
+  @Test
+  void declareLesTypesDeCodesQueLExtensionSaitTraiter() {
+    client().controler("ABCD-EFGH", "192.0.2.1");
+    assertTrue(requetes.get(0).contains("\"types\":[\"patient\",\"proche\"]"));
   }
 
   @Test
   void utiliseLeCodePourLeCompteCree() {
-    assertTrue(client().utiliser("ABCD-EFGH", "sujet-fictif"));
+    reponse = "{\"cohorte\":\"ville-fictive\",\"type\":\"patient\"}";
+    assertEquals(
+        Optional.of(new ClientInvitations.Utilisation("patient", null)),
+        client().utiliser("ABCD-EFGH", "sujet-fictif"));
     assertTrue(requetes.get(0).startsWith("/inscription/utilisation Bearer jeton-fictif "));
+    assertTrue(requetes.get(0).contains("\"types\":[\"patient\",\"proche\"]"));
     statut = 409;
-    assertFalse(client().utiliser("ABCD-EFGH", "sujet-fictif"));
+    assertTrue(client().utiliser("ABCD-EFGH", "sujet-fictif").isEmpty());
+  }
+
+  @Test
+  void codeDeProcheRattacheASaFiche() {
+    reponse = "{\"cohorte\":\"proches\",\"type\":\"proche\",\"relatedPersonId\":\"rp-fictif-9\"}";
+    assertEquals(
+        Optional.of(new ClientInvitations.Utilisation("proche", "rp-fictif-9")),
+        client().utiliser("ABCD-EFGH", "sujet-fictif"));
+  }
+
+  @Test
+  void refuseUneReponseIncoherente() {
+    // Type hors de la liste fermée, proche sans fiche, ou réponse sans type : jamais de compte.
+    for (String r :
+        List.of(
+            "{\"type\":\"professionnel\"}",
+            "{\"type\":\"proche\"}",
+            "{\"type\":\"proche\",\"relatedPersonId\":\"../x\"}",
+            "{\"cohorte\":\"ville-fictive\"}",
+            "{\"valide\":true}")) {
+      reponse = r;
+      assertTrue(client().utiliser("ABCD-EFGH", "sujet-fictif").isEmpty(), r);
+    }
   }
 }

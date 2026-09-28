@@ -325,8 +325,8 @@ export async function creerServeur(o: {
         },
       },
       async (req) => {
-        const { u } = await patient(req);
-        await proches.revoquer(u, req.params.id);
+        const { u, jeton } = await patient(req);
+        await proches.revoquer(u, jeton, req.params.id);
         o.journal.info('invitation de proche révoquée', {
           par: u.sujet,
           invitation: req.params.id,
