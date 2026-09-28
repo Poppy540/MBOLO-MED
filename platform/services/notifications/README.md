@@ -48,3 +48,9 @@ Le Gabon est le premier pays ; rien de propre au pays n'est codé en dur :
 ## Reste à faire avant la production
 
 - Choix du fournisseur SMS et WhatsApp (porteur de projet), expéditeur, relecture des gabarits, langues locales, pas d'envoi la nuit.
+
+## Sécurité HTTP (revue ASVS n°1)
+
+- Toutes les réponses portent `Cache-Control: no-store` et `X-Content-Type-Options: nosniff` (`entetesSecurite`).
+- En production, les adresses des autres services, de Keycloak et du dossier doivent être en `https://` : sinon le service ne démarre pas (`exigerHttps`).
+- Derrière le proxy de confiance de l'hébergeur : `NOTIFICATIONS_TRUST_PROXY=true`, pour que la limite d'appels vaille par adresse réelle (désactivé par défaut).

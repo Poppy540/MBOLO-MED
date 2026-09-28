@@ -23,6 +23,7 @@ import type { VerifierJeton } from './jeton.js';
 import type { JournalAcces } from './journal-acces.js';
 import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
+import { entetesSecurite } from './securite-http.js';
 
 export interface OptionsServeur {
   verifierJeton: VerifierJeton;
@@ -36,6 +37,8 @@ export interface OptionsServeur {
   maintenant?: () => Date;
   /** Appels permis par adresse et par minute (défaut : 300). */
   limiteParMinute?: number;
+  /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For (limites d'appels). */
+  trustProxy?: boolean;
 }
 
 class ErreurAuthentification extends Error {}
@@ -47,7 +50,9 @@ const REFERENCE = {
 } as const;
 
 export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false, bodyLimit: 16 * 1024 });
+  const app = Fastify({ logger: false, bodyLimit: 16 * 1024, trustProxy: o.trustProxy ?? false });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
 

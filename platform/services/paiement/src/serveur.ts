@@ -7,6 +7,7 @@
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
+import { entetesSecurite } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurFournisseur, type FournisseurSimule } from './fournisseur.js';
 import type { VerifierAppelant } from './jeton.js';
@@ -66,6 +67,8 @@ export async function creerServeur(o: {
     // Un champ inconnu est refusé, pas retiré en silence.
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });

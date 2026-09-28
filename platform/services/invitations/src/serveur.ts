@@ -5,7 +5,12 @@
 // l'équipe d'assistance (rôle assistance-patient) retire tous ses proches.
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
+import {
+  ErreurDepot,
+  type Utilisateur,
+  type VerifierJeton,
+  entetesSecurite,
+} from '@mbolo/identite';
 import {
   LIENS_PROCHE,
   PRENOM_MAX,
@@ -49,6 +54,8 @@ export async function creerServeur(o: {
     trustProxy: o.trustProxy ?? false,
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
 

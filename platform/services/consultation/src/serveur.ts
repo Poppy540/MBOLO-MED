@@ -2,7 +2,12 @@
 // même jeton est présenté au service identite pour la décision d'accès au dossier.
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
+import {
+  ErreurDepot,
+  type Utilisateur,
+  type VerifierJeton,
+  entetesSecurite,
+} from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurDecision } from './acces.js';
 import {
@@ -65,13 +70,18 @@ export async function creerServeur(o: {
   journal: Journal;
   /** Appels permis par adresse et par minute (défaut : 300). */
   limiteParMinute?: number;
+  /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For (limites d'appels). */
+  trustProxy?: boolean;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
+    trustProxy: o.trustProxy ?? false,
     bodyLimit: 32 * 1024,
     // Un champ inconnu est refusé, pas silencieusement retiré.
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
 

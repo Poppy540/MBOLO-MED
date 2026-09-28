@@ -1,7 +1,12 @@
 // Démarrage du service de consultation clinique. Secret du compte de service
 // (clé privée CONSULTATION_SERVICE_CLE_PRIVEE, ADR-0016) depuis le coffre-fort, jamais le dépôt.
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
+import {
+  authentificationDepuis,
+  creerFournisseurJeton,
+  creerVerificateur,
+  exigerHttps,
+} from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { DecideurIdentite } from './acces.js';
 import { DossierFhir } from './dossier.js';
@@ -43,7 +48,24 @@ const drapeaux =
     : await drapeauxFixes();
 const dossier = new DossierFhir({ base: fhir, entetes });
 
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: env['KEYCLOAK_ISSUER'],
+      FHIR_BASE_URL: env['FHIR_BASE_URL'],
+      IDENTITE_URL: env['IDENTITE_URL'],
+      UNLEASH_API_URL: env['UNLEASH_API_URL'],
+    },
+    env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
+  process.exit(1);
+}
+
 const app = await creerServeur({
+  trustProxy: env['CONSULTATION_TRUST_PROXY'] === 'true',
   limiteParMinute: Number(env['CONSULTATION_LIMITE_PAR_MINUTE'] ?? '300'),
   verifierJeton: creerVerificateur({
     emetteur,

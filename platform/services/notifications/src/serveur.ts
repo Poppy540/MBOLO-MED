@@ -1,5 +1,6 @@
 // API du service de notifications : réservée aux services autorisés (jeton de service).
 import rateLimit from '@fastify/rate-limit';
+import { entetesSecurite } from '@mbolo/identite';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import {
@@ -31,6 +32,8 @@ export async function creerServeur(o: {
   simulation?: CanalSimule;
   /** Appels permis par adresse et par minute (défaut : 600). */
   limiteParMinute?: number;
+  /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For (limites d'appels). */
+  trustProxy?: boolean;
   /**
    * Invitations de proches (ADR-0019) : canal d'envoi, pays, et seuls clients autorisés
    * (le service invitations). Ces clients n'envoient rien d'autre.
@@ -39,10 +42,13 @@ export async function creerServeur(o: {
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
+    trustProxy: o.trustProxy ?? false,
     bodyLimit: 4 * 1024,
     // Un champ inconnu (ex. un texte libre) est refusé, pas silencieusement retiré.
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: o.limiteParMinute ?? 600, timeWindow: '1 minute' });
 

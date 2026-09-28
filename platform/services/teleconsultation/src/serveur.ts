@@ -1,7 +1,12 @@
 // API du service de téléconsultation. Toute requête (hors /sante) exige un jeton Keycloak valide.
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import { ErreurDepot, type VerifierJeton, type Utilisateur } from '@mbolo/identite';
+import {
+  ErreurDepot,
+  type VerifierJeton,
+  type Utilisateur,
+  entetesSecurite,
+} from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurCreneau } from './creneaux.js';
 import {
@@ -32,6 +37,8 @@ export async function creerServeur(o: {
   trustProxy?: boolean;
 }): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 8 * 1024, trustProxy: o.trustProxy ?? false });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });
