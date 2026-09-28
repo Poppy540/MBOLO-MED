@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connecter, migrer, roleDe, type Sql } from '@mbolo/base-donnees';
 import { DepotPostgres, type Paiement } from './depot.js';
 import { DepotRecusPostgres } from './recus.js';
+import { DepotRelevesPostgres } from './releves.js';
 
 const URL_MIGRATION = process.env['MBOLO_TEST_DATABASE_URL'];
 const URL_EXECUTION = process.env['MBOLO_TEST_DATABASE_URL_EXECUTION'];
@@ -167,5 +168,47 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des paiements
     await expect(
       execution`delete from paiement.recus where numero = ${resultats[0]?.recu.numero ?? ''}`,
     ).rejects.toThrow();
+  });
+
+  it('relevés : paiements reçus et remboursements versés du mois, par professionnel (ADR-0020)', async () => {
+    // Professionnel propre à cette exécution : les données précédentes ne comptent pas.
+    const praticien = `prac-essai-${randomUUID().slice(0, 8)}`;
+    const maintenant = new Date();
+    const payer = async (montant: number) => {
+      const p = await depot.creer({ ...nouveau(), praticien, montant });
+      const tentative = randomUUID();
+      await depot.demarrer(
+        p.id,
+        { tentative, operateur: 'airtel', fournisseur: 'simule' },
+        maintenant,
+      );
+      await depot.conclure(tentative, 'paye', maintenant);
+      return p;
+    };
+    await payer(10_000);
+    const rembourse = await payer(15_000);
+    const r = await depot.preparerRemboursement({
+      id: randomUUID(),
+      paiementId: rembourse.id,
+      montant: 15_000,
+      devise: 'XAF',
+      statut: 'a-valider',
+      prepareLe: maintenant,
+    });
+    await depot.deciderRemboursement(r?.id ?? '', 'valide', 'sujet-valideur-fictif', maintenant);
+    await depot.marquerEffectue(r?.id ?? '', maintenant);
+    const releves = new DepotRelevesPostgres(execution);
+    const lignes = await releves.duMois(
+      new Date(maintenant.getTime() - 60_000),
+      new Date(maintenant.getTime() + 60_000),
+    );
+    expect(lignes.find((l) => l.praticien === praticien)).toEqual({
+      praticien,
+      devise: 'XAF',
+      consultations: 2,
+      encaisse: 25_000,
+      remboursements: 1,
+      rembourse: 15_000,
+    });
   });
 });

@@ -43,9 +43,12 @@ export const COHORTES: Record<string, string[]> = {
   'teleconsultation.video': ['patient-fictif-01', 'medecin-fictif-01', 'patient-fictif-04'],
   'identite.photos': ['patient-fictif-01', 'patient-fictif-03'],
   // Réservation payante (ADR-0017) : un seul patient, les autres réservent sans paiement.
-  'paiement.mobile-money': ['patient-fictif-04'],
+  // Le compte des relevés y est aussi : reversements.professionnels dépend de ce flag.
+  'paiement.mobile-money': ['patient-fictif-04', 'reversements-fictif-01'],
   // Reçus et avoirs (ADR-0020) : dépendent du paiement, même cohorte.
   'facturation.recus': ['patient-fictif-04'],
+  // Relevés des professionnels (ADR-0020) : le seul compte habilité de test.
+  'reversements.professionnels': ['reversements-fictif-01'],
   // Ordonnances électroniques (ADR-0018) : un seul médecin, l'infirmier n'en fait pas partie.
   'ordonnances.electroniques': ['medecin-fictif-01'],
 };
@@ -69,7 +72,8 @@ export interface CompteFictif {
     | 'gestion-invitations'
     | 'verification-identite'
     | 'validation-remboursement'
-    | 'assistance-patient';
+    | 'assistance-patient'
+    | 'validation-reversement';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -153,6 +157,14 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'valideur-fictif-01',
     prenom: 'Rose',
     role: 'validation-remboursement',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    // Relit les relevés mensuels des professionnels (ADR-0020) ; distinct du valideur des remboursements.
+    identifiant: 'reversements-fictif-01',
+    prenom: 'Honoré',
+    role: 'validation-reversement',
     application: 'pro',
     attributs: {},
   },

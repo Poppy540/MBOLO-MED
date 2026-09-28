@@ -14,8 +14,16 @@ export interface InfoPaiement {
 export type TypeConsultation = 'generaliste' | 'specialiste';
 
 export interface Paiements {
-  /** Crée (ou retrouve) le paiement du rendez-vous. Lève `ErreurDepot` 503 si le service est injoignable. */
-  creer(d: { reference: string; sujet: string; type: TypeConsultation }): Promise<InfoPaiement>;
+  /**
+   * Crée (ou retrouve) le paiement du rendez-vous ; `praticien` : référence opaque du professionnel,
+   * pour ses relevés (ADR-0020). Lève `ErreurDepot` 503 si le service est injoignable.
+   */
+  creer(d: {
+    reference: string;
+    sujet: string;
+    type: TypeConsultation;
+    praticien: string;
+  }): Promise<InfoPaiement>;
   /** Payé ou non ; lève `ErreurDepot` 503 si le service est injoignable (jamais « non » par défaut). */
   estPaye(reference: string): Promise<boolean>;
   /**
@@ -57,6 +65,7 @@ export class PaiementsHttp implements Paiements {
     reference: string;
     sujet: string;
     type: TypeConsultation;
+    praticien: string;
   }): Promise<InfoPaiement> {
     const r = await this.appeler('/paiements', { method: 'POST', body: JSON.stringify(d) });
     if (r.status !== 201) throw indisponible();
@@ -101,6 +110,7 @@ export class PaiementsMemoire implements Paiements {
     reference: string;
     sujet: string;
     type: TypeConsultation;
+    praticien: string;
   }): Promise<InfoPaiement> {
     if (this.indisponible) throw indisponible();
     this.crees.set(d.reference, { sujet: d.sujet, type: d.type });

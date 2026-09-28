@@ -14,6 +14,8 @@ export interface Paiement {
   /** Compte Keycloak (sub) du patient concerné. */
   sujet: string;
   typeConsultation: TypeConsultation;
+  /** Référence opaque du professionnel du rendez-vous (relevés, ADR-0020) ; absente avant la PR BQ. */
+  praticien?: string;
   montant: number;
   devise: string;
   statut: Statut;
@@ -200,6 +202,7 @@ interface Ligne {
   reference: string;
   sujet: string;
   type_consultation: TypeConsultation;
+  praticien: string | null;
   montant: string;
   devise: string;
   statut: Statut;
@@ -241,6 +244,7 @@ const versPaiement = (l: Ligne): Paiement => ({
   reference: l.reference,
   sujet: l.sujet,
   typeConsultation: l.type_consultation,
+  ...(l.praticien ? { praticien: l.praticien } : {}),
   // bigint lu comme texte par le pilote : les montants restent des entiers sûrs (vérifiés à la grille).
   montant: Number(l.montant),
   devise: l.devise,
@@ -261,9 +265,10 @@ export class DepotPostgres implements DepotPaiements {
   async creer(p: Paiement): Promise<Paiement> {
     const [cree] = await this.sql<Ligne[]>`
       insert into paiement.paiements
-        (id, reference, sujet, type_consultation, montant, devise, statut, cree_le, mis_a_jour_le)
-      values (${p.id}, ${p.reference}, ${p.sujet}, ${p.typeConsultation}, ${p.montant},
-              ${p.devise}, 'a-payer', ${p.creeLe}, ${p.misAJourLe})
+        (id, reference, sujet, type_consultation, praticien, montant, devise, statut, cree_le,
+         mis_a_jour_le)
+      values (${p.id}, ${p.reference}, ${p.sujet}, ${p.typeConsultation}, ${p.praticien ?? null},
+              ${p.montant}, ${p.devise}, 'a-payer', ${p.creeLe}, ${p.misAJourLe})
       on conflict (reference) do nothing
       returning *`;
     if (cree) return versPaiement(cree);

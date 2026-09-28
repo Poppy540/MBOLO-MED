@@ -10,6 +10,7 @@ import { FournisseurSimule } from './fournisseur.js';
 import { creerVerificateurAppelant } from './jeton.js';
 import { LIMITES_PAR_DEFAUT, creerServeur } from './serveur.js';
 import { DepotRecusPostgres, ServiceRecus } from './recus.js';
+import { DepotRelevesPostgres, ServiceReleves } from './releves.js';
 import { ServicePaiement } from './service.js';
 import { tarifsDepuis, type Tarifs } from './tarifs.js';
 
@@ -100,6 +101,18 @@ try {
   journal.erreur('paramètres des reçus invalides', { err: e });
   process.exit(1);
 }
+// Relevés des intervenants (ADR-0020, flag reversements.professionnels) : part reversée à valider par
+// le juriste et le porteur de projet ; 55 % = hypothèse du business plan (D-0001).
+let releves: ServiceReleves;
+try {
+  releves = new ServiceReleves(new DepotRelevesPostgres(sql), drapeaux, {
+    partPourcent: Number(env['PAIEMENT_PART_REVERSEE_POURCENT'] ?? '55'),
+    fuseau: env['PAIEMENT_RECUS_FUSEAU'] ?? 'Africa/Libreville',
+  });
+} catch (e) {
+  journal.erreur('paramètres des relevés invalides', { err: e });
+  process.exit(1);
+}
 const service = new ServicePaiement(
   depot,
   fournisseur,
@@ -150,6 +163,7 @@ const app = await creerServeur({
   }),
   service,
   recus,
+  releves,
   // Développement et e2e : le payeur simulé valide ou refuse (jamais en production, refusée plus haut).
   ...(env['PAIEMENT_SIMULATION'] === 'true' ? { simulation: fournisseur } : {}),
   journal,

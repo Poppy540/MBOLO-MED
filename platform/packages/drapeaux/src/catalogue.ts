@@ -56,6 +56,13 @@ export const CATALOGUE = {
     dependances: ['paiement.mobile-money'],
     branche: true,
   },
+  'reversements.professionnels': {
+    description:
+      'Relevés mensuels des professionnels (consultations payées, remboursements, part à reverser), lus par le rôle validation-reversement (ADR-0020).',
+    vague: 1,
+    dependances: ['paiement.mobile-money'],
+    branche: true,
+  },
   'ordonnances.electroniques': {
     description:
       "Le professionnel prescrit une ordonnance électronique à l'issue d'une consultation (ADR-0018).",

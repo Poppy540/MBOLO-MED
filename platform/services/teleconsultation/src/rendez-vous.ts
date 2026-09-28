@@ -344,6 +344,7 @@ export class ServiceTeleconsultation {
         reference: r.id,
         sujet: u.sujet,
         type: 'generaliste',
+        praticien: r.praticienId,
       });
       const expireLe = this.expireLe(r);
       return { ...r, paiement, ...(expireLe ? { expireLe } : {}) };
@@ -370,7 +371,7 @@ export class ServiceTeleconsultation {
     // Paiement à régler (création idempotente : le même paiement est renvoyé), pour reprendre depuis
     // la liste des rendez-vous. Sans réponse du paiement, le statut suffit.
     const paiement = await this.paiement.service
-      .creer({ reference: r.id, sujet: u.sujet, type: 'generaliste' })
+      .creer({ reference: r.id, sujet: u.sujet, type: 'generaliste', praticien: r.praticienId })
       .catch(() => undefined);
     return { ...suite, ...(expireLe ? { expireLe } : {}), ...(paiement ? { paiement } : {}) };
   }

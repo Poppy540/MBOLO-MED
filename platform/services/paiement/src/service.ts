@@ -124,6 +124,8 @@ export class ServicePaiement {
     reference: string;
     sujet: string;
     type: TypeConsultation;
+    /** Référence opaque du professionnel, pour ses relevés (ADR-0020). */
+    praticien?: string;
   }): Promise<{ id: string; statut: Statut; montant: number; devise: string }> {
     await this.verifierActif(d.sujet);
     const maintenant = this.horloge();
@@ -132,6 +134,7 @@ export class ServicePaiement {
       reference: d.reference,
       sujet: d.sujet,
       typeConsultation: d.type,
+      ...(d.praticien ? { praticien: d.praticien } : {}),
       montant: this.tarifs.prix[d.type],
       devise: this.tarifs.devise,
       statut: 'a-payer',

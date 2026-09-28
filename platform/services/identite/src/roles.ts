@@ -28,6 +28,12 @@ export const ROLES = [
    * Double authentification. Jamais un agent IA.
    */
   'assistance-patient',
+  /**
+   * Relit les relevés mensuels des professionnels et, plus tard, valide leurs reversements
+   * (ADR-0020) ; aucun accès clinique. Double authentification. Jamais un agent IA, jamais pour
+   * lui-même.
+   */
+  'validation-reversement',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

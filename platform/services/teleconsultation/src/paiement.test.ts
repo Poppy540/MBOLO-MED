@@ -184,13 +184,20 @@ describe('client HTTP du service de paiement', () => {
       },
     });
     expect(
-      await client.creer({ reference: 'rdv-fictif-1', sujet: 'u-p1', type: 'generaliste' }),
+      await client.creer({
+        reference: 'rdv-fictif-1',
+        sujet: 'u-p1',
+        type: 'generaliste',
+        praticien: 'prac-fictif-001',
+      }),
     ).toEqual({ id: 'p1', montant: 10_000, devise: 'XAF' });
     expect(await client.estPaye('rdv-fictif-1')).toBe(true);
     expect(JSON.parse(String(appels[0]?.init.body))).toEqual({
       reference: 'rdv-fictif-1',
       sujet: 'u-p1',
       type: 'generaliste',
+      // Référence opaque du professionnel (relevés, ADR-0020), jamais son nom.
+      praticien: 'prac-fictif-001',
     });
     expect(appels[1]?.url).toBe('http://paiement.test/rendez-vous/rdv-fictif-1/paiement');
     expect(appels.every((a) => (a.init.headers as Record<string, string>)['authorization'])).toBe(
@@ -234,7 +241,12 @@ describe('client HTTP du service de paiement', () => {
     });
     await expect(refus.estPaye('x')).rejects.toMatchObject({ statut: 503 });
     await expect(
-      refus.creer({ reference: 'x', sujet: 'u', type: 'generaliste' }),
+      refus.creer({
+        reference: 'x',
+        sujet: 'u',
+        type: 'generaliste',
+        praticien: 'prac-fictif-001',
+      }),
     ).rejects.toMatchObject({ statut: 503 });
   });
 });

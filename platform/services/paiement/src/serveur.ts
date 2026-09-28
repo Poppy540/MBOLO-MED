@@ -11,6 +11,7 @@ import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurFournisseur, type FournisseurSimule } from './fournisseur.js';
 import type { VerifierAppelant } from './jeton.js';
 import { ErreurRecus, type ServiceRecus } from './recus.js';
+import { ErreurReleves, type ServiceReleves } from './releves.js';
 import { ErreurPaiement, estAgent, type ServicePaiement } from './service.js';
 import { TYPES_CONSULTATION, type TypeConsultation } from './tarifs.js';
 
@@ -46,6 +47,8 @@ export async function creerServeur(o: {
   service: ServicePaiement;
   /** Reçus et avoirs du patient (ADR-0020) ; sans lui, la route /recus est absente. */
   recus?: ServiceRecus;
+  /** Relevés des intervenants (ADR-0020) ; sans lui, la route /releves est absente. */
+  releves?: ServiceReleves;
   journal: Journal;
   limites?: Limites;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
@@ -112,6 +115,11 @@ export async function creerServeur(o: {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
+    if (err instanceof ErreurReleves) {
+      return reply
+        .code(err.motif === 'mois' ? 400 : 403)
+        .send({ erreur: err.message, motif: err.motif });
+    }
     if (err instanceof ErreurRecus) {
       return reply.code(403).send({ erreur: err.message, motif: err.motif });
     }
@@ -134,7 +142,9 @@ export async function creerServeur(o: {
   app.get('/sante', async () => ({ statut: 'ok' }));
 
   // ── Services ──────────────────────────────────────────────────────────────────
-  app.post<{ Body: { reference: string; sujet: string; type: TypeConsultation } }>(
+  app.post<{
+    Body: { reference: string; sujet: string; type: TypeConsultation; praticien?: string };
+  }>(
     '/paiements',
     {
       schema: {
@@ -146,6 +156,8 @@ export async function creerServeur(o: {
             reference: REFERENCE,
             sujet: { type: 'string', pattern: '^[A-Za-z0-9-]{1,64}$' },
             type: { type: 'string', enum: [...TYPES_CONSULTATION] },
+            // Référence opaque du professionnel (relevés, ADR-0020), jamais son nom.
+            praticien: REFERENCE,
           },
         },
       },
@@ -229,6 +241,32 @@ export async function creerServeur(o: {
     { schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } } },
     async (req) => o.service.lire(await patient(req), req.params.id),
   );
+
+  const releves = o.releves;
+  if (releves) {
+    // Relevés du mois par professionnel (rôle validation-reversement) : lecture seule, rien n'est versé.
+    app.get<{ Querystring: { mois: string } }>(
+      '/releves',
+      {
+        schema: {
+          querystring: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['mois'],
+            properties: { mois: { type: 'string', pattern: '^[0-9]{4}-[0-9]{2}$' } },
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await humain(req);
+        const liste = await releves.duMois(u, req.query.mois);
+        o.journal.info('relevés consultés', { sujet: u.sujet, mois: req.query.mois });
+        return reply
+          .header('cache-control', 'no-store')
+          .send({ mois: req.query.mois, releves: liste });
+      },
+    );
+  }
 
   const recus = o.recus;
   if (recus) {
