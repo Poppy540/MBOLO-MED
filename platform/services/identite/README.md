@@ -29,7 +29,7 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 | Agent IA                   | Patient de sa session uniquement | Consentement `C-SOINS` actif ; pas de bris de glace                                                                                             |
 | Pharmacien, administrateur | Aucun                            | Les ordonnances passeront par un service dédié                                                                                                  |
 
-Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses consentements. Une révocation prend effet immédiatement ; la ressource est conservée (`inactive`) pour la traçabilité.
+Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses consentements. Une révocation prend effet immédiatement ; la ressource est conservée (`inactive`) pour la traçabilité. Seule exception, étroite : l'équipe d'assistance (rôle `assistance-patient`, ADR-0019) révoque **les seuls partages `C-PROCHE`** d'un patient à sa demande (`POST /patients/:id/proches/retrait-assistance` → `{ revoques }`), sans pouvoir lire ses consentements ; appelée par le service `invitations` après le rappel du patient et le contrôle de sa date de naissance.
 
 ## Journal des accès (principe n°3)
 

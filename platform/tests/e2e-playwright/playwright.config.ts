@@ -160,6 +160,9 @@ export default defineConfig({
         // Le patient de test invite des proches à chaque exécution : limite par jour large ici,
         // testée à part (tests unitaires et PostgreSQL).
         INVITATIONS_PROCHES_PAR_JOUR: '1000',
+        // Système des numéros d'assurance des patients fictifs (preparation-globale.ts).
+        INVITATIONS_SYSTEME_ASSURANCE:
+          'https://mbolo-sante.example/fhir/identifiant-patient/assurance-maladie',
         // En CI, Keycloak (conteneur) appelle le service : écoute sur toutes les interfaces.
         INVITATIONS_HOST: process.env['INVITATIONS_HOST'] ?? '127.0.0.1',
         PORT: new URL(INVITATIONS_URL).port,
@@ -239,7 +242,7 @@ export default defineConfig({
       cwd: '../../apps/professionnel',
       url: APP_PRO_URL,
       reuseExistingServer: false,
-      env: { TELECONSULTATION_URL, CONSULTATION_URL, DOCUMENTS_URL, PAIEMENT_URL },
+      env: { TELECONSULTATION_URL, CONSULTATION_URL, DOCUMENTS_URL, PAIEMENT_URL, INVITATIONS_URL },
     },
   ],
 });

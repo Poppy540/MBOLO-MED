@@ -4,7 +4,13 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
-import { ConsentementsIdentite, DossierProchesFhir, SmsNotifications } from './adaptateurs.js';
+import {
+  ConsentementsIdentite,
+  DossierAssistanceFhir,
+  DossierProchesFhir,
+  SmsNotifications,
+} from './adaptateurs.js';
+import { ServiceAssistance } from './assistance.js';
 import { creerJournal } from '@mbolo/journal-securise';
 import { creerEmpreinte } from './codes.js';
 import { creerVerificateurService } from './jeton-service.js';
@@ -73,6 +79,7 @@ const depot = new DepotPostgres(
 );
 const empreinte = creerEmpreinte(cle);
 let proches: ServiceProches | undefined;
+let assistance: ServiceAssistance | undefined;
 let service: ServiceInvitations;
 try {
   if (fhir && identite && notifications && authentification) {
@@ -90,17 +97,36 @@ try {
             rafraichissementMs: Number(env['UNLEASH_REFRESH_MS'] ?? '15000'),
           })
         : await drapeauxFixes();
-    proches = new ServiceProches(
+    const fiches = new DossierProchesFhir({ base: fhir, entetes });
+    const consentements = new ConsentementsIdentite(identite);
+    const sms = new SmsNotifications(notifications, entetes);
+    proches = new ServiceProches(depot, empreinte, fiches, consentements, sms, drapeaux, {
+      max: Number(env['INVITATIONS_PROCHES_MAX'] ?? '3'),
+      validiteJours: Number(env['INVITATIONS_VALIDITE_PROCHE_JOURS'] ?? '7'),
+      parJour: Number(env['INVITATIONS_PROCHES_PAR_JOUR'] ?? '5'),
+      env: production ? 'prod' : 'dev',
+    });
+    // Retrait des proches par l'équipe (ADR-0019) : jamais derrière un flag, un retrait doit
+    // toujours rester possible. Système des numéros : dépend du pays [FICTIF par défaut en dev].
+    assistance = new ServiceAssistance(
       depot,
-      empreinte,
-      new DossierProchesFhir({ base: fhir, entetes }),
-      new ConsentementsIdentite(identite),
-      new SmsNotifications(notifications, entetes),
-      drapeaux,
+      new DossierAssistanceFhir({ base: fhir, entetes }),
+      fiches,
+      consentements,
+      sms,
+      new Limiteur(
+        Number(env['INVITATIONS_ASSISTANCE_ESSAIS_MAX'] ?? '3'),
+        Number(env['INVITATIONS_ASSISTANCE_FENETRE_MINUTES'] ?? '15') * 60_000,
+      ),
       {
-        max: Number(env['INVITATIONS_PROCHES_MAX'] ?? '3'),
-        validiteJours: Number(env['INVITATIONS_VALIDITE_PROCHE_JOURS'] ?? '7'),
-        parJour: Number(env['INVITATIONS_PROCHES_PAR_JOUR'] ?? '5'),
+        systemes: {
+          'assurance-maladie':
+            env['INVITATIONS_SYSTEME_ASSURANCE'] ??
+            'https://mbolo-sante.example/fhir/identifiant/ga/assurance-maladie',
+          provisoire:
+            env['INVITATIONS_SYSTEME_PROVISOIRE'] ??
+            'https://mbolo-sante.example/fhir/identifiant/ga/provisoire',
+        },
         env: production ? 'prod' : 'dev',
       },
     );
@@ -135,6 +161,7 @@ const app = await creerServeur({
   ),
   journal,
   ...(proches ? { proches } : {}),
+  ...(assistance ? { assistance } : {}),
   trustProxy: env['INVITATIONS_TRUST_PROXY'] === 'true',
   // Extension d'inscription de Keycloak (ADR-0014) : jetons signés par le royaume lui-même.
   verifierService: creerVerificateurService({

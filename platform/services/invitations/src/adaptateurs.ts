@@ -4,8 +4,9 @@
 // - identite, avec le jeton du patient, pour son consentement C-PROCHE ;
 // - notifications, avec le compte de service, pour le SMS du code.
 // Aucun contenu (prénom, numéro, code) n'est journalisé ici.
-import type { FhirResource, RelatedPerson } from 'fhir/r4.js';
+import type { AuditEvent, FhirResource, Patient, RelatedPerson } from 'fhir/r4.js';
 import { ClientFhir, ErreurDepot, TYPE_FHIR, type FournisseurJeton } from '@mbolo/identite';
+import type { ConsentementsAssistance, DossierAssistance } from './assistance.js';
 import type { ConsentementsProche, DossierProches, SmsInvitation } from './proches.js';
 
 export class DossierProchesFhir extends ClientFhir implements DossierProches {
@@ -64,6 +65,49 @@ export class DossierProchesFhir extends ClientFhir implements DossierProches {
   }
 }
 
+/**
+ * Assistance aux patients (ADR-0019) : recherche par numéro, lecture du numéro de téléphone et de la
+ * date de naissance (seuls éléments permis au compte de service), fiches des proches, traces.
+ */
+export class DossierAssistanceFhir extends ClientFhir implements DossierAssistance {
+  rechercherPatients(systeme: string, valeur: string): Promise<Patient[]> {
+    return this.rechercher(
+      `${this.base}/Patient?identifier=${encodeURIComponent(`${systeme}|${valeur}`)}&_count=20`,
+      'Patient',
+      (r): r is Patient => r.resourceType === 'Patient',
+    );
+  }
+
+  async patient(patientId: string): Promise<Patient | undefined> {
+    const r = await this.appeler(`${this.base}/Patient/${encodeURIComponent(patientId)}`, {
+      headers: { 'cache-control': 'no-cache' },
+    });
+    if (r.status === 404 || r.status === 410) return undefined;
+    if (!r.ok) throw ClientFhir.echec(r, 'Patient');
+    const p = (await r.json()) as Patient;
+    return p.resourceType === 'Patient' && p.id === patientId ? p : undefined;
+  }
+
+  prochesDuPatient(patientId: string): Promise<RelatedPerson[]> {
+    // Toutes les pages : les fiches retirées restent dans le dossier (traçabilité).
+    return this.rechercher(
+      `${this.base}/RelatedPerson?patient=${encodeURIComponent(`Patient/${patientId}`)}&_count=100`,
+      'Proche',
+      (r): r is RelatedPerson =>
+        r.resourceType === 'RelatedPerson' && r.patient.reference === `Patient/${patientId}`,
+    );
+  }
+
+  async tracer(trace: AuditEvent): Promise<void> {
+    const r = await this.appeler(`${this.base}/AuditEvent`, {
+      method: 'POST',
+      headers: { 'content-type': TYPE_FHIR },
+      body: JSON.stringify(trace),
+    });
+    if (!r.ok) throw ClientFhir.echec(r, 'Trace');
+  }
+}
+
 /** Erreur d'un service appelé : jamais de détail transmis au patient. */
 export class ErreurServiceAppele extends Error {
   constructor(readonly statut: number) {
@@ -71,7 +115,7 @@ export class ErreurServiceAppele extends Error {
   }
 }
 
-export class ConsentementsIdentite implements ConsentementsProche {
+export class ConsentementsIdentite implements ConsentementsProche, ConsentementsAssistance {
   constructor(
     private readonly url: string,
     private readonly appeler: typeof fetch = fetch,
@@ -143,6 +187,16 @@ export class ConsentementsIdentite implements ConsentementsProche {
     }
   }
 
+  /** Retrait par l'équipe d'assistance : identite ne révoque que les partages C-PROCHE. */
+  async retirerTous(o: { jetonEquipe: string; patientId: string }): Promise<number> {
+    const r = await this.demander(
+      `/patients/${encodeURIComponent(o.patientId)}/proches/retrait-assistance`,
+      o.jetonEquipe,
+      'POST',
+    );
+    return ((await r.json()) as { revoques?: number }).revoques ?? 0;
+  }
+
   private async demander(chemin: string, jeton: string, methode: 'GET' | 'POST' = 'GET') {
     let r: Response;
     try {
@@ -186,9 +240,12 @@ export class SmsNotifications implements SmsInvitation {
     }
   }
 
-  async alerterPatient(patientId: string): Promise<'envoyee' | 'echec'> {
+  async alerterPatient(
+    patientId: string,
+    alerte: 'proche-inscrit' | 'proches-retires',
+  ): Promise<'envoyee' | 'echec'> {
     try {
-      const r = await this.appeler(`${this.url}/alertes/proche-inscrit`, {
+      const r = await this.appeler(`${this.url}/alertes/${alerte}`, {
         method: 'POST',
         headers: { ...(await this.entetes()), 'content-type': 'application/json' },
         body: JSON.stringify({ patientId }),

@@ -132,4 +132,32 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
     expect(resultats.filter((r) => r === 'cree')).toHaveLength(2);
     expect(resultats.filter((r) => r === 'limite-jour')).toHaveLength(4);
   });
+
+  it('retrouve et révoque l’invitation par la fiche du proche (retrait par l’équipe)', async () => {
+    const depot = new DepotPostgres(execution);
+    const patient = `sujet-patient-fictif-${randomUUID().slice(0, 8)}`;
+    const fiche = `rp-fictif-${randomUUID().slice(0, 8)}`;
+    const maintenant = new Date();
+    const id = randomUUID();
+    await depot.creerPourProche(
+      {
+        id,
+        empreinte: empreinte(`FICHE${randomUUID().slice(0, 4)}`),
+        cohorte: COHORTE_PROCHES,
+        type: 'proche',
+        relatedPersonId: fiche,
+        creePar: patient,
+        creeLe: maintenant,
+        expireLe: new Date(maintenant.getTime() + 7 * 86_400_000),
+      },
+      3,
+      maintenant,
+      { max: 100, depuis: new Date(maintenant.getTime() - 86_400_000) },
+    );
+    expect((await depot.parFiche(fiche))?.id).toBe(id);
+    expect(await depot.revoquerParFiche(fiche, maintenant)).toBe(true);
+    expect((await depot.parFiche(fiche))?.revoqueLe).toBeDefined();
+    expect(await depot.revoquerParFiche(fiche, maintenant)).toBe(false);
+    expect(await depot.parFiche('rp-fictif-inconnu')).toBeUndefined();
+  });
 });

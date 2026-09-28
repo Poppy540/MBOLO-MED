@@ -4,6 +4,7 @@ import {
   PAYS_PAR_DEFAUT,
   rediger,
   redigerAlerteProche,
+  type AlertePatient,
   redigerInvitationProche,
   type Gabarit,
   type Pays,
@@ -61,11 +62,12 @@ export class ServiceNotifications {
   }
 
   /**
-   * Alerte de sécurité (ADR-0019) : le proche invité par ce patient a créé son compte. Numéro lu
-   * dans le dossier ; pas de condition C-RAPPELS (information sur l'accès au dossier, pas un rappel).
+   * Alerte de sécurité au patient (ADR-0019) : son proche invité a créé son compte, ou l'équipe a
+   * retiré ses proches à sa demande. Numéro lu dans le dossier ; pas de condition C-RAPPELS
+   * (information sur l'accès au dossier, pas un rappel).
    */
-  async alerterProcheInscrit(patientId: string): Promise<Resultat> {
-    const texte = redigerAlerteProche(this.pays);
+  async alerterPatient(patientId: string, alerte: AlertePatient): Promise<Resultat> {
+    const texte = redigerAlerteProche(alerte, this.pays);
     const telephone = await this.contacts.telephone(`Patient/${patientId}`);
     if (!telephone) return 'ignoree-sans-numero';
     try {

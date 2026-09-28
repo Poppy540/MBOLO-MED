@@ -161,6 +161,14 @@ describe('API identité', () => {
     expect(apres.json()).toMatchObject({ autorise: false });
   });
 
+  it('retrait des proches par l’équipe : refusé à un médecin (403) et sans jeton (401)', async () => {
+    const a = await app();
+    const url = '/patients/fictif-patient-0001/proches/retrait-assistance';
+    const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
+    expect((await a.inject({ method: 'POST', url, headers: medecin })).statusCode).toBe(403);
+    expect((await a.inject({ method: 'POST', url })).statusCode).toBe(401);
+  });
+
   it('le médecin ne peut ni lire ni créer les consentements de la patiente (403)', async () => {
     const a = await app();
     const medecin = { authorization: `Bearer ${await jetonMedecin()}` };

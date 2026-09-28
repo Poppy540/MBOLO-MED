@@ -3,9 +3,11 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import {
+  ALERTES_PATIENT,
   FORMAT_CODE,
   IDENTIFIANTS_GABARITS,
   PAYS_PAR_DEFAUT,
+  type AlertePatient,
   type Gabarit,
   type Pays,
 } from './gabarits.js';
@@ -144,11 +146,16 @@ export async function creerServeur(o: {
       },
     );
 
-    // Alerte au patient : son proche a créé son compte (ADR-0019).
-    app.post<{ Body: { patientId: string } }>(
-      '/alertes/proche-inscrit',
+    // Alertes au patient (ADR-0019) : son proche a créé son compte ; l'équipe a retiré ses proches.
+    app.post<{ Params: { alerte: AlertePatient }; Body: { patientId: string } }>(
+      '/alertes/:alerte',
       {
         schema: {
+          params: {
+            type: 'object',
+            required: ['alerte'],
+            properties: { alerte: { type: 'string', enum: Object.keys(ALERTES_PATIENT) } },
+          },
           body: {
             type: 'object',
             additionalProperties: false,
@@ -160,8 +167,12 @@ export async function creerServeur(o: {
       async (req, reply) => {
         const appelant = await authentifier(req);
         if (!invitations.appelants.includes(appelant)) throw new ErreurInterdite();
-        const resultat = await o.service.alerterProcheInscrit(req.body.patientId);
-        o.journal.info('alerte « proche inscrit » traitée', { appelant, resultat });
+        const resultat = await o.service.alerterPatient(req.body.patientId, req.params.alerte);
+        o.journal.info('alerte au patient traitée', {
+          appelant,
+          alerte: req.params.alerte,
+          resultat,
+        });
         return reply.code(202).send({ resultat });
       },
     );

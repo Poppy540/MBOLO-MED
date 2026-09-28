@@ -44,8 +44,14 @@ export interface ConsentementsProche {
 /** Envoi du code par SMS (service notifications, gabarit fermé). */
 export interface SmsInvitation {
   envoyer(o: { telephone: string; code: string; jours: number }): Promise<'envoyee' | 'echec'>;
-  /** Alerte au patient : son proche a créé son compte (numéro lu dans le dossier). */
-  alerterPatient(patientId: string): Promise<'envoyee' | 'echec'>;
+  /**
+   * Alerte au patient (numéro lu dans le dossier) : son proche a créé son compte, ou l'équipe a
+   * retiré ses proches à sa demande.
+   */
+  alerterPatient(
+    patientId: string,
+    alerte: 'proche-inscrit' | 'proches-retires',
+  ): Promise<'envoyee' | 'echec'>;
 }
 
 export interface ParametresProches {
@@ -270,7 +276,9 @@ export class ServiceProches {
     const patient = (await this.dossier.lire(i.relatedPersonId).catch(() => undefined))?.patient
       .reference;
     if (patient?.startsWith('Patient/')) {
-      await this.sms.alerterPatient(patient.slice('Patient/'.length)).catch(() => 'echec' as const);
+      await this.sms
+        .alerterPatient(patient.slice('Patient/'.length), 'proche-inscrit')
+        .catch(() => 'echec' as const);
     }
   }
 }

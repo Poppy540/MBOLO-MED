@@ -114,4 +114,39 @@ describe('ServiceConsentements', () => {
     expect(c.category?.[0]?.coding?.[0]?.code).toBe('C-IDENTITE');
     expect(c.policyRule?.text).toBe('0.1');
   });
+
+  it('équipe d’assistance : révoque les seuls partages C-PROCHE du patient (ADR-0019)', async () => {
+    const s = service();
+    const proche = {
+      ...soins,
+      categorie: 'C-PROCHE',
+      mode: 'texte',
+      beneficiaire: 'RelatedPerson/fictif-proche-0001',
+    } as const;
+    await s.enregistrer(patient1, P1, proche);
+    await s.enregistrer(patient1, P1, {
+      ...proche,
+      beneficiaire: 'RelatedPerson/fictif-proche-0002',
+    });
+    await s.enregistrer(patient1, P1, soins);
+    const assistant: Utilisateur = { sujet: 'u-assist', roles: ['assistance-patient'] };
+    // Ni un autre rôle, ni un agent IA, ni pour son propre dossier.
+    for (const u of [
+      patient2,
+      { sujet: 'u-ia', roles: ['assistance-patient', 'agent-ia'] },
+      { sujet: 'u-a2', roles: ['assistance-patient', 'patient'], patientId: P1 },
+    ] as Utilisateur[]) {
+      await expect(s.retirerProchesParAssistance(u, P1)).rejects.toBeInstanceOf(ErreurAcces);
+    }
+    expect(await s.retirerProchesParAssistance(assistant, P1)).toBe(2);
+    const liste = await s.lister(patient1, P1);
+    expect(liste.map((c) => [c.category?.[0]?.coding?.[0]?.code, c.status]).sort()).toEqual([
+      ['C-PROCHE', 'inactive'],
+      ['C-PROCHE', 'inactive'],
+      ['C-SOINS', 'active'],
+    ]);
+    // L'équipe ne lit pas les consentements du patient.
+    await expect(s.lister(assistant, P1)).rejects.toBeInstanceOf(ErreurAcces);
+    expect(await s.retirerProchesParAssistance(assistant, P1)).toBe(0);
+  });
 });

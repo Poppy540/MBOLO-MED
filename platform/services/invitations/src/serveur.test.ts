@@ -6,6 +6,7 @@ import { DepotMemoire } from './depot.js';
 import { Limiteur } from './limiteur.js';
 import { creerServeur } from './serveur.js';
 import { ServiceProches } from './proches.js';
+import type { ServiceAssistance } from './assistance.js';
 import { ServiceInvitations } from './service.js';
 
 // Jetons factices : le vérificateur réel (signature Keycloak) est testé dans @mbolo/identite.
@@ -298,5 +299,84 @@ describe('API des proches (ADR-0019)', () => {
     ).toBe(400);
     expect((await inviter(app, 'patient', { ...demande, lien: 'VOISIN' })).statusCode).toBe(400);
     expect((await inviter(app, 'patient', { ...demande, nom: '[FICTIF]' })).statusCode).toBe(400);
+  });
+});
+
+describe('API de l’équipe d’assistance (ADR-0019)', () => {
+  async function monter() {
+    const appels: unknown[] = [];
+    const lignes: string[] = [];
+    const app = await creerServeur({
+      verifierJeton: async (j) => {
+        if (j === 'assistant') return { sujet: 'u-assist', roles: ['assistance-patient'] };
+        const u = UTILISATEURS[j];
+        if (!u) throw new Error('jeton invalide');
+        return u;
+      },
+      service: new ServiceInvitations(new DepotMemoire(), creerEmpreinte('essai-'.repeat(8)), {
+        cohortes: ['ville-fictive'],
+        quotaParCohorte: 100,
+        validiteJours: 14,
+      }),
+      limiteur: new Limiteur(10, 60_000),
+      journal: creerJournal({ service: 'invitations', ecrire: (l) => lignes.push(l) }),
+      // Le service est testé à part (assistance.test.ts) : ici, la route et ses contrôles.
+      assistance: {
+        rechercher: async (_u: Utilisateur, d: unknown) => {
+          appels.push(d);
+          return { patientId: 'pat-fictif-001', telephone: '+241 00 00 00 01', proches: 1 };
+        },
+        retirerProches: async (_u: Utilisateur, jeton: string, d: unknown) => {
+          appels.push({ jeton, d });
+          return { retires: 1, sms: 'envoyee' as const };
+        },
+      } as unknown as ServiceAssistance,
+    });
+    return { app, appels, lignes };
+  }
+  const post = (
+    app: Awaited<ReturnType<typeof monter>>['app'],
+    url: string,
+    payload: object,
+    jeton?: string,
+  ) =>
+    app.inject({
+      method: 'POST',
+      url,
+      payload,
+      headers: jeton ? { authorization: `Bearer ${jeton}` } : {},
+    });
+
+  it('recherche et retrait : contrôles de la requête, rien de personnel dans le journal', async () => {
+    const { app, appels, lignes } = await monter();
+    const recherche = { type: 'assurance-maladie', numero: 'FICTIF-0001' };
+    expect((await post(app, '/assistance/recherche', recherche)).statusCode).toBe(401);
+    expect(
+      (await post(app, '/assistance/recherche', { ...recherche, type: 'autre' }, 'assistant'))
+        .statusCode,
+    ).toBe(400);
+    const r = await post(app, '/assistance/recherche', recherche, 'assistant');
+    expect(r.statusCode).toBe(200);
+    expect(r.headers['cache-control']).toBe('no-store');
+    const retrait = { patientId: 'pat-fictif-001', naissance: '1990-01-01', rappel: true };
+    // Le rappel au numéro du dossier doit être confirmé ; pas de champ en plus.
+    for (const corps of [
+      { ...retrait, rappel: false },
+      { ...retrait, naissance: '01/01/1990' },
+      { ...retrait, telephone: '+33000000009' },
+    ]) {
+      expect((await post(app, '/assistance/retrait-proches', corps, 'assistant')).statusCode).toBe(
+        400,
+      );
+    }
+    const ok = await post(app, '/assistance/retrait-proches', retrait, 'assistant');
+    expect(ok.json()).toEqual({ retires: 1, sms: 'envoyee' });
+    expect(appels).toHaveLength(2);
+    // Le jeton du membre de l'équipe est transmis (retrait des partages par identite).
+    expect(appels[1]).toMatchObject({ jeton: 'assistant' });
+    const journal = lignes.join('\n');
+    for (const interdit of ['FICTIF-0001', '+241', '1990-01-01']) {
+      expect(journal).not.toContain(interdit);
+    }
   });
 });

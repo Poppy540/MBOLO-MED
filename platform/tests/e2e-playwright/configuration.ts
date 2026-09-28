@@ -66,7 +66,8 @@ export interface CompteFictif {
     | 'revue-acces'
     | 'gestion-invitations'
     | 'verification-identite'
-    | 'validation-remboursement';
+    | 'validation-remboursement'
+    | 'assistance-patient';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -150,6 +151,14 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'valideur-fictif-01',
     prenom: 'Rose',
     role: 'validation-remboursement',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    // Retire les proches d'un patient à sa demande, après l'avoir rappelé (ADR-0019).
+    identifiant: 'assistant-fictif-01',
+    prenom: 'Blaise',
+    role: 'assistance-patient',
     application: 'pro',
     attributs: {},
   },

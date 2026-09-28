@@ -1,15 +1,23 @@
 // API des invitations. Création, liste et révocation : rôle gestion-invitations uniquement (humain,
 // double authentification). Vérification d'un code : publique, mais limitée en nombre d'essais.
 // Inscription (ADR-0014) : contrôle et utilisation d'un code par l'extension Keycloak seulement.
-// Proches (ADR-0019) : le patient invite, liste et révoque ses propres invitations.
+// Proches (ADR-0019) : le patient invite, liste et révoque ses propres invitations ; à sa demande,
+// l'équipe d'assistance (rôle assistance-patient) retire tous ses proches.
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
-import { LIENS_PROCHE, PRENOM_MAX, type LienProche } from '@mbolo/dossier-fhir';
+import {
+  LIENS_PROCHE,
+  PRENOM_MAX,
+  TYPES_IDENTIFIANT_PATIENT,
+  type LienProche,
+  type TypeIdentifiantPatient,
+} from '@mbolo/dossier-fhir';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import type { VerifierService } from './jeton-service.js';
 import type { Limiteur } from './limiteur.js';
 import { ErreurServiceAppele } from './adaptateurs.js';
+import type { ServiceAssistance } from './assistance.js';
 import { ErreurProche, type ServiceProches } from './proches.js';
 import type { TypeInvitation } from './depot.js';
 import { COHORTE, ErreurInvitation, type ServiceInvitations } from './service.js';
@@ -32,6 +40,8 @@ export async function creerServeur(o: {
   limiteParMinute?: number;
   /** Invitations de proches par le patient (ADR-0019) ; sans lui, les routes /proches sont absentes. */
   proches?: ServiceProches;
+  /** Retrait des proches par l'équipe d'assistance (ADR-0019) ; sans lui, /assistance est absent. */
+  assistance?: ServiceAssistance;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -332,6 +342,80 @@ export async function creerServeur(o: {
           invitation: req.params.id,
         });
         return { statut: 'revoque' };
+      },
+    );
+  }
+
+  const assistance = o.assistance;
+  if (assistance) {
+    // Membre de l'équipe (espace professionnel) ; son jeton sert aussi au retrait des partages.
+    const membre = async (req: FastifyRequest): Promise<{ u: Utilisateur; jeton: string }> => {
+      const entete = req.headers.authorization;
+      if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+      const jeton = entete.slice('Bearer '.length);
+      try {
+        return { u: await o.verifierJeton(jeton), jeton };
+      } catch {
+        throw new ErreurAuthentification();
+      }
+    };
+    const patientId = { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } as const;
+
+    app.post<{ Body: { type: TypeIdentifiantPatient; numero: string } }>(
+      '/assistance/recherche',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['type', 'numero'],
+            properties: {
+              type: { type: 'string', enum: [...TYPES_IDENTIFIANT_PATIENT] },
+              numero: { type: 'string', pattern: '^[A-Za-z0-9\\-]{1,64}$' },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { u } = await membre(req);
+        const fiche = await assistance.rechercher(u, req.body);
+        // Ni le numéro recherché ni le téléphone : le dossier trouvé et le nombre de proches.
+        o.journal.info('assistance : dossier retrouvé', {
+          par: u.sujet,
+          patientId: fiche.patientId,
+          proches: fiche.proches,
+        });
+        return reply.header('cache-control', 'no-store').send(fiche);
+      },
+    );
+
+    app.post<{ Body: { patientId: string; naissance: string; rappel: true } }>(
+      '/assistance/retrait-proches',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId', 'naissance', 'rappel'],
+            properties: {
+              patientId,
+              naissance: { type: 'string', pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' },
+              // Le membre de l'équipe confirme avoir rappelé le patient au numéro du dossier.
+              rappel: { type: 'boolean', const: true },
+            },
+          },
+        },
+      },
+      async (req) => {
+        const { u, jeton } = await membre(req);
+        const r = await assistance.retirerProches(u, jeton, req.body);
+        o.journal.avertissement('proches retirés par l’équipe d’assistance', {
+          par: u.sujet,
+          patientId: req.body.patientId,
+          retires: r.retires,
+          sms: r.sms,
+        });
+        return r;
       },
     );
   }

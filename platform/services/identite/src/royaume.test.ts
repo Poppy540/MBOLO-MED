@@ -59,6 +59,7 @@ describe('royaume mbolo', () => {
     'gestion-invitations',
     'verification-identite',
     'validation-remboursement',
+    'assistance-patient',
     // Le proche voit des données de santé d'une autre personne (ADR-0019, porteur de projet).
     'proche',
   ])('impose la double authentification au rôle %s', (nom) => {
@@ -258,7 +259,7 @@ describe('royaume mbolo', () => {
     expect(agentIa?.composites?.realm ?? []).not.toContain('gestion-invitations');
   });
 
-  it('invitations de proches : compte de service limité à la fiche du proche et au SMS (ADR-0019)', () => {
+  it('invitations de proches : compte de service limité à la fiche du proche, au SMS et à l’assistance (ADR-0019)', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-invitations-service');
     expect(c?.clientAuthenticatorType).toBe('client-jwt');
     expect(c?.attributes?.['jwt.credential.certificate']).toBe('${INVITATIONS_SERVICE_CERTIFICAT}');
@@ -269,10 +270,14 @@ describe('royaume mbolo', () => {
         .map((m) => m.config['included.client.audience'])
         .sort(),
     ).toEqual(['mbolo-dossier-fhir', 'mbolo-notifications']);
-    // Jamais de suppression, aucune autre ressource du dossier.
+    // Jamais de suppression ; du patient, seulement de quoi le retrouver et le rappeler (équipe
+    // d'assistance) ; traces en création seulement.
     expect(
       mappers.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/RelatedPerson.cru');
+    ).toBe('system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c');
+    expect(
+      mappers.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
+    ).toBe('Patient.identifier Patient.telecom Patient.birthDate');
   });
 
   it("n'ouvre l'inscription qu'avec un code d'invitation, vérifié après les autres champs (ADR-0014)", () => {
