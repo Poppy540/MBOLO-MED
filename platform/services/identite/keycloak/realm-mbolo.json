@@ -108,6 +108,14 @@
         "composites": {
           "realm": ["mfa-requise"]
         }
+      },
+      {
+        "name": "assistance-patient",
+        "description": "Équipe d'assistance (ADR-0019) : retire les proches d'un patient à sa demande, après rappel au numéro du dossier et date de naissance confirmée ; aucun accès clinique. MFA obligatoire. Jamais un agent IA.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },
@@ -721,7 +729,21 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/RelatedPerson.cru",
+            "claim.value": "system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "elements-autorises",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements",
+            "claim.value": "Patient.identifier Patient.telecom Patient.birthDate",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

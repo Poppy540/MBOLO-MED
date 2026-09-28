@@ -13,6 +13,8 @@ export const CONFIG = {
   apiDocuments: '/api/documents',
   /** Remboursements à valider (ADR-0017), rôle validation-remboursement. */
   apiPaiement: '/api/paiement',
+  /** Retrait des proches d'un patient à sa demande (ADR-0019), rôle assistance-patient. */
+  apiInvitations: '/api/invitations',
   /** Nom de l'assurance maladie nationale du pays déployé (Gabon : CNAMGS). */
   assurance: lire('VITE_NOM_ASSURANCE', 'CNAMGS'),
   /** Fuseau horaire du pays déployé (IANA). */

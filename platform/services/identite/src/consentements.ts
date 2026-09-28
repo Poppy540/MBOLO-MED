@@ -128,6 +128,30 @@ export class ServiceConsentements {
     return this.depot.ajouter(ressource);
   }
 
+  /**
+   * Retrait des proches par l'équipe (rôle assistance-patient, ADR-0019), à la demande du patient
+   * joint au numéro de son dossier : révoque tous ses partages C-PROCHE actifs, et eux seuls. Jamais
+   * un agent IA, jamais pour son propre dossier. Retourne le nombre de partages révoqués.
+   */
+  async retirerProchesParAssistance(u: Utilisateur, patientId: string): Promise<number> {
+    if (
+      !u.roles.includes('assistance-patient') ||
+      u.roles.includes('agent-ia') ||
+      u.agent ||
+      u.patientId === patientId
+    ) {
+      throw new ErreurAcces('Accès refusé.');
+    }
+    let n = 0;
+    for (const c of await this.depot.parPatient(patientId)) {
+      if (c.status === 'active' && c.category?.[0]?.coding?.[0]?.code === 'C-PROCHE') {
+        await this.depot.remplacer(revoquer(c));
+        n += 1;
+      }
+    }
+    return n;
+  }
+
   /** Révocation : effet immédiat, la ressource est conservée (statut inactive) pour la traçabilité. */
   async revoquer(u: Utilisateur, consentementId: string): Promise<Consent> {
     const c = await this.depot.lire(consentementId);

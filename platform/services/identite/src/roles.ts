@@ -22,6 +22,12 @@ export const ROLES = [
    * clinique. Double authentification. Jamais un agent IA, jamais pour son propre paiement.
    */
   'validation-remboursement',
+  /**
+   * Équipe d'assistance aux patients (ADR-0019) : retire les proches d'un patient à sa demande, après
+   * l'avoir rappelé au numéro de son dossier. Aucun accès clinique, ni au dossier ni aux documents.
+   * Double authentification. Jamais un agent IA.
+   */
+  'assistance-patient',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

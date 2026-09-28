@@ -64,6 +64,13 @@ export interface DepotInvitations {
    * le patient qui l'a créée ; une invitation révoquée ne compte plus dans la limite.
    */
   revoquerProche(id: string, creePar: string, maintenant: Date): Promise<boolean>;
+  /** Invitation de proche rattachée à cette fiche du dossier (la plus récente). */
+  parFiche(relatedPersonId: string): Promise<Invitation | undefined>;
+  /**
+   * Révoque l'invitation rattachée à cette fiche, utilisée ou non : retrait par l'équipe
+   * d'assistance, à la demande du patient (ADR-0019).
+   */
+  revoquerParFiche(relatedPersonId: string, maintenant: Date): Promise<boolean>;
 }
 
 export class DepotMemoire implements DepotInvitations {
@@ -146,6 +153,24 @@ export class DepotMemoire implements DepotInvitations {
     if (!i || i.revoqueLe) return false;
     i.revoqueLe = maintenant;
     return true;
+  }
+
+  async parFiche(relatedPersonId: string): Promise<Invitation | undefined> {
+    const i = this.invitations
+      .filter((x) => x.type === 'proche' && x.relatedPersonId === relatedPersonId)
+      .sort((a, b) => b.creeLe.getTime() - a.creeLe.getTime())[0];
+    return i ? { ...i } : undefined;
+  }
+
+  async revoquerParFiche(relatedPersonId: string, maintenant: Date): Promise<boolean> {
+    let n = 0;
+    for (const i of this.invitations) {
+      if (i.type === 'proche' && i.relatedPersonId === relatedPersonId && !i.revoqueLe) {
+        i.revoqueLe = maintenant;
+        n += 1;
+      }
+    }
+    return n > 0;
   }
 }
 
@@ -273,5 +298,20 @@ export class DepotPostgres implements DepotInvitations {
       update invitations.codes set revoque_le = ${maintenant}
        where id = ${id} and cree_par = ${creePar} and type = 'proche' and revoque_le is null`;
     return r.count === 1;
+  }
+
+  async parFiche(relatedPersonId: string): Promise<Invitation | undefined> {
+    const [l] = await this.sql<Ligne[]>`
+      select * from invitations.codes
+       where related_person_id = ${relatedPersonId} and type = 'proche'
+       order by cree_le desc limit 1`;
+    return l ? versInvitation(l) : undefined;
+  }
+
+  async revoquerParFiche(relatedPersonId: string, maintenant: Date): Promise<boolean> {
+    const r = await this.sql`
+      update invitations.codes set revoque_le = ${maintenant}
+       where related_person_id = ${relatedPersonId} and type = 'proche' and revoque_le is null`;
+    return r.count > 0;
   }
 }

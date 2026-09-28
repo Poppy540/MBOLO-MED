@@ -250,6 +250,26 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
     },
   );
 
+  // Retrait des proches par l'équipe d'assistance (ADR-0019) : partages C-PROCHE seulement.
+  app.post<{ Params: { patientId: string } }>(
+    '/patients/:patientId/proches/retrait-assistance',
+    {
+      schema: {
+        params: { type: 'object', properties: { patientId: ID }, required: ['patientId'] },
+      },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const revoques = await o.consentements.retirerProchesParAssistance(u, req.params.patientId);
+      o.journal.info('partages avec les proches retirés par l’équipe', {
+        sujet: u.sujet,
+        patientId: req.params.patientId,
+        revoques,
+      });
+      return { revoques };
+    },
+  );
+
   // Point de décision d'accès (PDP) : utilisé par la passerelle du dossier FHIR avant toute lecture.
   app.post<{ Body: { patientId: string; brisDeGlace?: { motif: string } } }>(
     '/acces/dossier',

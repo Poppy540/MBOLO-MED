@@ -54,6 +54,22 @@ export const CATALOGUE_ALERTE_PROCHE: Readonly<Record<string, string>> = {
   fr: 'Mbolo Santé : votre proche invité a créé son compte. Si ce n’est pas vous qui l’avez invité, retirez-le dans l’application.',
 };
 
+/**
+ * Confirmation au patient (ADR-0019) : l'équipe (rôle assistance-patient) a retiré tous ses proches,
+ * après l'avoir rappelé au numéro de son dossier. Sans prénom ni donnée de santé ; envoyée même sans
+ * C-RAPPELS : si le patient n'a rien demandé, il le sait aussitôt.
+ */
+export const CATALOGUE_ALERTE_RETRAIT_PROCHES: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : à votre demande, l’équipe a retiré l’accès de vos proches à votre dossier. Si vous n’avez rien demandé, contactez l’équipe.',
+};
+
+/** Alertes de sécurité envoyées au patient, sans condition C-RAPPELS. */
+export const ALERTES_PATIENT = {
+  'proche-inscrit': CATALOGUE_ALERTE_PROCHE,
+  'proches-retires': CATALOGUE_ALERTE_RETRAIT_PROCHES,
+} as const;
+export type AlertePatient = keyof typeof ALERTES_PATIENT;
+
 /** Paramètres du pays déployé. */
 export interface Pays {
   /** Fuseau horaire IANA, ex. Africa/Libreville. */
@@ -78,7 +94,7 @@ export function verifierPays(p: Pays): void {
   if (
     !textes(p.langue) ||
     !CATALOGUE_INVITATION_PROCHE[langue] ||
-    !CATALOGUE_ALERTE_PROCHE[langue]
+    Object.values(ALERTES_PATIENT).some((c) => !c[langue])
   ) {
     throw new Error(`Aucun gabarit approuvé pour la langue ${p.langue}.`);
   }
@@ -124,8 +140,11 @@ export function redigerInvitationProche(
   return texte.replace('{code}', code).replace('{jours}', String(jours));
 }
 
-export function redigerAlerteProche(pays: Pays = PAYS_PAR_DEFAUT): string {
-  const texte = CATALOGUE_ALERTE_PROCHE[langueDe(pays.langue)];
+export function redigerAlerteProche(
+  alerte: AlertePatient = 'proche-inscrit',
+  pays: Pays = PAYS_PAR_DEFAUT,
+): string {
+  const texte = ALERTES_PATIENT[alerte][langueDe(pays.langue)];
   if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
   return texte;
 }

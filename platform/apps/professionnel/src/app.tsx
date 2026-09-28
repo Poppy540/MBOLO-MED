@@ -45,7 +45,8 @@ type Ecran =
   | { nom: 'dossier'; rendezVous: RendezVous }
   | { nom: 'visio'; rendezVous: RendezVous }
   | { nom: 'verifications' }
-  | { nom: 'remboursements' };
+  | { nom: 'remboursements' }
+  | { nom: 'assistance' };
 
 /** Rôles du compte connecté (jeton Keycloak) : l'affichage suit, le service décide. */
 const roles = (): string[] => {
@@ -54,6 +55,7 @@ const roles = (): string[] => {
 };
 const estVerificateur = () => roles().includes('verification-identite');
 const estValideur = () => roles().includes('validation-remboursement');
+const estAssistant = () => roles().includes('assistance-patient');
 const estSoignant = () => roles().some((r) => r === 'professionnel' || r === 'infirmier');
 
 export function App() {
@@ -74,7 +76,9 @@ export function App() {
                 ? { nom: 'verifications' }
                 : estValideur()
                   ? { nom: 'remboursements' }
-                  : { nom: 'rendez-vous' },
+                  : estAssistant()
+                    ? { nom: 'assistance' }
+                    : { nom: 'rendez-vous' },
           );
         }
       })
@@ -116,9 +120,10 @@ export function App() {
         (ecran.nom === 'rendez-vous' ||
           ecran.nom === 'creneaux' ||
           ecran.nom === 'verifications' ||
-          ecran.nom === 'remboursements') && (
+          ecran.nom === 'remboursements' ||
+          ecran.nom === 'assistance') && (
           <nav class="actions">
-            {(estSoignant() || (!estVerificateur() && !estValideur())) && (
+            {(estSoignant() || (!estVerificateur() && !estValideur() && !estAssistant())) && (
               <>
                 <button
                   class={ecran.nom === 'rendez-vous' ? 'principal' : ''}
@@ -148,6 +153,14 @@ export function App() {
                 onClick={() => allerA({ nom: 'remboursements' })}
               >
                 <span aria-hidden="true">↩️</span> Remboursements
+              </button>
+            )}
+            {estAssistant() && (
+              <button
+                class={ecran.nom === 'assistance' ? 'principal' : ''}
+                onClick={() => allerA({ nom: 'assistance' })}
+              >
+                <span aria-hidden="true">🛟</span> Assistance
               </button>
             )}
           </nav>
@@ -187,6 +200,8 @@ export function App() {
         <EcranVerifications signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'remboursements' ? (
         <EcranRemboursements signaler={(m) => setMessage(m)} />
+      ) : ecran.nom === 'assistance' ? (
+        <EcranAssistance signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'report' ? (
         <Report rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : (
@@ -228,6 +243,22 @@ function EcranRemboursements(p: { signaler: (m: string) => void }) {
   }, []);
   return Ecran && jeton ? (
     <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
+/** Retrait des proches par l'équipe d'assistance (ADR-0019) : écran chargé à la demande. */
+function EcranAssistance(p: { signaler: (m?: string) => void }) {
+  type Props = { jeton: string; signaler: (m?: string) => void };
+  const [Ecran, setEcran] = useState<ComponentType<Props>>();
+  useEffect(() => {
+    import('./assistance.js')
+      .then((m) => setEcran(() => m.Assistance))
+      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+  }, []);
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} signaler={p.signaler} />
   ) : (
     <p aria-live="polite">Chargement…</p>
   );

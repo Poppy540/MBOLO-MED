@@ -199,6 +199,25 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
     expect(texte.length).toBeLessThanOrEqual(160);
     // Ni identifiant, ni prénom, ni numéro dans le texte ou le journal.
     expect(texte).not.toMatch(/pat-|FICTIF|\+241/);
+    // Retrait des proches par l'équipe (rôle assistance-patient) : confirmation au patient.
+    const retrait = await app.inject({
+      method: 'POST',
+      url: '/alertes/proches-retires',
+      headers: { authorization: 'Bearer jeton-invitations' },
+      payload: { patientId: 'pat-fictif-001' },
+    });
+    expect(retrait.json()).toEqual({ resultat: 'envoyee' });
+    const confirmation = canal.boite[1]?.texte ?? '';
+    expect(confirmation).toContain('l’équipe a retiré l’accès de vos proches');
+    expect(confirmation.length).toBeLessThanOrEqual(160);
+    expect(confirmation).not.toMatch(/pat-|FICTIF|\+241/);
+    const inconnue = await app.inject({
+      method: 'POST',
+      url: '/alertes/autre',
+      headers: { authorization: 'Bearer jeton-invitations' },
+      payload: { patientId: 'pat-fictif-001' },
+    });
+    expect(inconnue.statusCode).toBe(400);
     expect(lignes.join('\n')).not.toContain('+241');
   });
 });
