@@ -227,6 +227,30 @@ importers:
         specifier: ^0.0.41
         version: 0.0.41
 
+  platform/services/paiement:
+    dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
+      '@mbolo/base-donnees':
+        specifier: workspace:*
+        version: link:../../packages/base-donnees
+      '@mbolo/drapeaux':
+        specifier: workspace:*
+        version: link:../../packages/drapeaux
+      '@mbolo/identite':
+        specifier: workspace:*
+        version: link:../identite
+      '@mbolo/journal-securise':
+        specifier: workspace:*
+        version: link:../../packages/journal-securise
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+
   platform/services/passerelle-fhir:
     dependencies:
       '@fastify/rate-limit':

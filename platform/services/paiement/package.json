@@ -1,0 +1,30 @@
+{
+  "name": "@mbolo/paiement",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Paiement des consultations de Mbolo Santé par mobile money (ADR-0017) : montant fixé par le serveur, confirmation par le serveur seul, aucun numéro de téléphone ni donnée de santé conservés ; fournisseur simulé en attendant le contrat.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "^11.2.0",
+    "@mbolo/base-donnees": "workspace:*",
+    "@mbolo/drapeaux": "workspace:*",
+    "@mbolo/identite": "workspace:*",
+    "@mbolo/journal-securise": "workspace:*",
+    "fastify": "^5.12.5",
+    "jose": "^6.2.12"
+  }
+}
