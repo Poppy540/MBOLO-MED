@@ -99,7 +99,8 @@ Derrière des flags désactivés par défaut : `facturation.recus`, `reversement
 
 ## Suivi
 
-- **Reçus et avoirs** (PR BO, flag `facturation.recus`) : un reçu à chaque paiement confirmé, un avoir à chaque remboursement versé. Numérotation sans trou par pays et par année du pays, sous verrou. `GET /recus` réservé au patient lui-même. Sans ventilation, sans taxes ni mentions définitives (`valeurFiscale: false`) en attendant les réponses 1, 3, 5 et 11. Reste : l'écran « Mes reçus » de l'application patient.
+- **Reçus et avoirs** (PR BO, flag `facturation.recus`) : un reçu à chaque paiement confirmé, un avoir à chaque remboursement versé. Numérotation sans trou par pays et par année du pays, sous verrou. `GET /recus` réservé au patient lui-même. Sans ventilation, sans taxes ni mentions définitives (`valeurFiscale: false`) en attendant les réponses 1, 3, 5 et 11.
+- **Écran « Mes reçus »** (PR BP) dans l'application patient, chargé à la demande : fiches de reçus et d'avoirs, « Reçu sans valeur fiscale » en attendant les mentions validées.
 
 ## Questions
 

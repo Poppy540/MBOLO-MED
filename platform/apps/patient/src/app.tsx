@@ -42,7 +42,8 @@ type Ecran =
   | { nom: 'paiement'; rendezVousId: string }
   | { nom: 'documents' }
   | { nom: 'documents-proche' }
-  | { nom: 'partages' };
+  | { nom: 'partages' }
+  | { nom: 'recus' };
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -161,6 +162,8 @@ export function App() {
         />
       ) : ecran.nom === 'documents' ? (
         <EcranDocuments retour={() => setEcran({ nom: 'rendez-vous' })} />
+      ) : ecran.nom === 'recus' ? (
+        <EcranRecus retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'partages' ? (
         <EcranPartages retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'documents-proche' ? (
@@ -317,6 +320,28 @@ function EcranDocuments(p: { retour?: () => void; proche?: boolean }) {
   );
 }
 
+/** Reçus et avoirs (ADR-0020) : écran chargé à la demande. */
+function EcranRecus(p: { retour: () => void }) {
+  const [Ecran, setEcran] = useState<ComponentType<{ jeton: string; retour: () => void }>>();
+  const [echec, setEchec] = useState(false);
+  useEffect(() => {
+    import('./recus.js').then((m) => setEcran(() => m.Recus)).catch(() => setEchec(true));
+  }, []);
+  if (echec) {
+    return (
+      <section>
+        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
+        <button onClick={p.retour}>Retour</button>
+      </section>
+    );
+  }
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} retour={p.retour} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
 /** Partages du dossier et historique des accès : écran chargé à la demande. */
 function EcranPartages(p: { retour: () => void }) {
   const [Ecran, setEcran] =
@@ -432,6 +457,9 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
       </button>
       <button onClick={() => p.allerA({ nom: 'partages' })}>
         <span aria-hidden="true">🔒</span> Mes partages et accès
+      </button>
+      <button onClick={() => p.allerA({ nom: 'recus' })}>
+        <span aria-hidden="true">🧾</span> Mes reçus
       </button>
     </section>
   );
