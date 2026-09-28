@@ -163,6 +163,7 @@ describe('invitation d’un proche par le patient (ADR-0019)', () => {
     expect(await m.proches.lister(patient)).toEqual([
       expect.objectContaining({
         id: r.id,
+        relatedPersonId: 'rp-1',
         prenom: 'Serge [FICTIF]',
         lien: 'CHILD',
         statut: 'valide',

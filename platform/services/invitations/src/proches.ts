@@ -76,6 +76,8 @@ export interface ProcheInvite {
 
 export interface ProcheListe {
   id: string;
+  /** Fiche du proche : relie l'invitation au partage C-PROCHE affiché au patient. */
+  relatedPersonId?: string;
   prenom: string;
   lien?: string;
   statut: Statut;
@@ -196,6 +198,7 @@ export class ServiceProches {
         const lien = fiche?.relationship?.[0]?.coding?.[0]?.code;
         return {
           id: i.id,
+          ...(i.relatedPersonId ? { relatedPersonId: i.relatedPersonId } : {}),
           prenom: fiche?.name?.[0]?.given?.[0] ?? '',
           ...(lien ? { lien } : {}),
           statut: statut(i, maintenant),

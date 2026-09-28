@@ -1,9 +1,11 @@
 // « Mes partages et accès » (ADR-0009, principe n°3) : le patient partage son dossier avec le médecin
 // d'un de ses rendez-vous (consentement C-PARTAGE-PRO), retire un partage à tout moment, et voit qui
-// a demandé à lire son dossier. Chargé seulement à la demande (budget de l'ouverture).
+// a demandé à lire son dossier, et invite ou retire ses proches (ADR-0019, « Mes proches »). Chargé
+// seulement à la demande (budget de l'ouverture).
 // Le consentement est donné par le patient lui-même, jamais pré-coché ni groupé.
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
+import { MesProches, type Proche } from './proches.js';
 
 /** Texte du partage avec un professionnel : BROUILLON, à valider par le juriste avant production. */
 export const VERSION_PARTAGE_PRO = 'c-partage-pro-v0.1-brouillon';
@@ -84,6 +86,8 @@ export function Partages(p: { jeton: string; patientId: string; retour: () => vo
   const [medecins, setMedecins] = useState<{ id: string; nom: string }[]>([]);
   const [historique, setHistorique] = useState<Acces[]>([]);
   const [propose, setPropose] = useState<{ id: string; nom: string }>();
+  /** `null` : invitation des proches non ouverte pour ce patient (ou service indisponible). */
+  const [proches, setProches] = useState<Proche[] | null>(null);
   const [message, setMessage] = useState<string>();
   const patient = encodeURIComponent(p.patientId);
 
@@ -109,6 +113,12 @@ export function Partages(p: { jeton: string; patientId: string; retour: () => vo
       setMedecins(ids.map((id) => ({ id, nom: noms.get(id) ?? 'Votre médecin' })));
       setPartages(partagesActifs(c.consentements));
       setHistorique([...acces.acces].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20));
+      // Fonction fermée (403) ou indisponible : la section « Mes proches » n'apparaît pas.
+      setProches(
+        await appeler<{ proches: Proche[] }>(p.jeton, `${CONFIG.apiInvitations}/proches`)
+          .then((r) => r.proches)
+          .catch(() => null),
+      );
     } catch (e) {
       setMessage(e instanceof ErreurPartage ? e.message : 'Service indisponible.');
     }
@@ -117,9 +127,12 @@ export function Partages(p: { jeton: string; patientId: string; retour: () => vo
 
   const nomDe = (reference: string) => {
     const id = reference.replace(/^Practitioner\//, '');
-    return reference.startsWith('RelatedPerson/')
-      ? 'Votre proche'
-      : (medecins.find((m) => m.id === id)?.nom ?? 'Un professionnel de santé');
+    if (reference.startsWith('RelatedPerson/')) {
+      const fiche = reference.slice('RelatedPerson/'.length);
+      const proche = proches?.find((x) => x.relatedPersonId === fiche)?.prenom;
+      return proche ? `${proche} (votre proche)` : 'Votre proche';
+    }
+    return medecins.find((m) => m.id === id)?.nom ?? 'Un professionnel de santé';
   };
 
   const partager = async (m: { id: string; nom: string }) => {
@@ -224,6 +237,7 @@ export function Partages(p: { jeton: string; patientId: string; retour: () => vo
               <span aria-hidden="true">🤝</span> Partager mon dossier avec {m.nom}
             </button>
           ))}
+          <MesProches jeton={p.jeton} proches={proches} recharger={charger} />
           <h3>Qui a demandé à lire mon dossier</h3>
           {historique.length === 0 ? (
             <p>Personne pour le moment.</p>

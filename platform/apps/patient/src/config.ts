@@ -14,6 +14,8 @@ export const CONFIG = {
   apiDocuments: '/api/documents',
   /** Comptes-rendus et ordonnances du patient, en lecture seule. */
   apiConsultation: '/api/consultation',
+  /** Invitation des proches par le patient (ADR-0019). */
+  apiInvitations: '/api/invitations',
   /** Paiement des consultations par mobile money (ADR-0017). */
   apiPaiement: '/api/paiement',
   /** Opérateurs de mobile money du pays : « code:Nom affiché », séparés par des virgules. */
