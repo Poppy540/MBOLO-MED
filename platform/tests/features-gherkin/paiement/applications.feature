@@ -33,7 +33,9 @@ Fonctionnalité: Payer et rembourser depuis les applications
     Quand "patient-fictif-04" réserve un créneau avec "prac-fictif-001"
     Et que "patient-fictif-04" paie avec "airtel" depuis le numéro "+241 00 00 00 00"
     Et que le payeur valide le paiement sur son téléphone
-    Et que "patient-fictif-04" annule ce rendez-vous
+    Alors le rendez-vous de "patient-fictif-04" est confirmé
+    Quand "patient-fictif-04" annule ce rendez-vous
+    Alors le rendez-vous est annulé
     Et que "valideur-fictif-01" est connecté
     Quand "valideur-fictif-01" ouvre les remboursements à valider dans l’espace professionnel
     Et que le valideur valide le remboursement de ce rendez-vous
