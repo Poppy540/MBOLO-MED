@@ -100,13 +100,15 @@ Règles :
 - **Service `paiement`** (PR AQ) : grille de prix par pays, interface `Fournisseur` et fournisseur simulé, collecte par le patient seul, confirmation relue chez le prestataire, notifications signées.
 - **Branchement au rendez-vous** (PR AR) : rendez-vous « à payer » (`pending`) qui retient le créneau, confirmation après paiement, annulation par la plateforme (code `plateforme`) à la fin du délai, créneau rendu ; scénarios de bout en bout avec le payeur simulé.
 
+- **Rapprochement et remboursement** (PR AS) : annulation signalée au paiement (plus de collecte), remboursement préparé quand un paiement est reçu pour un rendez-vous annulé, rapprochement périodique avec le prestataire, décision par le rôle `validation-remboursement` (double authentification, jamais un agent IA ni le patient concerné, aucun texte libre), alerte `remboursement-a-valider` envoyée à ce rôle aux heures ouvrées.
+
 ## Reste à décider (porteur de projet)
 
 1. Demander les devis et choisir le prestataire (critères ci-dessus).
 2. Vague 1 : cohorte pilote gratuite, ou payante dès le début ?
 3. Grille de prix au Gabon (tableur du business plan) ; tarif réduit ou gratuité pour certains cas ?
 4. Délai de rétention du créneau (15 minutes proposées).
-5. Règles de remboursement et titulaires du rôle qui les valide.
+5. Règles de remboursement (annulation par le patient, par le professionnel, délai) et titulaires du rôle `validation-remboursement`.
 6. Reversement aux professionnels : fréquence, moyen, pays (décision distincte, plus tard).
 
 Sources (consultées le 2026-09-28, à confirmer auprès des prestataires) :

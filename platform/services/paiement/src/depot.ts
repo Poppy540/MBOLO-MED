@@ -24,6 +24,28 @@ export interface Paiement {
   creeLe: Date;
   misAJourLe: Date;
   payeLe?: Date;
+  /** Rendez-vous annulé (signalé par la téléconsultation) : plus aucune collecte possible. */
+  annuleLe?: Date;
+}
+
+export const STATUTS_REMBOURSEMENT = ['a-valider', 'valide', 'refuse', 'effectue'] as const;
+export type StatutRemboursement = (typeof STATUTS_REMBOURSEMENT)[number];
+
+/**
+ * Remboursement préparé par la plateforme (paiement reçu pour un rendez-vous annulé), exécuté
+ * seulement après la décision d'un humain (rôle validation-remboursement). Aucun texte libre.
+ */
+export interface Remboursement {
+  id: string;
+  paiementId: string;
+  montant: number;
+  devise: string;
+  statut: StatutRemboursement;
+  prepareLe: Date;
+  /** Compte Keycloak (sub) de la personne qui a décidé. */
+  decidePar?: string;
+  decideLe?: Date;
+  effectueLe?: Date;
 }
 
 export interface Demarrage {
@@ -38,7 +60,10 @@ export interface DepotPaiements {
   trouver(id: string): Promise<Paiement | undefined>;
   trouverParReference(reference: string): Promise<Paiement | undefined>;
   trouverParTentative(tentative: string): Promise<Paiement | undefined>;
-  /** Passe « à payer » ou « échoué » à « en attente » ; `undefined` si une collecte est en cours ou faite. */
+  /**
+   * Passe « à payer » ou « échoué » à « en attente » ; `undefined` si une collecte est en cours ou
+   * faite, ou si le rendez-vous est annulé.
+   */
   demarrer(id: string, d: Demarrage, maintenant: Date): Promise<Paiement | undefined>;
   /** Conclut la tentative en cours ; `undefined` si elle n'est plus la tentative en attente. */
   conclure(
@@ -46,6 +71,24 @@ export interface DepotPaiements {
     resultat: 'paye' | 'echoue',
     maintenant: Date,
   ): Promise<Paiement | undefined>;
+  /** Marque le rendez-vous annulé (idempotent : la première date est gardée). */
+  annuler(reference: string, maintenant: Date): Promise<Paiement | undefined>;
+  enAttente(): Promise<Paiement[]>;
+  /** Paiements reçus pour un rendez-vous annulé, sans remboursement préparé. */
+  payesAnnulesSansRemboursement(): Promise<Paiement[]>;
+  /** Prépare le remboursement d'un paiement ; `undefined` s'il en existe déjà un (un seul par paiement). */
+  preparerRemboursement(r: Remboursement): Promise<Remboursement | undefined>;
+  trouverRemboursement(id: string): Promise<Remboursement | undefined>;
+  remboursements(statut: StatutRemboursement): Promise<Remboursement[]>;
+  /** Décision d'un humain sur un remboursement « à valider » ; `undefined` s'il a déjà été décidé. */
+  deciderRemboursement(
+    id: string,
+    decision: 'valide' | 'refuse',
+    par: string,
+    maintenant: Date,
+  ): Promise<Remboursement | undefined>;
+  /** Remboursement validé puis exécuté chez le prestataire. */
+  marquerEffectue(id: string, maintenant: Date): Promise<Remboursement | undefined>;
 }
 
 export class DepotMemoire implements DepotPaiements {
@@ -75,7 +118,7 @@ export class DepotMemoire implements DepotPaiements {
 
   async demarrer(id: string, d: Demarrage, maintenant: Date): Promise<Paiement | undefined> {
     const p = this.paiements.find((x) => x.id === id);
-    if (!p || (p.statut !== 'a-payer' && p.statut !== 'echoue')) return undefined;
+    if (!p || p.annuleLe || (p.statut !== 'a-payer' && p.statut !== 'echoue')) return undefined;
     Object.assign(p, { ...d, statut: 'en-attente', misAJourLe: maintenant });
     return { ...p };
   }
@@ -91,6 +134,64 @@ export class DepotMemoire implements DepotPaiements {
     p.misAJourLe = maintenant;
     if (resultat === 'paye') p.payeLe = maintenant;
     return { ...p };
+  }
+
+  readonly remboursementsEnMemoire: Remboursement[] = [];
+
+  async annuler(reference: string, maintenant: Date): Promise<Paiement | undefined> {
+    const p = this.paiements.find((x) => x.reference === reference);
+    if (!p) return undefined;
+    p.annuleLe ??= maintenant;
+    return { ...p };
+  }
+
+  async enAttente(): Promise<Paiement[]> {
+    return this.paiements.filter((x) => x.statut === 'en-attente').map((x) => ({ ...x }));
+  }
+
+  async payesAnnulesSansRemboursement(): Promise<Paiement[]> {
+    return this.paiements
+      .filter(
+        (x) =>
+          x.statut === 'paye' &&
+          x.annuleLe &&
+          !this.remboursementsEnMemoire.some((r) => r.paiementId === x.id),
+      )
+      .map((x) => ({ ...x }));
+  }
+
+  async preparerRemboursement(r: Remboursement): Promise<Remboursement | undefined> {
+    if (this.remboursementsEnMemoire.some((x) => x.paiementId === r.paiementId)) return undefined;
+    this.remboursementsEnMemoire.push({ ...r });
+    return { ...r };
+  }
+
+  async trouverRemboursement(id: string): Promise<Remboursement | undefined> {
+    const r = this.remboursementsEnMemoire.find((x) => x.id === id);
+    return r ? { ...r } : undefined;
+  }
+
+  async remboursements(statut: StatutRemboursement): Promise<Remboursement[]> {
+    return this.remboursementsEnMemoire.filter((x) => x.statut === statut).map((x) => ({ ...x }));
+  }
+
+  async deciderRemboursement(
+    id: string,
+    decision: 'valide' | 'refuse',
+    par: string,
+    maintenant: Date,
+  ): Promise<Remboursement | undefined> {
+    const r = this.remboursementsEnMemoire.find((x) => x.id === id);
+    if (!r || r.statut !== 'a-valider') return undefined;
+    Object.assign(r, { statut: decision, decidePar: par, decideLe: maintenant });
+    return { ...r };
+  }
+
+  async marquerEffectue(id: string, maintenant: Date): Promise<Remboursement | undefined> {
+    const r = this.remboursementsEnMemoire.find((x) => x.id === id);
+    if (!r || r.statut !== 'valide') return undefined;
+    Object.assign(r, { statut: 'effectue', effectueLe: maintenant });
+    return { ...r };
   }
 }
 
@@ -108,7 +209,32 @@ interface Ligne {
   cree_le: Date;
   mis_a_jour_le: Date;
   paye_le: Date | null;
+  annule_le: Date | null;
 }
+
+interface LigneRemboursement {
+  id: string;
+  paiement_id: string;
+  montant: string;
+  devise: string;
+  statut: StatutRemboursement;
+  prepare_le: Date;
+  decide_par: string | null;
+  decide_le: Date | null;
+  effectue_le: Date | null;
+}
+
+const versRemboursement = (l: LigneRemboursement): Remboursement => ({
+  id: l.id,
+  paiementId: l.paiement_id,
+  montant: Number(l.montant),
+  devise: l.devise,
+  statut: l.statut,
+  prepareLe: l.prepare_le,
+  ...(l.decide_par ? { decidePar: l.decide_par } : {}),
+  ...(l.decide_le ? { decideLe: l.decide_le } : {}),
+  ...(l.effectue_le ? { effectueLe: l.effectue_le } : {}),
+});
 
 const versPaiement = (l: Ligne): Paiement => ({
   id: l.id,
@@ -125,6 +251,7 @@ const versPaiement = (l: Ligne): Paiement => ({
   creeLe: l.cree_le,
   misAJourLe: l.mis_a_jour_le,
   ...(l.paye_le ? { payeLe: l.paye_le } : {}),
+  ...(l.annule_le ? { annuleLe: l.annule_le } : {}),
 });
 
 /** Requêtes paramétrées uniquement (gabarits `sql`), jamais de SQL construit par concaténation. */
@@ -167,7 +294,7 @@ export class DepotPostgres implements DepotPaiements {
       update paiement.paiements
          set statut = 'en-attente', tentative = ${d.tentative}, operateur = ${d.operateur},
              fournisseur = ${d.fournisseur}, mis_a_jour_le = ${maintenant}
-       where id = ${id} and statut in ('a-payer', 'echoue')
+       where id = ${id} and statut in ('a-payer', 'echoue') and annule_le is null
       returning *`;
     return l ? versPaiement(l) : undefined;
   }
@@ -184,5 +311,73 @@ export class DepotPostgres implements DepotPaiements {
        where tentative = ${tentative} and statut = 'en-attente'
       returning *`;
     return l ? versPaiement(l) : undefined;
+  }
+
+  async annuler(reference: string, maintenant: Date): Promise<Paiement | undefined> {
+    const [l] = await this.sql<Ligne[]>`
+      update paiement.paiements
+         set annule_le = coalesce(annule_le, ${maintenant}), mis_a_jour_le = ${maintenant}
+       where reference = ${reference}
+      returning *`;
+    return l ? versPaiement(l) : undefined;
+  }
+
+  async enAttente(): Promise<Paiement[]> {
+    const lignes = await this.sql<Ligne[]>`
+      select * from paiement.paiements where statut = 'en-attente' order by mis_a_jour_le limit 500`;
+    return lignes.map(versPaiement);
+  }
+
+  async payesAnnulesSansRemboursement(): Promise<Paiement[]> {
+    const lignes = await this.sql<Ligne[]>`
+      select p.* from paiement.paiements p
+       where p.statut = 'paye' and p.annule_le is not null
+         and not exists (select 1 from paiement.remboursements r where r.paiement_id = p.id)
+       limit 500`;
+    return lignes.map(versPaiement);
+  }
+
+  async preparerRemboursement(r: Remboursement): Promise<Remboursement | undefined> {
+    const [l] = await this.sql<LigneRemboursement[]>`
+      insert into paiement.remboursements (id, paiement_id, montant, devise, statut, prepare_le)
+      values (${r.id}, ${r.paiementId}, ${r.montant}, ${r.devise}, 'a-valider', ${r.prepareLe})
+      on conflict (paiement_id) do nothing
+      returning *`;
+    return l ? versRemboursement(l) : undefined;
+  }
+
+  async trouverRemboursement(id: string): Promise<Remboursement | undefined> {
+    const [l] = await this.sql<LigneRemboursement[]>`
+      select * from paiement.remboursements where id = ${id}`;
+    return l ? versRemboursement(l) : undefined;
+  }
+
+  async remboursements(statut: StatutRemboursement): Promise<Remboursement[]> {
+    const lignes = await this.sql<LigneRemboursement[]>`
+      select * from paiement.remboursements where statut = ${statut}
+       order by prepare_le limit 200`;
+    return lignes.map(versRemboursement);
+  }
+
+  async deciderRemboursement(
+    id: string,
+    decision: 'valide' | 'refuse',
+    par: string,
+    maintenant: Date,
+  ): Promise<Remboursement | undefined> {
+    const [l] = await this.sql<LigneRemboursement[]>`
+      update paiement.remboursements
+         set statut = ${decision}, decide_par = ${par}, decide_le = ${maintenant}
+       where id = ${id} and statut = 'a-valider'
+      returning *`;
+    return l ? versRemboursement(l) : undefined;
+  }
+
+  async marquerEffectue(id: string, maintenant: Date): Promise<Remboursement | undefined> {
+    const [l] = await this.sql<LigneRemboursement[]>`
+      update paiement.remboursements set statut = 'effectue', effectue_le = ${maintenant}
+       where id = ${id} and statut = 'valide'
+      returning *`;
+    return l ? versRemboursement(l) : undefined;
   }
 }

@@ -377,6 +377,8 @@ export class ServiceTeleconsultation {
     if (fin && this.maintenant().getTime() > new Date(fin).getTime()) {
       const annule = await this.depot.annuler(r.id, 'plateforme', this.maintenant().toISOString());
       if (r.creneauId) await this.creneaux.liberer(r.creneauId).catch(() => undefined);
+      // Une collecte validée après coup sera remboursée (validation humaine, service paiement).
+      await this.paiement.service.annulation(r.id);
       return annule;
     }
     return r;
@@ -552,6 +554,8 @@ export class ServiceTeleconsultation {
       'rendez-vous-annule',
       r.debut,
     );
+    // Paiement éventuel : plus de collecte, remboursement préparé s'il a été reçu (ADR-0017).
+    if (this.paiement) await this.paiement.service.annulation(r.id);
     return annule;
   }
 

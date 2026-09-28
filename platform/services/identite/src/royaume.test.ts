@@ -58,6 +58,7 @@ describe('royaume mbolo', () => {
     'revue-acces',
     'gestion-invitations',
     'verification-identite',
+    'validation-remboursement',
   ])('impose la double authentification au rôle %s', (nom) => {
     const role = royaume.roles.realm.find((r) => r.name === nom);
     expect(role?.composites?.realm).toContain('mfa-requise');
@@ -184,8 +185,13 @@ describe('royaume mbolo', () => {
       .filter((c) => audiences(c.clientId).includes('mbolo-paiement-api'))
       .map((c) => c.clientId)
       .sort();
-    // Ni l'espace professionnel, ni un agent IA, ni un autre service ne créent de paiement.
-    expect(avecPaiement).toEqual(['mbolo-app-patient', 'mbolo-teleconsultation-service']);
+    // Le patient paie, la téléconsultation crée le paiement, l'espace professionnel sert aux
+    // seuls valideurs des remboursements (rôle vérifié par le service) ; aucun agent IA.
+    expect(avecPaiement).toEqual([
+      'mbolo-app-patient',
+      'mbolo-app-pro',
+      'mbolo-teleconsultation-service',
+    ]);
     expect(royaume.clients.find((c) => c.clientId === 'mbolo-paiement-api')).toMatchObject({
       bearerOnly: true,
       publicClient: false,

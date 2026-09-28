@@ -17,6 +17,11 @@ export const ROLES = [
    * tracée) et décide ; aucun accès clinique. Double authentification. Jamais un agent IA.
    */
   'verification-identite',
+  /**
+   * Valide ou refuse les remboursements préparés par la plateforme (ADR-0017) ; aucun accès
+   * clinique. Double authentification. Jamais un agent IA, jamais pour son propre paiement.
+   */
+  'validation-remboursement',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

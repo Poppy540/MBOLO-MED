@@ -2,6 +2,7 @@
 // le dossier (audience mbolo-paiement-api). Ce service ne connaît ni le montant à l'avance ni le
 // moyen de paiement : il demande la création du paiement et demande seulement « payé ou non ».
 import { ErreurDepot } from '@mbolo/identite';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 
 export interface InfoPaiement {
   id: string;
@@ -17,6 +18,11 @@ export interface Paiements {
   creer(d: { reference: string; sujet: string; type: TypeConsultation }): Promise<InfoPaiement>;
   /** Payé ou non ; lève `ErreurDepot` 503 si le service est injoignable (jamais « non » par défaut). */
   estPaye(reference: string): Promise<boolean>;
+  /**
+   * Signale l'annulation du rendez-vous : plus de collecte, remboursement préparé s'il est payé.
+   * Ne lève jamais : l'annulation reste valable ; un échec déclenche une alerte d'exploitation.
+   */
+  annulation(reference: string): Promise<void>;
 }
 
 const indisponible = () => new ErreurDepot('Paiement momentanément indisponible.', 503);
@@ -27,6 +33,7 @@ export class PaiementsHttp implements Paiements {
       /** URL du service de paiement, ex. http://127.0.0.1:3008 */
       url: string;
       entetes: () => Promise<Record<string, string>>;
+      journal?: Journal;
       fetch?: typeof fetch;
     },
   ) {}
@@ -65,12 +72,29 @@ export class PaiementsHttp implements Paiements {
     if (!r.ok) throw indisponible();
     return ((await r.json()) as { paye?: unknown }).paye === true;
   }
+
+  async annulation(reference: string): Promise<void> {
+    try {
+      const r = await this.appeler(`/rendez-vous/${encodeURIComponent(reference)}/annulation`, {
+        method: 'POST',
+      });
+      if (!r.ok) throw indisponible();
+    } catch {
+      // Un paiement éventuel devra être rapproché à la main : l'exploitation est prévenue.
+      if (this.o.journal) {
+        signalerAlerte(this.o.journal, 'erreur-serveur', 'annulation non transmise au paiement', {
+          rendezVousId: reference,
+        });
+      }
+    }
+  }
 }
 
 /** Paiements en mémoire (tests) : `payer` joue le patient qui paie. */
 export class PaiementsMemoire implements Paiements {
   readonly crees = new Map<string, { sujet: string; type: TypeConsultation }>();
   readonly payes = new Set<string>();
+  readonly annules = new Set<string>();
   indisponible = false;
 
   async creer(d: {
@@ -86,6 +110,10 @@ export class PaiementsMemoire implements Paiements {
   async estPaye(reference: string): Promise<boolean> {
     if (this.indisponible) throw indisponible();
     return this.payes.has(reference);
+  }
+
+  async annulation(reference: string): Promise<void> {
+    this.annules.add(reference);
   }
 
   payer(reference: string): void {

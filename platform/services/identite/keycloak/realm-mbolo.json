@@ -96,6 +96,14 @@
         "composites": {
           "realm": ["mfa-requise"]
         }
+      },
+      {
+        "name": "validation-remboursement",
+        "description": "Valide ou refuse les remboursements préparés par la plateforme (ADR-0017) : paiement reçu pour un rendez-vous annulé ; aucun accès clinique. MFA obligatoire. Jamais un agent IA ni le patient concerné.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },
@@ -263,6 +271,16 @@
           "protocolMapper": "oidc-audience-mapper",
           "config": {
             "included.client.audience": "mbolo-documents-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "audience-paiement-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-paiement-api",
             "access.token.claim": "true",
             "id.token.claim": "false"
           }

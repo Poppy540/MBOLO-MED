@@ -107,7 +107,8 @@ export function deciderAccesDossier(
     u.roles.includes('administrateur') ||
     u.roles.includes('revue-acces') ||
     u.roles.includes('gestion-invitations') ||
-    u.roles.includes('verification-identite')
+    u.roles.includes('verification-identite') ||
+    u.roles.includes('validation-remboursement')
   ) {
     return refus('refus-role-sans-acces-clinique');
   }

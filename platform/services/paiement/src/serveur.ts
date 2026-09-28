@@ -35,6 +35,8 @@ const STATUT_ERREUR = {
   operateur: 400,
   'deja-en-cours': 409,
   'deja-paye': 409,
+  annule: 409,
+  'deja-decide': 409,
 } as const;
 
 export async function creerServeur(o: {
@@ -78,6 +80,15 @@ export async function creerServeur(o: {
     // Un agent IA ne déclenche jamais un paiement (principe n°7).
     if (!u.roles.includes('patient') || estAgent(u)) throw new ErreurInterdite();
     return u;
+  };
+
+  /** Jeton d'un humain ; le rôle validation-remboursement est vérifié par le service. */
+  const humain = async (req: FastifyRequest): Promise<Utilisateur> => {
+    try {
+      return await o.verifierJeton(jeton(req));
+    } catch {
+      throw new ErreurAuthentification();
+    }
   };
 
   const appelant = async (req: FastifyRequest): Promise<string> => {
@@ -151,6 +162,58 @@ export async function creerServeur(o: {
     async (req) => {
       await appelant(req);
       return { paye: await o.service.estPaye(req.params.reference) };
+    },
+  );
+
+  // Rendez-vous annulé (téléconsultation) : plus de collecte ; remboursement préparé si payé.
+  app.post<{ Params: { reference: string } }>(
+    '/rendez-vous/:reference/annulation',
+    {
+      schema: {
+        params: { type: 'object', properties: { reference: REFERENCE }, required: ['reference'] },
+      },
+    },
+    async (req) => {
+      const client = await appelant(req);
+      const r = await o.service.annulationRendezVous(req.params.reference);
+      o.journal.info('annulation de rendez-vous reçue', { client, ...r });
+      return r;
+    },
+  );
+
+  // ── Valideurs des remboursements (rôle validation-remboursement) ───────────────
+  app.get('/remboursements', async (req) => {
+    const u = await humain(req);
+    return { remboursements: await o.service.aValider(u) };
+  });
+
+  app.post<{ Params: { id: string }; Body: { decision: 'valide' | 'refuse' } }>(
+    '/remboursements/:id/decision',
+    {
+      schema: {
+        params: { type: 'object', properties: { id: ID }, required: ['id'] },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['decision'],
+          // Aucun texte libre : valider ou refuser, selon les règles du porteur de projet.
+          properties: { decision: { type: 'string', enum: ['valide', 'refuse'] } },
+        },
+      },
+    },
+    async (req) => {
+      const u = await humain(req);
+      const r = await o.service.decider(u, req.params.id, req.body.decision);
+      // Qui, quel remboursement, quelle décision, quel montant ; jamais le patient ni le numéro.
+      o.journal.info('décision de remboursement', {
+        sujet: u.sujet,
+        remboursementId: r.id,
+        decision: req.body.decision,
+        statut: r.statut,
+        montant: r.montant,
+        devise: r.devise,
+      });
+      return r;
     },
   );
 

@@ -18,6 +18,8 @@ export interface Monde {
   rendezVousId?: string;
   /** Paiement de la réservation en cours (ADR-0017). */
   paiementId?: string;
+  /** Remboursement préparé pour le rendez-vous annulé (ADR-0017). */
+  remboursementId?: string;
   /** Créneaux publiés ou préparés pendant le scénario (identifiants). */
   creneaux?: string[];
   /** Créneau du rendez-vous avant un report. */

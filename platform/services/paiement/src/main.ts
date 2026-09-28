@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { creerVerificateur } from '@mbolo/identite';
-import { creerJournal } from '@mbolo/journal-securise';
+import { creerJournal, signalerAlerte } from '@mbolo/journal-securise';
 import { DepotPostgres } from './depot.js';
 import { FournisseurSimule } from './fournisseur.js';
 import { creerVerificateurAppelant } from './jeton.js';
@@ -80,6 +80,43 @@ const drapeaux =
 
 const fournisseur = new FournisseurSimule(secretSignature);
 const audience = env['PAIEMENT_AUDIENCE'] ?? 'mbolo-paiement-api';
+const service = new ServicePaiement(
+  new DepotPostgres(connecter({ url: urlBase, application: 'paiement', production })),
+  fournisseur,
+  tarifs,
+  drapeaux,
+  () => new Date(),
+  // Les valideurs sont prévenus (alerte remboursement-a-valider, ADR-0016) ; jamais le patient.
+  (r) =>
+    signalerAlerte(journal, 'remboursement-a-valider', 'remboursement à valider', {
+      remboursementId: r.id,
+      montant: r.montant,
+      devise: r.devise,
+    }),
+);
+
+// Rapprochement avec le prestataire : collectes en attente relues, remboursements préparés pour les
+// rendez-vous annulés mais payés, remboursements validés exécutés. Un passage à la fois.
+let enCours = false;
+setInterval(
+  () => {
+    if (enCours) return;
+    enCours = true;
+    service
+      .rapprocher()
+      .then((bilan) => {
+        if (bilan.relues || bilan.prepares || bilan.effectues || bilan.erreurs) {
+          journal.info('rapprochement des paiements', { ...bilan });
+        }
+      })
+      .catch((e: unknown) => journal.avertissement('rapprochement impossible', { err: e }))
+      .finally(() => {
+        enCours = false;
+      });
+  },
+  Number(env['PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS'] ?? '900000'),
+).unref();
+
 const app = await creerServeur({
   verifierJeton: creerVerificateur({ emetteur, audience }),
   verifierAppelant: creerVerificateurAppelant({
@@ -90,12 +127,7 @@ const app = await creerServeur({
       .map((x) => x.trim())
       .filter(Boolean),
   }),
-  service: new ServicePaiement(
-    new DepotPostgres(connecter({ url: urlBase, application: 'paiement', production })),
-    fournisseur,
-    tarifs,
-    drapeaux,
-  ),
+  service,
   // Développement et e2e : le payeur simulé valide ou refuse (jamais en production, refusée plus haut).
   ...(env['PAIEMENT_SIMULATION'] === 'true' ? { simulation: fournisseur } : {}),
   journal,

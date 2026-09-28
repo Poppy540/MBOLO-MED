@@ -56,7 +56,7 @@ Quand le flag **`paiement.mobile-money`** est actif pour le patient :
 - **Passage périodique** (toutes les minutes par défaut) : même traitement pour toutes les réservations en attente. Si le service de paiement ne répond pas, **rien n'est annulé** : la réservation est reprise au passage suivant.
 - Tant que le rendez-vous est « à payer » : pas de salle (409), pas de report (409). Le patient peut l'annuler ; le créneau se libère.
 - Flag fermé : la réservation est confirmée aussitôt, sans paiement (cohorte pilote gratuite).
-- **Limite connue** : un paiement validé après l'annulation (délai dépassé ou abandon) sera repris par le rapprochement et remboursé après validation humaine (PR à venir).
+- **Annulation** (patient, professionnel ou plateforme) : le service `paiement` est prévenu. Plus aucune collecte ; si le paiement est reçu, même après coup, un remboursement est préparé et validé par un humain. Si le paiement ne répond pas, l'annulation reste valable et une alerte d'exploitation est levée.
 
 ## Identité vérifiée avant toute réservation (ADR-0014)
 

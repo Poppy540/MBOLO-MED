@@ -69,7 +69,8 @@ if (fhir) {
   if (env['NOTIFICATIONS_URL']) {
     notificateur = new NotificateurHttp({ url: env['NOTIFICATIONS_URL'], entetes, journal });
   }
-  if (env['PAIEMENT_URL']) paiements = new PaiementsHttp({ url: env['PAIEMENT_URL'], entetes });
+  if (env['PAIEMENT_URL'])
+    paiements = new PaiementsHttp({ url: env['PAIEMENT_URL'], entetes, journal });
 } else {
   depot = new DepotRendezVousMemoire();
   creneaux = new DepotCreneauxMemoire();

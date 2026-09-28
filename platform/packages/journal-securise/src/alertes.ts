@@ -14,6 +14,8 @@ export const ALERTES = [
   'limite-appels',
   /** Erreur interne d'un service, ou dossier médical indisponible (5xx). */
   'erreur-serveur',
+  /** Paiement reçu pour un rendez-vous annulé : remboursement à valider par un humain (ADR-0017). */
+  'remboursement-a-valider',
 ] as const;
 export type Alerte = (typeof ALERTES)[number];
 

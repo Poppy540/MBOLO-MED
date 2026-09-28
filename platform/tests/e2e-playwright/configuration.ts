@@ -61,7 +61,8 @@ export interface CompteFictif {
     | 'pharmacien'
     | 'revue-acces'
     | 'gestion-invitations'
-    | 'verification-identite';
+    | 'verification-identite'
+    | 'validation-remboursement';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -137,6 +138,14 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'verificateur-fictif-01',
     prenom: 'Amina',
     role: 'verification-identite',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    // Valide ou refuse les remboursements préparés par la plateforme (ADR-0017).
+    identifiant: 'valideur-fictif-01',
+    prenom: 'Rose',
+    role: 'validation-remboursement',
     application: 'pro',
     attributs: {},
   },
