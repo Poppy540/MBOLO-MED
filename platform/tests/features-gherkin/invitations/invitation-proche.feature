@@ -26,7 +26,7 @@ Fonctionnalité: Le patient invite un proche
     Et que "patient-fictif-01" invite son proche "Serge [FICTIF]", son enfant, au numéro "+33000000009"
     Et que la boîte des notifications simulées est relevée
     Quand le proche crée son compte avec ce code depuis l’application patient
-    Alors il configure la double authentification et arrive sur les documents partagés par son proche
+    Alors il configure la double authentification, accepte les conditions d’utilisation et arrive sur les documents partagés par son proche
     Et son compte a le seul rôle proche, rattaché à la fiche du proche, avec la double authentification
     Et la fiche du proche est active dans le dossier
     Et le numéro "+241 00 00 00 01" reçoit le message "votre proche invité a créé son compte"

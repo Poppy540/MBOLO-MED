@@ -7,7 +7,7 @@ const lire = (fichier: string): unknown =>
 
 interface Royaume {
   browserFlow: string;
-  requiredActions: { alias: string; enabled: boolean }[];
+  requiredActions: { alias: string; enabled: boolean; defaultAction?: boolean }[];
   registrationAllowed: boolean;
   registrationFlow: string;
   loginTheme: string;
@@ -295,6 +295,12 @@ describe('royaume mbolo', () => {
     // Déclarer une action supprime celles qui ne le sont pas : la MFA en dépend.
     expect(actives).toContain('CONFIGURE_TOTP');
     expect(actives).toContain('UPDATE_PASSWORD');
+    // Conditions d'utilisation, demandées aux seuls proches par l'extension (ADR-0019).
+    expect(actives).toContain('TERMS_AND_CONDITIONS');
+    // Jamais par défaut : un patient ne les voit pas.
+    expect(
+      royaume.requiredActions.find((a) => a.alias === 'TERMS_AND_CONDITIONS')?.defaultAction,
+    ).toBe(false);
   });
 
   it("ne demande ni nom ni e-mail à l'inscription : identité dans le dossier seulement", () => {

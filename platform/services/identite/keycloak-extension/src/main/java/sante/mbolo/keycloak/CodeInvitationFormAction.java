@@ -105,6 +105,9 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
       utilisateur.setSingleAttribute(
           RolesInscription.ATTRIBUT_PROCHE, utilisation.relatedPersonId());
       utilisateur.addRequiredAction(UserModel.RequiredAction.CONFIGURE_TOTP);
+      // Conditions d'utilisation du proche (accord du porteur de projet du 2026-09-28) : acceptées
+      // avant tout accès ; Keycloak garde la date d'acceptation sur le compte.
+      utilisateur.addRequiredAction(UserModel.RequiredAction.TERMS_AND_CONDITIONS);
     }
     JOURNAL.infof(
         "inscription avec code d'invitation : compte %s, rôle %s", utilisateur.getId(), nomRole);
