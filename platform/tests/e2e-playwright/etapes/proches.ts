@@ -262,22 +262,38 @@ When(
 );
 
 Then(
-  'il configure la double authentification et arrive sur les documents partagés par son proche',
+  'il configure la double authentification, accepte les conditions d’utilisation et arrive sur les documents partagés par son proche',
   async ({ monde }) => {
     const page: Page | undefined = monde.inscription?.page;
     const identifiant = monde.inscription?.identifiant ?? '';
     if (!page) throw new Error('inscription non tentée');
-    // Aucune saisie d'identité (réservée aux patients) : la configuration de l'OTP vient aussitôt.
+    // Aucune saisie d'identité (réservée aux patients) ; deux actions requises, dans l'ordre
+    // choisi par Keycloak : double authentification et conditions d'utilisation du proche.
     await expect(page.locator('#kc-identite-form')).toHaveCount(0);
     const secret = page.locator('#totpSecret');
-    await expect(secret).toHaveCount(1, { timeout: 15_000 });
-    retenirSecret(identifiant, await secret.inputValue());
-    await page.locator('#totp').fill(await codeUnique(identifiant));
-    await page.locator('#userLabel').fill('Téléphone de test [FICTIF]');
-    await page.locator('#saveTOTPBtn').click();
-    await expect(
-      page.getByRole('heading', { name: 'Ordonnances et consignes de votre proche' }),
-    ).toBeVisible({ timeout: 15_000 });
+    const conditions = page.getByText("Conditions d'utilisation pour les proches, version");
+    const arrivee = page.getByRole('heading', { name: 'Ordonnances et consignes de votre proche' });
+    const vues = { otp: false, conditions: false };
+    for (let etape = 0; etape < 3 && !(vues.otp && vues.conditions); etape++) {
+      // `#totpSecret` est un champ caché : on attend le champ visible du code, ou le texte.
+      await expect(page.locator('#totp').or(conditions).first()).toBeVisible({ timeout: 15_000 });
+      if (await secret.count()) {
+        retenirSecret(identifiant, await secret.inputValue());
+        await page.locator('#totp').fill(await codeUnique(identifiant));
+        await page.locator('#userLabel').fill('Téléphone de test [FICTIF]');
+        await page.locator('#saveTOTPBtn').click();
+        vues.otp = true;
+      } else {
+        // Le texte affiché est celui du brouillon versionné (docs/securite/conditions-utilisation-proche.md).
+        await expect(page.getByText('Ne les copiez pas, ne les photographiez pas')).toBeVisible();
+        await expect(page.getByText('c-utilisation-proche-v0.1')).toBeVisible();
+        await page.getByRole('button', { name: 'Accepter' }).click();
+        vues.conditions = true;
+      }
+      await page.waitForLoadState().catch(() => undefined);
+    }
+    expect(vues).toEqual({ otp: true, conditions: true });
+    await expect(arrivee).toBeVisible({ timeout: 15_000 });
   },
 );
 
@@ -308,6 +324,8 @@ Then(
     )) as { id: string; attributes?: Record<string, string[]> }[];
     expect(compte?.attributes?.['related_person_id']).toEqual([monde.proche?.relatedPersonId]);
     expect(compte?.attributes?.['patient_id']).toBeUndefined();
+    // Conditions d'utilisation acceptées : Keycloak garde la date d'acceptation.
+    expect(compte?.attributes?.['terms_and_conditions']?.[0]).toMatch(/^\d+$/);
     const roles = (
       (await admin(`/users/${compte?.id ?? ''}/role-mappings/realm/composite`)) as {
         name: string;
