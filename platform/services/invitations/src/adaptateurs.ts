@@ -185,4 +185,20 @@ export class SmsNotifications implements SmsInvitation {
       return 'echec';
     }
   }
+
+  async alerterPatient(patientId: string): Promise<'envoyee' | 'echec'> {
+    try {
+      const r = await this.appeler(`${this.url}/alertes/proche-inscrit`, {
+        method: 'POST',
+        headers: { ...(await this.entetes()), 'content-type': 'application/json' },
+        body: JSON.stringify({ patientId }),
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (r.status !== 202) return 'echec';
+      const b = (await r.json()) as { resultat?: string };
+      return b.resultat === 'envoyee' ? 'envoyee' : 'echec';
+    } catch {
+      return 'echec';
+    }
+  }
 }

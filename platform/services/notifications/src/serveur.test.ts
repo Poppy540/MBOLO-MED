@@ -165,4 +165,40 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
       expect(r.statusCode).toBe(400);
     }
   });
+
+  it('alerte le patient quand son proche crée son compte, même sans consentement aux rappels', async () => {
+    const canal = new CanalSimule();
+    const lignes: string[] = [];
+    const app = await creerServeur({
+      verifierAppelant: async (j) => {
+        if (j === 'jeton-invitations') return 'mbolo-invitations-service';
+        if (j === 'jeton-valide') return 'mbolo-teleconsultation-service';
+        throw new Error('refusé');
+      },
+      service: new ServiceNotifications(
+        { telephone: async () => '+241 00 00 00 01', accepteRappels: async () => false },
+        canal,
+      ),
+      journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
+      invitations: { canal, appelants: ['mbolo-invitations-service'] },
+    });
+    const alerte = (jeton: string, payload: object = { patientId: 'pat-fictif-001' }) =>
+      app.inject({
+        method: 'POST',
+        url: '/alertes/proche-inscrit',
+        headers: { authorization: `Bearer ${jeton}` },
+        payload,
+      });
+    expect((await alerte('jeton-valide')).statusCode).toBe(403);
+    expect((await alerte('jeton-invitations', { patientId: '../x' })).statusCode).toBe(400);
+    const r = await alerte('jeton-invitations');
+    expect(r.json()).toEqual({ resultat: 'envoyee' });
+    expect(canal.boite).toHaveLength(1);
+    const texte = canal.boite[0]?.texte ?? '';
+    expect(texte).toContain('votre proche invité a créé son compte');
+    expect(texte.length).toBeLessThanOrEqual(160);
+    // Ni identifiant, ni prénom, ni numéro dans le texte ou le journal.
+    expect(texte).not.toMatch(/pat-|FICTIF|\+241/);
+    expect(lignes.join('\n')).not.toContain('+241');
+  });
 });

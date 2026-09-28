@@ -143,6 +143,28 @@ export async function creerServeur(o: {
         return reply.code(202).send({ resultat });
       },
     );
+
+    // Alerte au patient : son proche a créé son compte (ADR-0019).
+    app.post<{ Body: { patientId: string } }>(
+      '/alertes/proche-inscrit',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId'],
+            properties: { patientId: { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } },
+          },
+        },
+      },
+      async (req, reply) => {
+        const appelant = await authentifier(req);
+        if (!invitations.appelants.includes(appelant)) throw new ErreurInterdite();
+        const resultat = await o.service.alerterProcheInscrit(req.body.patientId);
+        o.journal.info('alerte « proche inscrit » traitée', { appelant, resultat });
+        return reply.code(202).send({ resultat });
+      },
+    );
   }
 
   if (o.simulation) {
