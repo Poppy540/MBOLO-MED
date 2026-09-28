@@ -21,6 +21,7 @@
 | [0015](adr/0015-stockage-documents-verification-identite.md) | Stockage chiffré des documents et vérification d'identité | Acceptée (durée de conservation à fixer) |
 | [0016](adr/0016-preparation-production.md) | Préparation de la production : clé maître (KMS), supervision et alertes, authentification des services | Acceptée (destinataires des alertes à désigner) |
 | [0017](adr/0017-paiement-mobile-money.md) | Paiement des consultations par mobile money (agrégateur, parcours, données) | Proposée (prestataire à choisir sur devis) |
+| [0018](adr/0018-ordonnances-electroniques.md) | Ordonnances électroniques : signature du prescripteur, transmission à la pharmacie choisie, délivrance unique | Proposée (suspendue à l'avis juridique, vague 2) |
 
 ## Vue d'ensemble (cible, à détailler)
 
