@@ -276,7 +276,7 @@ describe('API documents : vérification par une personne habilitée', () => {
   });
 
   it('trace chaque consultation dans le dossier avant de montrer l’identité ou une photo', async () => {
-    const { app, dossier, document } = await avecPhotos();
+    const { app, dossier, document, evenements } = await avecPhotos();
     const fiche = await appeler(app, 'verificateur', '/verifications/pat-fictif-003');
     expect(fiche.statusCode).toBe(200);
     expect(fiche.json()).toMatchObject({
@@ -296,6 +296,12 @@ describe('API documents : vérification par une personne habilitée', () => {
     expect(photo.statusCode).toBe(200);
     expect(photo.headers['cache-control']).toBe('no-store');
     expect(photo.rawPayload.equals(document)).toBe(true);
+    // Chaque ouverture de photo est un événement d'alerte compté par la supervision (ADR-0016).
+    expect(
+      evenements.filter(
+        (e) => (e.contexte as { alerte?: string } | undefined)?.alerte === 'consultation-photo',
+      ),
+    ).toHaveLength(1);
     expect(dossier.traces).toHaveLength(2);
     expect(dossier.traces[1]).toMatchObject({
       outcomeDesc: 'verification-identite',

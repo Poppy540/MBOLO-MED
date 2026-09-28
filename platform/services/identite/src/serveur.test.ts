@@ -119,6 +119,7 @@ describe('API identité', () => {
       payload: { patientId: 'fictif-patient-0001' },
     });
     expect(avant.json()).toMatchObject({ autorise: false });
+    expect(lignes.some((l) => l.contexte?.['alerte'] === 'acces-refuse')).toBe(true);
 
     // La patiente consent au partage avec CE médecin.
     const cree = await a.inject({
@@ -217,6 +218,8 @@ describe('API identité', () => {
     expect(
       lignes.some((l) => l.niveau === 'avertissement' && l.message.includes('BRIS DE GLACE')),
     ).toBe(true);
+    // Événement d'alerte nommé, compté par la supervision (ADR-0016).
+    expect(lignes.some((l) => l.contexte?.['alerte'] === 'bris-de-glace')).toBe(true);
   });
 
   it('le journal ne contient jamais le texte de consentement ni de jeton', async () => {
@@ -364,5 +367,6 @@ describe('limites d’appels', () => {
     const r = await a.inject({ method: 'GET', url: '/sante' });
     expect(r.statusCode).toBe(429);
     expect(r.json()).toEqual({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
+    expect(lignes.some((l) => l.contexte?.['alerte'] === 'limite-appels')).toBe(true);
   });
 });

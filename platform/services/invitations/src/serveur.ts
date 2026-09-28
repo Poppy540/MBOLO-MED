@@ -4,7 +4,7 @@
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
-import type { Journal } from '@mbolo/journal-securise';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import type { VerifierService } from './jeton-service.js';
 import type { Limiteur } from './limiteur.js';
 import { COHORTE, ErreurInvitation, type ServiceInvitations } from './service.js';
@@ -53,6 +53,7 @@ export async function creerServeur(o: {
 
   app.setErrorHandler((err, _req, reply) => {
     if ((err as { statusCode?: number }).statusCode === 429) {
+      signalerAlerte(o.journal, 'limite-appels', 'limite d’appels atteinte');
       return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
     }
     if (err instanceof ErreurAuthentification) {
@@ -66,7 +67,7 @@ export async function creerServeur(o: {
     if ((err as { validation?: unknown }).validation) {
       return reply.code(400).send({ erreur: 'Requête invalide.' });
     }
-    o.journal.erreur('erreur interne des invitations', { err });
+    signalerAlerte(o.journal, 'erreur-serveur', 'erreur interne des invitations', { err });
     return reply.code(500).send({ erreur: 'Erreur interne.' });
   });
 

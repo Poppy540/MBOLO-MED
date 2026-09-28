@@ -3,7 +3,7 @@
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
-import type { Journal } from '@mbolo/journal-securise';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurDecision } from './acces.js';
 import { ErreurConsultation, type ServiceConsultation } from './service.js';
 
@@ -43,6 +43,7 @@ export async function creerServeur(o: {
 
   app.setErrorHandler((err, _req, reply) => {
     if ((err as { statusCode?: number }).statusCode === 429) {
+      signalerAlerte(o.journal, 'limite-appels', 'limite d’appels atteinte');
       return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
     }
     if (err instanceof ErreurAuthentification) {
@@ -54,17 +55,18 @@ export async function creerServeur(o: {
         .send({ erreur: err.message, ...(err.motif ? { motif: err.motif } : {}) });
     }
     if (err instanceof ErreurDecision) {
-      o.journal.erreur('décision d’accès indisponible');
+      signalerAlerte(o.journal, 'erreur-serveur', 'décision d’accès indisponible');
       return reply.code(503).send({ erreur: 'Service momentanément indisponible.' });
     }
     if (err instanceof ErreurDepot) {
-      if (err.statut === 503) o.journal.erreur('dossier médical indisponible', { err });
+      if (err.statut === 503)
+        signalerAlerte(o.journal, 'erreur-serveur', 'dossier médical indisponible', { err });
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if ((err as { validation?: unknown }).validation) {
       return reply.code(400).send({ erreur: 'Requête invalide.' });
     }
-    o.journal.erreur('erreur interne de la consultation', { err });
+    signalerAlerte(o.journal, 'erreur-serveur', 'erreur interne de la consultation', { err });
     return reply.code(500).send({ erreur: 'Erreur interne.' });
   });
 

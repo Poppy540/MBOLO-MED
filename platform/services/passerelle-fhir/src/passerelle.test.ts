@@ -158,7 +158,11 @@ describe('passerelle du dossier', () => {
       (await app.inject({ method: 'GET', url: '/fhir/Consent/1/_history', headers: h })).statusCode,
     ).toBe(404);
     expect(appels).toHaveLength(0);
-    expect(lignes.some((l) => l.message === 'accès au dossier refusé')).toBe(true);
+    expect(
+      lignes.some(
+        (l) => l.message === 'accès au dossier refusé' && l.contexte?.['alerte'] === 'acces-refuse',
+      ),
+    ).toBe(true);
   });
 
   it('refuse les paramètres qui ramèneraient d’autres ressources (_include, _revinclude, chaînage)', async () => {

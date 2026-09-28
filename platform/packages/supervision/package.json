@@ -1,0 +1,24 @@
+{
+  "name": "@mbolo/supervision",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Règles d'alerte de Mbolo Santé (ADR-0016) : source TypeScript, fichiers Loki et Prometheus générés et vérifiés.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "generer": "pnpm build && node dist/generer.js"
+  },
+  "dependencies": {
+    "@mbolo/journal-securise": "workspace:*"
+  }
+}

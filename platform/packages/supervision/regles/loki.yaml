@@ -1,0 +1,54 @@
+# Fichier généré depuis platform/packages/supervision/src/regles.ts — ne pas modifier à la main.
+# pnpm --filter @mbolo/supervision generer
+groups:
+  - name: "mbolo-securite"
+    interval: "1m"
+    rules:
+      - alert: "ConsultationsPhotosAnormales"
+        expr: "sum by (contexte_sujet) (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"consultation-photo\" [1h])) > 60"
+        labels:
+          gravite: "critique"
+          destinataire: "responsable-securite"
+          alerte: "consultation-photo"
+        annotations:
+          resume: "Plus de 60 photos d'identité ouvertes en une heure par un même vérificateur."
+          conduite: "Plan d'incident « fuite de photos d'identité » : vérifier les traces, retirer le rôle verification-identite si besoin."
+      - alert: "BrisDeGlace"
+        expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"bris-de-glace\" [5m])) > 0"
+        labels:
+          gravite: "normale"
+          destinataire: "revue-acces"
+          alerte: "bris-de-glace"
+        annotations:
+          resume: "Accès d'urgence à un dossier : revue humaine sous 24 h."
+          conduite: "Espace de revue des bris de glace (rôle revue-acces)."
+      - alert: "AccesRefusesEnRafale"
+        expr: "sum by (contexte_sujet, contexte_client) (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"acces-refuse\" [5m])) > 20"
+        labels:
+          gravite: "critique"
+          destinataire: "responsable-securite"
+          alerte: "acces-refuse"
+        annotations:
+          resume: "Plus de 20 refus d’accès au dossier en 5 minutes pour un même compte ou service."
+          conduite: "Vérifier le compte ; le désactiver dans Keycloak en cas de tentative d’intrusion."
+  - name: "mbolo-exploitation"
+    interval: "1m"
+    rules:
+      - alert: "LimitesAppelsDepassees"
+        expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"limite-appels\" [5m])) > 100"
+        labels:
+          gravite: "normale"
+          destinataire: "astreinte-technique"
+          alerte: "limite-appels"
+        annotations:
+          resume: "Plus de 100 requêtes refusées par les limites d’appels en 5 minutes."
+          conduite: "Chercher l’adresse en cause ; bloquer au pare-feu si c’est une attaque."
+      - alert: "ErreursServeur"
+        expr: "sum by (service) (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"erreur-serveur\" [5m])) > 10"
+        labels:
+          gravite: "normale"
+          destinataire: "astreinte-technique"
+          alerte: "erreur-serveur"
+        annotations:
+          resume: "Plus de 10 erreurs internes en 5 minutes sur un service."
+          conduite: "Lire le journal du service ; vérifier le dossier médical et la base."
