@@ -1,6 +1,6 @@
 // Étapes « reçus et avoirs » (ADR-0020) : API du service de paiement avec le jeton du patient.
 // Données FICTIVES uniquement (fournisseur simulé, numéro inventé).
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { PAIEMENT_URL } from '../configuration.js';
 import { Then, When, type Monde } from './fixtures.js';
 
@@ -79,3 +79,33 @@ When('{string} consulte ses reçus', async ({ monde }, identifiant: string) => {
 Then('la consultation des reçus est refusée avec le statut {int}', ({ monde }, statut: number) => {
   expect(monde.reponse?.statut).toBe(statut);
 });
+
+// ── Dans l'application patient (« Mes reçus ») ─────────────────────────────
+
+const application = (monde: Monde): Page => {
+  const p = monde.visio.get('application patient')?.page;
+  if (!p) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
+  return p;
+};
+
+When('le patient ouvre ses reçus dans l’application', async ({ monde }) => {
+  const p = application(monde);
+  await p.getByRole('button', { name: /Mes reçus/ }).click();
+  await expect(p.getByRole('heading', { name: 'Mes reçus' })).toBeVisible();
+});
+
+Then(
+  'l’application affiche ce reçu de {int} {string}, sans valeur fiscale ni numéro de téléphone',
+  async ({ monde }, montant: number, devise: string) => {
+    const p = application(monde);
+    const fiche = p.locator(`li[data-recu="${monde.recu ?? 'absent'}"]`);
+    await expect(fiche).toBeVisible();
+    await expect(fiche).toHaveAttribute('data-type', 'recu');
+    // Montant au format du pays (espaces fines selon la langue) : seuls les chiffres sont comparés.
+    expect((await fiche.innerText()).replace(/\D/g, '')).toContain(String(montant));
+    await expect(fiche).toContainText(devise === 'XAF' ? 'FCFA' : devise);
+    await expect(fiche).toContainText('Airtel');
+    await expect(fiche).toContainText('Reçu sans valeur fiscale.');
+    await expect(p.locator('main')).not.toContainText('+241');
+  },
+);
