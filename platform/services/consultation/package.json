@@ -2,7 +2,7 @@
   "name": "@mbolo/consultation",
   "version": "0.1.0",
   "private": true,
-  "description": "Consultation clinique côté professionnel : lecture du dossier du patient après décision d'accès (consentement, bris de glace) et compte-rendu de téléconsultation rédigé par le professionnel.",
+  "description": "Consultation clinique côté professionnel : lecture du dossier du patient après décision d'accès (consentement, bris de glace) compte-rendu de téléconsultation et ordonnance électronique (ADR-0018), rédigés par le professionnel.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,6 +21,7 @@
   "dependencies": {
     "@fastify/rate-limit": "^11.2.0",
     "@mbolo/dossier-fhir": "workspace:*",
+    "@mbolo/drapeaux": "workspace:*",
     "@mbolo/identite": "workspace:*",
     "@mbolo/journal-securise": "workspace:*",
     "fastify": "^5.12.5"

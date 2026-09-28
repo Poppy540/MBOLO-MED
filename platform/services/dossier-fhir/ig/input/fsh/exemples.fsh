@@ -166,6 +166,8 @@ Usage: #example
 * intent = #order
 * groupIdentifier.system = "https://mbolo-sante.example/fhir/identifiant-ordonnance"
 * groupIdentifier.value = "FICTIF-ORD-0001"
+* identifier[0].system = "https://mbolo-sante.example/fhir/identifiant-ordonnance"
+* identifier[0].value = "FICTIF-ORD-0001"
 * medicationCodeableConcept = $atc#N02BE01 "paracetamol"
 * subject = Reference(fictif-patient-0001)
 * authoredOn = "2026-10-01T09:30:00+01:00"

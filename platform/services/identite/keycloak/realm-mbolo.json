@@ -641,7 +641,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Condition.rs system/Composition.crs system/Appointment.r",
+            "claim.value": "system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

@@ -13,7 +13,14 @@ Consultation clinique côté professionnel : **lire le dossier du patient** et *
   - à partir de l'ouverture de la salle (15 min avant), rendez-vous non annulé ;
   - même décision d'accès que la lecture ;
   - enregistré comme `Composition` FHIR (profil `mbolo-compte-rendu`, invariant `mbolo-cr-1` : auteur = un seul `Practitioner`), rattaché au rendez-vous.
-- **Journal** : qui, quelle décision, quel compte-rendu (identifiant). **Jamais de contenu médical.**
+- **Ordonnance électronique** (ADR-0018, proposée, suspendue à l'avis juridique ; flag `ordonnances.electroniques`, vague 2) :
+  - **`POST /rendez-vous/:id/ordonnance`** (`lignes` de 1 à 10, `renouvellements` de 0 à 12) : chaque ligne est **structurée** (médicament codé dans la nomenclature du pays, dose en unité UCUM, fréquence, durée en jours) ; **aucun champ de texte libre** ;
+  - prescrite par le **professionnel du rendez-vous** seulement, jamais par un agent IA ni un patient, avec les mêmes conditions que le compte-rendu (salle ouverte, rendez-vous non annulé, décision d'accès) ;
+  - enregistrée comme `MedicationRequest` FHIR (profil `mbolo-ordonnance`), une ressource par ligne, le numéro `ORD-…` en `identifier` et `groupIdentifier` ; validité par défaut `CONSULTATION_VALIDITE_ORDONNANCE_JOURS` ;
+  - si une ligne ne peut pas être écrite, celles déjà écrites passent en `entered-in-error` : jamais d'ordonnance incomplète utilisable ;
+  - **`GET /ordonnances/:numero`** et **`POST /ordonnances/:numero/revocation`** : par le prescripteur seul (un autre reçoit 404), révocation tant que l'ordonnance est active ; possibles même si le flag est refermé ;
+  - la signature du prescripteur et la délivrance en pharmacie viendront après l'avis juridique.
+- **Journal** : qui, quelle décision, quel compte-rendu ou quelle ordonnance (identifiant, nombre de lignes). **Jamais de contenu médical** (ni médicament ni posologie).
 - Un champ inconnu est refusé (400), pas ignoré.
 
 ## Configuration
@@ -23,14 +30,18 @@ Consultation clinique côté professionnel : **lire le dossier du patient** et *
 | `KEYCLOAK_ISSUER`, `CONSULTATION_AUDIENCE` (défaut `mbolo-consultation-api`) | Vérification des jetons de l'espace professionnel |
 | `IDENTITE_URL` | Service `identite` (décision d'accès) |
 | `FHIR_BASE_URL` | Passerelle du dossier |
-| `CONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-consultation-service`), `CONSULTATION_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Compte de service : `system/Condition.rs system/Composition.crs system/Appointment.r` |
+| `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flags ; sans eux, la prescription est fermée |
+| `CONSULTATION_NOMENCLATURE_MEDICAMENTS` (défaut ATC `http://www.whocc.no/atc`), `CONSULTATION_VALIDITE_ORDONNANCE_JOURS` (défaut `90`, à confirmer) | Nomenclature des médicaments et validité des ordonnances du pays déployé |
+| `CONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-consultation-service`), `CONSULTATION_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Compte de service : `system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus` (ordonnances, ADR-0018) |
 
 ## Tests
 
 - **Unitaires** : lecture seulement après décision favorable (prise avec le jeton du demandeur), refus 403 avec motif, bris de glace transmis ; compte-rendu par le médecin du rendez-vous ; refus d'un agent IA (403) ou d'un autre médecin (404), sans consentement, avant la consultation, sur un rendez-vous annulé, vide ; décision absente ou ambiguë → jamais d'accès.
+- **Unitaires, ordonnances** : prescription par le médecin du rendez-vous (lignes valides, même numéro, validité) ; refus d'un agent IA, d'un patient, d'un autre médecin, fonction fermée, sans accès ; médicament hors nomenclature ; écriture interrompue ; relecture et révocation par le seul prescripteur, une seule fois, même flag refermé.
 - **E2E** (`features-gherkin/teleconsultation/espace-professionnel.feature`) : sans partage, le dossier reste fermé sauf accès d'urgence motivé ; avec partage, le médecin rédige le compte-rendu, retrouvé dans le dossier signé par lui.
+- **E2E ordonnances** (`features-gherkin/ordonnances/prescription.feature`) : prescription retrouvée dans le dossier (prescripteur, médicament codé, aucun texte libre), puis révocation ; refus sans partage du dossier ; un patient ne prescrit ni ne révoque.
 
 ## Reste à faire
 
-- Le patient consulte ses comptes-rendus dans son application.
-- Ordonnances électroniques (service `ordonnances`, vague 2).
+- Le patient consulte ses comptes-rendus et ses ordonnances dans son application.
+- Ordonnances : signature du prescripteur, choix de la pharmacie, code de retrait et délivrance (service `ordonnances`, ADR-0018), après l'avis juridique.

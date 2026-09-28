@@ -5,12 +5,59 @@ import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurDecision } from './acces.js';
-import { ErreurConsultation, type ServiceConsultation } from './service.js';
+import {
+  ErreurConsultation,
+  LIGNES_MAX,
+  type LigneSaisie,
+  type ServiceConsultation,
+} from './service.js';
 
 class ErreurAuthentification extends Error {}
 
 const ID = { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } as const;
 const TEXTE = { type: 'string', maxLength: 4000 } as const;
+const NUMERO = { type: 'string', pattern: '^ORD-[0-9A-F]{12}$' } as const;
+const CODE = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['systeme', 'code', 'libelle'],
+  properties: {
+    systeme: { type: 'string', format: 'uri', maxLength: 200 },
+    code: { type: 'string', pattern: '^[A-Za-z0-9.-]{1,40}$' },
+    libelle: { type: 'string', minLength: 1, maxLength: 120 },
+  },
+} as const;
+/** Ligne d'ordonnance structurée : aucun champ de texte libre (ADR-0018, mbolo-ord-1). */
+const LIGNE = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['medicament', 'dose', 'frequence', 'dureeJours'],
+  properties: {
+    medicament: CODE,
+    dose: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['valeur', 'unite'],
+      properties: {
+        valeur: { type: 'number', exclusiveMinimum: 0, maximum: 100000 },
+        // Unité UCUM (ex. mg, mL, g, [iU]).
+        unite: { type: 'string', pattern: '^[A-Za-z0-9%\\[\\]/.]{1,20}$' },
+      },
+    },
+    frequence: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['fois', 'periode', 'unite'],
+      properties: {
+        fois: { type: 'integer', minimum: 1, maximum: 24 },
+        periode: { type: 'integer', minimum: 1, maximum: 30 },
+        unite: { type: 'string', enum: ['h', 'd', 'wk'] },
+      },
+    },
+    dureeJours: { type: 'integer', minimum: 1, maximum: 365 },
+    voie: CODE,
+  },
+} as const;
 
 export async function creerServeur(o: {
   verifierJeton: VerifierJeton;
@@ -130,6 +177,60 @@ export async function creerServeur(o: {
       });
       o.journal.info('compte-rendu enregistré', { sujet: utilisateur.sujet, compteRendu: r.id });
       return reply.code(201).send(r);
+    },
+  );
+
+  // ── Ordonnances électroniques (ADR-0018, flag ordonnances.electroniques) ────────
+  app.post<{ Params: { id: string }; Body: { lignes: LigneSaisie[]; renouvellements?: number } }>(
+    '/rendez-vous/:id/ordonnance',
+    {
+      schema: {
+        params: { type: 'object', properties: { id: ID }, required: ['id'] },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['lignes'],
+          properties: {
+            lignes: { type: 'array', minItems: 1, maxItems: LIGNES_MAX, items: LIGNE },
+            renouvellements: { type: 'integer', minimum: 0, maximum: 12 },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const { utilisateur, jeton } = await authentifier(req);
+      const ord = await o.service.prescrire(utilisateur, jeton, req.params.id, req.body);
+      // Jamais le nom d'un médicament dans le journal (donnée de santé).
+      o.journal.info('ordonnance prescrite', {
+        sujet: utilisateur.sujet,
+        numero: ord.numero,
+        lignes: ord.lignes.length,
+      });
+      return reply.code(201).send(ord);
+    },
+  );
+
+  app.get<{ Params: { numero: string } }>(
+    '/ordonnances/:numero',
+    {
+      schema: { params: { type: 'object', properties: { numero: NUMERO }, required: ['numero'] } },
+    },
+    async (req) => {
+      const { utilisateur } = await authentifier(req);
+      return o.service.lireOrdonnance(utilisateur, req.params.numero);
+    },
+  );
+
+  app.post<{ Params: { numero: string } }>(
+    '/ordonnances/:numero/revocation',
+    {
+      schema: { params: { type: 'object', properties: { numero: NUMERO }, required: ['numero'] } },
+    },
+    async (req) => {
+      const { utilisateur, jeton } = await authentifier(req);
+      const ord = await o.service.revoquerOrdonnance(utilisateur, jeton, req.params.numero);
+      o.journal.info('ordonnance révoquée', { sujet: utilisateur.sujet, numero: ord.numero });
+      return ord;
     },
   );
 

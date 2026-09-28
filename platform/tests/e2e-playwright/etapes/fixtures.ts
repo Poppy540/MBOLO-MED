@@ -20,6 +20,8 @@ export interface Monde {
   paiementId?: string;
   /** Remboursement préparé pour le rendez-vous annulé (ADR-0017). */
   remboursementId?: string;
+  /** Numéro de l'ordonnance prescrite pendant le scénario (ADR-0018). */
+  ordonnance?: string;
   /** Créneaux publiés ou préparés pendant le scénario (identifiants). */
   creneaux?: string[];
   /** Créneau du rendez-vous avant un report. */

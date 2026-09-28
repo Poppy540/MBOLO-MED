@@ -42,6 +42,8 @@ export const COHORTES: Record<string, string[]> = {
   'identite.photos': ['patient-fictif-01', 'patient-fictif-03'],
   // Réservation payante (ADR-0017) : un seul patient, les autres réservent sans paiement.
   'paiement.mobile-money': ['patient-fictif-04'],
+  // Ordonnances électroniques (ADR-0018) : un seul médecin, l'infirmier n'en fait pas partie.
+  'ordonnances.electroniques': ['medecin-fictif-01'],
 };
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
