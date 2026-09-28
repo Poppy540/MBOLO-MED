@@ -26,14 +26,18 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 ## Lancer en local
 
 ```bash
+# 0. Clés de test des comptes de service (private_key_jwt, ADR-0016), dans un dossier HORS du dépôt :
+#    <PREFIXE>.certificat pour Keycloak, <PREFIXE>.cle pour les services (IDENTITE, TELECONSULTATION,
+#    NOTIFICATIONS, CONSULTATION, DOCUMENTS)
+bash scripts/cles-services-test.sh ~/mbolo-cles-test
 # 1. Keycloak et HAPI FHIR locaux (mot de passe administrateur choisi localement, jamais commité)
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… TELECONSULTATION_SERVICE_CLIENT_SECRET=… NOTIFICATIONS_SERVICE_CLIENT_SECRET=… CONSULTATION_SERVICE_CLIENT_SECRET=… docker compose -f platform/services/identite/docker-compose.yml up -d
+KC_BOOTSTRAP_ADMIN_PASSWORD=… <PREFIXE>_SERVICE_CERTIFICAT=… docker compose -f platform/services/identite/docker-compose.yml up -d
 docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d
 UNLEASH_DB_PASSWORD=… UNLEASH_ADMIN_TOKEN='*:*.…' UNLEASH_BACKEND_TOKEN='default:development.…' docker compose -f platform/services/feature-flags/docker-compose.yml up -d
 # 2. Construire les services puis lancer les scénarios (Playwright démarre lui-même le service identite)
 pnpm build
 LIVEKIT_KEYS="<clé>: <secret>" livekit-server --config platform/services/teleconsultation/livekit/config-local.yaml &
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… TELECONSULTATION_SERVICE_CLIENT_SECRET=… NOTIFICATIONS_SERVICE_CLIENT_SECRET=… CONSULTATION_SERVICE_CLIENT_SECRET=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… WEBRTC_API_KEY=<clé> WEBRTC_API_SECRET=<secret> pnpm e2e
+KC_BOOTSTRAP_ADMIN_PASSWORD=… <PREFIXE>_SERVICE_CLE_PRIVEE=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… WEBRTC_API_KEY=<clé> WEBRTC_API_SECRET=<secret> pnpm e2e
 ```
 
 Variables facultatives : `KEYCLOAK_URL` (défaut `http://127.0.0.1:8081`), `FHIR_AMONT_URL` (HAPI, défaut `http://127.0.0.1:8080/fhir`), `PASSERELLE_URL` (défaut `http://127.0.0.1:3002`) et `IDENTITE_URL` (défaut `http://127.0.0.1:3001`).

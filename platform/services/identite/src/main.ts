@@ -1,5 +1,5 @@
 // Démarrage du service identité. Configuration par variables d'environnement. Le seul secret est
-// celui du compte de service (IDENTITE_SERVICE_CLIENT_SECRET) qui donne accès au dossier via la
+// la clé privée du compte de service (IDENTITE_SERVICE_CLE_PRIVEE, ADR-0016) qui donne accès au dossier via la
 // passerelle : il vient du coffre-fort, jamais du dépôt.
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { creerJournal } from '@mbolo/journal-securise';
@@ -7,7 +7,7 @@ import { DepotMemoire, ServiceConsentements, type DepotConsentements } from './c
 import { DepotFhir } from './depot-fhir.js';
 import { JournalAccesFhir, JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
 import { ServiceRevue } from './revue.js';
-import { creerFournisseurJeton } from './jeton-service.js';
+import { authentificationDepuis, creerFournisseurJeton } from './jeton-service.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
 
@@ -17,7 +17,7 @@ const port = Number(process.env['PORT'] ?? '3001');
 const env = process.env['MBOLO_ENV'] === 'prod' ? 'prod' : 'dev';
 const fhir = process.env['FHIR_BASE_URL'];
 const clientService = process.env['IDENTITE_SERVICE_CLIENT_ID'] ?? 'mbolo-identite-service';
-const secretService = process.env['IDENTITE_SERVICE_CLIENT_SECRET'];
+const authService = authentificationDepuis(process.env, 'IDENTITE');
 const unleashUrl = process.env['UNLEASH_API_URL'];
 const unleashJeton = process.env['UNLEASH_BACKEND_TOKEN'];
 
@@ -36,11 +36,17 @@ if (env === 'prod') {
 let depot: DepotConsentements;
 let journalAcces: JournalAcces;
 if (fhir) {
-  if (!secretService) {
-    journal.erreur('IDENTITE_SERVICE_CLIENT_SECRET manquant : accès au dossier impossible, arrêt.');
+  if (!authService) {
+    journal.erreur(
+      'compte de service : clé privée IDENTITE_SERVICE_CLE_PRIVEE (ou, pendant la bascule, secret IDENTITE_SERVICE_CLIENT_SECRET) manquante : accès au dossier impossible.',
+    );
     process.exit(1);
   }
-  const entetes = creerFournisseurJeton({ emetteur, client: clientService, secret: secretService });
+  const entetes = creerFournisseurJeton({
+    emetteur,
+    client: clientService,
+    authentification: authService,
+  });
   depot = new DepotFhir({ base: fhir, entetes });
   journalAcces = new JournalAccesFhir({ base: fhir, entetes });
   journal.info('consentements enregistrés dans le dossier FHIR (passerelle authentifiée)');

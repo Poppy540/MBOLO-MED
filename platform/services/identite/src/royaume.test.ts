@@ -20,6 +20,8 @@ interface Royaume {
     serviceAccountsEnabled?: boolean;
     publicClient?: boolean;
     secret?: string;
+    clientAuthenticatorType?: string;
+    attributes?: Record<string, string>;
     protocolMappers?: { protocolMapper: string; config: Record<string, string> }[];
   }[];
   components: Record<string, { config: Record<string, string[]> }[]>;
@@ -27,6 +29,19 @@ interface Royaume {
 }
 
 const royaume = lire('realm-mbolo.json') as Royaume;
+
+/** Compte de service authentifié par clé privée (private_key_jwt), sans secret (ADR-0016). */
+const authentificationParCle = (
+  c:
+    | { secret?: string; clientAuthenticatorType?: string; attributes?: Record<string, string> }
+    | undefined,
+  prefixe: string,
+): boolean =>
+  c?.secret === undefined &&
+  c?.clientAuthenticatorType === 'client-jwt' &&
+  c.attributes?.['use.jwks.url'] === 'false' &&
+  c.attributes['jwt.credential.certificate'] === `\${${prefixe}_SERVICE_CERTIFICAT}` &&
+  c.attributes['token.endpoint.auth.signing.alg'] === 'RS256';
 
 describe('royaume mbolo', () => {
   it('embarque exactement le profil utilisateur de profil-utilisateur.json', () => {
@@ -77,7 +92,7 @@ describe('royaume mbolo', () => {
     }
   });
 
-  it('compte de service identite : confidentiel, secret jamais écrit dans le royaume, accès minimal', () => {
+  it('compte de service identite : confidentiel, authentifié par clé, accès minimal', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-identite-service');
     expect(c).toMatchObject({
       publicClient: false,
@@ -85,8 +100,8 @@ describe('royaume mbolo', () => {
       standardFlowEnabled: false,
       directAccessGrantsEnabled: false,
     });
-    // Le secret est injecté à l'import depuis l'environnement (coffre-fort), jamais en clair.
-    expect(c?.secret).toBe('${IDENTITE_SERVICE_CLIENT_SECRET}');
+    // Clé privée côté service, certificat public côté Keycloak (ADR-0016) : aucun secret partagé.
+    expect(authentificationParCle(c, 'IDENTITE')).toBe(true);
     const mappeurs = c?.protocolMappers ?? [];
     expect(
       mappeurs.find((m) => m.protocolMapper === 'oidc-audience-mapper')?.config[
@@ -108,7 +123,7 @@ describe('royaume mbolo', () => {
       standardFlowEnabled: false,
       directAccessGrantsEnabled: false,
     });
-    expect(c?.secret).toBe('${TELECONSULTATION_SERVICE_CLIENT_SECRET}');
+    expect(authentificationParCle(c, 'TELECONSULTATION')).toBe(true);
     const mappeurs = c?.protocolMappers ?? [];
     expect(
       mappeurs.find((m) => m.protocolMapper === 'oidc-audience-mapper')?.config[
@@ -136,7 +151,7 @@ describe('royaume mbolo', () => {
       standardFlowEnabled: false,
       directAccessGrantsEnabled: false,
     });
-    expect(c?.secret).toBe('${DOCUMENTS_SERVICE_CLIENT_SECRET}');
+    expect(authentificationParCle(c, 'DOCUMENTS')).toBe(true);
     const mappeurs = c?.protocolMappers ?? [];
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
@@ -168,7 +183,7 @@ describe('royaume mbolo', () => {
       standardFlowEnabled: false,
       directAccessGrantsEnabled: false,
     });
-    expect(c?.secret).toBe('${NOTIFICATIONS_SERVICE_CLIENT_SECRET}');
+    expect(authentificationParCle(c, 'NOTIFICATIONS')).toBe(true);
     const mappeurs = c?.protocolMappers ?? [];
     // Lecture par identifiant (r) et recherche de consentements (s) : aucune écriture.
     expect(
@@ -190,7 +205,7 @@ describe('royaume mbolo', () => {
   it('compte de service consultation : problèmes et comptes-rendus, rendez-vous en lecture seule', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-consultation-service');
     expect(c).toMatchObject({ publicClient: false, serviceAccountsEnabled: true });
-    expect(c?.secret).toBe('${CONSULTATION_SERVICE_CLIENT_SECRET}');
+    expect(authentificationParCle(c, 'CONSULTATION')).toBe(true);
     const mappeurs = c?.protocolMappers ?? [];
     // Pas de suppression, pas de modification ; pas d'accès aux consentements ni au journal.
     expect(

@@ -101,10 +101,10 @@ Le jeton d'accès des applications ne contient **ni e-mail ni nom** : les porté
 
 ```bash
 pnpm --filter @mbolo/identite test     # accès, consentements, dépôt FHIR, royaume, API (jetons signés par des clés de test)
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CLIENT_SECRET=… docker compose -f platform/services/identite/docker-compose.yml up -d
+KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CERTIFICAT=… TELECONSULTATION_SERVICE_CERTIFICAT=… NOTIFICATIONS_SERVICE_CERTIFICAT=… CONSULTATION_SERVICE_CERTIFICAT=… DOCUMENTS_SERVICE_CERTIFICAT=… docker compose -f platform/services/identite/docker-compose.yml up -d
 docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d   # HAPI FHIR local (interne)
 KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_AMONT_URL=http://127.0.0.1:8080/fhir pnpm --filter @mbolo/passerelle-fhir start
-KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:3002/fhir IDENTITE_SERVICE_CLIENT_SECRET=… pnpm --filter @mbolo/identite start
+KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:3002/fhir IDENTITE_SERVICE_CLE_PRIVEE=… pnpm --filter @mbolo/identite start
 ```
 
 ## Feature flags

@@ -1,10 +1,10 @@
 // Démarrage du service documents (prototype, ADR-0015). Secrets depuis le coffre-fort, jamais le
 // dépôt : clé maître (DOCUMENTS_CLE_MAITRE), clés du stockage (STORAGE_*), adresses de base et secret
-// du compte de service (DOCUMENTS_SERVICE_CLIENT_SECRET).
+// clé privée du compte de service (DOCUMENTS_SERVICE_CLE_PRIVEE, ADR-0016).
 import { readdirSync, readFileSync } from 'node:fs';
 import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
+import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { CleMaitreLocale } from './chiffrement.js';
 import { ConditionsFhir } from './conditions.js';
@@ -29,7 +29,6 @@ if (production) {
 const obligatoires = [
   'KEYCLOAK_ISSUER',
   'FHIR_BASE_URL',
-  'DOCUMENTS_SERVICE_CLIENT_SECRET',
   'DOCUMENTS_DATABASE_URL',
   'DOCUMENTS_CLE_MAITRE',
   'STORAGE_ENDPOINT',
@@ -37,9 +36,12 @@ const obligatoires = [
   'STORAGE_ACCESS_KEY_ID',
   'STORAGE_SECRET_ACCESS_KEY',
 ] as const;
+const authService = authentificationDepuis(env, 'DOCUMENTS');
 const manquantes = obligatoires.filter((n) => !env[n]);
-if (manquantes.length > 0) {
-  journal.erreur('configuration incomplète', { manquantes });
+if (manquantes.length > 0 || !authService) {
+  journal.erreur('configuration incomplète', {
+    manquantes: [...manquantes, ...(authService ? [] : ['DOCUMENTS_SERVICE_CLE_PRIVEE'])],
+  });
   process.exit(1);
 }
 const lire = (n: (typeof obligatoires)[number]): string => env[n] ?? '';
@@ -123,7 +125,7 @@ const acces = {
   entetes: creerFournisseurJeton({
     emetteur,
     client: env['DOCUMENTS_SERVICE_CLIENT_ID'] ?? 'mbolo-documents-service',
-    secret: lire('DOCUMENTS_SERVICE_CLIENT_SECRET'),
+    authentification: authService,
   }),
 };
 const conditions = new ConditionsFhir(acces);

@@ -114,6 +114,10 @@ Règles :
 - seules les alertes critiques déclenchent un appel la nuit ; les autres attendent les heures ouvrées du pays ;
 - l'Agent 6 reçoit une copie pour le brief et les fiches, n'agit jamais et ne retarde jamais une alerte.
 
+## Suivi
+
+- **C — `private_key_jwt`** : fait pour les cinq comptes de service (PR AM). Le secret partagé est refusé par Keycloak ; `authentificationDepuis` l'accepte encore côté service, le temps d'une bascule progressive en recette.
+
 ## Reste à décider
 
 - Titulaires de chaque rôle (porteur de projet, plus tard).

@@ -48,7 +48,7 @@ Jeton de l'espace professionnel, **rôle `verification-identite`** (double authe
 | Variable | Rôle |
 |---|---|
 | `KEYCLOAK_ISSUER`, `DOCUMENTS_AUDIENCE` (défaut `mbolo-documents-api`) | Vérification des jetons |
-| `FHIR_BASE_URL`, `DOCUMENTS_SERVICE_CLIENT_ID` (défaut `mbolo-documents-service`), `DOCUMENTS_SERVICE_CLIENT_SECRET` | Lecture du statut d'identité et de la charte par la passerelle |
+| `FHIR_BASE_URL`, `DOCUMENTS_SERVICE_CLIENT_ID` (défaut `mbolo-documents-service`), `DOCUMENTS_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Lecture du statut d'identité et de la charte par la passerelle |
 | `DOCUMENTS_DATABASE_URL`, `DOCUMENTS_MIGRATION_DATABASE_URL` | Base des services : rôle d'exécution et propriétaire du schéma (migrations au démarrage) |
 | `DOCUMENTS_CLE_MAITRE` | Clé maître (32 octets, base64), depuis le coffre-fort |
 | `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | Stockage objet ; hors production, le compartiment est créé s'il manque |

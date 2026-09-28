@@ -23,7 +23,7 @@ Prévient une personne par SMS ou WhatsApp (ADR-0012). **Canal simulé** tant qu
 | `KEYCLOAK_ISSUER`, `NOTIFICATIONS_AUDIENCE` (défaut `mbolo-notifications`) | Vérification des jetons des services appelants |
 | `NOTIFICATIONS_CLIENTS_AUTORISES` | Clients autorisés, séparés par des virgules (défaut `mbolo-teleconsultation-service`) |
 | `FHIR_BASE_URL` | Adresse de la passerelle du dossier |
-| `NOTIFICATIONS_SERVICE_CLIENT_ID` (défaut `mbolo-notifications-service`), `NOTIFICATIONS_SERVICE_CLIENT_SECRET` | Compte de service pour la passerelle, secret depuis le coffre-fort |
+| `NOTIFICATIONS_SERVICE_CLIENT_ID` (défaut `mbolo-notifications-service`), `NOTIFICATIONS_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Compte de service pour la passerelle, clé depuis le coffre-fort |
 | `NOTIFICATIONS_FUSEAU` (défaut `Africa/Libreville`) | Fuseau horaire des dates et heures des messages (IANA) |
 | `NOTIFICATIONS_LANGUE` (défaut `fr-FR`) | Langue des textes et formats (BCP 47) ; le service refuse de démarrer si cette langue n'a pas de gabarits approuvés |
 

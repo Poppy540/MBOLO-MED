@@ -23,7 +23,7 @@ Consultation clinique côté professionnel : **lire le dossier du patient** et *
 | `KEYCLOAK_ISSUER`, `CONSULTATION_AUDIENCE` (défaut `mbolo-consultation-api`) | Vérification des jetons de l'espace professionnel |
 | `IDENTITE_URL` | Service `identite` (décision d'accès) |
 | `FHIR_BASE_URL` | Passerelle du dossier |
-| `CONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-consultation-service`), `CONSULTATION_SERVICE_CLIENT_SECRET` | Compte de service : `system/Condition.rs system/Composition.crs system/Appointment.r` |
+| `CONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-consultation-service`), `CONSULTATION_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Compte de service : `system/Condition.rs system/Composition.crs system/Appointment.r` |
 
 ## Tests
 

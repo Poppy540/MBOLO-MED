@@ -13,8 +13,17 @@ export type { DemandeConsentement, DepotConsentements } from './consentements.js
 export { ClientFhir, TYPE_FHIR } from './client-fhir.js';
 export { DepotFhir, ErreurDepot } from './depot-fhir.js';
 export type { OptionsDepotFhir } from './depot-fhir.js';
-export { ErreurJetonService, creerFournisseurJeton } from './jeton-service.js';
-export type { FournisseurJeton, OptionsJetonService } from './jeton-service.js';
+export {
+  ErreurJetonService,
+  authentificationDepuis,
+  creerFournisseurJeton,
+  lirePem,
+} from './jeton-service.js';
+export type {
+  AuthentificationService,
+  FournisseurJeton,
+  OptionsJetonService,
+} from './jeton-service.js';
 export { JournalAccesFhir, JournalAccesMemoire } from './journal-acces.js';
 export type { JournalAcces } from './journal-acces.js';
 export { ErreurRevue, ServiceRevue } from './revue.js';
