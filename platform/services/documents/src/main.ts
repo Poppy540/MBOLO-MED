@@ -6,7 +6,7 @@ import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
-import { CleMaitreLocale } from './chiffrement.js';
+import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
 import { DossierFhir } from './dossier.js';
@@ -30,7 +30,6 @@ const obligatoires = [
   'KEYCLOAK_ISSUER',
   'FHIR_BASE_URL',
   'DOCUMENTS_DATABASE_URL',
-  'DOCUMENTS_CLE_MAITRE',
   'STORAGE_ENDPOINT',
   'STORAGE_BUCKET',
   'STORAGE_ACCESS_KEY_ID',
@@ -97,7 +96,8 @@ try {
   documents = new ServiceDocuments(
     depot,
     stockage,
-    new CleMaitreLocale(lire('DOCUMENTS_CLE_MAITRE')),
+    // KMS de l'hébergeur si configuré, sinon clé locale du coffre-fort (ADR-0016).
+    trousseauDepuis(env),
     {
       // Durée à fixer par pays avec l'avis juridique (ADR-0015).
       conservationJours: Number(env['DOCUMENTS_CONSERVATION_JOURS'] ?? '90'),

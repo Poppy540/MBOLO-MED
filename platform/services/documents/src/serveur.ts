@@ -7,6 +7,7 @@ import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identi
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { MOTIFS_REFUS, RESULTATS, TYPES_DOCUMENT } from './depot.js';
 import { TAILLE_MAX } from './format.js';
+import { ErreurKmsIndisponible } from './kms.js';
 import { ErreurDocument } from './service.js';
 import { ErreurVerification, type ServiceVerification } from './verification.js';
 import type { DemandeDecision, ServiceVerificateur } from './verificateur.js';
@@ -82,6 +83,10 @@ export async function creerServeur(o: {
     }
     if (statut === 415) {
       return reply.code(415).send({ erreur: 'Seules les photos JPEG ou PNG sont acceptées.' });
+    }
+    if (err instanceof ErreurKmsIndisponible) {
+      signalerAlerte(o.journal, 'erreur-serveur', 'service de clés indisponible');
+      return reply.code(503).send({ erreur: 'Service momentanément indisponible.' });
     }
     if (err instanceof ErreurVerification) {
       return reply.code(err.statut).send({ erreur: err.message });

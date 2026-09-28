@@ -1,5 +1,16 @@
-export { CleMaitreLocale, ErreurChiffrement, chiffrer, dechiffrer } from './chiffrement.js';
-export type { CleMaitre } from './chiffrement.js';
+export {
+  CleMaitreLocale,
+  ErreurChiffrement,
+  TrousseauCles,
+  chiffrer,
+  dechiffrer,
+} from './chiffrement.js';
+export type { CleMaitre, CleMaitreNommee } from './chiffrement.js';
+export { trousseauDepuis } from './cles.js';
+export { CleMaitreKms, ErreurKmsIndisponible, transportHttps } from './kms.js';
+export type { OptionsKms, TransportKms } from './kms.js';
+export { reenvelopper } from './rotation.js';
+export type { BilanRotation } from './rotation.js';
 export { DepotMemoire, DepotPostgres, MOTIFS_REFUS, RESULTATS, TYPES_DOCUMENT } from './depot.js';
 export type {
   Decision,

@@ -119,6 +119,7 @@ Règles :
 - **C — `private_key_jwt`** : fait pour les cinq comptes de service (PR AM). Le secret partagé est refusé par Keycloak ; `authentificationDepuis` l'accepte encore côté service, le temps d'une bascule progressive en recette.
 
 - **B — supervision** (PR AN) : événements d'alerte nommés dans le journal de tous les services, règles Loki et Prometheus versionnées (`platform/packages/supervision`). Le seuil des erreurs serveur est provisoire (plus de 10 en 5 min) en attendant les métriques de requêtes (1 %). Déploiement de Loki, Prometheus et OnCall à faire avec l'hébergeur.
+- **A — clé maître** (PR AO) : trousseau de clés maîtres (identifiant dans chaque enveloppe), client du KMS de l'hébergeur en TLS mutuel, commande de rotation qui ré-enveloppe sans déchiffrer. Branchement réel à faire avec le contrat de l'hébergeur (format d'API à confronter à la documentation officielle).
 
 ## Reste à décider
 

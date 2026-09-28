@@ -241,6 +241,53 @@ describe('API documents : dépôt des photos par le patient', () => {
   });
 });
 
+describe('API documents : service de clés indisponible', () => {
+  it('répond 503 et signale une erreur serveur, sans détail', async () => {
+    const { ErreurKmsIndisponible } = await import('./kms.js');
+    const enPanne = {
+      identifiant: 'kms:fictif',
+      envelopper: async () => {
+        throw new ErreurKmsIndisponible();
+      },
+      desenvelopper: async () => {
+        throw new ErreurKmsIndisponible();
+      },
+    };
+    const evenements: Evenement[] = [];
+    const conditions = new ConditionsMemoire(new Map([['pat-fictif-003', 'a-verifier']]), [
+      charte('pat-fictif-003', '0.1', true, '2026-09-27T08:00:00Z'),
+    ]);
+    const depot = new DepotMemoire();
+    const documents = new ServiceDocuments(depot, new StockageMemoire(), enPanne, {
+      conservationJours: 90,
+      maxParType: 2,
+    });
+    const app = await creerServeur({
+      verifierJeton: async () => COMPTES['patient'] as Utilisateur,
+      verification: new ServiceVerification(
+        documents,
+        conditions,
+        { estActif: async () => true },
+        '0.1',
+      ),
+      verificateur: new ServiceVerificateur(documents, depot, new DossierMemoire(), {
+        systemes: { 'assurance-maladie': 'urn:fictif:am', provisoire: 'urn:fictif:prov' },
+        env: 'dev',
+      }),
+      journal: creerJournal({
+        service: 'documents',
+        ecrire: (ligne) => evenements.push(JSON.parse(ligne) as Evenement),
+      }),
+    });
+    const r = await envoyer(app, 'patient', 'visage', jpeg());
+    expect(r.statusCode).toBe(503);
+    expect(r.json()).toEqual({ erreur: 'Service momentanément indisponible.' });
+    expect(
+      evenements.some((e) => (e.contexte as { alerte?: string })?.alerte === 'erreur-serveur'),
+    ).toBe(true);
+  });
+});
+
 describe('API documents : vérification par une personne habilitée', () => {
   const appeler = (
     app: Awaited<ReturnType<typeof monter>>['app'],

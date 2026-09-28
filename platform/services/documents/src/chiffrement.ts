@@ -43,10 +43,13 @@ function dechiffrerGcm(cle: Buffer, paquet: Buffer, contexte: Buffer): Buffer {
  * KMS de l'hébergeur. Même interface, remplaçable sans toucher aux documents déjà chiffrés si l'on
  * ré-enveloppe leurs clés.
  */
-export class CleMaitreLocale implements CleMaitre {
+export class CleMaitreLocale implements CleMaitreNommee {
   private readonly cle: Buffer;
 
-  constructor(cleBase64: string) {
+  constructor(
+    cleBase64: string,
+    readonly identifiant = 'locale',
+  ) {
     const cle = Buffer.from(cleBase64, 'base64');
     if (cle.length !== 32) throw new ErreurChiffrement('La clé maître doit faire 32 octets.');
     this.cle = cle;
@@ -58,6 +61,64 @@ export class CleMaitreLocale implements CleMaitre {
 
   async desenvelopper(enveloppe: Buffer): Promise<Buffer> {
     return dechiffrerGcm(this.cle, enveloppe, Buffer.from('mbolo-cle-document'));
+  }
+}
+
+/** Clé maître nommée : l'identifiant est écrit dans chaque enveloppe (rotation, ADR-0016). */
+export interface CleMaitreNommee extends CleMaitre {
+  readonly identifiant: string;
+}
+
+const ENTETE_TROUSSEAU = 0x4b;
+const IDENTIFIANT = /^[A-Za-z0-9._:-]{1,128}$/;
+
+/**
+ * Trousseau de clés maîtres (ADR-0016) : enveloppe avec la clé actuelle en écrivant son identifiant
+ * devant l'enveloppe ; désenveloppe avec la clé qui a servi, actuelle ou ancienne. Les enveloppes
+ * écrites avant le trousseau (clé locale seule, sans identifiant) restent lisibles par une ancienne
+ * clé déclarée « historique ».
+ */
+export class TrousseauCles implements CleMaitre {
+  private readonly parIdentifiant = new Map<string, CleMaitreNommee>();
+
+  constructor(
+    readonly actuelle: CleMaitreNommee,
+    anciennes: readonly CleMaitreNommee[] = [],
+    /** Clé des enveloppes sans identifiant (écrites avant le trousseau). */
+    private readonly historique?: CleMaitreNommee,
+  ) {
+    for (const c of [actuelle, ...anciennes, ...(historique ? [historique] : [])]) {
+      if (!IDENTIFIANT.test(c.identifiant)) {
+        throw new ErreurChiffrement('Identifiant de clé maître invalide.');
+      }
+      this.parIdentifiant.set(c.identifiant, c);
+    }
+  }
+
+  async envelopper(cle: Buffer): Promise<Buffer> {
+    const id = Buffer.from(this.actuelle.identifiant, 'utf8');
+    return Buffer.concat([
+      Buffer.from([ENTETE_TROUSSEAU, id.length]),
+      id,
+      await this.actuelle.envelopper(cle),
+    ]);
+  }
+
+  /** Identifiant de la clé maître qui a produit l'enveloppe (`undefined` : historique). */
+  static identifiantDe(enveloppe: Buffer): string | undefined {
+    if (enveloppe[0] !== ENTETE_TROUSSEAU || enveloppe.length < 2) return undefined;
+    return enveloppe.subarray(2, 2 + (enveloppe[1] ?? 0)).toString('utf8');
+  }
+
+  async desenvelopper(enveloppe: Buffer): Promise<Buffer> {
+    const id = TrousseauCles.identifiantDe(enveloppe);
+    if (id === undefined) {
+      if (!this.historique) throw new ErreurChiffrement('Clé maître inconnue.');
+      return this.historique.desenvelopper(enveloppe);
+    }
+    const cle = this.parIdentifiant.get(id);
+    if (!cle) throw new ErreurChiffrement('Clé maître inconnue.');
+    return cle.desenvelopper(enveloppe.subarray(2 + id.length));
   }
 }
 

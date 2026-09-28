@@ -71,6 +71,10 @@ export interface DepotDocuments {
    */
   enAttente(limite: number): Promise<EnAttente[]>;
   enregistrerDecision(d: Decision): Promise<void>;
+  /** Clés des documents présents, par identifiant croissant, après `apres` (rotation). */
+  clesPresentes(apres: string | undefined, limite: number): Promise<{ id: string; cle: Buffer }[]>;
+  /** Remplace la clé enveloppée si elle n'a pas changé entre-temps ; faux sinon. */
+  remplacerCle(id: string, ancienne: Buffer, nouvelle: Buffer): Promise<boolean>;
   /** Dernière décision prise pour ce patient. */
   derniereDecision(patientId: string): Promise<Decision | undefined>;
 }
@@ -104,6 +108,21 @@ export class DepotMemoire implements DepotDocuments {
 
   async enregistrerDecision(d: Decision): Promise<void> {
     this.decisions.push({ ...d });
+  }
+
+  async clesPresentes(apres: string | undefined, limite: number) {
+    return this.lignes
+      .filter((l) => present(l) && l.cleEnveloppee && (apres === undefined || l.id > apres))
+      .sort((a, b) => (a.id < b.id ? -1 : 1))
+      .slice(0, limite)
+      .map((l) => ({ id: l.id, cle: Buffer.from(l.cleEnveloppee ?? []) }));
+  }
+
+  async remplacerCle(id: string, ancienne: Buffer, nouvelle: Buffer): Promise<boolean> {
+    const l = this.lignes.find((x) => x.id === id);
+    if (!l || !present(l) || !l.cleEnveloppee?.equals(ancienne)) return false;
+    l.cleEnveloppee = Buffer.from(nouvelle);
+    return true;
   }
 
   async derniereDecision(patientId: string): Promise<Decision | undefined> {
@@ -242,6 +261,22 @@ export class DepotPostgres implements DepotDocuments {
        order by depuis
        limit ${limite}`;
     return lignes.map((l) => ({ patientId: l.patient_id, depuis: l.depuis }));
+  }
+
+  async clesPresentes(apres: string | undefined, limite: number) {
+    const lignes = await this.sql<{ id: string; cle_enveloppee: Buffer }[]>`
+      select id, cle_enveloppee from documents.documents
+       where supprime_le is null and cle_enveloppee is not null
+         and (${apres ?? null}::uuid is null or id > ${apres ?? null}::uuid)
+       order by id limit ${limite}`;
+    return lignes.map((l) => ({ id: l.id, cle: l.cle_enveloppee }));
+  }
+
+  async remplacerCle(id: string, ancienne: Buffer, nouvelle: Buffer): Promise<boolean> {
+    const r = await this.sql`
+      update documents.documents set cle_enveloppee = ${nouvelle}
+       where id = ${id} and supprime_le is null and cle_enveloppee = ${ancienne}`;
+    return r.count === 1;
   }
 
   async enregistrerDecision(d: Decision): Promise<void> {
