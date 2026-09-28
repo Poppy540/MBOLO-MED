@@ -1,6 +1,6 @@
 # Service `invitations` (prototype)
 
-Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des codes à usage unique pour une cohorte ; un patient présente son code avant de créer son compte. **Les codes ne sont jamais conservés en clair.**
+Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des codes à usage unique pour une cohorte ; un patient présente son code avant de créer son compte. Un patient invite aussi ses proches (ADR-0019). **Les codes ne sont jamais conservés en clair.**
 
 ## Règles
 
@@ -16,7 +16,15 @@ Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des co
 - **Inscription (ADR-0014)** : routes réservées à l'extension Keycloak. Elles exigent un jeton signé par le royaume, d'audience `mbolo-invitations-api` et de client `mbolo-keycloak-inscription` ; un jeton d'utilisateur est refusé.
   - `POST /inscription/controle` `{ code, adresse }` → `{ valide }`. Essais limités par adresse du navigateur.
   - `POST /inscription/utilisation` `{ code, sujet }` → 200 `{ cohorte }`, ou 409 si le code ne peut plus servir.
-- **Journal** : créateur, identifiant d'invitation, cohorte. **Jamais le code.**
+- **Inscription : type de code** (ADR-0019) : `types` (`patient`, `proche`) déclare les types que l'extension sait traiter ; **par défaut, codes de patient seulement** — un appelant qui ne sait pas créer un compte de proche ne peut jamais en accepter un (il en ferait un compte patient). `/inscription/utilisation` rend `{ cohorte, type, relatedPersonId? }` ; pour un proche, la fiche est activée dans le dossier **avant** l'usage du code (si le dossier ne répond pas, le code reste utilisable). `/invitations/verification` (publique) ne reconnaît que les codes de patient.
+- **Proches** (ADR-0019, flag `consentement.proche`) : routes du **patient lui-même** (jeton de l'application patient ; jamais un agent IA, un proche ou un professionnel : 403) :
+  - `POST /proches` `{ prenom, lien, telephone, versionTexte }` → 201 `{ id, relatedPersonId, code, expireLe, sms }` (`cache-control: no-store`) :
+    1. fiche du proche **inactive** dans le dossier (`RelatedPerson`, profil `mbolo-proche` : prénom et lien seulement, règles `mbolo-proche-1` à `-3`) ;
+    2. consentement `C-PROCHE` du patient, enregistré par `identite` **avec le jeton du patient** (texte `versionTexte`, brouillon à valider par le juriste) ;
+    3. code à usage unique, valable **7 jours**, **3 proches au plus** par patient (invitations en cours ou utilisées ; verrou par patient) ;
+    4. code envoyé **par SMS** au numéro saisi (format international), par le service `notifications` ; le numéro n'est **ni enregistré ni journalisé**. Le code est aussi rendu au patient, **en secours** si le SMS n'arrive pas (`sms: "echec"`).
+  - `GET /proches` → prénom et lien (lus dans le dossier), statut, dates ; `POST /proches/:id/revocation` → annule une invitation encore inutilisée (celle d'un autre patient : 404).
+- **Journal** : créateur, identifiant d'invitation, cohorte, type. **Jamais le code, le prénom ni le numéro.**
 
 ## Base de données (ADR-0013)
 
@@ -26,18 +34,22 @@ Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des co
 
 ## Configuration
 
-| Variable | Rôle |
-|---|---|
-| `KEYCLOAK_ISSUER`, `INVITATIONS_AUDIENCE` (défaut `mbolo-invitations-api`) | Vérification des jetons des gestionnaires |
-| `INVITATIONS_DATABASE_URL` | Connexion du rôle d'exécution (coffre-fort) |
-| `INVITATIONS_MIGRATION_DATABASE_URL` | Connexion du rôle de migration, au démarrage ou au déploiement (facultative) |
-| `INVITATIONS_CLE_EMPREINTE` | Clé HMAC, 32 octets au moins (coffre-fort) ; la changer invalide les codes en cours |
-| `INVITATIONS_COHORTES` | Cohortes ouvertes, séparées par des virgules (ex. une ville de la vague en cours) |
-| `INVITATIONS_QUOTA_PAR_COHORTE` (défaut `100`) | Invitations par cohorte |
-| `INVITATIONS_VALIDITE_JOURS` (défaut `14`) | Durée de validité d'un code (1 à 90 jours) |
-| `INVITATIONS_ESSAIS_MAX` (défaut `10`), `INVITATIONS_ESSAIS_FENETRE_MINUTES` (défaut `15`) | Limite des essais de code par adresse |
-| `INVITATIONS_HOST` (défaut `127.0.0.1`) | Adresse d'écoute ; `0.0.0.0` en CI pour qu'un Keycloak en conteneur joigne le service |
-| `INVITATIONS_TRUST_PROXY` (défaut `false`) | `true` derrière un proxy de confiance, pour lire l'adresse réelle du client |
+| Variable                                                                                                                                         | Rôle                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEYCLOAK_ISSUER`, `INVITATIONS_AUDIENCE` (défaut `mbolo-invitations-api`)                                                                       | Vérification des jetons des gestionnaires                                                                                                                                                                        |
+| `INVITATIONS_DATABASE_URL`                                                                                                                       | Connexion du rôle d'exécution (coffre-fort)                                                                                                                                                                      |
+| `INVITATIONS_MIGRATION_DATABASE_URL`                                                                                                             | Connexion du rôle de migration, au démarrage ou au déploiement (facultative)                                                                                                                                     |
+| `INVITATIONS_CLE_EMPREINTE`                                                                                                                      | Clé HMAC, 32 octets au moins (coffre-fort) ; la changer invalide les codes en cours                                                                                                                              |
+| `INVITATIONS_COHORTES`                                                                                                                           | Cohortes ouvertes, séparées par des virgules (ex. une ville de la vague en cours)                                                                                                                                |
+| `INVITATIONS_QUOTA_PAR_COHORTE` (défaut `100`)                                                                                                   | Invitations par cohorte                                                                                                                                                                                          |
+| `INVITATIONS_VALIDITE_JOURS` (défaut `14`)                                                                                                       | Durée de validité d'un code (1 à 90 jours)                                                                                                                                                                       |
+| `INVITATIONS_ESSAIS_MAX` (défaut `10`), `INVITATIONS_ESSAIS_FENETRE_MINUTES` (défaut `15`)                                                       | Limite des essais de code par adresse                                                                                                                                                                            |
+| `FHIR_BASE_URL`, `IDENTITE_URL`, `NOTIFICATIONS_URL`                                                                                             | Passerelle du dossier, service `identite` (consentement), service `notifications` (SMS) ; sans eux (ou sans clé de service), les routes `/proches` sont absentes et les codes de proches refusés à l'inscription |
+| `INVITATIONS_SERVICE_CLIENT_ID` (défaut `mbolo-invitations-service`), `INVITATIONS_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Compte de service : `system/RelatedPerson.cru`, SMS d'invitation                                                                                                                                                 |
+| `INVITATIONS_PROCHES_MAX` (défaut `3`), `INVITATIONS_VALIDITE_PROCHE_JOURS` (défaut `7`)                                                         | Proches par patient et validité de leurs codes (ADR-0019)                                                                                                                                                        |
+| `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN`                                                                                                       | Flag `consentement.proche` ; sans eux, l'invitation des proches est fermée                                                                                                                                       |
+| `INVITATIONS_HOST` (défaut `127.0.0.1`)                                                                                                          | Adresse d'écoute ; `0.0.0.0` en CI pour qu'un Keycloak en conteneur joigne le service                                                                                                                            |
+| `INVITATIONS_TRUST_PROXY` (défaut `false`)                                                                                                       | `true` derrière un proxy de confiance, pour lire l'adresse réelle du client                                                                                                                                      |
 
 Aucune valeur propre à un pays n'est codée en dur : cohortes, quota et durée sont des paramètres du déploiement.
 
@@ -45,11 +57,16 @@ Aucune valeur propre à un pays n'est codée en dur : cohortes, quota et durée 
 
 - **Unitaires** : alphabet et format, empreinte dépendant de la clé, code jamais stocké ni journalisé, quota, usage unique, codes expirés ou révoqués, paramètres invalides ; API (401, 403 pour un médecin ou un agent IA, cohorte fermée, champ inconnu, limitation des essais).
 - **Intégration PostgreSQL** (si `MBOLO_TEST_DATABASE_URL` et `MBOLO_TEST_DATABASE_URL_EXECUTION` sont définies, toujours en CI) : migration réelle, quota et usage unique face à des requêtes simultanées, suppression refusée au rôle d'exécution.
+- **Unitaires, proches** : fiche inactive minimale, consentement avec le jeton du patient, SMS, code et numéro jamais gardés ; SMS en panne (code rendu en secours) ; 3 proches au plus, place libérée par révocation ou expiration ; refus du professionnel, de l'agent IA, du proche, fonction fermée, prénom vide ; consentement refusé → ni code ni SMS ; code de proche refusé par défaut à l'inscription, accepté par un appelant qui le déclare (fiche activée, usage unique).
+- **Intégration PostgreSQL, proches** : 3 proches au plus face à 8 invitations simultanées ; fiche obligatoire pour un code de proche (contrainte de la table).
+- **E2E proches** (`features-gherkin/invitations/invitation-proche.feature`) : SMS reçu sans nom du patient ni donnée de santé, fiche inactive (prénom et lien seulement), partage actif, code refusé pour un compte patient, annulation ; 3 proches au plus ; refus d'un médecin, d'un patient hors cohorte, sans jeton.
 - **E2E** (`features-gherkin/invitations/acces-sur-invitation.feature`) : création et vérification, révocation, code inventé, médecin refusé, aucun accès clinique pour le gestionnaire.
 
 En local, un PostgreSQL 16 avec une base `mbolo` appartenant à un rôle de migration, et un rôle d'exécution distinct, suffit ; en CI, `scripts/postgres-test.sh` les crée avec des mots de passe éphémères.
 
 ## Reste à faire
+
+- Inscription du proche avec son code (extension Keycloak : rôle `proche`, `related_person_id`, double authentification obligatoire) et écran « Inviter un proche » de l'application patient (ADR-0019).
 
 - Saisie de l'identité dans le dossier FHIR après l'inscription, puis vérification (photos, charte, rôle `verification-identite`, ADR-0014).
 - Écran de gestion des invitations (backoffice), désignation nominative de la personne de confiance.

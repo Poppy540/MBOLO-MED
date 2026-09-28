@@ -2,7 +2,14 @@
 // déploiement : rien n'est propre à un pays dans le code.
 import { randomUUID } from 'node:crypto';
 import { genererCode, normaliser, presenter, type Empreinte } from './codes.js';
-import { statut, type DepotInvitations, type Invitation, type Statut } from './depot.js';
+import {
+  COHORTE_PROCHES,
+  statut,
+  type DepotInvitations,
+  type Invitation,
+  type Statut,
+  type TypeInvitation,
+} from './depot.js';
 
 export interface ParametresInvitations {
   /** Cohortes ouvertes par ce déploiement, ex. une ville de la vague en cours. */
@@ -40,7 +47,17 @@ export interface InvitationListee {
   statut: Statut;
 }
 
+/** Code utilisé à l'inscription : cohorte, type, et fiche du proche pour un code de proche. */
+export interface CodeUtilise {
+  cohorte: string;
+  type: TypeInvitation;
+  relatedPersonId?: string;
+}
+
 export function verifierParametres(p: ParametresInvitations): void {
+  if (p.cohortes.includes(COHORTE_PROCHES)) {
+    throw new Error(`La cohorte « ${COHORTE_PROCHES} » est réservée aux codes de proches.`);
+  }
   if (p.cohortes.length === 0 || !p.cohortes.every((c) => COHORTE.test(c))) {
     throw new Error('Cohortes invalides (minuscules, chiffres et tirets, au moins une).');
   }
@@ -58,6 +75,8 @@ export class ServiceInvitations {
     private readonly empreinte: Empreinte,
     private readonly parametres: ParametresInvitations,
     private readonly horloge: () => Date = () => new Date(),
+    /** Active la fiche du proche avant d'utiliser son code (ADR-0019) ; sans elle, codes de proches refusés. */
+    private readonly activerProche?: (i: Invitation) => Promise<void>,
   ) {
     verifierParametres(parametres);
   }
@@ -74,6 +93,7 @@ export class ServiceInvitations {
         id: randomUUID(),
         empreinte: this.empreinte(code),
         cohorte: o.cohorte,
+        type: 'patient',
         creePar: o.par,
         creeLe: maintenant,
         expireLe: new Date(maintenant.getTime() + this.parametres.validiteJours * 86_400_000),
@@ -94,20 +114,48 @@ export class ServiceInvitations {
     throw new Error("Création d'invitation impossible (collisions répétées).");
   }
 
-  /** Vrai si le code peut encore servir ; ne dit jamais pourquoi il ne peut pas (inconnu, expiré…). */
-  async verifier(saisie: string): Promise<boolean> {
-    const code = normaliser(saisie);
-    if (!code) return false;
-    const i = await this.depot.trouver(this.empreinte(code));
-    return !!i && statut(i, this.horloge()) === 'valide';
-  }
-
-  /** Utilise le code pour le compte `sujet` ; retourne la cohorte, ou `undefined` si le code ne sert pas. */
-  async utiliser(saisie: string, sujet: string): Promise<string | undefined> {
+  /** Code encore utilisable, d'un des types acceptés par l'appelant. */
+  private async valide(saisie: string, types: readonly TypeInvitation[]) {
     const code = normaliser(saisie);
     if (!code) return undefined;
-    const i = await this.depot.utiliser(this.empreinte(code), sujet, this.horloge());
-    return i?.cohorte;
+    const empreinte = this.empreinte(code);
+    const i = await this.depot.trouver(empreinte);
+    return i && types.includes(i.type) && statut(i, this.horloge()) === 'valide'
+      ? { i, empreinte }
+      : undefined;
+  }
+
+  /**
+   * Vrai si le code peut encore servir ; ne dit jamais pourquoi il ne peut pas (inconnu, expiré…).
+   * Par défaut, seuls les codes de patient : un appelant qui ne sait pas créer un compte de proche
+   * ne doit jamais en accepter un (il en ferait un compte patient).
+   */
+  async verifier(saisie: string, types: readonly TypeInvitation[] = ['patient']): Promise<boolean> {
+    return !!(await this.valide(saisie, types));
+  }
+
+  /**
+   * Utilise le code pour le compte `sujet` ; `undefined` si le code ne sert pas. Pour un proche, la
+   * fiche est activée d'abord : si le dossier ne répond pas, le code reste utilisable.
+   */
+  async utiliser(
+    saisie: string,
+    sujet: string,
+    types: readonly TypeInvitation[] = ['patient'],
+  ): Promise<CodeUtilise | undefined> {
+    const v = await this.valide(saisie, types);
+    if (!v) return undefined;
+    if (v.i.type === 'proche') {
+      if (!this.activerProche) return undefined;
+      await this.activerProche(v.i);
+    }
+    const i = await this.depot.utiliser(v.empreinte, sujet, this.horloge());
+    if (!i) return undefined;
+    return {
+      cohorte: i.cohorte,
+      type: i.type,
+      ...(i.relatedPersonId ? { relatedPersonId: i.relatedPersonId } : {}),
+    };
   }
 
   async revoquer(id: string): Promise<void> {

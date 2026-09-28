@@ -246,15 +246,33 @@ describe('royaume mbolo', () => {
     expect(audiences('mbolo-app-patient')).toContain('mbolo-consultation-api');
   });
 
-  it('invitations : seule l’application des professionnels appelle l’API, rôle jamais donné aux agents IA', () => {
+  it('invitations : applications professionnelle et patient, rôle jamais donné aux agents IA', () => {
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
         .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
         .map((m) => m.config['included.client.audience']);
     expect(audiences('mbolo-app-pro')).toContain('mbolo-invitations-api');
-    expect(audiences('mbolo-app-patient')).not.toContain('mbolo-invitations-api');
+    // Le patient appelle l'API pour inviter ses proches (ADR-0019) ; le service vérifie le rôle.
+    expect(audiences('mbolo-app-patient')).toContain('mbolo-invitations-api');
     const agentIa = royaume.roles.realm.find((r) => r.name === 'agent-ia');
     expect(agentIa?.composites?.realm ?? []).not.toContain('gestion-invitations');
+  });
+
+  it('invitations de proches : compte de service limité à la fiche du proche et au SMS (ADR-0019)', () => {
+    const c = royaume.clients.find((x) => x.clientId === 'mbolo-invitations-service');
+    expect(c?.clientAuthenticatorType).toBe('client-jwt');
+    expect(c?.attributes?.['jwt.credential.certificate']).toBe('${INVITATIONS_SERVICE_CERTIFICAT}');
+    const mappers = c?.protocolMappers ?? [];
+    expect(
+      mappers
+        .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
+        .map((m) => m.config['included.client.audience'])
+        .sort(),
+    ).toEqual(['mbolo-dossier-fhir', 'mbolo-notifications']);
+    // Jamais de suppression, aucune autre ressource du dossier.
+    expect(
+      mappers.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
+    ).toBe('system/RelatedPerson.cru');
   });
 
   it("n'ouvre l'inscription qu'avec un code d'invitation, vérifié après les autres champs (ADR-0014)", () => {

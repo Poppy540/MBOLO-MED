@@ -5,6 +5,7 @@ import { creerEmpreinte } from './codes.js';
 import { DepotMemoire } from './depot.js';
 import { Limiteur } from './limiteur.js';
 import { creerServeur } from './serveur.js';
+import { ServiceProches } from './proches.js';
 import { ServiceInvitations } from './service.js';
 
 // Jetons factices : le vérificateur réel (signature Keycloak) est testé dans @mbolo/identite.
@@ -166,7 +167,7 @@ describe('inscription par l’extension Keycloak', () => {
 
     const premiere = await appel(app, 'utilisation', { code, sujet: 'sujet-patient-fictif-1' });
     expect(premiere.statusCode).toBe(200);
-    expect(premiere.json()).toEqual({ cohorte: 'ville-fictive' });
+    expect(premiere.json()).toEqual({ cohorte: 'ville-fictive', type: 'patient' });
     const seconde = await appel(app, 'utilisation', { code, sujet: 'sujet-patient-fictif-2' });
     expect(seconde.statusCode).toBe(409);
     expect((await appel(app, 'controle', { code, adresse: '192.0.2.10' })).json()).toEqual({
@@ -207,5 +208,94 @@ describe('limite générale d’appels', () => {
     const r = await app.inject({ method: 'GET', url: '/sante' });
     expect(r.statusCode).toBe(429);
     expect(r.json()).toEqual({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
+  });
+});
+
+describe('API des proches (ADR-0019)', () => {
+  const PATIENT: Utilisateur = {
+    sujet: 'sujet-patient-fictif',
+    roles: ['patient'],
+    patientId: 'pat-fictif-001',
+  };
+  const monterProches = async () => {
+    const lignes: string[] = [];
+    const depot = new DepotMemoire();
+    const empreinte = creerEmpreinte('essai-'.repeat(8));
+    const proches = new ServiceProches(
+      depot,
+      empreinte,
+      {
+        creer: async () => 'rp-fictif-9',
+        lire: async () => undefined,
+        activer: async () => undefined,
+      },
+      { accorder: async () => undefined },
+      { envoyer: async () => 'envoyee' },
+      { estActif: async () => true },
+      { max: 3, validiteJours: 7, env: 'dev' },
+    );
+    const app = await creerServeur({
+      verifierJeton: async (j) => {
+        const u = j === 'patient' ? PATIENT : UTILISATEURS[j];
+        if (!u) throw new Error('jeton invalide');
+        return u;
+      },
+      service: new ServiceInvitations(depot, empreinte, {
+        cohortes: ['ville-fictive'],
+        quotaParCohorte: 100,
+        validiteJours: 14,
+      }),
+      limiteur: new Limiteur(10, 60_000),
+      journal: creerJournal({ service: 'invitations', ecrire: (l) => lignes.push(l) }),
+      proches,
+    });
+    return { app, lignes };
+  };
+  const demande = {
+    prenom: 'Serge [FICTIF]',
+    lien: 'CHILD',
+    telephone: '+33000000000',
+    versionTexte: 'c-proche-v0.1-brouillon',
+  };
+  const inviter = (
+    app: Awaited<ReturnType<typeof monterProches>>['app'],
+    jeton: string | undefined,
+    payload: object = demande,
+  ) =>
+    app.inject({
+      method: 'POST',
+      url: '/proches',
+      headers: jeton ? { authorization: `Bearer ${jeton}` } : {},
+      payload,
+    });
+
+  it('le patient invite : 201, code montré une fois, rien de personnel dans le journal', async () => {
+    const { app, lignes } = await monterProches();
+    const r = await inviter(app, 'patient');
+    expect(r.statusCode).toBe(201);
+    expect(r.headers['cache-control']).toBe('no-store');
+    const corps = r.json<{ code: string; sms: string }>();
+    expect(corps.sms).toBe('envoyee');
+    const journal = lignes.join('\n');
+    for (const secret of [corps.code, 'Serge', '+33000000000']) {
+      expect(journal).not.toContain(secret);
+    }
+    const liste = await app.inject({
+      method: 'GET',
+      url: '/proches',
+      headers: { authorization: 'Bearer patient' },
+    });
+    expect(liste.json<{ proches: unknown[] }>().proches).toHaveLength(1);
+  });
+
+  it('401 sans jeton ; 403 pour un médecin ; 400 pour un numéro local ou un champ inconnu', async () => {
+    const { app } = await monterProches();
+    expect((await inviter(app, undefined)).statusCode).toBe(401);
+    expect((await inviter(app, 'medecin')).statusCode).toBe(403);
+    expect(
+      (await inviter(app, 'patient', { ...demande, telephone: '00 00 00 00' })).statusCode,
+    ).toBe(400);
+    expect((await inviter(app, 'patient', { ...demande, lien: 'VOISIN' })).statusCode).toBe(400);
+    expect((await inviter(app, 'patient', { ...demande, nom: '[FICTIF]' })).statusCode).toBe(400);
   });
 });

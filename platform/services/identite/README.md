@@ -4,30 +4,30 @@ Authentification, rôles, **contrôle d'accès par patient** et **consentements*
 
 ## Contenu
 
-| Élément | Rôle |
-|---|---|
-| `src/acces.ts` | Point de décision d'accès au dossier d'un patient. **Refus par défaut.** |
-| `src/consentements.ts` | Enregistrer, lister, révoquer un consentement (ressources FHIR `Consent` construites et vérifiées par `@mbolo/dossier-fhir`) |
-| `src/depot-fhir.ts` | Stockage des consentements dans le serveur FHIR du dossier (`FHIR_BASE_URL`) : création, lecture, révocation avec verrou optimiste (`If-Match`), recherche **sans cache** pour qu'une révocation prenne effet immédiatement |
-| `src/revue.ts` | Revue humaine des bris de glace : liste à revoir, retards, conclusion enregistrée (rôle `revue-acces`) |
-| `src/journal-acces.ts` | Journal des accès au dossier : `AuditEvent` FHIR pour chaque décision, historique consultable par le patient |
-| `src/client-fhir.ts` | Accès HTTP commun au dossier (jeton de service, délai, erreurs, pagination sans cache) |
-| `src/jeton-service.ts` | Jeton du compte de service `mbolo-identite-service` (client credentials) pour la passerelle du dossier, renouvelé avant expiration (ADR-0010) |
-| `src/jeton.ts` | Vérification des jetons Keycloak (signature, émetteur, audience, expiration) |
-| `src/serveur.ts` | API HTTP (Fastify) : `/patients/:id/consentements`, `/consentements/:id/revocation`, `/acces/dossier` |
-| `keycloak/realm-mbolo.json` | Royaume « mbolo » : rôles, clients (PKCE), protection contre la force brute, politique de mot de passe |
-| `keycloak/profil-utilisateur.json` | Profil utilisateur : identifiants FHIR **modifiables par un administrateur uniquement** |
-| `docker-compose.yml` | Keycloak local (comptes fictifs) |
+| Élément                            | Rôle                                                                                                                                                                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/acces.ts`                     | Point de décision d'accès au dossier d'un patient. **Refus par défaut.**                                                                                                                                                    |
+| `src/consentements.ts`             | Enregistrer, lister, révoquer un consentement (ressources FHIR `Consent` construites et vérifiées par `@mbolo/dossier-fhir`)                                                                                                |
+| `src/depot-fhir.ts`                | Stockage des consentements dans le serveur FHIR du dossier (`FHIR_BASE_URL`) : création, lecture, révocation avec verrou optimiste (`If-Match`), recherche **sans cache** pour qu'une révocation prenne effet immédiatement |
+| `src/revue.ts`                     | Revue humaine des bris de glace : liste à revoir, retards, conclusion enregistrée (rôle `revue-acces`)                                                                                                                      |
+| `src/journal-acces.ts`             | Journal des accès au dossier : `AuditEvent` FHIR pour chaque décision, historique consultable par le patient                                                                                                                |
+| `src/client-fhir.ts`               | Accès HTTP commun au dossier (jeton de service, délai, erreurs, pagination sans cache)                                                                                                                                      |
+| `src/jeton-service.ts`             | Jeton du compte de service `mbolo-identite-service` (client credentials) pour la passerelle du dossier, renouvelé avant expiration (ADR-0010)                                                                               |
+| `src/jeton.ts`                     | Vérification des jetons Keycloak (signature, émetteur, audience, expiration)                                                                                                                                                |
+| `src/serveur.ts`                   | API HTTP (Fastify) : `/patients/:id/consentements`, `/consentements/:id/revocation`, `/acces/dossier`                                                                                                                       |
+| `keycloak/realm-mbolo.json`        | Royaume « mbolo » : rôles, clients (PKCE), protection contre la force brute, politique de mot de passe                                                                                                                      |
+| `keycloak/profil-utilisateur.json` | Profil utilisateur : identifiants FHIR **modifiables par un administrateur uniquement**                                                                                                                                     |
+| `docker-compose.yml`               | Keycloak local (comptes fictifs)                                                                                                                                                                                            |
 
 ## Règles d'accès au dossier d'un patient
 
-| Qui | Accès | Condition |
-|---|---|---|
-| Patient | Son dossier | Toujours, et seulement le sien |
-| Professionnel, infirmier | Dossier du patient | Consentement `C-PARTAGE-PRO` actif **qui le désigne** ; ou **bris de glace** avec motif écrit → accès accordé **et signalé** pour revue humaine |
-| Proche (dont diaspora) | Dossier du patient | Consentement `C-PROCHE` actif **qui le désigne** (« payer n'est pas voir ») |
-| Agent IA | Patient de sa session uniquement | Consentement `C-SOINS` actif ; pas de bris de glace |
-| Pharmacien, administrateur | Aucun | Les ordonnances passeront par un service dédié |
+| Qui                        | Accès                            | Condition                                                                                                                                       |
+| -------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Patient                    | Son dossier                      | Toujours, et seulement le sien                                                                                                                  |
+| Professionnel, infirmier   | Dossier du patient               | Consentement `C-PARTAGE-PRO` actif **qui le désigne** ; ou **bris de glace** avec motif écrit → accès accordé **et signalé** pour revue humaine |
+| Proche (dont diaspora)     | Dossier du patient               | Consentement `C-PROCHE` actif **qui le désigne** (« payer n'est pas voir »)                                                                     |
+| Agent IA                   | Patient de sa session uniquement | Consentement `C-SOINS` actif ; pas de bris de glace                                                                                             |
+| Pharmacien, administrateur | Aucun                            | Les ordonnances passeront par un service dédié                                                                                                  |
 
 Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses consentements. Une révocation prend effet immédiatement ; la ressource est conservée (`inactive`) pour la traçabilité.
 
@@ -73,7 +73,9 @@ L'inscription passe par le **formulaire natif de Keycloak**, complété par l'ex
 - **En cas de doute, on refuse** : service injoignable ou réponse inattendue entraînent un refus.
 
 ### Saisie de l'identité juste après l'inscription
+
 Action requise `mbolo-identite-patient` :
+
 - **Formulaire « Mon identité »** : nom, prénom, date de naissance, sexe (facultatif), téléphone, numéro d'assurance maladie (facultatif).
 - **Validation** : dans l'extension, avec des messages en français. Une date de naissance dans le futur est refusée.
 - **Dossier** : créé au statut « à vérifier » par la passerelle (`system/Patient.c` seulement). L'extension pose ensuite `patient_id` sur le compte.
@@ -85,6 +87,7 @@ Action requise `mbolo-identite-patient` :
 - **Actions requises du royaume** : déclarer une action dans le royaume supprime celles qui ne sont pas déclarées. Les actions par défaut (dont `CONFIGURE_TOTP`) sont donc listées explicitement, et un test le vérifie.
 
 ### Construction et configuration
+
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.
 - **Version de Keycloak** : épinglée à 26.7.4 (26.0.8 avait des failles hautes connues), identique dans `pom.xml` et `docker-compose.yml`. Toute montée de version se fait dans les deux fichiers, avec la suite e2e.
 - **Adresse du service des invitations** : variable `KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL`, par défaut `http://host.docker.internal:3006/` depuis le conteneur. Ce n'est pas un secret.
@@ -101,7 +104,7 @@ Le jeton d'accès des applications ne contient **ni e-mail ni nom** : les porté
 
 ```bash
 pnpm --filter @mbolo/identite test     # accès, consentements, dépôt FHIR, royaume, API (jetons signés par des clés de test)
-KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CERTIFICAT=… TELECONSULTATION_SERVICE_CERTIFICAT=… NOTIFICATIONS_SERVICE_CERTIFICAT=… CONSULTATION_SERVICE_CERTIFICAT=… DOCUMENTS_SERVICE_CERTIFICAT=… docker compose -f platform/services/identite/docker-compose.yml up -d
+KC_BOOTSTRAP_ADMIN_PASSWORD=… IDENTITE_SERVICE_CERTIFICAT=… TELECONSULTATION_SERVICE_CERTIFICAT=… NOTIFICATIONS_SERVICE_CERTIFICAT=… CONSULTATION_SERVICE_CERTIFICAT=… DOCUMENTS_SERVICE_CERTIFICAT=… INVITATIONS_SERVICE_CERTIFICAT=… docker compose -f platform/services/identite/docker-compose.yml up -d
 docker compose -f platform/services/dossier-fhir/docker-compose.yml up -d   # HAPI FHIR local (interne)
 KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_AMONT_URL=http://127.0.0.1:8080/fhir pnpm --filter @mbolo/passerelle-fhir start
 KEYCLOAK_ISSUER=http://127.0.0.1:8081/realms/mbolo FHIR_BASE_URL=http://127.0.0.1:3002/fhir IDENTITE_SERVICE_CLE_PRIVEE=… pnpm --filter @mbolo/identite start

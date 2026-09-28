@@ -83,6 +83,10 @@ Contraintes :
 - **Modèle de menaces** : code intercepté ou transmis à la mauvaise personne ; patient sous pression d'un proche ; proche malveillant.
 - **Hors périmètre** : abonnement Diaspora Famille (paiement par carte, ADR-0017) ; mineurs et majeurs protégés (avis juridique) ; un proche qui aide plusieurs patients (un compte par patient en vague 2).
 
+## Suivi
+
+- **Invitations de proches** (PR BG) : service `invitations` (routes `/proches`, 3 proches, 7 jours, verrou par patient), fiche `RelatedPerson` minimale (règles `mbolo-proche-1` à `-3`), consentement `C-PROCHE` avec le jeton du patient, SMS par le gabarit fermé `invitation-proche` (numéro jamais gardé), compte de service `mbolo-invitations-service` (`system/RelatedPerson.cru`). **Tant que l'extension Keycloak n'est pas à jour, un code de proche est refusé à l'inscription** : il ne peut jamais créer un compte patient.
+
 ## Réponses du porteur de projet (2026-09-28)
 
 1. **Code envoyé par SMS au proche.** Moment de la saisie du numéro : **par le patient, à l'invitation** (confirmé) ; numéro non conservé après l'envoi.

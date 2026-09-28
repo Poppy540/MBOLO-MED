@@ -2,11 +2,24 @@
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
-import { IDENTIFIANTS_GABARITS, type Gabarit } from './gabarits.js';
+import {
+  FORMAT_CODE,
+  IDENTIFIANTS_GABARITS,
+  PAYS_PAR_DEFAUT,
+  type Gabarit,
+  type Pays,
+} from './gabarits.js';
 import type { VerifierAppelant } from './jeton.js';
-import type { CanalSimule, Destinataire, ServiceNotifications } from './notifications.js';
+import {
+  envoyerInvitationProche,
+  type Canal,
+  type CanalSimule,
+  type Destinataire,
+  type ServiceNotifications,
+} from './notifications.js';
 
 class ErreurAuthentification extends Error {}
+class ErreurInterdite extends Error {}
 
 export async function creerServeur(o: {
   verifierAppelant: VerifierAppelant;
@@ -16,6 +29,11 @@ export async function creerServeur(o: {
   simulation?: CanalSimule;
   /** Appels permis par adresse et par minute (défaut : 600). */
   limiteParMinute?: number;
+  /**
+   * Invitations de proches (ADR-0019) : canal d'envoi, pays, et seuls clients autorisés
+   * (le service invitations). Ces clients n'envoient rien d'autre.
+   */
+  invitations?: { canal: Canal; pays?: Pays; appelants: readonly string[] };
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -44,6 +62,7 @@ export async function creerServeur(o: {
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
+    if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if ((err as { validation?: unknown }).validation) {
       return reply.code(400).send({ erreur: 'Requête invalide.' });
     }
@@ -74,6 +93,7 @@ export async function creerServeur(o: {
     },
     async (req, reply) => {
       const appelant = await authentifier(req);
+      if (o.invitations?.appelants.includes(appelant)) throw new ErreurInterdite();
       const { destinataire, gabarit, instant } = req.body;
       const resultat = await o.service.envoyer({
         destinataire,
@@ -90,6 +110,40 @@ export async function creerServeur(o: {
       return reply.code(202).send({ resultat });
     },
   );
+
+  const invitations = o.invitations;
+  if (invitations) {
+    app.post<{ Body: { telephone: string; code: string; jours: number } }>(
+      '/invitations-proche',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['telephone', 'code', 'jours'],
+            properties: {
+              // Format international (E.164) : le proche vit souvent à l'étranger.
+              telephone: { type: 'string', pattern: '^\\+[1-9][0-9]{7,14}$' },
+              code: { type: 'string', pattern: FORMAT_CODE.source },
+              jours: { type: 'integer', minimum: 1, maximum: 90 },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const appelant = await authentifier(req);
+        if (!invitations.appelants.includes(appelant)) throw new ErreurInterdite();
+        const resultat = await envoyerInvitationProche(
+          invitations.canal,
+          req.body,
+          invitations.pays ?? PAYS_PAR_DEFAUT,
+        );
+        // Ni le numéro ni le code : seulement le résultat.
+        o.journal.info('invitation de proche traitée', { appelant, resultat });
+        return reply.code(202).send({ resultat });
+      },
+    );
+  }
 
   if (o.simulation) {
     const boite = o.simulation.boite;

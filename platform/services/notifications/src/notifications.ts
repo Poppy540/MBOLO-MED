@@ -1,6 +1,13 @@
 // Envoi d'une notification (ADR-0012) : gabarit fermé, consentement C-RAPPELS pour un patient,
 // numéro lu dans le dossier au moment de l'envoi. Ni le numéro ni le texte ne sont journalisés.
-import { PAYS_PAR_DEFAUT, rediger, type Gabarit, type Pays, type Variables } from './gabarits.js';
+import {
+  PAYS_PAR_DEFAUT,
+  rediger,
+  redigerInvitationProche,
+  type Gabarit,
+  type Pays,
+  type Variables,
+} from './gabarits.js';
 
 /** Destinataire : référence FHIR d'un patient ou d'un professionnel. */
 export type Destinataire = `Patient/${string}` | `Practitioner/${string}`;
@@ -50,6 +57,25 @@ export class ServiceNotifications {
     } catch {
       return 'echec';
     }
+  }
+}
+
+/**
+ * Invitation d'un proche (ADR-0019) : envoyée au numéro saisi par le patient, qui n'est lu ni dans
+ * le dossier ni gardé ici. Pas de consentement C-RAPPELS : c'est le patient qui demande l'envoi,
+ * et le proche n'est pas un patient.
+ */
+export async function envoyerInvitationProche(
+  canal: Canal,
+  d: { telephone: string; code: string; jours: number },
+  pays: Pays = PAYS_PAR_DEFAUT,
+): Promise<'envoyee' | 'echec'> {
+  const texte = redigerInvitationProche(d.code, d.jours, pays);
+  try {
+    await canal.envoyer(d.telephone, texte);
+    return 'envoyee';
+  } catch {
+    return 'echec';
   }
 }
 

@@ -200,6 +200,16 @@
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
+        },
+        {
+          "name": "audience-invitations-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-invitations-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
         }
       ],
       "defaultClientScopes": ["web-origins", "acr", "roles", "basic"],
@@ -652,6 +662,62 @@
           "config": {
             "claim.name": "mbolo_scopes",
             "claim.value": "system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus system/RelatedPerson.r",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "mbolo-invitations-service",
+      "name": "Compte de service des invitations (fiche du proche invité par le patient, SMS du code ; ADR-0019)",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-jwt",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": false,
+      "defaultClientScopes": ["basic"],
+      "optionalClientScopes": [],
+      "attributes": {
+        "access.token.lifespan": "300",
+        "use.jwks.url": "false",
+        "jwt.credential.certificate": "${INVITATIONS_SERVICE_CERTIFICAT}",
+        "token.endpoint.auth.signing.alg": "RS256"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-dossier-fhir",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-dossier-fhir",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "audience-notifications",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-notifications",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "permissions-smart",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_scopes",
+            "claim.value": "system/RelatedPerson.cru",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",
