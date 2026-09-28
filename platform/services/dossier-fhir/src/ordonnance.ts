@@ -54,6 +54,8 @@ export function ordonnance(o: OptionsOrdonnance): MedicationRequest[] {
     meta: meta(PROFILS.ordonnance, o.env),
     status: 'active',
     intent: 'order',
+    // Numéro aussi en identifier : FHIR R4 ne permet pas de rechercher par groupIdentifier.
+    identifier: [{ system: SYSTEME_ORDONNANCE, value: o.numero }],
     groupIdentifier: { system: SYSTEME_ORDONNANCE, value: o.numero },
     medicationCodeableConcept: {
       coding: [

@@ -233,7 +233,9 @@ describe('royaume mbolo', () => {
     // Pas de suppression, pas de modification ; pas d'accès aux consentements ni au journal.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Condition.rs system/Composition.crs system/Appointment.r');
+    ).toBe(
+      'system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus',
+    );
     // Seule l'application des professionnels appelle l'API de consultation.
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])

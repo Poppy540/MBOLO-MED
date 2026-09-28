@@ -1,7 +1,14 @@
 // Lecture et écriture dans le dossier médical via la passerelle (ADR-0010), avec le compte de
 // service mbolo-consultation-service (system/Condition.rs system/Composition.crs
-// system/Appointment.r). Aucun contenu n'est journalisé ici.
-import type { Appointment, Composition, Condition, FhirResource } from 'fhir/r4.js';
+// system/Appointment.r system/MedicationRequest.crus). Aucun contenu n'est journalisé ici.
+import type {
+  Appointment,
+  Composition,
+  Condition,
+  FhirResource,
+  MedicationRequest,
+} from 'fhir/r4.js';
+import { SYSTEME_ORDONNANCE } from '@mbolo/dossier-fhir';
 import { ClientFhir, ErreurDepot, TYPE_FHIR } from '@mbolo/identite';
 
 export interface Dossier {
@@ -11,7 +18,69 @@ export interface Dossier {
   ajouterCompteRendu(c: Composition): Promise<Composition>;
 }
 
-export class DossierFhir extends ClientFhir implements Dossier {
+/** Ordonnances électroniques (ADR-0018) : une MedicationRequest par ligne. */
+export interface DossierOrdonnances {
+  ajouterLigne(m: MedicationRequest): Promise<MedicationRequest>;
+  /** Lignes d'une ordonnance (recherche sans cache par numéro). */
+  lignes(numero: string): Promise<MedicationRequest[]>;
+  /** Change le statut d'une ligne, avec verrou optimiste (409 si elle a changé entre-temps). */
+  changerStatut(
+    m: MedicationRequest,
+    statut: 'cancelled' | 'entered-in-error',
+  ): Promise<MedicationRequest>;
+}
+
+export class DossierFhir extends ClientFhir implements Dossier, DossierOrdonnances {
+  private static ligne(x: unknown): MedicationRequest {
+    if ((x as { resourceType?: unknown } | null)?.resourceType !== 'MedicationRequest') {
+      throw new ErreurDepot('Réponse inattendue du dossier médical.', 503);
+    }
+    return x as MedicationRequest;
+  }
+
+  async ajouterLigne(m: MedicationRequest): Promise<MedicationRequest> {
+    const r = await this.appeler(`${this.base}/MedicationRequest`, {
+      method: 'POST',
+      headers: { 'content-type': TYPE_FHIR, prefer: 'return=representation' },
+      body: JSON.stringify(m),
+    });
+    if (r.status !== 201 && r.status !== 200) throw ClientFhir.echec(r, 'Ordonnance');
+    return DossierFhir.ligne(await r.json());
+  }
+
+  lignes(numero: string): Promise<MedicationRequest[]> {
+    return this.rechercher(
+      // FHIR R4 ne cherche pas par groupIdentifier : le numéro est aussi l'identifier de chaque ligne.
+      `${this.base}/MedicationRequest?identifier=${encodeURIComponent(
+        `${SYSTEME_ORDONNANCE}|${numero}`,
+      )}&_count=100`,
+      'Ordonnance',
+      (r): r is MedicationRequest =>
+        r.resourceType === 'MedicationRequest' &&
+        r.groupIdentifier?.system === SYSTEME_ORDONNANCE &&
+        r.groupIdentifier.value === numero,
+    );
+  }
+
+  async changerStatut(
+    m: MedicationRequest,
+    statut: 'cancelled' | 'entered-in-error',
+  ): Promise<MedicationRequest> {
+    if (!m.id) throw new ErreurDepot('Ordonnance introuvable dans le dossier médical.', 409);
+    const version = m.meta?.versionId;
+    const r = await this.appeler(`${this.base}/MedicationRequest/${encodeURIComponent(m.id)}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': TYPE_FHIR,
+        prefer: 'return=representation',
+        ...(version ? { 'if-match': `W/"${version}"` } : {}),
+      },
+      body: JSON.stringify({ ...m, status: statut }),
+    });
+    if (!r.ok) throw ClientFhir.echec(r, 'Ordonnance');
+    return DossierFhir.ligne(await r.json());
+  }
+
   async rendezVous(id: string): Promise<Appointment | undefined> {
     const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(id)}`, {
       headers: { 'cache-control': 'no-cache' },

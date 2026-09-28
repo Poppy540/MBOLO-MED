@@ -37,6 +37,8 @@ describe('MedicationRequest — ordonnance électronique (ADR-0018)', () => {
     expect(a && valider(a, 'dev')).toEqual([]);
     expect(b && valider(b, 'dev')).toEqual([]);
     expect(a?.groupIdentifier).toEqual({ system: SYSTEME_ORDONNANCE, value: 'FICTIF-ORD-0001' });
+    // Recherche par numéro : FHIR R4 ne cherche pas par groupIdentifier, mais par identifier.
+    expect(a?.identifier).toEqual([{ system: SYSTEME_ORDONNANCE, value: 'FICTIF-ORD-0001' }]);
     expect(b?.groupIdentifier?.value).toBe('FICTIF-ORD-0001');
     expect(a?.dosageInstruction?.[0]?.doseAndRate?.[0]?.doseQuantity).toEqual({
       value: 500,

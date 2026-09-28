@@ -117,6 +117,10 @@ export default defineConfig({
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
         IDENTITE_URL,
         CONSULTATION_SERVICE_CLE_PRIVEE: process.env['CONSULTATION_SERVICE_CLE_PRIVEE'] ?? '',
+        // Ordonnances électroniques (flag ordonnances.electroniques, ADR-0018).
+        UNLEASH_API_URL: UNLEASH_URL,
+        UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
+        UNLEASH_REFRESH_MS: '500',
         PORT: new URL(CONSULTATION_URL).port,
         MBOLO_ENV: 'dev',
       },

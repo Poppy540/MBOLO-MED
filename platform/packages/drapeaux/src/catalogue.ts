@@ -42,6 +42,13 @@ export const CATALOGUE = {
     dependances: [],
     branche: true,
   },
+  'ordonnances.electroniques': {
+    description:
+      "Le professionnel prescrit une ordonnance électronique à l'issue d'une consultation (ADR-0018).",
+    vague: 2,
+    dependances: ['teleconsultation.video'],
+    branche: true,
+  },
   'agent01.accueil': {
     description: 'Agent 1 : accueil, recueil des symptômes et orientation (jamais de diagnostic).',
     vague: 1,

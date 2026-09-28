@@ -1,5 +1,6 @@
 // Démarrage du service de consultation clinique. Secret du compte de service
 // (clé privée CONSULTATION_SERVICE_CLE_PRIVEE, ADR-0016) depuis le coffre-fort, jamais le dépôt.
+import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
 import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { DecideurIdentite } from './acces.js';
@@ -31,17 +32,31 @@ const entetes = creerFournisseurJeton({
   client: env['CONSULTATION_SERVICE_CLIENT_ID'] ?? 'mbolo-consultation-service',
   authentification,
 });
+const drapeaux =
+  env['UNLEASH_API_URL'] && env['UNLEASH_BACKEND_TOKEN']
+    ? await drapeauxUnleash({
+        url: env['UNLEASH_API_URL'],
+        jeton: env['UNLEASH_BACKEND_TOKEN'],
+        application: 'consultation',
+        rafraichissementMs: Number(env['UNLEASH_REFRESH_MS'] ?? '15000'),
+      })
+    : await drapeauxFixes();
+const dossier = new DossierFhir({ base: fhir, entetes });
+
 const app = await creerServeur({
   limiteParMinute: Number(env['CONSULTATION_LIMITE_PAR_MINUTE'] ?? '300'),
   verifierJeton: creerVerificateur({
     emetteur,
     audience: env['CONSULTATION_AUDIENCE'] ?? 'mbolo-consultation-api',
   }),
-  service: new ServiceConsultation(
-    new DecideurIdentite(identite),
-    new DossierFhir({ base: fhir, entetes }),
-    'dev',
-  ),
+  service: new ServiceConsultation(new DecideurIdentite(identite), dossier, 'dev', undefined, {
+    dossier,
+    drapeaux,
+    // Nomenclature des médicaments du pays : ATC en attendant la liste nationale (ADR-0018).
+    nomenclature: env['CONSULTATION_NOMENCLATURE_MEDICAMENTS'] ?? 'http://www.whocc.no/atc',
+    // Validité par défaut, à confirmer par le comité médical et le juriste.
+    validiteJours: Number(env['CONSULTATION_VALIDITE_ORDONNANCE_JOURS'] ?? '90'),
+  }),
   journal,
 });
 const port = Number(env['PORT'] ?? '3005');

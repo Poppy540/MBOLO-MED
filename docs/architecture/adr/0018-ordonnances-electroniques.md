@@ -77,6 +77,7 @@ Contraintes :
 ## Suivi
 
 - **Profil FHIR `mbolo-ordonnance`** (PR BA) : règles et invariants `mbolo-ord-1` à `mbolo-ord-4`, constructeur, exemple fictif, cas invalides rejetés par le validateur officiel.
+- **Prescription et révocation** (PR BB), placées dans le service `consultation` plutôt qu'un nouveau service : elles reposent sur la même décision d'accès que le compte-rendu (consentement ou bris de glace) et sur le même compte de service, qui reçoit `system/MedicationRequest.crus`. Le service `ordonnances` gardera la transmission à la pharmacie, le code de retrait et la délivrance. Le numéro d'ordonnance est aussi porté en `identifier`, car FHIR R4 ne permet pas de rechercher par `groupIdentifier`. Flag `ordonnances.electroniques` (dépend de `teleconsultation.video`).
 
 ## Reste à décider
 
