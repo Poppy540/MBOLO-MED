@@ -30,7 +30,7 @@ import {
 } from './constantes.js';
 import type { Environnement } from './regles.js';
 
-const meta = (profil: string, env: Environnement) => ({
+export const meta = (profil: string, env: Environnement) => ({
   profile: [profil],
   ...(env === 'prod' ? {} : { tag: [MARQUEUR_FICTIF] }),
 });

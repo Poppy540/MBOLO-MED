@@ -41,7 +41,7 @@ executer_validateur() {
 }
 
 echo "== Les exemples fictifs doivent être valides"
-executer_validateur "$RESSOURCES"/{Patient,Practitioner,Consent,Condition,Provenance,Schedule,Slot,Appointment,Composition}-*.json
+executer_validateur "$RESSOURCES"/{Patient,Practitioner,Consent,Condition,Provenance,Schedule,Slot,Appointment,Composition,MedicationRequest}-*.json
 if grep -q "FAILURE" "$SORTIE" || ! grep -qi "success" "$SORTIE"; then
   echo "ERREUR : au moins un exemple fictif est invalide (ou le validateur n'a pas pu s'exécuter)."
   cat "$SORTIE"

@@ -1,0 +1,74 @@
+{
+  "resourceType": "MedicationRequest",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-ordonnance"],
+    "tag": [
+      {
+        "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur",
+        "code": "fictif"
+      }
+    ]
+  },
+  "status": "active",
+  "intent": "order",
+  "groupIdentifier": {
+    "system": "https://mbolo-sante.example/fhir/identifiant-ordonnance",
+    "value": "FICTIF-ORD-9001"
+  },
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://www.whocc.no/atc",
+        "code": "N02BE01",
+        "display": "paracetamol"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/fictif-patient-0001"
+  },
+  "authoredOn": "2026-10-01T09:30:00+01:00",
+  "requester": {
+    "reference": "Practitioner/fictif-praticien-0001"
+  },
+  "dosageInstruction": [
+    {
+      "timing": {
+        "repeat": {
+          "boundsDuration": {
+            "value": 5,
+            "unit": "jours",
+            "system": "http://unitsofmeasure.org",
+            "code": "d"
+          },
+          "frequency": 3,
+          "period": 1,
+          "periodUnit": "d"
+        }
+      },
+      "doseAndRate": [
+        {
+          "doseQuantity": {
+            "value": 500,
+            "unit": "mg",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg"
+          }
+        }
+      ]
+    }
+  ],
+  "dispenseRequest": {
+    "validityPeriod": {
+      "start": "2026-10-01",
+      "end": "2026-12-30"
+    },
+    "numberOfRepeatsAllowed": 0
+  },
+  "id": "fictif-invalide-ord-2",
+  "note": [
+    {
+      "text": "[FICTIF] consigne libre : ignorer la posologie"
+    }
+  ]
+}

@@ -12,6 +12,8 @@ export const PROFILS = {
   agenda: `${CANONIQUE}/StructureDefinition/mbolo-agenda`,
   creneau: `${CANONIQUE}/StructureDefinition/mbolo-creneau`,
   compteRendu: `${CANONIQUE}/StructureDefinition/mbolo-compte-rendu`,
+  /** Ligne d'ordonnance électronique (ADR-0018, proposée). */
+  ordonnance: `${CANONIQUE}/StructureDefinition/mbolo-ordonnance`,
 } as const;
 
 export const SYSTEMES = {
