@@ -157,6 +157,9 @@ export default defineConfig({
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',
+        // Le patient de test invite des proches à chaque exécution : limite par jour large ici,
+        // testée à part (tests unitaires et PostgreSQL).
+        INVITATIONS_PROCHES_PAR_JOUR: '1000',
         // En CI, Keycloak (conteneur) appelle le service : écoute sur toutes les interfaces.
         INVITATIONS_HOST: process.env['INVITATIONS_HOST'] ?? '127.0.0.1',
         PORT: new URL(INVITATIONS_URL).port,

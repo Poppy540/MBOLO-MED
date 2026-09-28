@@ -91,6 +91,7 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
           },
           3,
           maintenant,
+          { max: 100, depuis: new Date(maintenant.getTime() - 86_400_000) },
         ),
       ),
     );
@@ -103,5 +104,32 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
                 values (${randomUUID()}, ${empreinte('SANSFICHE')}, ${COHORTE_PROCHES}, 'proche',
                         ${patient}, ${maintenant}, ${new Date(maintenant.getTime() + 1000)})`,
     ).rejects.toThrow(/codes_proche_fiche/);
+  });
+
+  it('ne dépasse pas la limite d’invitations par jour, même simultanées (ADR-0019)', async () => {
+    const depot = new DepotPostgres(execution);
+    const patient = `sujet-patient-fictif-${randomUUID().slice(0, 8)}`;
+    const maintenant = new Date();
+    const resultats = await Promise.all(
+      Array.from({ length: 6 }, (_, n) =>
+        depot.creerPourProche(
+          {
+            id: randomUUID(),
+            empreinte: empreinte(`JOUR${n}${randomUUID().slice(0, 4)}`),
+            cohorte: COHORTE_PROCHES,
+            type: 'proche',
+            relatedPersonId: `rp-fictif-j${n}`,
+            creePar: patient,
+            creeLe: maintenant,
+            expireLe: new Date(maintenant.getTime() + 7 * 86_400_000),
+          },
+          10,
+          maintenant,
+          { max: 2, depuis: new Date(maintenant.getTime() - 86_400_000) },
+        ),
+      ),
+    );
+    expect(resultats.filter((r) => r === 'cree')).toHaveLength(2);
+    expect(resultats.filter((r) => r === 'limite-jour')).toHaveLength(4);
   });
 });

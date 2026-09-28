@@ -51,16 +51,29 @@ export interface ParametresProches {
   max: number;
   /** Validité d'un code de proche, en jours (ADR-0019 : 7). */
   validiteJours: number;
+  /**
+   * Invitations au plus par patient sur 24 heures, annulées comprises : chaque invitation envoie un
+   * SMS, parfois international ; annuler puis réinviter en boucle ne doit pas en envoyer sans fin.
+   */
+  parJour: number;
   env: Environnement;
 }
 
 export class ErreurProche extends Error {
   constructor(
-    readonly statut: 400 | 403 | 404 | 409,
+    readonly statut: 400 | 403 | 404 | 409 | 429,
     message: string,
     readonly motif?: string,
   ) {
     super(message);
+  }
+
+  static parJour(): ErreurProche {
+    return new ErreurProche(
+      429,
+      'Trop d’invitations aujourd’hui. Réessayez demain.',
+      'limite-jour',
+    );
   }
 }
 
@@ -106,6 +119,9 @@ export class ServiceProches {
     ) {
       throw new Error('Durée de validité des codes de proches invalide (1 à 30 jours).');
     }
+    if (!Number.isInteger(parametres.parJour) || parametres.parJour < 1) {
+      throw new Error('Nombre d’invitations de proches par jour invalide.');
+    }
   }
 
   /** Le patient lui-même, avec un dossier, jamais un agent IA ; fonction ouverte pour lui. */
@@ -128,8 +144,13 @@ export class ServiceProches {
   ): Promise<ProcheInvite> {
     const patientId = await this.exigerPatient(u);
     const maintenant = this.horloge();
-    // Contrôle avant d'écrire dans le dossier ; la limite est de nouveau vérifiée sous verrou.
-    const deja = (await this.depot.listerProches(u.sujet)).filter(
+    // Contrôles avant d'écrire dans le dossier ; les limites sont de nouveau vérifiées sous verrou.
+    const invitations = await this.depot.listerProches(u.sujet);
+    const depuis = new Date(maintenant.getTime() - 86_400_000);
+    if (invitations.filter((i) => i.creeLe > depuis).length >= this.parametres.parJour) {
+      throw ErreurProche.parJour();
+    }
+    const deja = invitations.filter(
       (i) => !i.revoqueLe && (!!i.utiliseLe || i.expireLe > maintenant),
     );
     if (deja.length >= this.parametres.max) {
@@ -166,7 +187,11 @@ export class ServiceProches {
         creeLe: maintenant,
         expireLe,
       };
-      const r = await this.depot.creerPourProche(invitation, this.parametres.max, maintenant);
+      const r = await this.depot.creerPourProche(invitation, this.parametres.max, maintenant, {
+        max: this.parametres.parJour,
+        depuis,
+      });
+      if (r === 'limite-jour') throw ErreurProche.parJour();
       if (r === 'limite-atteinte') {
         throw new ErreurProche(409, `${this.parametres.max} proches au plus.`, 'limite-atteinte');
       }
