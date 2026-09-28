@@ -6,7 +6,14 @@
 // Le Gabon est le premier pays : fuseau et langue sont des paramètres de déploiement
 // (NOTIFICATIONS_FUSEAU, NOTIFICATIONS_LANGUE), jamais codés en dur dans les textes.
 
-export const IDENTIFIANTS_GABARITS = ['rendez-vous-annule', 'rendez-vous-reporte'] as const;
+export const IDENTIFIANTS_GABARITS = [
+  'rendez-vous-annule',
+  'rendez-vous-reporte',
+  /** Paiement reçu : la réservation devient un rendez-vous confirmé (ADR-0017). */
+  'rendez-vous-confirme',
+  /** Délai de paiement dépassé : la réservation est annulée par la plateforme (ADR-0017). */
+  'reservation-expiree',
+] as const;
 export type Gabarit = (typeof IDENTIFIANTS_GABARITS)[number];
 
 export const estGabarit = (x: string): x is Gabarit =>
@@ -22,6 +29,10 @@ export const CATALOGUE: Readonly<Record<string, Readonly<Record<Gabarit, string>
       'Mbolo Santé : votre rendez-vous du {date} à {heure} est annulé. Ouvrez l’application pour en choisir un autre.',
     'rendez-vous-reporte':
       'Mbolo Santé : votre rendez-vous est déplacé au {date} à {heure}. Détails dans l’application.',
+    'rendez-vous-confirme':
+      'Mbolo Santé : paiement reçu, votre rendez-vous du {date} à {heure} est confirmé. Détails dans l’application.',
+    'reservation-expiree':
+      'Mbolo Santé : paiement non reçu à temps, votre réservation du {date} à {heure} est annulée. Vous pouvez en choisir une autre.',
   },
 };
 

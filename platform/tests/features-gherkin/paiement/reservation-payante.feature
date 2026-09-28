@@ -8,6 +8,8 @@ Fonctionnalité: Réservation d'une téléconsultation payée par mobile money
 
   Scénario: Le patient paie depuis son téléphone et le rendez-vous est confirmé
     Étant donné que "patient-fictif-04" est connecté
+    Et que "patient-fictif-04" accepte de recevoir les rappels
+    Et que la boîte des notifications simulées est relevée
     Quand "patient-fictif-04" réserve un créneau avec "prac-fictif-001"
     Alors la réservation attend un paiement de 10000 "XAF"
     Et "patient-fictif-04" ne peut pas encore entrer dans la salle
@@ -15,6 +17,7 @@ Fonctionnalité: Réservation d'une téléconsultation payée par mobile money
     Et que le payeur valide le paiement sur son téléphone
     Alors le rendez-vous de "patient-fictif-04" est confirmé
     Et le dossier médical contient ce rendez-vous au statut "booked"
+    Et le numéro "+241 00 00 00 04" reçoit le message "paiement reçu, votre rendez-vous du"
 
   Scénario: Le payeur refuse, puis réessaie avec un autre opérateur
     Étant donné que "patient-fictif-04" est connecté
@@ -28,10 +31,13 @@ Fonctionnalité: Réservation d'une téléconsultation payée par mobile money
 
   Scénario: Sans paiement dans le délai, la plateforme annule la réservation et rend le créneau
     Étant donné que "patient-fictif-04" est connecté
+    Et que "patient-fictif-04" accepte de recevoir les rappels
+    Et que la boîte des notifications simulées est relevée
     Quand "patient-fictif-04" réserve un créneau avec "prac-fictif-001"
     Et que le délai de paiement est dépassé
     Alors le dossier médical contient ce rendez-vous au statut "cancelled", annulé par "plateforme"
     Et "patient-fictif-04" voit ces créneaux libres chez "prac-fictif-001"
+    Et le numéro "+241 00 00 00 04" reçoit le message "paiement non reçu à temps"
 
   Scénario: Personne d'autre ne peut payer ni voir le paiement d'un patient
     Étant donné que "patient-fictif-04" est connecté
