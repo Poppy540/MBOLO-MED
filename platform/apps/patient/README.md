@@ -27,6 +27,12 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - chaque photo est **réduite (1 600 px au plus) et recompressée en JPEG sur le téléphone**, ce qui retire aussi ses métadonnées (lieu, appareil) ; elle n'est jamais gardée dans le navigateur ;
    - derrière le flag `identite.photos`, désactivé tant que la charte n'est pas validée. Le texte affiché reprend le **brouillon** v0.1 et sera remplacé mot pour mot par le texte validé.
 
+7. **Mes comptes-rendus et ordonnances**, depuis « Mes rendez-vous » ; écran chargé **seulement à la demande** (1,3 Ko compressés), service `consultation` (`GET /mes-documents`) :
+   - les ordonnances (médicament, dose, fréquence dite en phrase, durée ; « Valable jusqu'au … » ou « Annulée par le médecin : ne pas l'utiliser. »), puis les comptes-rendus, les plus récents d'abord ;
+   - le texte est **exactement celui du professionnel**, jamais résumé ni reformulé par une IA ; rappel « Ne changez pas votre traitement sans l'avis d'un médecin. En cas d'urgence, appelez les secours. » ;
+   - chaque lecture est **tracée** dans le dossier (visible dans l'historique des accès du patient) ;
+   - **rien n'est gardé sur le téléphone**, souvent partagé en famille : sans réseau, l'écran le dit simplement.
+
 Les erreurs sont affichées en phrases simples, sans jargon.
 
 ## Hors ligne et économie de données

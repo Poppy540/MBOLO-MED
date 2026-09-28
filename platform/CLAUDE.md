@@ -5,7 +5,7 @@
 ## Structure
 | Dossier | Rôle | Vague d'activation |
 |---|---|---|
-| `apps/patient` | Prototype PWA (Preact + Vite, 11,5 Ko à l'ouverture) : connexion PKCE, rendez-vous, créneaux, paiement mobile money, visio avec repli audio, hors ligne, vérification d'identité (charte et photos) ; pays paramétrable — voir son README | 1 |
+| `apps/patient` | Prototype PWA (Preact + Vite, 11,5 Ko à l'ouverture) : connexion PKCE, rendez-vous, créneaux, paiement mobile money, comptes-rendus et ordonnances (lecture), visio avec repli audio, hors ligne, vérification d'identité (charte et photos) ; pays paramétrable — voir son README | 1 |
 | `apps/professionnel` | Prototype PWA (12,5 Ko à l'ouverture, hors ligne) : connexion avec double authentification, créneaux, rendez-vous, report, annulation, visio, vérifications d'identité (rôle `verification-identite`), remboursements à valider (rôle `validation-remboursement`) — voir son README | 1 |
 | `apps/pharmacie` | Espace des pharmacies partenaires (ordonnances, stocks) | 2 |
 | `apps/academie` | Académie Mbolo (étudiants, mentors) | 3 |
@@ -14,7 +14,7 @@
 | `services/dossier-fhir` | Seul service qui stocke les données de santé (FHIR R4, ADR-0001) : profils FSH (`ig/`), règles `@mbolo/dossier-fhir`, HAPI FHIR local — voir son README | 0 |
 | `services/passerelle-fhir` | Seul point d'entrée des services vers le dossier FHIR : jetons de service, permissions SMART, lecture et modification limitées par élément, validation des écritures (ADR-0010) — voir son README | 0 |
 | `services/teleconsultation` | Prototype LiveKit (ADR-0011) : rendez-vous enregistrés dans le dossier FHIR (`Appointment`, via la passerelle), jeton de salle réservé aux deux participants, flag `teleconsultation.video` — voir son README | 1 |
-| `services/consultation` | Prototype : lecture du dossier par le professionnel après décision d'`identite` (consentement, bris de glace), compte-rendu rédigé par le professionnel (`Composition`, jamais par une IA) ; ordonnance électronique structurée et révocable (`MedicationRequest`, flag `ordonnances.electroniques`, ADR-0018, vague 2) — voir son README | 1 |
+| `services/consultation` | Prototype : lecture du dossier par le professionnel après décision d'`identite` (consentement, bris de glace), compte-rendu rédigé par le professionnel (`Composition`, jamais par une IA) ; ordonnance électronique structurée et révocable (`MedicationRequest`, flag `ordonnances.electroniques`, ADR-0018, vague 2) ; lecture par le patient de ses comptes-rendus et ordonnances (tracée) — voir son README | 1 |
 | `services/invitations` | Prototype (ADR-0013) : codes d'invitation à usage unique créés par le rôle `gestion-invitations`, empreinte HMAC (jamais le code en clair), quota par cohorte, vérification limitée ; PostgreSQL — voir son README | 1 |
 | `services/documents` | Prototype (ADR-0015) : stockage chiffré des documents (enveloppe AES-256-GCM, S3 compatible, métadonnées sans image, suppression à échéance par destruction de clé) ; dépôt des photos d'identité par le patient après acceptation de la charte `C-IDENTITE` (flag `identite.photos`), vérification par le rôle `verification-identite` (consultations tracées dans le dossier, décision) — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |

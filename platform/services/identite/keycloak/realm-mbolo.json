@@ -190,6 +190,16 @@
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
+        },
+        {
+          "name": "audience-consultation-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-consultation-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
         }
       ],
       "defaultClientScopes": ["web-origins", "acr", "roles", "basic"],

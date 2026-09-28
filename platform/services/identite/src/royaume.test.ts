@@ -236,13 +236,14 @@ describe('royaume mbolo', () => {
     ).toBe(
       'system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus',
     );
-    // Seule l'application des professionnels appelle l'API de consultation.
+    // Les deux applications appellent l'API de consultation : le professionnel pour lire, rédiger et
+    // prescrire ; le patient seulement pour lire ses propres documents (le service vérifie le rôle).
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
         .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
         .map((m) => m.config['included.client.audience']);
     expect(audiences('mbolo-app-pro')).toContain('mbolo-consultation-api');
-    expect(audiences('mbolo-app-patient')).not.toContain('mbolo-consultation-api');
+    expect(audiences('mbolo-app-patient')).toContain('mbolo-consultation-api');
   });
 
   it('invitations : seule l’application des professionnels appelle l’API, rôle jamais donné aux agents IA', () => {

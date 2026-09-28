@@ -1,5 +1,5 @@
 // Ordonnance électronique prescrite depuis la consultation (ADR-0018). Données FICTIVES.
-import type { Appointment, MedicationRequest } from 'fhir/r4.js';
+import type { Appointment, Composition, MedicationRequest } from 'fhir/r4.js';
 import { SYSTEME_ORDONNANCE } from '@mbolo/dossier-fhir';
 import type { Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
@@ -37,6 +37,28 @@ const rdv: Appointment = {
   ],
 };
 
+/** Comptes-rendus FICTIFS : un final, un écrit par erreur (jamais montré au patient). */
+const compositions = (): Composition[] =>
+  ['final', 'entered-in-error'].map((status, i) => ({
+    resourceType: 'Composition',
+    id: `cr-fictif-${i + 1}`,
+    status: status as Composition['status'],
+    type: { text: 'Compte-rendu' },
+    subject: { reference: 'Patient/pat-fictif-001' },
+    date: `2026-09-2${i + 1}T08:00:00Z`,
+    author: [{ reference: 'Practitioner/prac-fictif-001' }],
+    title: 'Compte-rendu [FICTIF]',
+    section: [
+      {
+        code: { coding: [{ code: 'conclusion' }] },
+        text: {
+          status: 'generated',
+          div: `<div xmlns="http://www.w3.org/1999/xhtml">[FICTIF] ${status}</div>`,
+        },
+      },
+    ],
+  }));
+
 const paracetamol: LigneSaisie = {
   medicament: { systeme: ATC, code: 'N02BE01', libelle: 'paracétamol' },
   dose: { valeur: 500, unite: 'mg' },
@@ -58,7 +80,7 @@ function monter(o: { actif?: boolean; autorise?: boolean; panneApres?: number } 
   const dossier: Dossier = {
     rendezVous: async (id) => (id === 'rdv-fictif-1' ? rdv : undefined),
     problemes: async () => [],
-    comptesRendus: async () => [],
+    comptesRendus: async () => compositions(),
     ajouterCompteRendu: async (c) => c,
   };
   const ordonnances: DossierOrdonnances = {
@@ -75,6 +97,8 @@ function monter(o: { actif?: boolean; autorise?: boolean; panneApres?: number } 
         (l) =>
           l.groupIdentifier?.system === SYSTEME_ORDONNANCE && l.groupIdentifier.value === numero,
       ),
+    lignesDuPatient: async (patientId) =>
+      lignes.filter((l) => l.subject.reference === `Patient/${patientId}`),
     changerStatut: async (m, statut) => {
       const l = lignes.find((x) => x.id === m.id);
       if (!l) throw new Error('introuvable');
@@ -206,6 +230,7 @@ describe('prescription d’une ordonnance électronique', () => {
         dossier: {
           ajouterLigne: async (x) => x,
           lignes: async () => m.lignes,
+          lignesDuPatient: async () => m.lignes,
           changerStatut: async (x, statut) => ({ ...x, status: statut }),
         },
         drapeaux: { estActif: async () => false },
@@ -214,5 +239,61 @@ describe('prescription d’une ordonnance électronique', () => {
       },
     );
     expect((await ferme.revoquerOrdonnance(medecin, 'j', o.numero)).statut).toBe('revoquee');
+  });
+});
+
+describe('mes documents : le patient lit ses comptes-rendus et ses ordonnances', () => {
+  it('le patient lui-même, après décision tracée par identite ; rien d’écrit par erreur', async () => {
+    const m = monter();
+    const active = await m.service.prescrire(medecin, 'j', 'rdv-fictif-1', {
+      lignes: [paracetamol],
+    });
+    const revoquee = await m.service.prescrire(medecin, 'j', 'rdv-fictif-1', {
+      lignes: [paracetamol],
+    });
+    await m.service.revoquerOrdonnance(medecin, 'j', revoquee.numero);
+    // Une ordonnance interrompue n'apparaît pas.
+    const panne = monter({ panneApres: 1 });
+    await panne.service
+      .prescrire(medecin, 'j', 'rdv-fictif-1', { lignes: [paracetamol, paracetamol] })
+      .catch(() => undefined);
+    expect((await panne.service.mesDocuments(patient, 'jeton-p1')).ordonnances).toEqual([]);
+
+    m.decisions.length = 0;
+    const d = await m.service.mesDocuments(patient, 'jeton-p1');
+    expect(m.decisions).toEqual(['jeton-p1:pat-fictif-001']);
+    expect(d.comptesRendus).toEqual([
+      {
+        id: 'cr-fictif-1',
+        date: '2026-09-21T08:00:00Z',
+        sections: { conclusion: '[FICTIF] final' },
+      },
+    ]);
+    expect(Object.fromEntries(d.ordonnances.map((o) => [o.numero, o.statut]))).toEqual({
+      [active.numero]: 'active',
+      [revoquee.numero]: 'revoquee',
+    });
+    expect(d.ordonnances[0]?.lignes[0]).toMatchObject({
+      medicament: 'paracétamol',
+      dose: '500 mg',
+    });
+  });
+
+  it('refuse : professionnel, agent IA, patient sans dossier, décision défavorable', async () => {
+    const m = monter();
+    await expect(m.service.mesDocuments(medecin, 'j')).rejects.toMatchObject({ statut: 403 });
+    await expect(
+      m.service.mesDocuments(
+        { ...patient, agent: { nom: 'agent-01-accueil', patientSession: 'pat-fictif-001' } },
+        'j',
+      ),
+    ).rejects.toMatchObject({ statut: 403 });
+    await expect(
+      m.service.mesDocuments({ sujet: 'u-p9', roles: ['patient'] }, 'j'),
+    ).rejects.toMatchObject({ statut: 403 });
+    expect(m.decisions).toEqual([]);
+    await expect(
+      monter({ autorise: false }).service.mesDocuments(patient, 'j'),
+    ).rejects.toMatchObject({ statut: 403 });
   });
 });

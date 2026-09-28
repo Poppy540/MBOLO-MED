@@ -148,6 +148,19 @@ export async function creerServeur(o: {
     },
   );
 
+  // Le patient lui-même : ses comptes-rendus et ses ordonnances (lecture tracée par identite).
+  app.get('/mes-documents', async (req) => {
+    const { utilisateur, jeton } = await authentifier(req);
+    const d = await o.service.mesDocuments(utilisateur, jeton);
+    // Jamais de contenu médical dans le journal : seulement les nombres.
+    o.journal.info('documents consultés par le patient', {
+      sujet: utilisateur.sujet,
+      comptesRendus: d.comptesRendus.length,
+      ordonnances: d.ordonnances.length,
+    });
+    return d;
+  });
+
   app.post<{
     Params: { id: string };
     Body: { motif?: string; observations?: string; conclusion?: string; conduiteATenir?: string };
