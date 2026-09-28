@@ -5,7 +5,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AuteurAnnulation, StatutIdentite } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
-import type { Utilisateur } from '@mbolo/identite';
+import { ErreurDepot, type Utilisateur } from '@mbolo/identite';
 import { IdentitesMemoire, type Identites } from './identites.js';
 import { AnnuaireMemoire, type Annuaire, type Fiche } from './annuaire.js';
 import { aucunNotificateur, type Notificateur } from './notificateur.js';
@@ -551,11 +551,18 @@ export class ServiceTeleconsultation {
     if (maintenant.getTime() > fin) {
       throw new ErreurTeleconsultation('Un rendez-vous passé ne peut plus être annulé.', 409);
     }
-    const annule = await this.depot.annuler(
-      r.id,
-      estPraticien ? 'professionnel' : 'patient',
-      maintenant.toISOString(),
-    );
+    const par = estPraticien ? 'professionnel' : 'patient';
+    let annule: RendezVous;
+    try {
+      annule = await this.depot.annuler(r.id, par, maintenant.toISOString());
+    } catch (e) {
+      // Le rendez-vous a changé entre-temps (verrou optimiste), par exemple confirmé par le paiement
+      // à la même seconde : on relit et on réessaie une fois, sauf s'il est déjà annulé.
+      if (!(e instanceof ErreurDepot && e.statut === 409)) throw e;
+      const relu = await this.depot.lire(r.id);
+      if (!relu || relu.statut === 'annule') throw e;
+      annule = await this.depot.annuler(r.id, par, maintenant.toISOString());
+    }
     // Le créneau à venir redevient libre. En cas d'échec, il reste réservé (jamais de double
     // réservation) et l'annulation, déjà enregistrée, reste valable.
     if (r.creneauId && new Date(r.debut).getTime() > maintenant.getTime()) {

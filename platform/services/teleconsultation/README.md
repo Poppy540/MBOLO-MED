@@ -57,7 +57,7 @@ Quand le flag **`paiement.mobile-money`** est actif pour le patient :
 - Tant que le rendez-vous est « à payer » : pas de salle (409), pas de report (409). Le patient peut l'annuler ; le créneau se libère.
 - Flag fermé : la réservation est confirmée aussitôt, sans paiement (cohorte pilote gratuite).
 - **SMS au patient** (s'il a accepté les rappels, C-RAPPELS) : « paiement reçu, votre rendez-vous … est confirmé » à la confirmation, « paiement non reçu à temps, votre réservation … est annulée » à l'expiration. Gabarits à relire par le porteur de projet avant la production (ADR-0012).
-- **Annulation** (patient, professionnel ou plateforme) : le service `paiement` est prévenu. Plus aucune collecte ; si le paiement est reçu, même après coup, un remboursement est préparé et validé par un humain. Si le paiement ne répond pas, l'annulation reste valable et une alerte d'exploitation est levée.
+- **Annulation** (patient, professionnel ou plateforme) : le service `paiement` est prévenu. Si le rendez-vous a changé au même instant (confirmé par le paiement), l'annulation est relue puis réessayée une fois ; jamais sur un rendez-vous déjà annulé. Plus aucune collecte ; si le paiement est reçu, même après coup, un remboursement est préparé et validé par un humain. Si le paiement ne répond pas, l'annulation reste valable et une alerte d'exploitation est levée.
 
 ## Identité vérifiée avant toute réservation (ADR-0014)
 
