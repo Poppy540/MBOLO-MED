@@ -1,4 +1,6 @@
 # language: fr
+# Jours 10 et 11 : aucun autre scénario n'y publie de créneau (l'espace professionnel publie à heure fixe
+# aux jours 7 et 8 ; un créneau « maintenant + 7 jours » le chevauchait selon l'heure d'exécution).
 # Données FICTIVES uniquement : fournisseur de paiement simulé, numéro inventé. Règles : ADR-0017.
 @paiement @vague1 @application
 Fonctionnalité: Payer et rembourser depuis les applications
@@ -9,7 +11,7 @@ Fonctionnalité: Payer et rembourser depuis les applications
 
   Scénario: Le patient réserve et paie dans l'application, puis retrouve son rendez-vous confirmé
     Étant donné que "patient-fictif-04" est connecté
-    Et un créneau libre de "prac-fictif-001" est publié dans 7 jours
+    Et un créneau libre de "prac-fictif-001" est publié dans 10 jours
     Quand "patient-fictif-04" ouvre l’application patient pour "prac-fictif-001"
     Et que le patient réserve ce créneau dans l’application
     Alors l’application demande de payer 10000 "XAF"
@@ -21,7 +23,7 @@ Fonctionnalité: Payer et rembourser depuis les applications
 
   Scénario: Le payeur refuse : l'application le dit et permet de réessayer
     Étant donné que "patient-fictif-04" est connecté
-    Et un créneau libre de "prac-fictif-001" est publié dans 8 jours
+    Et un créneau libre de "prac-fictif-001" est publié dans 11 jours
     Quand "patient-fictif-04" ouvre l’application patient pour "prac-fictif-001"
     Et que le patient réserve ce créneau dans l’application
     Et que le patient paie avec "Airtel Money" depuis le numéro "+241 00 00 00 00" dans l’application

@@ -117,3 +117,4 @@
 - 2026-09-27 — Keycloak limite la description d'un rôle à 255 caractères : au-delà, l'import du royaume échoue au démarrage (un test le vérifie désormais).
 - 2026-09-28 — Un test d'intégration qui crée une ressource externe (compartiment S3) doit la supprimer à la fin : sinon le stockage local s'épuise après une quinzaine d'exécutions, alors que la CI (conteneur neuf) ne le voit jamais.
 - 2026-09-28 — E2E : ne pas annuler un rendez-vous payé avant sa confirmation ; le passage périodique écrit le même `Appointment` et le dossier refuse l'une des deux écritures (conflit de version). Toujours vérifier le résultat d'une étape d'action dont dépend la suite.
+- 2026-09-28 — E2E : un créneau « maintenant + N jours » peut chevaucher un créneau publié à heure fixe le même jour, selon l'heure d'exécution (échec entre 08 h 40 et 09 h UTC). Donner à chaque scénario ses propres jours ; reproduire à la même heure avant de conclure.
