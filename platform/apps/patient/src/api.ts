@@ -6,7 +6,8 @@ export interface RendezVous {
   praticienId: string;
   debut: string;
   dureeMinutes: number;
-  statut: 'prevu' | 'annule';
+  /** « a-payer » : créneau retenu en attendant le paiement (ADR-0017). */
+  statut: 'prevu' | 'a-payer' | 'annule';
   creneauId?: string;
 }
 

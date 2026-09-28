@@ -15,7 +15,13 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - vidéo en basse définition (216p), flux adaptatif ;
    - **repli audio automatique** si la qualité reste mauvaise 5 secondes ou si la connexion est perdue ; bouton « Audio seulement » / « Réactiver la vidéo ».
 
-5. **Vérifier mon identité** (ADR-0014, ADR-0015), tant que l'identité est « à vérifier » ou « refusée » ; écran chargé **seulement à la demande** (2,3 Ko compressés) :
+5. **Payer la consultation** (ADR-0017), quand le paiement est ouvert pour le patient (flag `paiement.mobile-money`) ; écran chargé **seulement à la demande** :
+   - après « Réserver », le créneau est retenu : le montant (au format du pays) et le temps restant s'affichent ;
+   - le patient choisit l'opérateur (liste du pays) et saisit le numéro qui paie, le sien ou celui d'un proche ; le numéro n'est **jamais gardé** (champ vidé dès l'envoi) ;
+   - « Validez le paiement sur le téléphone avec votre code secret… », puis l'application vérifie toutes les 3 secondes : « Paiement reçu. Votre rendez-vous est confirmé. », ou « Le paiement n'a pas abouti. Vous pouvez réessayer. », ou « Le délai de paiement est dépassé. Le créneau est libéré. » ;
+   - « Plus tard » : le rendez-vous reste dans la liste, « En attente de paiement », avec un bouton « Payer ». Il n'est gardé hors ligne qu'une fois confirmé.
+
+6. **Vérifier mon identité** (ADR-0014, ADR-0015), tant que l'identité est « à vérifier » ou « refusée » ; écran chargé **seulement à la demande** (2,3 Ko compressés) :
    - le patient lit la **charte** et choisit « J'accepte » ou « Je refuse » : consentement `C-IDENTITE` enregistré par le service `identite`, avec la version du texte ;
    - puis il envoie **deux photos** : son document (pièce d'identité avec son numéro d'assurance maladie, ou acte de naissance) et son visage ;
    - chaque photo est **réduite (1 600 px au plus) et recompressée en JPEG sur le téléphone**, ce qui retire aussi ses métadonnées (lieu, appareil) ; elle n'est jamais gardée dans le navigateur ;
@@ -43,12 +49,14 @@ Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur
 | `VITE_FUSEAU` | `Africa/Libreville` | Fuseau horaire affiché (IANA) |
 | `VITE_LANGUE` | `fr-FR` | Langue et formats (BCP 47) |
 | `VITE_NOM_ASSURANCE` | `CNAMGS` | Nom de l'assurance maladie nationale, affiché dans la vérification d'identité |
+| `VITE_OPERATEURS` | `airtel:Airtel Money,moov:Moov Money` | Opérateurs de mobile money du pays (« code:Nom affiché ») ; les codes doivent être ceux du service de paiement (`PAIEMENT_OPERATEURS`) |
+| `VITE_INDICATIF` | `241` | Indicatif téléphonique du pays, montré dans le champ du numéro |
 
-Les API sont servies sous `/api/<service>` (même origine). En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`) et `DOCUMENTS_URL` (`3007`).
+Les API sont servies sous `/api/<service>` (même origine). En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`), `DOCUMENTS_URL` (`3007`) et `PAIEMENT_URL` (`3008`).
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **11,2 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **11,5 Ko**.
 
 ## Lancer
 

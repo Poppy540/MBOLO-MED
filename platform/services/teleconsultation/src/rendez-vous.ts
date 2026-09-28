@@ -365,8 +365,14 @@ export class ServiceTeleconsultation {
     const { r, estPraticien } = await this.participant(u, rendezVousId);
     if (estPraticien || r.statut !== 'a-payer' || !this.paiement) return r;
     const suite = await this.traiterEnAttente(r);
-    const expireLe = suite.statut === 'a-payer' ? this.expireLe(suite) : undefined;
-    return { ...suite, ...(expireLe ? { expireLe } : {}) };
+    if (suite.statut !== 'a-payer') return suite;
+    const expireLe = this.expireLe(suite);
+    // Paiement à régler (création idempotente : le même paiement est renvoyé), pour reprendre depuis
+    // la liste des rendez-vous. Sans réponse du paiement, le statut suffit.
+    const paiement = await this.paiement.service
+      .creer({ reference: r.id, sujet: u.sujet, type: 'generaliste' })
+      .catch(() => undefined);
+    return { ...suite, ...(expireLe ? { expireLe } : {}), ...(paiement ? { paiement } : {}) };
   }
 
   /** Une réservation en attente : confirmée si payée, annulée si le délai est dépassé. */

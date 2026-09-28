@@ -182,7 +182,7 @@ export default defineConfig({
       cwd: '../../apps/patient',
       url: APP_PATIENT_URL,
       reuseExistingServer: false,
-      env: { TELECONSULTATION_URL, IDENTITE_URL, DOCUMENTS_URL },
+      env: { TELECONSULTATION_URL, IDENTITE_URL, DOCUMENTS_URL, PAIEMENT_URL },
     },
     {
       command: 'node ../../services/paiement/dist/main.js',
@@ -217,7 +217,7 @@ export default defineConfig({
       cwd: '../../apps/professionnel',
       url: APP_PRO_URL,
       reuseExistingServer: false,
-      env: { TELECONSULTATION_URL, CONSULTATION_URL, DOCUMENTS_URL },
+      env: { TELECONSULTATION_URL, CONSULTATION_URL, DOCUMENTS_URL, PAIEMENT_URL },
     },
   ],
 });

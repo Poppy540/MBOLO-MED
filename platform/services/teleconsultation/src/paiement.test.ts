@@ -65,7 +65,12 @@ describe('réservation payante (flag paiement.mobile-money)', () => {
     await expect(m.service.rejoindre(patient, r.id)).rejects.toMatchObject({ statut: 409 });
 
     m.etat.heure = '2026-09-27T09:05:00Z';
-    expect((await m.service.verifierPaiement(patient, r.id)).statut).toBe('a-payer');
+    // En attente : le même paiement est renvoyé, pour reprendre depuis la liste des rendez-vous.
+    expect(await m.service.verifierPaiement(patient, r.id)).toMatchObject({
+      statut: 'a-payer',
+      paiement: { id: `paiement-${r.id}`, montant: 10_000 },
+      expireLe: '2026-09-27T09:15:00.000Z',
+    });
     m.paiements.payer(r.id);
     expect((await m.service.verifierPaiement(patient, r.id)).statut).toBe('prevu');
     m.etat.heure = '2026-09-27T09:50:00Z';

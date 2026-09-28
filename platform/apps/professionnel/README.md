@@ -1,6 +1,6 @@
 # Espace professionnel (prototype)
 
-PWA légère (Preact + Vite, **12,4 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
+PWA légère (Preact + Vite, **12,5 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
 
 ## Parcours
 
@@ -10,6 +10,7 @@ PWA légère (Preact + Vite, **12,4 Ko** compressés à l'ouverture) pour les pr
 4. **Dossier et compte-rendu** : depuis un rendez-vous, « Dossier » affiche les problèmes de santé et les comptes-rendus **si le patient a partagé son dossier** (sinon un message clair, et un **accès d'urgence** avec motif obligatoire, signalé et revu). Le professionnel rédige le compte-rendu (motif, observations, conclusion, conduite à tenir) ; aucune suggestion automatique.
 5. **Téléconsultation** : même écran que le patient (vidéo 216p, repli audio automatique ou choisi).
 6. **Vérifications à faire** (rôle `verification-identite`, ADR-0015 ; écran chargé à la demande, 2 Ko) : liste des patients à vérifier, identité déclarée et photos côte à côte (gardées en mémoire le temps de l'écran seulement ; **chaque ouverture est enregistrée dans le dossier du patient**), puis décision « vérifiée » (numéro d'assurance maladie ou provisoire), « refusée » (motif de la liste) ou « à refaire ». Un compte qui n'a que ce rôle arrive directement sur cet écran.
+7. **Remboursements à valider** (rôle `validation-remboursement`, ADR-0017 ; écran chargé à la demande) : paiements reçus pour des rendez-vous annulés, avec montant, opérateur et date de préparation, **sans le patient ni le numéro**. « Valider » ou « Refuser », puis confirmer (deux clics, aucun texte libre) ; l'argent revient au téléphone qui a payé. Un compte qui n'a que ce rôle arrive directement sur cet écran.
 
 Aucune donnée de santé n'est affichée ici : le dossier du patient s'ouvre par ses consentements (service `identite`).
 
