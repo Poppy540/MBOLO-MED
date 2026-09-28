@@ -41,7 +41,8 @@ type Ecran =
   | { nom: 'visio'; rendezVous: RendezVous }
   | { nom: 'paiement'; rendezVousId: string }
   | { nom: 'documents' }
-  | { nom: 'documents-proche' };
+  | { nom: 'documents-proche' }
+  | { nom: 'partages' };
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -160,6 +161,8 @@ export function App() {
         />
       ) : ecran.nom === 'documents' ? (
         <EcranDocuments retour={() => setEcran({ nom: 'rendez-vous' })} />
+      ) : ecran.nom === 'partages' ? (
+        <EcranPartages retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'documents-proche' ? (
         <EcranDocuments proche />
       ) : ecran.nom === 'paiement' ? (
@@ -314,6 +317,30 @@ function EcranDocuments(p: { retour?: () => void; proche?: boolean }) {
   );
 }
 
+/** Partages du dossier et historique des accès : écran chargé à la demande. */
+function EcranPartages(p: { retour: () => void }) {
+  const [Ecran, setEcran] =
+    useState<ComponentType<{ jeton: string; patientId: string; retour: () => void }>>();
+  const [echec, setEchec] = useState(false);
+  useEffect(() => {
+    import('./partages.js').then((m) => setEcran(() => m.Partages)).catch(() => setEchec(true));
+  }, []);
+  const patientId = jeton ? String(revendications(jeton)['patient_id'] ?? '') : '';
+  if (echec || !patientId) {
+    return (
+      <section>
+        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
+        <button onClick={p.retour}>Retour</button>
+      </section>
+    );
+  }
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} patientId={patientId} retour={p.retour} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
 function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) => void }) {
   const [liste, setListe] = useState<RendezVous[]>();
   const [horsLigne, setHorsLigne] = useState(false);
@@ -402,6 +429,9 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
       </button>
       <button onClick={() => p.allerA({ nom: 'documents' })}>
         <span aria-hidden="true">📄</span> Mes comptes-rendus et ordonnances
+      </button>
+      <button onClick={() => p.allerA({ nom: 'partages' })}>
+        <span aria-hidden="true">🔒</span> Mes partages et accès
       </button>
     </section>
   );

@@ -38,6 +38,12 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - message « Votre proche partage avec vous ses ordonnances et les consignes du médecin. Il peut retirer ce partage à tout moment. » ;
    - même écran que le patient (chargé à la demande, rien gardé sur le téléphone).
 
+9. **Mes partages et accès** (ADR-0009, principe n°3), depuis « Mes rendez-vous » ; écran chargé **seulement à la demande** (2,1 Ko compressés) :
+   - « Qui peut lire mon dossier » : partages en cours (médecin nommé, ou « Votre proche »), chacun avec **« Retirer ce partage »** (révocation immédiate, conservée dans le dossier) ;
+   - « Partager mon dossier avec … » pour le médecin de chaque rendez-vous : le patient lit le texte (qui nomme le médecin et rappelle que l'accord se retire à tout moment), puis **« J'accepte »** ou **« Non, pas maintenant »** ; jamais pré-coché ni groupé (consentement `C-PARTAGE-PRO`, texte **brouillon** `c-partage-pro-v0.1-brouillon`, à valider par le juriste) ;
+   - « Qui a demandé à lire mon dossier » : les 20 dernières demandes, en mots simples (vous-même, un professionnel de santé, votre proche…), accordées ou refusées, avec les accès en urgence et leur justification ;
+   - pas de flag : le consentement et la transparence ne sont jamais derrière un flag.
+
 Les erreurs sont affichées en phrases simples, sans jargon.
 
 ## Hors ligne et économie de données
