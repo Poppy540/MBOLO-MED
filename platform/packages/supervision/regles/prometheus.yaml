@@ -1,0 +1,15 @@
+# Fichier généré depuis platform/packages/supervision/src/regles.ts — ne pas modifier à la main.
+# pnpm --filter @mbolo/supervision generer
+groups:
+  - name: "mbolo-disponibilite"
+    interval: "30s"
+    rules:
+      - alert: "ServiceInjoignable"
+        expr: "probe_success{job=\"mbolo-sante\"} == 0"
+        for: "2m"
+        labels:
+          gravite: "critique"
+          destinataire: "astreinte-technique"
+        annotations:
+          resume: "Un service ne répond plus sur /sante depuis 2 minutes."
+          conduite: "Redémarrer le service ; vérifier l’hébergeur. La téléconsultation passe en priorité."

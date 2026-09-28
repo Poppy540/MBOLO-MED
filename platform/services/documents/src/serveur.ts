@@ -4,7 +4,7 @@
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
-import type { Journal } from '@mbolo/journal-securise';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { MOTIFS_REFUS, RESULTATS, TYPES_DOCUMENT } from './depot.js';
 import { TAILLE_MAX } from './format.js';
 import { ErreurDocument } from './service.js';
@@ -74,6 +74,7 @@ export async function creerServeur(o: {
     }
     const statut = (err as { statusCode?: number }).statusCode;
     if (statut === 429) {
+      signalerAlerte(o.journal, 'limite-appels', 'limite d’appels atteinte');
       return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
     }
     if (statut === 413) {
@@ -89,13 +90,14 @@ export async function creerServeur(o: {
       return reply.code(STATUT_ERREUR_DOCUMENT[err.motif]).send({ erreur: err.message });
     }
     if (err instanceof ErreurDepot) {
-      if (err.statut === 503) o.journal.erreur('dossier médical indisponible', { err });
+      if (err.statut === 503)
+        signalerAlerte(o.journal, 'erreur-serveur', 'dossier médical indisponible', { err });
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if ((err as { validation?: unknown }).validation) {
       return reply.code(400).send({ erreur: 'Requête invalide.' });
     }
-    o.journal.erreur('erreur interne du service documents', { err });
+    signalerAlerte(o.journal, 'erreur-serveur', 'erreur interne du service documents', { err });
     return reply.code(500).send({ erreur: 'Erreur interne.' });
   });
 
@@ -183,7 +185,7 @@ export async function creerServeur(o: {
     async (req, reply) => {
       const u = await authentifier(req);
       const photo = await o.verificateur.photo(u, req.params.patientId, req.params.documentId);
-      o.journal.info('photo d’identité consultée', {
+      signalerAlerte(o.journal, 'consultation-photo', 'photo d’identité consultée', {
         sujet: u.sujet,
         patientId: req.params.patientId,
         documentId: req.params.documentId,

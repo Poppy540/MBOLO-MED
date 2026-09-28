@@ -22,7 +22,8 @@
 | `services/notifications` | Prototype (ADR-0012) : gabarits fermés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier, canal simulé en attendant le fournisseur — voir son README | 1 |
 | `services/feature-flags` | Unleash local (`docker-compose.yml`, flags fictifs) ; activation par ville, spécialité, type d'utilisateur (ADR-0003, ADR-0007) | 0 |
 | `packages/drapeaux` | Feature flags via OpenFeature + Unleash : catalogue désactivé par défaut, dépendances, refus en cas d'erreur — registre `docs/deploiement/flags.md` | 0 |
-| `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** | 0 |
+| `packages/journal-securise` | Journal JSON qui masque secrets et données de santé — **obligatoire pour tout service** ; événements d'alerte nommés (`signalerAlerte`, ADR-0016) | 0 |
+| `packages/supervision` | Règles d'alerte (ADR-0016) : source TypeScript, fichiers Loki et Prometheus générés et vérifiés, destinataires par rôle — voir son README | 1 |
 | `packages/base-donnees` | Base des services (ADR-0013) : PostgreSQL, un schéma et un rôle par service, migrations versionnées, TLS vérifié en production, aucune donnée de santé | 1 |
 | `packages/client-web` | Briques communes des applications web : connexion PKCE, appels d'API, dates par pays, visio LiveKit avec repli audio | 1 |
 | `tests/features-gherkin` | Scénarios Gherkin en français (`# language: fr`), par domaine (`identite/`…) | 0 |

@@ -8,7 +8,7 @@ import {
   evenementAccesDossier,
   type Environnement,
 } from '@mbolo/dossier-fhir';
-import type { Journal } from '@mbolo/journal-securise';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { deciderAccesDossier, peutGererConsentements } from './acces.js';
 import {
   ErreurAcces,
@@ -63,6 +63,7 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
 
   app.setErrorHandler((err, _req, reply) => {
     if ((err as { statusCode?: number }).statusCode === 429) {
+      signalerAlerte(o.journal, 'limite-appels', 'limite d’appels atteinte');
       return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
     }
     if (err instanceof ErreurAuthentification) {
@@ -74,7 +75,8 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
       return reply.code(403).send({ erreur: 'Fonction non disponible.' });
     }
     if (err instanceof ErreurDepot) {
-      if (err.statut === 503) o.journal.erreur('dossier médical indisponible', { err });
+      if (err.statut === 503)
+        signalerAlerte(o.journal, 'erreur-serveur', 'dossier médical indisponible', { err });
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if (err instanceof ErreurValidation) {
@@ -83,7 +85,7 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
     if ((err as { validation?: unknown }).validation) {
       return reply.code(400).send({ erreur: 'Requête invalide.' });
     }
-    o.journal.erreur('erreur interne', { err });
+    signalerAlerte(o.journal, 'erreur-serveur', 'erreur interne', { err });
     return reply.code(500).send({ erreur: 'Erreur interne.' });
   });
 
@@ -281,7 +283,14 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
         motifDecision: decision.motif,
       };
       if (decision.audit === 'alerte') {
-        o.journal.avertissement('ACCÈS BRIS DE GLACE — revue humaine requise', contexte);
+        signalerAlerte(
+          o.journal,
+          'bris-de-glace',
+          'ACCÈS BRIS DE GLACE — revue humaine requise',
+          contexte,
+        );
+      } else if (!decision.autorise) {
+        signalerAlerte(o.journal, 'acces-refuse', 'accès au dossier refusé', contexte);
       } else {
         o.journal.info('décision d’accès au dossier', contexte);
       }

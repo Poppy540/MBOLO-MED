@@ -5,7 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { Bundle, FhirResource } from 'fhir/r4.js';
 import { valider, type Environnement } from '@mbolo/dossier-fhir';
-import type { Journal } from '@mbolo/journal-securise';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import type { ClientService, VerifierJeton } from './jeton.js';
 import { autorise, restreindre, type Interaction } from './permissions.js';
 
@@ -79,6 +79,7 @@ export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInst
       return reply.code(err.statut).type(TYPE_FHIR).send(issue(err.message, err.regles));
     }
     if ((err as { statusCode?: number }).statusCode === 429) {
+      signalerAlerte(o.journal, 'limite-appels', 'limite d’appels atteinte');
       return reply
         .code(429)
         .type(TYPE_FHIR)
@@ -87,7 +88,7 @@ export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInst
     if ((err as { statusCode?: number }).statusCode === 413) {
       return reply.code(413).type(TYPE_FHIR).send(issue('Ressource trop volumineuse.'));
     }
-    o.journal.erreur('erreur interne de la passerelle', { err });
+    signalerAlerte(o.journal, 'erreur-serveur', 'erreur interne de la passerelle', { err });
     return reply.code(502).type(TYPE_FHIR).send(issue('Dossier médical indisponible.'));
   });
 
@@ -120,7 +121,11 @@ export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInst
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
-      o.journal.erreur('serveur FHIR injoignable', { client: c.client, type, interaction });
+      signalerAlerte(o.journal, 'erreur-serveur', 'serveur FHIR injoignable', {
+        client: c.client,
+        type,
+        interaction,
+      });
       return reply.code(502).type(TYPE_FHIR).send(issue('Dossier médical indisponible.'));
     }
     let texte = await r.text();
@@ -169,7 +174,11 @@ export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInst
 
   const exiger = (c: ClientService, type: string, interaction: Interaction) => {
     if (!autorise(c.permissions, type, interaction)) {
-      o.journal.avertissement('accès au dossier refusé', { client: c.client, type, interaction });
+      signalerAlerte(o.journal, 'acces-refuse', 'accès au dossier refusé', {
+        client: c.client,
+        type,
+        interaction,
+      });
       throw new Refus(403, 'Accès refusé.');
     }
   };

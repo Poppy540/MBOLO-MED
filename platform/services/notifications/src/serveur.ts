@@ -1,7 +1,7 @@
 // API du service de notifications : réservée aux services autorisés (jeton de service).
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import type { Journal } from '@mbolo/journal-securise';
+import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { IDENTIFIANTS_GABARITS, type Gabarit } from './gabarits.js';
 import type { VerifierAppelant } from './jeton.js';
 import type { CanalSimule, Destinataire, ServiceNotifications } from './notifications.js';
@@ -38,6 +38,7 @@ export async function creerServeur(o: {
 
   app.setErrorHandler((err, _req, reply) => {
     if ((err as { statusCode?: number }).statusCode === 429) {
+      signalerAlerte(o.journal, 'limite-appels', 'limite d’appels atteinte');
       return reply.code(429).send({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
     }
     if (err instanceof ErreurAuthentification) {
@@ -46,7 +47,7 @@ export async function creerServeur(o: {
     if ((err as { validation?: unknown }).validation) {
       return reply.code(400).send({ erreur: 'Requête invalide.' });
     }
-    o.journal.erreur('erreur interne des notifications', { err });
+    signalerAlerte(o.journal, 'erreur-serveur', 'erreur interne des notifications', { err });
     return reply.code(500).send({ erreur: 'Erreur interne.' });
   });
 

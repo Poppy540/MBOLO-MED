@@ -88,6 +88,12 @@ importers:
 
   platform/packages/journal-securise: {}
 
+  platform/packages/supervision:
+    dependencies:
+      '@mbolo/journal-securise':
+        specifier: workspace:*
+        version: link:../journal-securise
+
   platform/services/consultation:
     dependencies:
       '@fastify/rate-limit':
