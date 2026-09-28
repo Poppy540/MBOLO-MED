@@ -44,6 +44,8 @@ export interface ConsentementsProche {
 /** Envoi du code par SMS (service notifications, gabarit fermé). */
 export interface SmsInvitation {
   envoyer(o: { telephone: string; code: string; jours: number }): Promise<'envoyee' | 'echec'>;
+  /** Alerte au patient : son proche a créé son compte (numéro lu dans le dossier). */
+  alerterPatient(patientId: string): Promise<'envoyee' | 'echec'>;
 }
 
 export interface ParametresProches {
@@ -257,8 +259,18 @@ export class ServiceProches {
     }
   }
 
-  /** À l'inscription du proche : la fiche devient active avant que le code ne soit utilisé. */
+  /**
+   * À l'inscription du proche : la fiche devient active avant que le code ne soit utilisé, puis le
+   * patient est prévenu par SMS (décision du porteur de projet) ; un échec du SMS ne bloque pas
+   * l'inscription, l'information reste visible dans l'application.
+   */
   async activer(i: Invitation): Promise<void> {
-    if (i.type === 'proche' && i.relatedPersonId) await this.dossier.activer(i.relatedPersonId);
+    if (i.type !== 'proche' || !i.relatedPersonId) return;
+    await this.dossier.activer(i.relatedPersonId);
+    const patient = (await this.dossier.lire(i.relatedPersonId).catch(() => undefined))?.patient
+      .reference;
+    if (patient?.startsWith('Patient/')) {
+      await this.sms.alerterPatient(patient.slice('Patient/'.length)).catch(() => 'echec' as const);
+    }
   }
 }

@@ -231,7 +231,7 @@ describe('API des proches (ADR-0019)', () => {
         desactiver: async () => undefined,
       },
       { accorder: async () => undefined, retirer: async () => undefined },
-      { envoyer: async () => 'envoyee' },
+      { envoyer: async () => 'envoyee', alerterPatient: async () => 'envoyee' },
       { estActif: async () => true },
       { max: 3, validiteJours: 7, parJour: 5, env: 'dev' },
     );

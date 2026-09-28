@@ -45,6 +45,15 @@ export const CATALOGUE_INVITATION_PROCHE: Readonly<Record<string, string>> = {
   fr: 'Mbolo Santé : vous êtes invité à suivre un proche. Votre code : {code}, valable {jours} jours. Créez votre compte dans l’application.',
 };
 
+/**
+ * Alerte de sécurité au patient (ADR-0019, décision du porteur de projet) : la personne qu'il a
+ * invitée a créé son compte. Sans le prénom du proche ni aucune donnée de santé ; envoyée même sans
+ * consentement C-RAPPELS (information sur l'accès à son dossier, pas un rappel).
+ */
+export const CATALOGUE_ALERTE_PROCHE: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : votre proche invité a créé son compte. Si ce n’est pas vous qui l’avez invité, retirez-le dans l’application.',
+};
+
 /** Paramètres du pays déployé. */
 export interface Pays {
   /** Fuseau horaire IANA, ex. Africa/Libreville. */
@@ -65,7 +74,12 @@ export function verifierPays(p: Pays): void {
   } catch {
     throw new Error(`Fuseau ou langue invalide : ${p.fuseau}, ${p.langue}.`);
   }
-  if (!textes(p.langue) || !CATALOGUE_INVITATION_PROCHE[langueDe(p.langue)]) {
+  const langue = langueDe(p.langue);
+  if (
+    !textes(p.langue) ||
+    !CATALOGUE_INVITATION_PROCHE[langue] ||
+    !CATALOGUE_ALERTE_PROCHE[langue]
+  ) {
     throw new Error(`Aucun gabarit approuvé pour la langue ${p.langue}.`);
   }
 }
@@ -108,4 +122,10 @@ export function redigerInvitationProche(
     throw new Error('Variables invalides.');
   }
   return texte.replace('{code}', code).replace('{jours}', String(jours));
+}
+
+export function redigerAlerteProche(pays: Pays = PAYS_PAR_DEFAUT): string {
+  const texte = CATALOGUE_ALERTE_PROCHE[langueDe(pays.langue)];
+  if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
+  return texte;
 }

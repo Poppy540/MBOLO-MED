@@ -43,6 +43,7 @@ function monter(
     },
   };
   const retraits: string[] = [];
+  const alertes: string[] = [];
   const consentements: { jeton: string; beneficiaire: string }[] = [];
   const sms: { telephone: string; code: string; jours: number }[] = [];
   let maintenant = new Date('2026-10-01T08:00:00Z');
@@ -65,6 +66,10 @@ function monter(
         sms.push(m);
         return 'envoyee';
       },
+      alerterPatient: async (patientId) => {
+        alertes.push(patientId);
+        return 'envoyee';
+      },
     },
     { estActif: async (nom) => nom === 'consentement.proche' && o.ouvert !== false },
     { max: 3, validiteJours: 7, parJour: o.parJour ?? 20, env: 'dev' },
@@ -84,6 +89,7 @@ function monter(
     fiches,
     consentements,
     retraits,
+    alertes,
     sms,
     avancer: (jours: number) => {
       maintenant = new Date(maintenant.getTime() + jours * 86_400_000);
@@ -200,6 +206,8 @@ describe('inscription avec un code de proche', () => {
       relatedPersonId: 'rp-1',
     });
     expect(m.fiches.get('rp-1')?.active).toBe(true);
+    // Le patient est prévenu par SMS (alerte de sécurité).
+    expect(m.alertes).toEqual(['pat-fictif-001']);
     expect((await m.proches.lister(patient))[0]?.statut).toBe('utilise');
     // Usage unique.
     expect(await m.invitations.utiliser(r.code, 'u-autre', ['patient', 'proche'])).toBeUndefined();
