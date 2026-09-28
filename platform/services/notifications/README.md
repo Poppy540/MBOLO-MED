@@ -5,6 +5,8 @@ Prévient une personne par SMS ou WhatsApp (ADR-0012). **Canal simulé** tant qu
 ## Règles
 
 - **Gabarits fermés** (`src/gabarits.ts`) : un identifiant, un texte en français et une date et une heure au fuseau du Gabon.
+  - `rendez-vous-annule`, `rendez-vous-reporte` : l'autre participant d'une annulation ou d'un report ;
+  - `rendez-vous-confirme` (paiement reçu) et `reservation-expiree` (paiement non reçu à temps) : le patient, pour une réservation payante (ADR-0017). Ni montant, ni opérateur, ni numéro dans le texte.
   - Aucun texte libre : un champ inconnu est **refusé** (400), pas ignoré.
   - Aucune donnée de santé : ni motif, ni spécialité, ni nom du professionnel.
   - 160 caractères au plus, préfixe « Mbolo Santé : ».

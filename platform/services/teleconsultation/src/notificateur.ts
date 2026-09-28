@@ -2,7 +2,8 @@
 // Une notification ne bloque jamais l'action : un échec est journalisé, jamais renvoyé.
 import type { Journal } from '@mbolo/journal-securise';
 
-export type EvenementRendezVous = 'rendez-vous-annule' | 'rendez-vous-reporte';
+export type EvenementRendezVous =
+  'rendez-vous-annule' | 'rendez-vous-reporte' | 'rendez-vous-confirme' | 'reservation-expiree';
 
 export interface Notificateur {
   prevenir(destinataire: string, evenement: EvenementRendezVous, instant: string): Promise<void>;

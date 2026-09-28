@@ -378,13 +378,19 @@ export class ServiceTeleconsultation {
   /** Une réservation en attente : confirmée si payée, annulée si le délai est dépassé. */
   private async traiterEnAttente(r: RendezVous): Promise<RendezVous> {
     if (!this.paiement) return r;
-    if (await this.paiement.service.estPaye(r.id)) return this.depot.confirmer(r.id);
+    if (await this.paiement.service.estPaye(r.id)) {
+      const confirme = await this.depot.confirmer(r.id);
+      // Le patient garde une trace (s'il a accepté les rappels, C-RAPPELS) ; aucune donnée de santé.
+      await this.notificateur.prevenir(`Patient/${r.patientId}`, 'rendez-vous-confirme', r.debut);
+      return confirme;
+    }
     const fin = this.expireLe(r);
     if (fin && this.maintenant().getTime() > new Date(fin).getTime()) {
       const annule = await this.depot.annuler(r.id, 'plateforme', this.maintenant().toISOString());
       if (r.creneauId) await this.creneaux.liberer(r.creneauId).catch(() => undefined);
       // Une collecte validée après coup sera remboursée (validation humaine, service paiement).
       await this.paiement.service.annulation(r.id);
+      await this.notificateur.prevenir(`Patient/${r.patientId}`, 'reservation-expiree', r.debut);
       return annule;
     }
     return r;

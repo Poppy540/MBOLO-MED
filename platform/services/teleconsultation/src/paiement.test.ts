@@ -31,20 +31,25 @@ async function monter(o: { payant?: boolean; sansService?: boolean } = {}) {
   const creneaux = new DepotCreneauxMemoire();
   const paiements = new PaiementsMemoire();
   const etat = { heure: '2026-09-27T09:00:00Z' };
+  const sms: { destinataire: string; evenement: string }[] = [];
   const service = new ServiceTeleconsultation(
     depot,
     creneaux,
     salle,
     { estActif: async (nom) => nom !== 'paiement.mobile-money' || (o.payant ?? true) },
     () => new Date(etat.heure),
-    undefined,
+    {
+      prevenir: async (destinataire, evenement) => {
+        sms.push({ destinataire, evenement });
+      },
+    },
     undefined,
     new IdentitesMemoire(new Map([['pat-fictif-001', 'verifiee']])),
     o.sansService ? undefined : { service: paiements, delaiMinutes: 15 },
   );
   const [c] = await creneaux.publier('prac-fictif-001', [{ debut: DEBUT, dureeMinutes: 20 }]);
   if (!c) throw new Error('créneau non publié');
-  return { service, depot, creneaux, paiements, etat, c };
+  return { service, depot, creneaux, paiements, etat, c, sms };
 }
 
 describe('réservation payante (flag paiement.mobile-money)', () => {
@@ -73,6 +78,10 @@ describe('réservation payante (flag paiement.mobile-money)', () => {
     });
     m.paiements.payer(r.id);
     expect((await m.service.verifierPaiement(patient, r.id)).statut).toBe('prevu');
+    // Le patient est prévenu (s'il a accepté les rappels, vérifié par le service notifications).
+    expect(m.sms).toEqual([
+      { destinataire: 'Patient/pat-fictif-001', evenement: 'rendez-vous-confirme' },
+    ]);
     m.etat.heure = '2026-09-27T09:50:00Z';
     await expect(m.service.rejoindre(patient, r.id)).resolves.toMatchObject({
       salle: `rdv-${r.id}`,
@@ -89,6 +98,9 @@ describe('réservation payante (flag paiement.mobile-money)', () => {
     expect((await m.creneaux.lire(m.c.id))?.statut).toBe('libre');
     // Le paiement est prévenu : plus de collecte, remboursement préparé si payé après coup.
     expect(m.paiements.annules.has(r.id)).toBe(true);
+    expect(m.sms).toEqual([
+      { destinataire: 'Patient/pat-fictif-001', evenement: 'reservation-expiree' },
+    ]);
   });
 
   it('payé juste avant l’expiration : le passage périodique confirme au lieu d’annuler', async () => {

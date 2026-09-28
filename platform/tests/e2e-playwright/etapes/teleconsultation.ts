@@ -396,12 +396,14 @@ Given('la boîte des notifications simulées est relevée', async ({ monde }) =>
 Then(
   'le numéro {string} reçoit le message {string}',
   async ({ monde }, telephone: string, extrait: string) => {
-    const recus = (await boite()).filter(
-      (m) => m.telephone === telephone && m.date >= (monde.depuis ?? ''),
-    );
-    expect(recus.map((m) => m.texte).join('\n')).toContain(extrait);
+    const recus = async () =>
+      (await boite()).filter((m) => m.telephone === telephone && m.date >= (monde.depuis ?? ''));
+    // Un envoi fait par un traitement périodique (expiration d'une réservation) peut suivre de peu.
+    await expect
+      .poll(async () => (await recus()).map((m) => m.texte).join('\n'), { timeout: 5_000 })
+      .toContain(extrait);
     // Aucune donnée de santé ni nom du professionnel dans un SMS.
-    for (const m of recus) expect(m.texte).not.toMatch(/prac-|pat-|Dr|motif/i);
+    for (const m of await recus()) expect(m.texte).not.toMatch(/prac-|pat-|Dr|motif/i);
   },
 );
 
