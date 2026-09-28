@@ -9,6 +9,7 @@ import { DepotPostgres } from './depot.js';
 import { FournisseurSimule } from './fournisseur.js';
 import { creerVerificateurAppelant } from './jeton.js';
 import { LIMITES_PAR_DEFAUT, creerServeur } from './serveur.js';
+import { DepotRecusPostgres, ServiceRecus } from './recus.js';
 import { ServicePaiement } from './service.js';
 import { tarifsDepuis, type Tarifs } from './tarifs.js';
 
@@ -80,8 +81,27 @@ const drapeaux =
 
 const fournisseur = new FournisseurSimule(secretSignature);
 const audience = env['PAIEMENT_AUDIENCE'] ?? 'mbolo-paiement-api';
+const sql = connecter({ url: urlBase, application: 'paiement', production });
+const depot = new DepotPostgres(sql);
+// Reçus et avoirs (ADR-0020, flag facturation.recus) : série par pays, émetteur et mentions du
+// déploiement. Tant que le juriste et le comptable ne les ont pas validés : « sans valeur fiscale ».
+let recus: ServiceRecus;
+try {
+  recus = new ServiceRecus(new DepotRecusPostgres(sql), depot, drapeaux, {
+    pays: env['PAIEMENT_RECUS_PAYS'] ?? 'GA',
+    fuseau: env['PAIEMENT_RECUS_FUSEAU'] ?? 'Africa/Libreville',
+    emetteur: {
+      nom: env['PAIEMENT_RECUS_EMETTEUR'] ?? 'Mbolo Santé [FICTIF]',
+      mentions: env['PAIEMENT_RECUS_MENTIONS'] ?? 'Mentions légales à compléter (juriste).',
+    },
+    valeurFiscale: env['PAIEMENT_RECUS_VALEUR_FISCALE'] === 'true',
+  });
+} catch (e) {
+  journal.erreur('paramètres des reçus invalides', { err: e });
+  process.exit(1);
+}
 const service = new ServicePaiement(
-  new DepotPostgres(connecter({ url: urlBase, application: 'paiement', production })),
+  depot,
   fournisseur,
   tarifs,
   drapeaux,
@@ -93,6 +113,7 @@ const service = new ServicePaiement(
       montant: r.montant,
       devise: r.devise,
     }),
+  recus,
 );
 
 // Rapprochement avec le prestataire : collectes en attente relues, remboursements préparés pour les
@@ -105,7 +126,7 @@ setInterval(
     service
       .rapprocher()
       .then((bilan) => {
-        if (bilan.relues || bilan.prepares || bilan.effectues || bilan.erreurs) {
+        if (bilan.relues || bilan.prepares || bilan.effectues || bilan.recus || bilan.erreurs) {
           journal.info('rapprochement des paiements', { ...bilan });
         }
       })
@@ -128,6 +149,7 @@ const app = await creerServeur({
       .filter(Boolean),
   }),
   service,
+  recus,
   // Développement et e2e : le payeur simulé valide ou refuse (jamais en production, refusée plus haut).
   ...(env['PAIEMENT_SIMULATION'] === 'true' ? { simulation: fournisseur } : {}),
   journal,

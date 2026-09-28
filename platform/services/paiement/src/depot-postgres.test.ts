@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connecter, migrer, roleDe, type Sql } from '@mbolo/base-donnees';
 import { DepotPostgres, type Paiement } from './depot.js';
+import { DepotRecusPostgres } from './recus.js';
 
 const URL_MIGRATION = process.env['MBOLO_TEST_DATABASE_URL'];
 const URL_EXECUTION = process.env['MBOLO_TEST_DATABASE_URL_EXECUTION'];
@@ -136,5 +137,35 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des paiements
     await expect(execution`delete from paiement.remboursements where id = ${id}`).rejects.toThrow(
       /permission/,
     );
+  });
+
+  it('reçus : numérotation sans trou et un seul reçu par paiement, même en simultané (ADR-0020)', async () => {
+    const recus = new DepotRecusPostgres(execution);
+    // Série propre à cette exécution (pays fictif « ZZ », année tirée au hasard).
+    const serie = `ZZ-${String(1000 + Math.floor(Math.random() * 9000))}`;
+    const paiements = await Promise.all(Array.from({ length: 5 }, () => depot.creer(nouveau())));
+    const maintenant = new Date();
+    // Chaque paiement demandé trois fois en même temps : cinq reçus, jamais quinze.
+    const resultats = await Promise.all(
+      paiements.flatMap((p) =>
+        Array.from({ length: 3 }, () =>
+          recus.emettre(
+            { type: 'recu', paiementId: p.id, montant: 10_000, devise: 'XAF', emisLe: maintenant },
+            serie,
+          ),
+        ),
+      ),
+    );
+    expect(resultats.filter((r) => r.nouveau)).toHaveLength(5);
+    const numeros = [...new Set(resultats.map((r) => r.recu.numero))]
+      .map((n) => Number(n.slice(serie.length + 1)))
+      .sort((a, b) => a - b);
+    expect(numeros).toHaveLength(5);
+    // Suite continue : aucun numéro sauté (la série peut exister d'une exécution précédente).
+    expect(numeros.every((n, i) => i === 0 || n === (numeros[i - 1] ?? 0) + 1)).toBe(true);
+    // Le rôle d'exécution ne peut pas supprimer un reçu.
+    await expect(
+      execution`delete from paiement.recus where numero = ${resultats[0]?.recu.numero ?? ''}`,
+    ).rejects.toThrow();
   });
 });

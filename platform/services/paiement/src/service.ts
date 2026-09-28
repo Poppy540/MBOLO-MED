@@ -18,6 +18,7 @@ import type {
   StatutRemboursement,
 } from './depot.js';
 import { LIBELLE, type Fournisseur } from './fournisseur.js';
+import type { ServiceRecus } from './recus.js';
 import { normaliserNumero, type Tarifs, type TypeConsultation } from './tarifs.js';
 
 export type MotifErreur =
@@ -53,6 +54,8 @@ export interface BilanRapprochement {
   prepares: number;
   /** Remboursements validés puis exécutés. */
   effectues: number;
+  /** Reçus et avoirs manquants émis (ADR-0020). */
+  recus: number;
   /** Prestataire injoignable : repris au passage suivant. */
   erreurs: number;
 }
@@ -95,7 +98,17 @@ export class ServicePaiement {
     private readonly horloge: () => Date = () => new Date(),
     /** Prévient les valideurs qu'un remboursement attend leur décision (alerte). */
     private readonly surRemboursement: (r: Remboursement) => void = () => undefined,
+    /** Reçus et avoirs du patient (ADR-0020) ; absent : aucun reçu émis. */
+    private readonly recus?: Pick<ServiceRecus, 'emettre' | 'rattraper'>,
   ) {}
+
+  /**
+   * Reçu ou avoir : un échec ne bloque jamais le paiement ni le remboursement ; le rattrapage
+   * périodique émet ce qui manque.
+   */
+  private async emettreRecu(p: Paiement, type: 'recu' | 'avoir'): Promise<void> {
+    await this.recus?.emettre(p, type).catch(() => undefined);
+  }
 
   private async verifierActif(sujet: string): Promise<void> {
     const actif = await this.drapeaux.estActif('paiement.mobile-money', {
@@ -227,6 +240,7 @@ export class ServicePaiement {
       r === 'reussi' ? 'paye' : 'echoue',
       this.horloge(),
     );
+    if (conclu?.statut === 'paye') await this.emettreRecu(conclu, 'recu');
     // Conclu entre-temps par une autre requête : relire l'état enregistré.
     return conclu ?? (await this.depot.trouver(p.id)) ?? p;
   }
@@ -270,7 +284,13 @@ export class ServicePaiement {
    * prestataire ne bloque pas les autres : elle est reprise au passage suivant.
    */
   async rapprocher(): Promise<BilanRapprochement> {
-    const bilan: BilanRapprochement = { relues: 0, prepares: 0, effectues: 0, erreurs: 0 };
+    const bilan: BilanRapprochement = {
+      relues: 0,
+      prepares: 0,
+      effectues: 0,
+      recus: 0,
+      erreurs: 0,
+    };
     for (const p of await this.depot.enAttente()) {
       try {
         await this.rafraichir(p);
@@ -285,6 +305,13 @@ export class ServicePaiement {
     for (const r of await this.depot.remboursements('valide')) {
       try {
         if (await this.executer(r)) bilan.effectues += 1;
+      } catch {
+        bilan.erreurs += 1;
+      }
+    }
+    if (this.recus) {
+      try {
+        bilan.recus = await this.recus.rattraper();
       } catch {
         bilan.erreurs += 1;
       }
@@ -355,6 +382,8 @@ export class ServicePaiement {
       montant: r.montant,
       devise: r.devise,
     });
-    return Boolean(await this.depot.marquerEffectue(r.id, this.horloge()));
+    const effectue = await this.depot.marquerEffectue(r.id, this.horloge());
+    if (effectue) await this.emettreRecu(p, 'avoir');
+    return Boolean(effectue);
   }
 }

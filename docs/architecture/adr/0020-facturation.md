@@ -97,6 +97,10 @@ Derrière des flags désactivés par défaut : `facturation.recus`, `reversement
 - **Sécurité** : modèle de menaces (détournement des coordonnées de versement, reversement en double, faux remboursement) ; séparation des rôles préparation / validation.
 - **Registre des traitements** : T4 étendu (reçus, reversements, coordonnées de versement des professionnels, abonnements).
 
+## Suivi
+
+- **Reçus et avoirs** (PR BO, flag `facturation.recus`) : un reçu à chaque paiement confirmé, un avoir à chaque remboursement versé. Numérotation sans trou par pays et par année du pays, sous verrou. `GET /recus` réservé au patient lui-même. Sans ventilation, sans taxes ni mentions définitives (`valeurFiscale: false`) en attendant les réponses 1, 3, 5 et 11. Reste : l'écran « Mes reçus » de l'application patient.
+
 ## Questions
 
 **Pour le juriste**

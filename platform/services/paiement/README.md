@@ -44,6 +44,14 @@ Statuts : `a-payer` → `en-attente` → `paye` ou `echoue` (un paiement échou�
   - Qui a décidé et quand est conservé ; le journal trace la décision et le montant.
 - **Règles de remboursement** : décision du porteur de projet (ADR-0017). La plateforme prépare seulement le cas « payé mais rendez-vous annulé » ; le valideur décide selon ces règles.
 
+## Reçus et avoirs (ADR-0020, flag `facturation.recus`)
+
+- **Émission** : un **reçu** à chaque paiement confirmé, un **avoir** à chaque remboursement versé ; un seul de chaque par paiement (un nouvel essai rend celui qui existe). Un échec n'empêche jamais le paiement ni le remboursement : le rapprochement périodique émet ce qui manque.
+- **Numérotation** continue, **sans trou**, par pays et par année du pays (fuseau, pas UTC) : `GA-2026-000001` [FICTIF]. Le compteur et le reçu sont écrits dans la même transaction, sous verrou par paiement ; le rôle d'exécution ne peut rien supprimer.
+- **Contenu** : libellé neutre « Consultation Mbolo Santé » (ou « Remboursement — … »), montant, devise, date, référence opaque du rendez-vous, opérateur ; pour un avoir, le numéro du reçu annulé ; émetteur et mentions du déploiement. **Ni numéro de téléphone, ni donnée de santé, ni nom du professionnel.**
+- **Pas encore** : ventilation honoraires / frais de service, taxes, mentions légales définitives (questions du juriste et du comptable, ADR-0020). En attendant, chaque reçu porte `valeurFiscale: false`.
+- **Lecture** : `GET /recus` (patient lui-même, jamais un agent IA ni un professionnel) → `{ recus }` (`cache-control: no-store`) ; fonction fermée : 403 `desactive`.
+
 ## Fournisseur simulé
 
 - Il garde les tentatives en mémoire et ne conserve pas le numéro.
@@ -72,21 +80,23 @@ Le service `teleconsultation` crée le paiement à la réservation et demande «
 
 ## Configuration
 
-| Variable | Rôle |
-|---|---|
-| `KEYCLOAK_ISSUER`, `PAIEMENT_AUDIENCE` (défaut `mbolo-paiement-api`) | Vérification des jetons (patients et services) |
-| `PAIEMENT_CLIENTS_AUTORISES` (défaut `mbolo-teleconsultation-service`) | Services qui peuvent créer un paiement et lire son statut |
-| `PAIEMENT_DATABASE_URL`, `PAIEMENT_MIGRATION_DATABASE_URL` | Base (coffre-fort) |
-| `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET` | Signature des notifications, 32 caractères au moins (coffre-fort) |
-| `PAIEMENT_DEVISE` | Devise ISO 4217 du pays, ex. `XAF` |
-| `PAIEMENT_PRIX` | Grille JSON, ex. `{"generaliste":10000,"specialiste":15000}` [FICTIF : le tableur du business plan fait foi] |
-| `PAIEMENT_OPERATEURS` | Opérateurs proposés, ex. `airtel,moov` |
-| `PAIEMENT_INDICATIF` | Indicatif du pays sans « + », ex. `241` |
-| `PAIEMENT_LIMITE_PAR_MINUTE` (défaut `300`), `PAIEMENT_COLLECTE_PAR_MINUTE` (défaut `5`) | Limites d'appels par adresse |
-| `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flags ; sans eux, tout est désactivé |
-| `PAIEMENT_TRUST_PROXY` (défaut `false`), `PORT` (défaut `3008`) | Réseau |
-| `PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS` (défaut `900000`) | Fréquence du rapprochement avec le prestataire |
-| `PAIEMENT_SIMULATION` (défaut absent) | `true` : route de simulation du payeur (développement et e2e seulement) |
+| Variable                                                                                               | Rôle                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `KEYCLOAK_ISSUER`, `PAIEMENT_AUDIENCE` (défaut `mbolo-paiement-api`)                                   | Vérification des jetons (patients et services)                                                                            |
+| `PAIEMENT_CLIENTS_AUTORISES` (défaut `mbolo-teleconsultation-service`)                                 | Services qui peuvent créer un paiement et lire son statut                                                                 |
+| `PAIEMENT_DATABASE_URL`, `PAIEMENT_MIGRATION_DATABASE_URL`                                             | Base (coffre-fort)                                                                                                        |
+| `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET`                                                                  | Signature des notifications, 32 caractères au moins (coffre-fort)                                                         |
+| `PAIEMENT_DEVISE`                                                                                      | Devise ISO 4217 du pays, ex. `XAF`                                                                                        |
+| `PAIEMENT_PRIX`                                                                                        | Grille JSON, ex. `{"generaliste":10000,"specialiste":15000}` [FICTIF : le tableur du business plan fait foi]              |
+| `PAIEMENT_OPERATEURS`                                                                                  | Opérateurs proposés, ex. `airtel,moov`                                                                                    |
+| `PAIEMENT_INDICATIF`                                                                                   | Indicatif du pays sans « + », ex. `241`                                                                                   |
+| `PAIEMENT_LIMITE_PAR_MINUTE` (défaut `300`), `PAIEMENT_COLLECTE_PAR_MINUTE` (défaut `5`)               | Limites d'appels par adresse                                                                                              |
+| `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN`                                                             | Flags ; sans eux, tout est désactivé                                                                                      |
+| `PAIEMENT_TRUST_PROXY` (défaut `false`), `PORT` (défaut `3008`)                                        | Réseau                                                                                                                    |
+| `PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS` (défaut `900000`)                                               | Fréquence du rapprochement avec le prestataire                                                                            |
+| `PAIEMENT_RECUS_PAYS` (défaut `GA`), `PAIEMENT_RECUS_FUSEAU` (défaut `Africa/Libreville`)              | Série des reçus : code pays et année du pays                                                                              |
+| `PAIEMENT_RECUS_EMETTEUR`, `PAIEMENT_RECUS_MENTIONS`, `PAIEMENT_RECUS_VALEUR_FISCALE` (défaut `false`) | Émetteur et mentions des reçus, validés par le juriste ; `true` seulement après validation par le juriste et le comptable |
+| `PAIEMENT_SIMULATION` (défaut absent)                                                                  | `true` : route de simulation du payeur (développement et e2e seulement)                                                   |
 
 ## Tests
 
