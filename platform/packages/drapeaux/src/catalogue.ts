@@ -36,10 +36,11 @@ export const CATALOGUE = {
     branche: true,
   },
   'paiement.mobile-money': {
-    description: 'Paiement des consultations par mobile money (Airtel Money, Moov Money).',
+    description:
+      'Paiement des consultations par mobile money (Airtel Money, Moov Money), ADR-0017.',
     vague: 1,
     dependances: [],
-    branche: false,
+    branche: true,
   },
   'agent01.accueil': {
     description: 'Agent 1 : accueil, recueil des symptômes et orientation (jamais de diagnostic).',

@@ -18,7 +18,7 @@
 | `services/invitations` | Prototype (ADR-0013) : codes d'invitation à usage unique créés par le rôle `gestion-invitations`, empreinte HMAC (jamais le code en clair), quota par cohorte, vérification limitée ; PostgreSQL — voir son README | 1 |
 | `services/documents` | Prototype (ADR-0015) : stockage chiffré des documents (enveloppe AES-256-GCM, S3 compatible, métadonnées sans image, suppression à échéance par destruction de clé) ; dépôt des photos d'identité par le patient après acceptation de la charte `C-IDENTITE` (flag `identite.photos`), vérification par le rôle `verification-identite` (consultations tracées dans le dossier, décision) — voir son README | 1 |
 | `services/ordonnances` | Ordonnances signées, vérification, transmission | 2 |
-| `services/paiement` | Mobile money, carte (diaspora), statuts | 1 |
+| `services/paiement` | Prototype (ADR-0017) : grille de prix par pays, collecte mobile money par une interface `Fournisseur` (fournisseur simulé, refusé en production), confirmation relue chez le prestataire, notifications signées, aucun numéro ni donnée de santé conservés ; flag `paiement.mobile-money` ; PostgreSQL — voir son README | 1 |
 | `services/notifications` | Prototype (ADR-0012) : gabarits fermés sans donnée de santé, consentement C-RAPPELS, numéro lu dans le dossier, canal simulé en attendant le fournisseur — voir son README | 1 |
 | `services/feature-flags` | Unleash local (`docker-compose.yml`, flags fictifs) ; activation par ville, spécialité, type d'utilisateur (ADR-0003, ADR-0007) | 0 |
 | `packages/drapeaux` | Feature flags via OpenFeature + Unleash : catalogue désactivé par défaut, dépendances, refus en cas d'erreur — registre `docs/deploiement/flags.md` | 0 |
