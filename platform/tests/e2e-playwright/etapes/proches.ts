@@ -352,3 +352,85 @@ Then('la fiche du proche est inactive et le partage retiré', async ({ monde }) 
   const cible = `RelatedPerson/${monde.proche?.relatedPersonId ?? 'absente'}`;
   expect((await partagesProches()).filter((c) => beneficiaire(c) === cible)).toHaveLength(0);
 });
+
+// ── Dans l'application patient (« Mes partages et accès ») ───────────────────
+
+const application = (monde: Monde): Page => {
+  const p = monde.visio.get('application patient')?.page;
+  if (!p) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
+  return p;
+};
+
+When(
+  'le patient invite son proche {string}, son {word}, au numéro {string} dans l’application',
+  async ({ monde }, prenom: string, lien: string, telephone: string) => {
+    const p = application(monde);
+    await p.getByRole('button', { name: 'Inviter un proche' }).click();
+    await p.locator('#prenom-proche').fill(prenom);
+    await p.locator('#lien-proche').selectOption(LIENS[lien] ?? lien);
+    await p.locator('#telephone-proche').fill(telephone);
+    // Le texte de partage nomme le proche et dit ce qu'il verra.
+    await expect(p.getByText(`J’accepte que ${prenom} voie mes ordonnances`)).toBeVisible();
+    await p.getByRole('button', { name: 'J’accepte et j’envoie le code' }).click();
+    monde.proche = { id: '', code: '', relatedPersonId: '', prenom };
+  },
+);
+
+Then(
+  'l’application confirme l’envoi du code par SMS et le montre en secours',
+  async ({ monde }) => {
+    const p = application(monde);
+    const encart = p.locator('[data-code]');
+    await expect(encart).toContainText(`Code envoyé par SMS à ${monde.proche?.prenom ?? ''}.`);
+    const code = (await encart.getAttribute('data-code')) ?? '';
+    expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    await expect(encart).toContainText(code);
+    // L'invitation créée : identifiant et fiche, pour les vérifications dans le dossier.
+    await appeler(monde, 'GET', '/proches', monde.jetons.get('patient-fictif-01'));
+    const proches = (monde.reponse?.corps['proches'] ?? []) as {
+      id: string;
+      relatedPersonId: string;
+      statut: string;
+    }[];
+    const [enCours] = proches.filter((x) => x.statut === 'valide');
+    expect(enCours).toBeDefined();
+    monde.proche = {
+      id: enCours?.id ?? '',
+      code,
+      relatedPersonId: enCours?.relatedPersonId ?? '',
+      prenom: monde.proche?.prenom ?? '',
+    };
+  },
+);
+
+Then(
+  'l’application liste {string} avec une invitation en cours, et le partage à son nom',
+  async ({ monde }, prenom: string) => {
+    const p = application(monde);
+    const proche = p.locator(`li[data-proche="${monde.proche?.id ?? 'absent'}"]`);
+    await expect(proche).toHaveAttribute('data-statut', 'valide');
+    await expect(proche).toContainText(prenom);
+    await expect(proche).toContainText('Invitation envoyée');
+    await expect(
+      p.locator(`li[data-partage="RelatedPerson/${monde.proche?.relatedPersonId ?? 'absente'}"]`),
+    ).toContainText(`${prenom} (votre proche)`);
+  },
+);
+
+When('le patient retire ce proche dans l’application', async ({ monde }) => {
+  const p = application(monde);
+  const proche = p.locator(`li[data-proche="${monde.proche?.id ?? 'absent'}"]`);
+  await proche.getByRole('button', { name: 'Retirer ce proche' }).click();
+  await expect(proche).toHaveCount(0);
+});
+
+Then(
+  'l’application demande un numéro au format international et n’invite personne',
+  async ({ monde }) => {
+    const p = application(monde);
+    await expect(p.getByRole('alert')).toContainText('Numéro au format international');
+    await appeler(monde, 'GET', '/proches', monde.jetons.get('patient-fictif-01'));
+    const proches = (monde.reponse?.corps['proches'] ?? []) as { statut: string }[];
+    expect(proches.filter((x) => x.statut === 'valide')).toHaveLength(0);
+  },
+);

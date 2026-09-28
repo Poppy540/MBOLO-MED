@@ -42,7 +42,8 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - « Qui peut lire mon dossier » : partages en cours (médecin nommé, ou « Votre proche »), chacun avec **« Retirer ce partage »** (révocation immédiate, conservée dans le dossier) ;
    - « Partager mon dossier avec … » pour le médecin de chaque rendez-vous : le patient lit le texte (qui nomme le médecin et rappelle que l'accord se retire à tout moment), puis **« J'accepte »** ou **« Non, pas maintenant »** ; jamais pré-coché ni groupé (consentement `C-PARTAGE-PRO`, texte **brouillon** `c-partage-pro-v0.1-brouillon`, à valider par le juriste) ;
    - « Qui a demandé à lire mon dossier » : les 20 dernières demandes, en mots simples (vous-même, un professionnel de santé, votre proche…), accordées ou refusées, avec les accès en urgence et leur justification ;
-   - pas de flag : le consentement et la transparence ne sont jamais derrière un flag.
+   - pas de flag : le consentement et la transparence ne sont jamais derrière un flag ;
+   - **Mes proches** (ADR-0019, section visible seulement si le flag `consentement.proche` est ouvert pour le patient) : la liste des proches (prénom, lien, « Invitation envoyée, valable jusqu'au … » ou « A créé son compte »), **« Retirer ce proche »** (le proche perd l'accès, la place est libérée), et **« Inviter un proche »** (3 au plus) : prénom, lien (liste fermée), numéro **au format international** (vérifié avant l'envoi), texte de partage `C-PROCHE` qui nomme le proche et dit ce qu'il verra (**brouillon** `c-proche-v0.1-brouillon`, à valider par le juriste), puis « J'accepte et j'envoie le code ». Le code part par SMS et s'affiche aussi, **en secours**. Le numéro est effacé du formulaire et n'est gardé nulle part ; un partage avec un proche porte son prénom.
 
 Les erreurs sont affichées en phrases simples, sans jargon.
 
