@@ -18,6 +18,7 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 |---|---|
 | `identite/connexion-keycloak.feature` | Connexion réelle par la page Keycloak avec PKCE S256 ; refus sans PKCE ; connexion directe par mot de passe désactivée ; un patient ne peut pas modifier lui-même son `patient_id` (profil utilisateur intégré au royaume) ; le jeton ne contient ni e-mail ni nom |
 | `dossier/passerelle.feature` | Le dossier n'est ouvert qu'avec un jeton de service : 401 sans jeton ou avec le jeton d'un patient ; le service `identite` lit les consentements, mais pas les autres ressources (403), ne peut pas élargir une recherche (`_include`) ni supprimer |
+| `paiement/reservation-payante.feature` | Réservation payante (`patient-fictif-04`, flag `paiement.mobile-money`) : créneau retenu, salle fermée avant paiement, paiement validé puis rendez-vous confirmé dans le dossier ; paiement refusé puis nouvel essai ; délai dépassé : annulé par la plateforme, créneau libéré ; un autre patient ne peut pas payer (404) ; hors cohorte, réservation confirmée sans paiement |
 | `teleconsultation/visio.feature` | Le patient et le médecin du rendez-vous rejoignent une vraie salle LiveKit depuis deux navigateurs (micro simulé) et s'entendent ; personne d'autre n'entre ; fonction refusée hors cohorte ; 401 sans jeton |
 | `identite/revue-bris-de-glace.feature` | Un bris de glace apparaît dans la liste à revoir du relecteur (`relecteur-fictif-01`, rôle `revue-acces`), puis en sort une fois revu ; un médecin ne peut pas consulter cette liste ; le relecteur n'a aucun accès au dossier |
 | `identite/double-authentification.feature` | Code à usage unique exigé pour infirmier, médecin et pharmacien (configuration imposée à la première connexion) ; aucun code pour un patient. Les codes TOTP sont calculés par `etapes/totp.ts`, avec un secret gardé en mémoire |
@@ -39,6 +40,8 @@ pnpm build
 LIVEKIT_KEYS="<clé>: <secret>" livekit-server --config platform/services/teleconsultation/livekit/config-local.yaml &
 KC_BOOTSTRAP_ADMIN_PASSWORD=… <PREFIXE>_SERVICE_CLE_PRIVEE=… UNLEASH_ADMIN_TOKEN=… UNLEASH_BACKEND_TOKEN=… WEBRTC_API_KEY=<clé> WEBRTC_API_SECRET=<secret> pnpm e2e
 ```
+
+Paiement (ADR-0017) : `PAIEMENT_DATABASE_URL` (rôle `mbolo_paiement`), `PAIEMENT_MIGRATION_DATABASE_URL` et `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET` (valeur aléatoire locale, 32 caractères au moins).
 
 Variables facultatives : `KEYCLOAK_URL` (défaut `http://127.0.0.1:8081`), `FHIR_AMONT_URL` (HAPI, défaut `http://127.0.0.1:8080/fhir`), `PASSERELLE_URL` (défaut `http://127.0.0.1:3002`) et `IDENTITE_URL` (défaut `http://127.0.0.1:3001`).
 

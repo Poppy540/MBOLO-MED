@@ -55,8 +55,11 @@ export type TypeIdentifiantPatient = (typeof TYPES_IDENTIFIANT_PATIENT)[number];
 export const STATUTS_IDENTITE = ['a-verifier', 'verifiee', 'refusee'] as const;
 export type StatutIdentite = (typeof STATUTS_IDENTITE)[number];
 
-/** Qui peut annuler un rendez-vous (code, jamais de motif en texte libre). */
-export const AUTEURS_ANNULATION = ['patient', 'professionnel'] as const;
+/**
+ * Qui a annulé un rendez-vous (code, jamais de motif en texte libre). « plateforme » : paiement non
+ * confirmé dans le délai de réservation (ADR-0017), jamais une décision médicale.
+ */
+export const AUTEURS_ANNULATION = ['patient', 'professionnel', 'plateforme'] as const;
 export type AuteurAnnulation = (typeof AUTEURS_ANNULATION)[number];
 
 export const CATEGORIES_CONSENTEMENT = [

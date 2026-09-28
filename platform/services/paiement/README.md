@@ -34,9 +34,16 @@ Statuts : `a-payer` → `en-attente` → `paye` ou `echoue` (un paiement échou�
 - `conclure(tentative, 'reussi' | 'echoue')` joue le payeur qui valide ou refuse sur son téléphone, et renvoie la notification signée correspondante.
 - Signature : en-tête `x-signature: t=<secondes>,v1=<HMAC-SHA256 hex de "t.corps">`, clé `MOBILE_MONEY_WEBHOOK_SIGNING_SECRET`. Le vrai prestataire aura son propre format, derrière la même interface.
 
+## Simulation du payeur (développement et e2e)
+
+Avec `PAIEMENT_SIMULATION=true` (jamais en production : le service refuse d'y démarrer), `POST /simulation/paiements/:id/conclusion` `{ resultat: "reussi" | "echoue" }` joue le payeur qui valide ou refuse sur son téléphone. La conclusion passe par le même chemin qu'un vrai prestataire : notification signée, puis statut relu. Sans la variable, la route n'existe pas.
+
+## Branchement au rendez-vous
+
+Le service `teleconsultation` crée le paiement à la réservation et demande « payé ou non » (voir son README). Scénarios de bout en bout : `platform/tests/features-gherkin/paiement/reservation-payante.feature`.
+
 ## Pas encore fait (PR suivantes, ADR-0017)
 
-- Branchement au rendez-vous : créneau retenu 15 minutes, confirmation après paiement, libération en cas d'échec ; e2e.
 - Écran de paiement dans l'application patient.
 - Rapprochement quotidien avec le prestataire. Il rattrape les notifications perdues et une tentative ancienne confirmée après un nouvel essai.
 - Remboursement validé par un humain (rôle à créer).
@@ -63,6 +70,7 @@ Statuts : `a-payer` → `en-attente` → `paye` ou `echoue` (un paiement échou�
 | `PAIEMENT_LIMITE_PAR_MINUTE` (défaut `300`), `PAIEMENT_COLLECTE_PAR_MINUTE` (défaut `5`) | Limites d'appels par adresse |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flags ; sans eux, tout est désactivé |
 | `PAIEMENT_TRUST_PROXY` (défaut `false`), `PORT` (défaut `3008`) | Réseau |
+| `PAIEMENT_SIMULATION` (défaut absent) | `true` : route de simulation du payeur (développement et e2e seulement) |
 
 ## Tests
 

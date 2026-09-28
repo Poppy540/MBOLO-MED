@@ -78,6 +78,7 @@ Description: "Qui a annulé le rendez-vous. Jamais de motif en texte libre (mini
 * ^experimental = true
 * #patient "Annulé par le patient" "Le patient a annulé le rendez-vous."
 * #professionnel "Annulé par le professionnel" "Le professionnel de santé a annulé le rendez-vous."
+* #plateforme "Annulé par la plateforme" "Paiement non confirmé dans le délai de réservation (ADR-0017) ; jamais une décision médicale."
 
 ValueSet: MboloAnnulationVS
 Id: mbolo-annulation

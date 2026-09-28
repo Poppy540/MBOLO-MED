@@ -266,6 +266,10 @@ export interface OptionsRendezVous {
   dureeMinutes: number;
   /** Créneau réservé (Slot) dont découle le rendez-vous. */
   creneauId?: string;
+  /** Réservation à confirmer par un paiement (ADR-0017) : statut « pending » jusqu'au paiement. */
+  enAttentePaiement?: boolean;
+  /** Date de la réservation (ISO 8601), point de départ du délai de paiement. */
+  cree?: string;
   env: Environnement;
 }
 
@@ -278,7 +282,8 @@ export function rendezVousVideo(o: OptionsRendezVous): Appointment {
   return {
     resourceType: 'Appointment',
     meta: meta(PROFILS.rendezVous, o.env),
-    status: 'booked',
+    status: o.enAttentePaiement ? 'pending' : 'booked',
+    ...(o.cree ? { created: new Date(o.cree).toISOString() } : {}),
     ...(o.creneauId ? { slot: [{ reference: `Slot/${o.creneauId}` }] } : {}),
     serviceType: [{ coding: [{ system: SYSTEMES.modeConsultation, code: 'video' }] }],
     start: debut.toISOString(),
@@ -300,7 +305,10 @@ export function annulerRendezVous(
   par: AuteurAnnulation,
   date: string,
 ): Appointment {
-  const prefixe = par === 'patient' ? 'Patient/' : 'Practitioner/';
+  // La plateforme n'est pas un participant : aucun participant ne décline.
+  const prefixe = { patient: 'Patient/', professionnel: 'Practitioner/', plateforme: undefined }[
+    par
+  ];
   return {
     ...a,
     extension: [
@@ -310,9 +318,14 @@ export function annulerRendezVous(
     status: 'cancelled',
     cancelationReason: { coding: [{ system: SYSTEMES.annulation, code: par }] },
     participant: a.participant.map((p) =>
-      p.actor?.reference?.startsWith(prefixe) ? { ...p, status: 'declined' } : p,
+      prefixe && p.actor?.reference?.startsWith(prefixe) ? { ...p, status: 'declined' } : p,
     ),
   };
+}
+
+/** Paiement confirmé (ADR-0017) : le rendez-vous en attente devient « booked », la salle s'ouvrira. */
+export function confirmerRendezVous(a: Appointment): Appointment {
+  return { ...a, status: 'booked' };
 }
 
 /**

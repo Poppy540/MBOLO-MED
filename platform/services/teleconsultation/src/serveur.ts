@@ -166,6 +166,24 @@ export async function creerServeur(o: {
     },
   );
 
+  // Où en est le paiement d'une réservation (ADR-0017) : confirmée si payée, annulée après le délai.
+  app.post<{ Params: { id: string } }>(
+    '/rendez-vous/:id/paiement',
+    {
+      schema: { params: { type: 'object', properties: { id: ID }, required: ['id'] } },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const r = await o.service.verifierPaiement(u, req.params.id);
+      o.journal.info('paiement de la réservation vérifié', {
+        sujet: u.sujet,
+        rendezVousId: r.id,
+        statut: r.statut,
+      });
+      return r;
+    },
+  );
+
   app.post<{ Params: { id: string } }>(
     '/rendez-vous/:id/annulation',
     {

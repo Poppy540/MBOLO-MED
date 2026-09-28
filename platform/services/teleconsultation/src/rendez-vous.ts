@@ -10,6 +10,7 @@ import { IdentitesMemoire, type Identites } from './identites.js';
 import { AnnuaireMemoire, type Annuaire, type Fiche } from './annuaire.js';
 import { aucunNotificateur, type Notificateur } from './notificateur.js';
 import { ErreurCreneau, type Creneau, type DepotCreneaux, type Plage } from './creneaux.js';
+import type { InfoPaiement, Paiements } from './paiements.js';
 
 export interface RendezVous {
   id: string;
@@ -18,7 +19,10 @@ export interface RendezVous {
   /** Date et heure de début (ISO 8601). */
   debut: string;
   dureeMinutes: number;
-  statut: 'prevu' | 'annule';
+  /** « a-payer » : réservation retenue en attendant le paiement (ADR-0017), salle fermée. */
+  statut: 'prevu' | 'a-payer' | 'annule';
+  /** Date de la réservation (ISO 8601) : point de départ du délai de paiement. */
+  creeLe?: string;
   /** Créneau réservé dont découle le rendez-vous. */
   creneauId?: string;
   /** Qui a annulé et quand (jamais de motif). */
@@ -32,6 +36,10 @@ export interface DepotRendezVous {
   pourPraticien(praticienId: string): Promise<RendezVous[]>;
   /** Annule en conservant le rendez-vous ; refusé (409) s'il a changé entre-temps. */
   annuler(id: string, par: AuteurAnnulation, date: string): Promise<RendezVous>;
+  /** Paiement confirmé : « a-payer » devient « prevu » ; refusé (409) s'il a changé entre-temps. */
+  confirmer(id: string): Promise<RendezVous>;
+  /** Rendez-vous en attente de paiement (pour l'expiration des réservations non payées). */
+  enAttentePaiement(): Promise<RendezVous[]>;
   /** Change la plage et le créneau ; refusé (409) si le rendez-vous a changé entre-temps. */
   reporter(
     id: string,
@@ -64,6 +72,18 @@ export class DepotRendezVousMemoire implements DepotRendezVous {
     this.donnees.set(id, annule);
     return annule;
   }
+  async confirmer(id: string): Promise<RendezVous> {
+    const r = this.donnees.get(id);
+    if (!r || r.statut !== 'a-payer') {
+      throw new ErreurTeleconsultation('Rendez-vous non confirmable.', 409);
+    }
+    const confirme: RendezVous = { ...r, statut: 'prevu' };
+    this.donnees.set(id, confirme);
+    return confirme;
+  }
+  async enAttentePaiement(): Promise<RendezVous[]> {
+    return [...this.donnees.values()].filter((r) => r.statut === 'a-payer');
+  }
   async reporter(
     id: string,
     c: Pick<Creneau, 'debut' | 'dureeMinutes'> & { creneauId: string },
@@ -92,7 +112,7 @@ export interface FournisseurSalle {
 export class ErreurTeleconsultation extends Error {
   constructor(
     message: string,
-    readonly statut: 403 | 404 | 409,
+    readonly statut: 403 | 404 | 409 | 503,
   ) {
     super(message);
     this.name = 'ErreurTeleconsultation';
@@ -106,6 +126,17 @@ const APRES_MS = 30 * 60_000;
 const HORIZON_MS = 14 * 24 * 3_600_000;
 /** Au plus 16 créneaux publiés à la fois. */
 export const CRENEAUX_MAX = 16;
+
+/** Réponse à une réservation payante : le paiement à régler et la fin du délai. */
+export type Reservation = RendezVous & { paiement?: InfoPaiement; expireLe?: string };
+
+/** Bilan d'un passage d'expiration des réservations non payées. */
+export interface BilanExpiration {
+  confirmes: number;
+  annules: number;
+  /** Paiement injoignable : rien n'est annulé sur une incertitude, repris au passage suivant. */
+  reportes: number;
+}
 
 export interface AccesSalle {
   url: string;
@@ -124,7 +155,17 @@ export class ServiceTeleconsultation {
     private readonly annuaire: Annuaire = new AnnuaireMemoire(),
     /** Par défaut, aucune identité n'est connue : aucune réservation (sécurité d'abord). */
     private readonly identites: Identites = new IdentitesMemoire(),
+    /** Paiement des réservations (ADR-0017), si le flag paiement.mobile-money est actif. */
+    private readonly paiement?: { service: Paiements; delaiMinutes: number },
   ) {}
+
+  /** Fin du délai de paiement d'une réservation en attente. */
+  private expireLe(r: RendezVous): string | undefined {
+    if (!this.paiement || !r.creeLe) return undefined;
+    return new Date(
+      new Date(r.creeLe).getTime() + this.paiement.delaiMinutes * 60_000,
+    ).toISOString();
+  }
 
   /** Statut de vérification de l'identité du patient connecté (affichage dans l'application). */
   async statutIdentite(u: Utilisateur): Promise<StatutIdentite | 'inconnu'> {
@@ -249,8 +290,12 @@ export class ServiceTeleconsultation {
     return tous.filter((c) => c.statut === 'libre').sort((x, y) => x.debut.localeCompare(y.debut));
   }
 
-  /** Le patient réserve un créneau libre : le créneau est bloqué, puis le rendez-vous créé. */
-  async demander(u: Utilisateur, d: { creneauId: string }): Promise<RendezVous> {
+  /**
+   * Le patient réserve un créneau libre : le créneau est bloqué, puis le rendez-vous créé.
+   * Si le paiement est actif pour lui (flag paiement.mobile-money), le rendez-vous reste « à payer »
+   * et le créneau retenu pendant le délai de paiement ; le paiement est créé par le service dédié.
+   */
+  async demander(u: Utilisateur, d: { creneauId: string }): Promise<Reservation> {
     if (!u.roles.includes('patient') || !u.patientId) {
       throw new ErreurTeleconsultation('Accès refusé.', 403);
     }
@@ -261,6 +306,14 @@ export class ServiceTeleconsultation {
     if (c.statut !== 'libre' || new Date(c.debut).getTime() <= this.maintenant().getTime()) {
       throw new ErreurTeleconsultation('Créneau non disponible.', 409);
     }
+    const payant = await this.drapeaux.estActif('paiement.mobile-money', {
+      sujet: u.sujet,
+      typeUtilisateur: 'patient',
+    });
+    if (payant && !this.paiement) {
+      // Flag ouvert sans service de paiement : jamais de consultation « gratuite par erreur ».
+      throw new ErreurTeleconsultation('Paiement momentanément indisponible.', 503);
+    }
     // Verrou : deux patients ne peuvent pas réserver le même créneau.
     try {
       await this.creneaux.reserver(c.id);
@@ -268,13 +321,15 @@ export class ServiceTeleconsultation {
       if (e instanceof ErreurCreneau) throw new ErreurTeleconsultation(e.message, e.statut);
       throw e;
     }
+    let r: RendezVous;
     try {
-      return await this.depot.ajouter({
+      r = await this.depot.ajouter({
         patientId: u.patientId,
         praticienId: c.praticienId,
         debut: c.debut,
         dureeMinutes: c.dureeMinutes,
-        statut: 'prevu',
+        statut: payant ? 'a-payer' : 'prevu',
+        ...(payant ? { creeLe: this.maintenant().toISOString() } : {}),
         creneauId: c.id,
       });
     } catch (e) {
@@ -282,6 +337,69 @@ export class ServiceTeleconsultation {
       await this.creneaux.liberer(c.id).catch(() => undefined);
       throw e;
     }
+    if (!payant || !this.paiement) return r;
+    try {
+      // Médecine générale en vague 1 ; le montant vient de la grille du pays, côté paiement.
+      const paiement = await this.paiement.service.creer({
+        reference: r.id,
+        sujet: u.sujet,
+        type: 'generaliste',
+      });
+      const expireLe = this.expireLe(r);
+      return { ...r, paiement, ...(expireLe ? { expireLe } : {}) };
+    } catch (e) {
+      // Paiement impossible à préparer : la réservation est retirée, le créneau rendu.
+      await this.depot
+        .annuler(r.id, 'plateforme', this.maintenant().toISOString())
+        .catch(() => undefined);
+      await this.creneaux.liberer(c.id).catch(() => undefined);
+      throw e;
+    }
+  }
+
+  /**
+   * Le patient (ou son application) demande où en est le paiement de sa réservation : confirmée si
+   * le service de paiement dit « payé », annulée si le délai est dépassé sans paiement.
+   */
+  async verifierPaiement(u: Utilisateur, rendezVousId: string): Promise<Reservation> {
+    const { r, estPraticien } = await this.participant(u, rendezVousId);
+    if (estPraticien || r.statut !== 'a-payer' || !this.paiement) return r;
+    const suite = await this.traiterEnAttente(r);
+    const expireLe = suite.statut === 'a-payer' ? this.expireLe(suite) : undefined;
+    return { ...suite, ...(expireLe ? { expireLe } : {}) };
+  }
+
+  /** Une réservation en attente : confirmée si payée, annulée si le délai est dépassé. */
+  private async traiterEnAttente(r: RendezVous): Promise<RendezVous> {
+    if (!this.paiement) return r;
+    if (await this.paiement.service.estPaye(r.id)) return this.depot.confirmer(r.id);
+    const fin = this.expireLe(r);
+    if (fin && this.maintenant().getTime() > new Date(fin).getTime()) {
+      const annule = await this.depot.annuler(r.id, 'plateforme', this.maintenant().toISOString());
+      if (r.creneauId) await this.creneaux.liberer(r.creneauId).catch(() => undefined);
+      return annule;
+    }
+    return r;
+  }
+
+  /**
+   * Passage périodique : chaque réservation en attente est confirmée si elle est payée, annulée par
+   * la plateforme si le délai est dépassé (le créneau redevient libre). Si le paiement ne répond pas,
+   * rien n'est annulé : la réservation est reprise au passage suivant.
+   */
+  async expirerPaiements(): Promise<BilanExpiration> {
+    const bilan: BilanExpiration = { confirmes: 0, annules: 0, reportes: 0 };
+    if (!this.paiement) return bilan;
+    for (const r of await this.depot.enAttentePaiement()) {
+      try {
+        const suite = await this.traiterEnAttente(r);
+        if (suite.statut === 'prevu') bilan.confirmes += 1;
+        else if (suite.statut === 'annule') bilan.annules += 1;
+      } catch {
+        bilan.reportes += 1;
+      }
+    }
+    return bilan;
   }
 
   /**
@@ -297,6 +415,9 @@ export class ServiceTeleconsultation {
     const { r, estPraticien } = await this.participant(u, rendezVousId);
     await this.exigerFonction(u);
     const maintenant = this.maintenant().getTime();
+    if (r.statut === 'a-payer') {
+      throw new ErreurTeleconsultation('Rendez-vous en attente de paiement.', 409);
+    }
     if (r.statut !== 'prevu') throw new ErreurTeleconsultation('Rendez-vous annulé.', 409);
     if (new Date(r.debut).getTime() <= maintenant) {
       throw new ErreurTeleconsultation('Un rendez-vous commencé ne peut plus être reporté.', 409);
@@ -410,7 +531,7 @@ export class ServiceTeleconsultation {
    */
   async annuler(u: Utilisateur, rendezVousId: string): Promise<RendezVous> {
     const { r, estPraticien } = await this.participant(u, rendezVousId);
-    if (r.statut !== 'prevu') throw new ErreurTeleconsultation('Rendez-vous déjà annulé.', 409);
+    if (r.statut === 'annule') throw new ErreurTeleconsultation('Rendez-vous déjà annulé.', 409);
     const maintenant = this.maintenant();
     const fin = new Date(r.debut).getTime() + r.dureeMinutes * 60_000;
     if (maintenant.getTime() > fin) {
@@ -438,6 +559,9 @@ export class ServiceTeleconsultation {
   async rejoindre(u: Utilisateur, rendezVousId: string): Promise<AccesSalle> {
     const { r, estPraticien } = await this.participant(u, rendezVousId);
     await this.exigerFonction(u);
+    if (r.statut === 'a-payer') {
+      throw new ErreurTeleconsultation('Rendez-vous en attente de paiement.', 409);
+    }
     if (r.statut !== 'prevu') throw new ErreurTeleconsultation('Rendez-vous annulé.', 409);
     const debut = new Date(r.debut).getTime();
     const fin = debut + r.dureeMinutes * 60_000;

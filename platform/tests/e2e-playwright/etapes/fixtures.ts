@@ -16,6 +16,8 @@ export interface Monde {
   consentementId?: string;
   traceId?: string;
   rendezVousId?: string;
+  /** Paiement de la réservation en cours (ADR-0017). */
+  paiementId?: string;
   /** Créneaux publiés ou préparés pendant le scénario (identifiants). */
   creneaux?: string[];
   /** Créneau du rendez-vous avant un report. */

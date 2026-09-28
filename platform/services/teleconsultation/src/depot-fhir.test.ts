@@ -57,6 +57,45 @@ describe('DepotRendezVousFhir', () => {
     expect(envoye.comment).toBeUndefined();
   });
 
+  it('réservation payante : « pending » daté, confirmation avec verrou, recherche des attentes', async () => {
+    const enAttente: Appointment = { ...rdv(), status: 'pending', created: '2026-09-30T10:00:00Z' };
+    const s = fauxServeur([
+      json(enAttente, 201),
+      json({ ...enAttente, meta: { versionId: '1' } }),
+      json({ ...enAttente, status: 'booked' }),
+      json({
+        resourceType: 'Bundle',
+        type: 'searchset',
+        entry: [{ resource: enAttente }, { resource: { ...rdv(), id: 'rdv-fictif-2' } }],
+      } satisfies Bundle),
+    ]);
+    const depot = new DepotRendezVousFhir(
+      { base: BASE, fetch: s.fetch, entetes: async () => ({ authorization: 'Bearer x' }) },
+      'dev',
+    );
+    const r = await depot.ajouter({
+      patientId: 'fictif-patient-0001',
+      praticienId: 'fictif-praticien-0001',
+      debut: '2026-10-01T08:00:00Z',
+      dureeMinutes: 20,
+      statut: 'a-payer',
+      creeLe: '2026-09-30T10:00:00Z',
+    });
+    expect(r).toMatchObject({ statut: 'a-payer', creeLe: '2026-09-30T10:00:00.000Z' });
+    const envoye = JSON.parse(String(s.requetes[0]?.init.body)) as Appointment;
+    expect(envoye).toMatchObject({ status: 'pending', created: '2026-09-30T10:00:00.000Z' });
+
+    expect((await depot.confirmer('rdv-fictif-1')).statut).toBe('prevu');
+    const put = s.requetes[2];
+    expect((put?.init.headers as Record<string, string>)['if-match']).toBe('W/"1"');
+    expect((JSON.parse(String(put?.init.body)) as Appointment).status).toBe('booked');
+
+    // Seuls les rendez-vous réellement « pending » sont retenus, même si la recherche en renvoie d'autres.
+    const attente = await depot.enAttentePaiement();
+    expect(s.requetes[3]?.url).toBe(`${BASE}/Appointment?status=pending&_count=100`);
+    expect(attente.map((x) => x.id)).toEqual(['rdv-fictif-1']);
+  });
+
   it('un rendez-vous annulé dans le dossier ferme la salle', async () => {
     const s = fauxServeur([json({ ...rdv(), status: 'cancelled' })]);
     const depot = new DepotRendezVousFhir({ base: BASE, fetch: s.fetch }, 'dev');

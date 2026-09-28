@@ -163,6 +163,12 @@ export class ServicePaiement {
     return { accepte: true, paiement: apres };
   }
 
+  /** Tentative en attente d'un paiement (simulation du payeur en développement seulement). */
+  async tentativeEnAttente(id: string): Promise<string | undefined> {
+    const p = await this.depot.trouver(id);
+    return p?.statut === 'en-attente' ? p.tentative : undefined;
+  }
+
   /** Relit le statut chez le prestataire tant que la collecte est en attente. */
   private async rafraichir(p: Paiement): Promise<Paiement> {
     if (p.statut !== 'en-attente' || !p.tentative) return p;

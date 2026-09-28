@@ -57,7 +57,7 @@ async function appeler(
  * Créneau libre du professionnel, qui commence dans 5 minutes : préparé directement dans le serveur
  * FHIR de test (agenda créé par la préparation globale), comme s'il avait été publié plus tôt.
  */
-async function creneauImminent(praticien: string): Promise<string> {
+export async function creneauImminent(praticien: string): Promise<string> {
   const r = await fetch(`${FHIR_URL}/Slot`, {
     method: 'POST',
     headers: { 'content-type': 'application/fhir+json', prefer: 'return=representation' },

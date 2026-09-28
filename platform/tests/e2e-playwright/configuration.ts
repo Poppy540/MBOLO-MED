@@ -20,6 +20,8 @@ export const CONSULTATION_URL = process.env['CONSULTATION_URL'] ?? 'http://127.0
 export const INVITATIONS_URL = process.env['INVITATIONS_URL'] ?? 'http://127.0.0.1:3006';
 /** Service documents (ADR-0015) : photos d'identité chiffrées, base PostgreSQL et S3 de test. */
 export const DOCUMENTS_URL = process.env['DOCUMENTS_URL'] ?? 'http://127.0.0.1:3007';
+/** Service de paiement (ADR-0017) : fournisseur simulé, base PostgreSQL de test. */
+export const PAIEMENT_URL = process.env['PAIEMENT_URL'] ?? 'http://127.0.0.1:3008';
 /** [FICTIF] Cohorte ouverte par le déploiement de test. */
 export const COHORTE_TEST = 'ville-fictive';
 /** [FICTIF] Préfixe des comptes créés par les scénarios d'inscription (retirés à la préparation). */
@@ -36,8 +38,10 @@ export const UNLEASH_URL = process.env['UNLEASH_API_URL'] ?? 'http://127.0.0.1:4
 /** [FICTIF] Cohortes de test par flag (ciblage Unleash par compte) ; les autres comptes : désactivé. */
 export const COHORTES: Record<string, string[]> = {
   'consentement.proche': ['patient-fictif-01'],
-  'teleconsultation.video': ['patient-fictif-01', 'medecin-fictif-01'],
+  'teleconsultation.video': ['patient-fictif-01', 'medecin-fictif-01', 'patient-fictif-04'],
   'identite.photos': ['patient-fictif-01', 'patient-fictif-03'],
+  // Réservation payante (ADR-0017) : un seul patient, les autres réservent sans paiement.
+  'paiement.mobile-money': ['patient-fictif-04'],
 };
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
@@ -85,6 +89,14 @@ export const COMPTES: CompteFictif[] = [
     role: 'patient',
     application: 'patient',
     attributs: { patient_id: 'pat-fictif-003' },
+  },
+  {
+    // Réservation payante (flag paiement.mobile-money, ADR-0017).
+    identifiant: 'patient-fictif-04',
+    prenom: 'Paul',
+    role: 'patient',
+    application: 'patient',
+    attributs: { patient_id: 'pat-fictif-004' },
   },
   {
     identifiant: 'medecin-fictif-01',

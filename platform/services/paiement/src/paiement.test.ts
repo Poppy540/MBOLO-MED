@@ -32,7 +32,7 @@ const COMPTES: Record<string, Utilisateur> = {
   medecin: { sujet: 'u-m1', roles: ['professionnel'], practitionerId: 'prac-fictif-001' },
 };
 
-async function monter(o: { collecteParMinute?: number } = {}) {
+async function monter(o: { collecteParMinute?: number; simulation?: boolean } = {}) {
   const evenements: Evenement[] = [];
   const fournisseur = new FournisseurSimule(SECRET);
   const depot = new DepotMemoire();
@@ -59,6 +59,7 @@ async function monter(o: { collecteParMinute?: number } = {}) {
       ecrire: (ligne) => evenements.push(JSON.parse(ligne) as Evenement),
     }),
     limites: { parMinute: 1_000, collecteParMinute: o.collecteParMinute ?? 100 },
+    ...(o.simulation ? { simulation: fournisseur } : {}),
   });
   const creer = async (reference = 'rdv-fictif-001', sujet = 'u-p1', type = 'generaliste') =>
     app.inject({
@@ -298,5 +299,33 @@ describe('API de paiement', () => {
     const journal = JSON.stringify(m.evenements);
     expect(journal).not.toMatch(/00 ?00 ?00 ?00|24100000000/);
     expect(JSON.stringify(m.depot.paiements)).not.toContain('24100000000');
+  });
+
+  it('simulation du payeur (développement) : absente par défaut, conclut par le chemin signé', async () => {
+    const sans = await monter();
+    const { id: id1 } = (await sans.creer()).json<{ id: string }>();
+    await sans.collecter(id1);
+    const absente = await sans.app.inject({
+      method: 'POST',
+      url: `/simulation/paiements/${id1}/conclusion`,
+      payload: { resultat: 'reussi' },
+    });
+    expect(absente.statusCode).toBe(404);
+    expect((await sans.lire(id1)).json()).toMatchObject({ statut: 'en-attente' });
+
+    const m = await monter({ simulation: true });
+    const { id } = (await m.creer()).json<{ id: string }>();
+    const conclure = () =>
+      m.app.inject({
+        method: 'POST',
+        url: `/simulation/paiements/${id}/conclusion`,
+        payload: { resultat: 'reussi' },
+      });
+    // Pas de collecte en cours : rien à conclure.
+    expect((await conclure()).statusCode).toBe(404);
+    await m.collecter(id);
+    const r = await conclure();
+    expect(r.json()).toEqual({ statut: 'paye' });
+    expect(await m.estPaye()).toBe(true);
   });
 });

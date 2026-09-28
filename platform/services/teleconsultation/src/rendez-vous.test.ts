@@ -67,7 +67,7 @@ async function monter(heure = '2026-09-27T09:00:00Z') {
     depot,
     creneaux,
     s.f,
-    { estActif: async () => etat.actif },
+    { estActif: async (nom) => nom !== 'paiement.mobile-money' && etat.actif },
     () => new Date(etat.heure),
     {
       prevenir: async (destinataire, evenement, instant) => {
@@ -88,7 +88,7 @@ describe('identité vérifiée avant toute réservation (ADR-0014)', () => {
       new DepotRendezVousMemoire(),
       new DepotCreneauxMemoire(),
       salles().f,
-      { estActif: async () => true },
+      { estActif: async (nom) => nom !== 'paiement.mobile-money' },
       () => new Date('2026-09-27T09:00:00Z'),
       undefined,
       undefined,
@@ -264,7 +264,7 @@ describe('téléconsultation', () => {
       depotEnPanne,
       creneaux,
       salles().f,
-      { estActif: async () => true },
+      { estActif: async (nom) => nom !== 'paiement.mobile-money' },
       () => new Date('2026-09-27T09:00:00Z'),
       undefined,
       undefined,
@@ -491,7 +491,7 @@ describe('annuaire', () => {
       new DepotRendezVousMemoire(),
       creneaux,
       salles().f,
-      { estActif: async () => true },
+      { estActif: async (nom) => nom !== 'paiement.mobile-money' },
       () => new Date('2026-09-27T09:00:00Z'),
       undefined,
       new AnnuaireMemoire(

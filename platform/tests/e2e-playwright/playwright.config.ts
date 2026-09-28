@@ -4,7 +4,8 @@
 // (UNLEASH_ADMIN_TOKEN, UNLEASH_BACKEND_TOKEN), un LiveKit local (WEBRTC_API_KEY, WEBRTC_API_SECRET), et un
 // PostgreSQL de test pour les invitations (INVITATIONS_DATABASE_URL, INVITATIONS_MIGRATION_DATABASE_URL,
 // INVITATIONS_CLE_EMPREINTE) et les documents (DOCUMENTS_DATABASE_URL, DOCUMENTS_MIGRATION_DATABASE_URL,
-// DOCUMENTS_CLE_MAITRE), et un S3 de test (MBOLO_TEST_S3_*).
+// DOCUMENTS_CLE_MAITRE) et le paiement (PAIEMENT_DATABASE_URL, PAIEMENT_MIGRATION_DATABASE_URL,
+// MOBILE_MONEY_WEBHOOK_SIGNING_SECRET), et un S3 de test (MBOLO_TEST_S3_*).
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 import {
@@ -19,6 +20,7 @@ import {
   DOCUMENTS_URL,
   INVITATIONS_URL,
   NOTIFICATIONS_URL,
+  PAIEMENT_URL,
   TELECONSULTATION_URL,
   UNLEASH_URL,
   WEBRTC_URL,
@@ -93,6 +95,10 @@ export default defineConfig({
         TELECONSULTATION_SERVICE_CLE_PRIVEE:
           process.env['TELECONSULTATION_SERVICE_CLE_PRIVEE'] ?? '',
         NOTIFICATIONS_URL,
+        PAIEMENT_URL,
+        // Délai de paiement court (15 s) et passage fréquent : l'expiration se teste en e2e.
+        TELECONSULTATION_DELAI_PAIEMENT_MINUTES: '0.25',
+        TELECONSULTATION_EXPIRATION_INTERVALLE_MS: '2000',
         WEBRTC_API_KEY: process.env['WEBRTC_API_KEY'] ?? '',
         WEBRTC_API_SECRET: process.env['WEBRTC_API_SECRET'] ?? '',
         UNLEASH_API_URL: UNLEASH_URL,
@@ -177,6 +183,30 @@ export default defineConfig({
       url: APP_PATIENT_URL,
       reuseExistingServer: false,
       env: { TELECONSULTATION_URL, IDENTITE_URL, DOCUMENTS_URL },
+    },
+    {
+      command: 'node ../../services/paiement/dist/main.js',
+      url: `${PAIEMENT_URL}/sante`,
+      reuseExistingServer: false,
+      env: {
+        KEYCLOAK_ISSUER: EMETTEUR,
+        PAIEMENT_DATABASE_URL: process.env['PAIEMENT_DATABASE_URL'] ?? '',
+        PAIEMENT_MIGRATION_DATABASE_URL: process.env['PAIEMENT_MIGRATION_DATABASE_URL'] ?? '',
+        MOBILE_MONEY_WEBHOOK_SIGNING_SECRET:
+          process.env['MOBILE_MONEY_WEBHOOK_SIGNING_SECRET'] ?? '',
+        // [FICTIF] Grille du pays de test (le tableur du business plan fait foi).
+        PAIEMENT_DEVISE: 'XAF',
+        PAIEMENT_PRIX: '{"generaliste":10000,"specialiste":15000}',
+        PAIEMENT_OPERATEURS: 'airtel,moov',
+        PAIEMENT_INDICATIF: '241',
+        // Le payeur simulé valide ou refuse (développement et e2e seulement).
+        PAIEMENT_SIMULATION: 'true',
+        UNLEASH_API_URL: UNLEASH_URL,
+        UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
+        UNLEASH_REFRESH_MS: '500',
+        PORT: new URL(PAIEMENT_URL).port,
+        MBOLO_ENV: 'dev',
+      },
     },
     {
       command: 'pnpm exec vite preview',

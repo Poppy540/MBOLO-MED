@@ -5,6 +5,7 @@ import type { Appointment, FhirResource, Schedule, Slot } from 'fhir/r4.js';
 import {
   agendaVideo,
   annulerRendezVous,
+  confirmerRendezVous,
   creneauVideo,
   reporterRendezVous,
   type AuteurAnnulation,
@@ -23,7 +24,10 @@ const acteur = (a: Appointment, prefixe: 'Patient/' | 'Practitioner/'): string |
     .find((r): r is string => !!r?.startsWith(prefixe))
     ?.slice(prefixe.length);
 
-/** Traduit un Appointment en rendez-vous ; tout statut autre que « booked » ferme la salle. */
+/**
+ * Traduit un Appointment en rendez-vous ; tout statut autre que « booked » ferme la salle.
+ * « pending » : réservation retenue en attendant le paiement (ADR-0017).
+ */
 export function versRendezVous(a: Appointment): RendezVous {
   const patientId = acteur(a, 'Patient/');
   const praticienId = acteur(a, 'Practitioner/');
@@ -46,7 +50,8 @@ export function versRendezVous(a: Appointment): RendezVous {
     praticienId,
     debut: new Date(a.start).toISOString(),
     dureeMinutes: a.minutesDuration,
-    statut: a.status === 'booked' ? 'prevu' : 'annule',
+    statut: a.status === 'booked' ? 'prevu' : a.status === 'pending' ? 'a-payer' : 'annule',
+    ...(a.created ? { creeLe: new Date(a.created).toISOString() } : {}),
     ...(creneauId ? { creneauId } : {}),
     ...annulation,
   };
@@ -80,6 +85,8 @@ export class DepotRendezVousFhir extends ClientFhir implements DepotRendezVous {
           debut: r.debut,
           dureeMinutes: r.dureeMinutes,
           ...(r.creneauId ? { creneauId: r.creneauId } : {}),
+          ...(r.statut === 'a-payer' ? { enAttentePaiement: true } : {}),
+          ...(r.creeLe ? { cree: r.creeLe } : {}),
           env: this.env,
         }),
       ),
@@ -121,6 +128,36 @@ export class DepotRendezVousFhir extends ClientFhir implements DepotRendezVous {
     });
     if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
     return versRendezVous(DepotRendezVousFhir.appointment(await r.json()));
+  }
+
+  /** Paiement confirmé : « pending » devient « booked », avec verrou optimiste. */
+  async confirmer(id: string): Promise<RendezVous> {
+    const a = await this.lireAppointment(id);
+    if (!a?.id || a.status !== 'pending') {
+      throw new ErreurDepot('Rendez-vous non confirmable.', 409);
+    }
+    const version = a.meta?.versionId;
+    const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(a.id)}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': TYPE_FHIR,
+        prefer: 'return=representation',
+        ...(version ? { 'if-match': `W/"${version}"` } : {}),
+      },
+      body: JSON.stringify(confirmerRendezVous(a)),
+    });
+    if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
+    return versRendezVous(DepotRendezVousFhir.appointment(await r.json()));
+  }
+
+  /** Réservations en attente de paiement (recherche sans cache, statut revérifié). */
+  async enAttentePaiement(): Promise<RendezVous[]> {
+    const trouves = await this.rechercher(
+      `${this.base}/Appointment?status=pending&_count=100`,
+      'Rendez-vous',
+      (r): r is Appointment => estAppointment(r) && r.status === 'pending',
+    );
+    return trouves.map(versRendezVous);
   }
 
   async reporter(

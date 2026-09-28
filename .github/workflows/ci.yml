@@ -148,7 +148,7 @@ jobs:
           echo "DOCUMENTS_CLE_MAITRE=$CLE_MAITRE" >> "$GITHUB_ENV"
       - name: Clés des comptes de service (private_key_jwt, générées et masquées, ADR-0016)
         run: bash scripts/cles-services-test.sh
-      - name: PostgreSQL de test (invitations et documents, ADR-0013)
+      - name: PostgreSQL de test (invitations, documents et paiement, ADR-0013)
         run: bash scripts/postgres-test.sh
       - name: Stockage S3 de test (photos d'identité chiffrées, ADR-0015)
         run: bash scripts/s3-test.sh
