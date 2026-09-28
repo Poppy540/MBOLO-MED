@@ -19,10 +19,10 @@ jobs:
     name: Sécurité (gitleaks + contrôles pre-commit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: pre-commit/action@v3.0.1
@@ -38,8 +38,8 @@ jobs:
     name: Dépendances (vulnérabilités connues)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -55,7 +55,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Une dépendance ajoutée ou mise à jour avec une faille haute ou critique connue est refusée.
       - uses: actions/dependency-review-action@v4
         with:
@@ -65,8 +65,8 @@ jobs:
     name: Conformité des skills
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python3 scripts/verifier_skills.py .
@@ -75,8 +75,8 @@ jobs:
     name: Code (format, lint, types, tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -96,7 +96,7 @@ jobs:
     name: FHIR (profils, exemples fictifs, garde-fous)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -105,7 +105,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Cache du validateur et des paquets FHIR
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             platform/services/dossier-fhir/.cache
@@ -117,8 +117,8 @@ jobs:
     name: E2E (Keycloak + identité, comptes fictifs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
