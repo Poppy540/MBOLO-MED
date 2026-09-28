@@ -12,6 +12,8 @@ export const CONFIG = {
   /** Charte d'identité (consentement C-IDENTITE) et dépôt des photos (ADR-0015). */
   apiIdentite: '/api/identite',
   apiDocuments: '/api/documents',
+  /** Comptes-rendus et ordonnances du patient, en lecture seule. */
+  apiConsultation: '/api/consultation',
   /** Paiement des consultations par mobile money (ADR-0017). */
   apiPaiement: '/api/paiement',
   /** Opérateurs de mobile money du pays : « code:Nom affiché », séparés par des virgules. */

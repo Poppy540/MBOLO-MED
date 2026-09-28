@@ -39,7 +39,8 @@ type Ecran =
   | { nom: 'praticiens' }
   | { nom: 'creneaux'; praticienId: string }
   | { nom: 'visio'; rendezVous: RendezVous }
-  | { nom: 'paiement'; rendezVousId: string };
+  | { nom: 'paiement'; rendezVousId: string }
+  | { nom: 'documents' };
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -149,6 +150,8 @@ export function App() {
           }}
           signaler={signaler}
         />
+      ) : ecran.nom === 'documents' ? (
+        <EcranDocuments retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'paiement' ? (
         <EcranPaiement
           rendezVousId={ecran.rendezVousId}
@@ -278,6 +281,28 @@ function EcranPaiement(p: { rendezVousId: string; retour: (message?: string) => 
   );
 }
 
+/** Comptes-rendus et ordonnances : écran chargé à la demande. */
+function EcranDocuments(p: { retour: () => void }) {
+  const [Ecran, setEcran] = useState<ComponentType<{ jeton: string; retour: () => void }>>();
+  const [echec, setEchec] = useState(false);
+  useEffect(() => {
+    import('./documents.js').then((m) => setEcran(() => m.Documents)).catch(() => setEchec(true));
+  }, []);
+  if (echec) {
+    return (
+      <section>
+        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
+        <button onClick={p.retour}>Retour</button>
+      </section>
+    );
+  }
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} retour={p.retour} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
 function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) => void }) {
   const [liste, setListe] = useState<RendezVous[]>();
   const [horsLigne, setHorsLigne] = useState(false);
@@ -363,6 +388,9 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
         }
       >
         <span aria-hidden="true">➕</span> Prendre rendez-vous
+      </button>
+      <button onClick={() => p.allerA({ nom: 'documents' })}>
+        <span aria-hidden="true">📄</span> Mes comptes-rendus et ordonnances
       </button>
     </section>
   );

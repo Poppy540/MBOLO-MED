@@ -8,6 +8,9 @@
 //   rendez-vous, mêmes conditions que le compte-rendu ; médicaments de la nomenclature du pays,
 //   posologie structurée, aucun texte libre ; révocable par son prescripteur tant qu'elle est active.
 //   La signature et la délivrance en pharmacie viendront avec l'avis juridique (D-0003).
+// - Mes documents : le patient lui-même lit ses comptes-rendus et ses ordonnances, tels que le
+//   professionnel les a écrits (aucune IA ne les résume ni ne les reformule) ; lecture tracée par
+//   identite comme tout accès au dossier.
 import { randomBytes } from 'node:crypto';
 import type { Composition, Condition, MedicationRequest } from 'fhir/r4.js';
 import {
@@ -45,7 +48,13 @@ export interface ResumeOrdonnance {
   patientId: string;
   prescriteLe: string;
   valableJusquau: string;
-  lignes: { medicament: string; dose: string; frequence: string; dureeJours: number }[];
+  lignes: {
+    medicament: string;
+    dose: string;
+    /** Structurée : chaque application la formule dans la langue du pays. */
+    frequence: { fois: number; periode: number; unite: string };
+    dureeJours: number;
+  }[];
 }
 
 /** Lignes par ordonnance au plus. */
@@ -75,6 +84,12 @@ export interface CompteRenduResume {
   id: string;
   date: string;
   sections: Partial<Record<SectionCompteRendu, string>>;
+}
+
+/** Ce que le patient voit de son dossier : comptes-rendus et ordonnances, les plus récents d'abord. */
+export interface MesDocuments {
+  comptesRendus: CompteRenduResume[];
+  ordonnances: ResumeOrdonnance[];
 }
 
 export interface ResumeDossier {
@@ -135,6 +150,38 @@ export class ServiceConsultation {
       comptesRendus: comptesRendus
         .map(versCompteRendu)
         .sort((a, b) => b.date.localeCompare(a.date)),
+    };
+  }
+
+  /**
+   * Comptes-rendus et ordonnances du patient connecté, pour lui seul (ni proche ni agent IA pour
+   * l'instant). La lecture passe par la décision d'identite, qui la consigne (AuditEvent).
+   */
+  async mesDocuments(u: Utilisateur, jeton: string): Promise<MesDocuments> {
+    if (!u.roles.includes('patient') || !u.patientId || u.agent) {
+      throw new ErreurConsultation('Réservé au patient lui-même.', 403);
+    }
+    const patientId = u.patientId;
+    await this.exigerAcces(jeton, patientId);
+    const [comptesRendus, lignes] = await Promise.all([
+      this.dossierFhir.comptesRendus(patientId),
+      this.ordonnances?.dossier.lignesDuPatient(patientId) ?? Promise.resolve([]),
+    ]);
+    // Une ordonnance = les lignes qui partagent un numéro ; les lignes écrites par erreur sont exclues.
+    const parNumero = new Map<string, MedicationRequest[]>();
+    for (const l of lignes) {
+      const numero = l.groupIdentifier?.value;
+      if (!numero || l.status === 'entered-in-error') continue;
+      parNumero.set(numero, [...(parNumero.get(numero) ?? []), l]);
+    }
+    return {
+      comptesRendus: comptesRendus
+        .filter((c) => c.status !== 'entered-in-error')
+        .map(versCompteRendu)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+      ordonnances: [...parNumero]
+        .map(([numero, l]) => resumer(numero, l))
+        .sort((a, b) => b.prescriteLe.localeCompare(a.prescriteLe)),
     };
   }
 
@@ -332,7 +379,11 @@ const resumer = (numero: string, lignes: MedicationRequest[]): ResumeOrdonnance 
       return {
         medicament: l.medicationCodeableConcept?.coding?.[0]?.display ?? '',
         dose: `${dose?.value ?? ''} ${dose?.unit ?? ''}`.trim(),
-        frequence: `${repetition?.frequency ?? ''} fois / ${repetition?.period ?? ''} ${repetition?.periodUnit ?? ''}`,
+        frequence: {
+          fois: repetition?.frequency ?? 0,
+          periode: repetition?.period ?? 0,
+          unite: repetition?.periodUnit ?? '',
+        },
         dureeJours: repetition?.boundsDuration?.value ?? 0,
       };
     }),

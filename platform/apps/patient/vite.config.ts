@@ -1,5 +1,5 @@
 // Application patient (PWA faible débit). Port 5180 : les ports 5173 et 5174 servent de faux
-// retours de connexion aux tests e2e. Les API (téléconsultation, identite, documents, paiement) sont servies sous /api/<service> (même origine).
+// retours de connexion aux tests e2e. Les API (téléconsultation, consultation, identite, documents, paiement) sont servies sous /api/<service> (même origine).
 import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
 
@@ -16,6 +16,8 @@ const proxy = {
   // Charte d'identité (consentement C-IDENTITE) et photos d'identité (ADR-0015).
   ...relais('identite', process.env['IDENTITE_URL'] ?? 'http://127.0.0.1:3001'),
   ...relais('documents', process.env['DOCUMENTS_URL'] ?? 'http://127.0.0.1:3007'),
+  // Comptes-rendus et ordonnances du patient (lecture seule).
+  ...relais('consultation', process.env['CONSULTATION_URL'] ?? 'http://127.0.0.1:3005'),
   // Paiement par mobile money (ADR-0017).
   ...relais('paiement', process.env['PAIEMENT_URL'] ?? 'http://127.0.0.1:3008'),
 };

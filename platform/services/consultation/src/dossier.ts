@@ -23,6 +23,8 @@ export interface DossierOrdonnances {
   ajouterLigne(m: MedicationRequest): Promise<MedicationRequest>;
   /** Lignes d'une ordonnance (recherche sans cache par numéro). */
   lignes(numero: string): Promise<MedicationRequest[]>;
+  /** Toutes les lignes d'ordonnance d'un patient (vue du patient lui-même). */
+  lignesDuPatient(patientId: string): Promise<MedicationRequest[]>;
   /** Change le statut d'une ligne, avec verrou optimiste (409 si elle a changé entre-temps). */
   changerStatut(
     m: MedicationRequest,
@@ -59,6 +61,16 @@ export class DossierFhir extends ClientFhir implements Dossier, DossierOrdonnanc
         r.resourceType === 'MedicationRequest' &&
         r.groupIdentifier?.system === SYSTEME_ORDONNANCE &&
         r.groupIdentifier.value === numero,
+    );
+  }
+
+  lignesDuPatient(patientId: string): Promise<MedicationRequest[]> {
+    const ref = `Patient/${patientId}`;
+    return this.rechercher(
+      `${this.base}/MedicationRequest?subject=${encodeURIComponent(ref)}&_count=100`,
+      'Ordonnance',
+      (r): r is MedicationRequest =>
+        r.resourceType === 'MedicationRequest' && r.subject.reference === ref,
     );
   }
 
