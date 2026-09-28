@@ -49,14 +49,21 @@ const app = await creerServeur({
     emetteur,
     audience: env['CONSULTATION_AUDIENCE'] ?? 'mbolo-consultation-api',
   }),
-  service: new ServiceConsultation(new DecideurIdentite(identite), dossier, 'dev', undefined, {
+  service: new ServiceConsultation(
+    new DecideurIdentite(identite),
     dossier,
+    'dev',
+    undefined,
+    {
+      dossier,
+      drapeaux,
+      // Nomenclature des médicaments du pays : ATC en attendant la liste nationale (ADR-0018).
+      nomenclature: env['CONSULTATION_NOMENCLATURE_MEDICAMENTS'] ?? 'http://www.whocc.no/atc',
+      // Validité par défaut, à confirmer par le comité médical et le juriste.
+      validiteJours: Number(env['CONSULTATION_VALIDITE_ORDONNANCE_JOURS'] ?? '90'),
+    },
     drapeaux,
-    // Nomenclature des médicaments du pays : ATC en attendant la liste nationale (ADR-0018).
-    nomenclature: env['CONSULTATION_NOMENCLATURE_MEDICAMENTS'] ?? 'http://www.whocc.no/atc',
-    // Validité par défaut, à confirmer par le comité médical et le juriste.
-    validiteJours: Number(env['CONSULTATION_VALIDITE_ORDONNANCE_JOURS'] ?? '90'),
-  }),
+  ),
   journal,
 });
 const port = Number(env['PORT'] ?? '3005');

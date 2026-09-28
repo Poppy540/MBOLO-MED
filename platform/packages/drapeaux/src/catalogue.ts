@@ -22,6 +22,13 @@ export const CATALOGUE = {
     dependances: [],
     branche: true,
   },
+  'documents.proche': {
+    description:
+      'Le proche désigné par un consentement C-PROCHE voit les ordonnances du patient et la rubrique « conduite à tenir » de ses comptes-rendus.',
+    vague: 2,
+    dependances: ['consentement.proche'],
+    branche: true,
+  },
   'teleconsultation.video': {
     description: 'Téléconsultation de médecine générale en vidéo, avec repli audio.',
     vague: 1,

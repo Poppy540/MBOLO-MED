@@ -37,7 +37,9 @@ export const WEBRTC_URL = process.env['WEBRTC_SERVER_URL'] ?? 'ws://127.0.0.1:78
 export const UNLEASH_URL = process.env['UNLEASH_API_URL'] ?? 'http://127.0.0.1:4242/api';
 /** [FICTIF] Cohortes de test par flag (ciblage Unleash par compte) ; les autres comptes : désactivé. */
 export const COHORTES: Record<string, string[]> = {
-  'consentement.proche': ['patient-fictif-01'],
+  // Le proche est aussi dans la cohorte : documents.proche dépend de consentement.proche.
+  'consentement.proche': ['patient-fictif-01', 'proche-fictif-01'],
+  'documents.proche': ['proche-fictif-01'],
   'teleconsultation.video': ['patient-fictif-01', 'medecin-fictif-01', 'patient-fictif-04'],
   'identite.photos': ['patient-fictif-01', 'patient-fictif-03'],
   // Réservation payante (ADR-0017) : un seul patient, les autres réservent sans paiement.

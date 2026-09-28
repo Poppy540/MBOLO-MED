@@ -2,6 +2,8 @@
 // de l'ouverture). Le texte affiché est exactement celui écrit par le professionnel : aucune IA ne
 // le résume ni ne le reformule (principe n°1). Rien n'est gardé sur le téléphone (souvent partagé) :
 // sans réseau, l'écran le dit simplement. Chaque lecture est tracée dans le dossier par identite.
+// Un proche désigné par le patient (C-PROCHE, flag documents.proche) voit le même écran, réduit aux
+// ordonnances et à la rubrique « Ce qu'il faut faire » (filtré par le service, pas par l'écran).
 import { useEffect, useState } from 'preact/hooks';
 import { quand } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
@@ -55,12 +57,12 @@ function frequence(f: Ordonnance['lignes'][number]['frequence']): string {
     : `${f.fois} fois toutes les ${f.periode} ${unite[1]}`;
 }
 
-export function Documents(p: { jeton: string; retour: () => void }) {
+export function Documents(p: { jeton: string; retour?: () => void; proche?: boolean }) {
   const [documents, setDocuments] = useState<MesDocuments>();
   const [erreur, setErreur] = useState<string>();
 
   useEffect(() => {
-    fetch(`${CONFIG.apiConsultation}/mes-documents`, {
+    fetch(`${CONFIG.apiConsultation}${p.proche ? '/proche/documents' : '/mes-documents'}`, {
       headers: { authorization: `Bearer ${p.jeton}` },
     })
       .then(async (r) => {
@@ -84,8 +86,17 @@ export function Documents(p: { jeton: string; retour: () => void }) {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📄</span> Mes comptes-rendus et ordonnances
+        <span aria-hidden="true">📄</span>{' '}
+        {p.proche
+          ? 'Ordonnances et consignes de votre proche'
+          : 'Mes comptes-rendus et ordonnances'}
       </h2>
+      {p.proche && (
+        <p>
+          Votre proche partage avec vous ses ordonnances et les consignes du médecin. Il peut
+          retirer ce partage à tout moment.
+        </p>
+      )}
       {erreur ? (
         <p role="alert">{erreur}</p>
       ) : documents === undefined ? (
@@ -127,10 +138,11 @@ export function Documents(p: { jeton: string; retour: () => void }) {
             </ul>
           )}
           <h3>
-            <span aria-hidden="true">🩺</span> Comptes-rendus
+            <span aria-hidden="true">🩺</span>{' '}
+            {p.proche ? 'Consignes du médecin' : 'Comptes-rendus'}
           </h3>
           {documents.comptesRendus.length === 0 ? (
-            <p>Aucun compte-rendu.</p>
+            <p>{p.proche ? 'Aucune consigne.' : 'Aucun compte-rendu.'}</p>
           ) : (
             <ul class="liste" aria-label="Comptes-rendus">
               {documents.comptesRendus.map((c) => (
@@ -151,7 +163,7 @@ export function Documents(p: { jeton: string; retour: () => void }) {
           </p>
         </>
       )}
-      <button onClick={p.retour}>Retour</button>
+      {p.retour && <button onClick={p.retour}>Retour</button>}
     </section>
   );
 }

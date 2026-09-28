@@ -56,6 +56,13 @@ const compositions = (): Composition[] =>
           div: `<div xmlns="http://www.w3.org/1999/xhtml">[FICTIF] ${status}</div>`,
         },
       },
+      {
+        code: { coding: [{ code: 'conduite-a-tenir' }] },
+        text: {
+          status: 'generated',
+          div: '<div xmlns="http://www.w3.org/1999/xhtml">[FICTIF] Boire souvent</div>',
+        },
+      },
     ],
   }));
 
@@ -66,7 +73,9 @@ const paracetamol: LigneSaisie = {
   dureeJours: 5,
 };
 
-function monter(o: { actif?: boolean; autorise?: boolean; panneApres?: number } = {}) {
+function monter(
+  o: { actif?: boolean; autorise?: boolean; panneApres?: number; procheOuvert?: boolean } = {},
+) {
   const lignes: MedicationRequest[] = [];
   const decisions: string[] = [];
   const acces: DecideurAcces = {
@@ -81,6 +90,7 @@ function monter(o: { actif?: boolean; autorise?: boolean; panneApres?: number } 
     rendezVous: async (id) => (id === 'rdv-fictif-1' ? rdv : undefined),
     problemes: async () => [],
     comptesRendus: async () => compositions(),
+    patientDuProche: async (id) => (id === 'rp-fictif-001' ? 'pat-fictif-001' : undefined),
     ajouterCompteRendu: async (c) => c,
   };
   const ordonnances: DossierOrdonnances = {
@@ -119,6 +129,7 @@ function monter(o: { actif?: boolean; autorise?: boolean; panneApres?: number } 
       nomenclature: ATC,
       validiteJours: 90,
     },
+    { estActif: async (nom) => nom === 'documents.proche' && o.procheOuvert !== false },
   );
   return { service, lignes, decisions };
 }
@@ -222,6 +233,7 @@ describe('prescription d’une ordonnance électronique', () => {
         rendezVous: async () => rdv,
         problemes: async () => [],
         comptesRendus: async () => [],
+        patientDuProche: async () => undefined,
         ajouterCompteRendu: async (c) => c,
       },
       'dev',
@@ -266,7 +278,7 @@ describe('mes documents : le patient lit ses comptes-rendus et ses ordonnances',
       {
         id: 'cr-fictif-1',
         date: '2026-09-21T08:00:00Z',
-        sections: { conclusion: '[FICTIF] final' },
+        sections: { conclusion: '[FICTIF] final', 'conduite-a-tenir': '[FICTIF] Boire souvent' },
       },
     ]);
     expect(Object.fromEntries(d.ordonnances.map((o) => [o.numero, o.statut]))).toEqual({
@@ -295,5 +307,54 @@ describe('mes documents : le patient lit ses comptes-rendus et ses ordonnances',
     await expect(
       monter({ autorise: false }).service.mesDocuments(patient, 'j'),
     ).rejects.toMatchObject({ statut: 403 });
+  });
+});
+
+describe('documents pour un proche désigné par le patient (C-PROCHE)', () => {
+  const proche: Utilisateur = {
+    sujet: 'u-r1',
+    roles: ['proche'],
+    relatedPersonId: 'rp-fictif-001',
+  };
+
+  it('ordonnances et « conduite à tenir » seulement, après décision tracée par identite', async () => {
+    const m = monter();
+    const o = await m.service.prescrire(medecin, 'j', 'rdv-fictif-1', { lignes: [paracetamol] });
+    m.decisions.length = 0;
+    const d = await m.service.documentsPourUnProche(proche, 'jeton-r1');
+    // La décision est prise avec le jeton du proche, pour le patient qui l'a désigné.
+    expect(m.decisions).toEqual(['jeton-r1:pat-fictif-001']);
+    expect(d.ordonnances.map((x) => x.numero)).toEqual([o.numero]);
+    // Jamais le motif, les observations ni la conclusion.
+    expect(d.comptesRendus).toEqual([
+      {
+        id: 'cr-fictif-1',
+        date: '2026-09-21T08:00:00Z',
+        sections: { 'conduite-a-tenir': '[FICTIF] Boire souvent' },
+      },
+    ]);
+  });
+
+  it('refuse : fonction fermée, sans consentement, proche inconnu, patient, agent IA', async () => {
+    await expect(
+      monter({ procheOuvert: false }).service.documentsPourUnProche(proche, 'j'),
+    ).rejects.toMatchObject({ statut: 403, message: 'Fonction non disponible.' });
+    await expect(
+      monter({ autorise: false }).service.documentsPourUnProche(proche, 'j'),
+    ).rejects.toMatchObject({ statut: 403 });
+    const m = monter();
+    await expect(
+      m.service.documentsPourUnProche({ ...proche, relatedPersonId: 'rp-inconnu' }, 'j'),
+    ).rejects.toMatchObject({ statut: 403 });
+    await expect(m.service.documentsPourUnProche(patient, 'j')).rejects.toMatchObject({
+      statut: 403,
+    });
+    await expect(
+      m.service.documentsPourUnProche(
+        { ...proche, agent: { nom: 'agent-01-accueil', patientSession: 'pat-fictif-001' } },
+        'j',
+      ),
+    ).rejects.toMatchObject({ statut: 403 });
+    expect(m.decisions).toEqual([]);
   });
 });

@@ -11,6 +11,9 @@
 // - Mes documents : le patient lui-même lit ses comptes-rendus et ses ordonnances, tels que le
 //   professionnel les a écrits (aucune IA ne les résume ni ne les reformule) ; lecture tracée par
 //   identite comme tout accès au dossier.
+// - Documents pour un proche (flag documents.proche) : le proche désigné par un consentement C-PROCHE
+//   actif voit le strict utile pour aider le patient : ses ordonnances et la rubrique « conduite à
+//   tenir » des comptes-rendus, jamais le motif, les observations ni la conclusion.
 import { randomBytes } from 'node:crypto';
 import type { Composition, Condition, MedicationRequest } from 'fhir/r4.js';
 import {
@@ -56,6 +59,9 @@ export interface ResumeOrdonnance {
     dureeJours: number;
   }[];
 }
+
+/** Ce qu'un proche voit d'un compte-rendu : la seule rubrique utile pour aider le patient. */
+export const SECTIONS_PROCHE: readonly SectionCompteRendu[] = ['conduite-a-tenir'];
 
 /** Lignes par ordonnance au plus. */
 export const LIGNES_MAX = 10;
@@ -124,6 +130,8 @@ export class ServiceConsultation {
     private readonly env: Environnement,
     private readonly maintenant: () => Date = () => new Date(),
     private readonly ordonnances?: OptionsOrdonnances,
+    /** Flags des fonctions ouvertes aux proches (documents.proche). */
+    private readonly drapeaux?: Pick<Drapeaux, 'estActif'>,
   ) {}
 
   private async exigerAcces(jeton: string, patientId: string, brisDeGlace?: { motif: string }) {
@@ -161,8 +169,43 @@ export class ServiceConsultation {
     if (!u.roles.includes('patient') || !u.patientId || u.agent) {
       throw new ErreurConsultation('Réservé au patient lui-même.', 403);
     }
-    const patientId = u.patientId;
+    await this.exigerAcces(jeton, u.patientId);
+    return this.documents(u.patientId);
+  }
+
+  /**
+   * Documents du patient qui a désigné ce proche (consentement C-PROCHE actif, vérifié et tracé par
+   * identite) : ordonnances et rubrique « conduite à tenir » seulement (minimisation).
+   */
+  async documentsPourUnProche(u: Utilisateur, jeton: string): Promise<MesDocuments> {
+    if (!u.roles.includes('proche') || !u.relatedPersonId || u.agent) {
+      throw new ErreurConsultation('Réservé aux proches désignés par le patient.', 403);
+    }
+    const ouvert = await this.drapeaux?.estActif('documents.proche', {
+      sujet: u.sujet,
+      typeUtilisateur: 'proche',
+    });
+    if (!ouvert) throw new ErreurConsultation('Fonction non disponible.', 403);
+    const patientId = await this.dossierFhir.patientDuProche(u.relatedPersonId);
+    // Même réponse sans patient rattaché ou sans consentement : rien n'est révélé.
+    if (!patientId) throw new ErreurConsultation('Accès au dossier refusé.', 403);
     await this.exigerAcces(jeton, patientId);
+    const d = await this.documents(patientId);
+    return {
+      ordonnances: d.ordonnances,
+      comptesRendus: d.comptesRendus
+        .map((c) => ({
+          ...c,
+          sections: Object.fromEntries(
+            SECTIONS_PROCHE.filter((s) => c.sections[s]).map((s) => [s, c.sections[s]]),
+          ),
+        }))
+        .filter((c) => Object.keys(c.sections).length > 0),
+    };
+  }
+
+  /** Comptes-rendus et ordonnances d'un patient, après une décision d'accès favorable. */
+  private async documents(patientId: string): Promise<MesDocuments> {
     const [comptesRendus, lignes] = await Promise.all([
       this.dossierFhir.comptesRendus(patientId),
       this.ordonnances?.dossier.lignesDuPatient(patientId) ?? Promise.resolve([]),
