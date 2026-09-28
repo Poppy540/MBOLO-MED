@@ -25,7 +25,9 @@ Fonctionnalité: Remboursement d'un rendez-vous payé puis annulé, validé par 
     Quand "patient-fictif-04" réserve un créneau avec "prac-fictif-001"
     Et que "patient-fictif-04" paie avec "airtel" depuis le numéro "+241 00 00 00 00"
     Et que le payeur valide le paiement sur son téléphone
-    Et que "patient-fictif-04" annule ce rendez-vous
+    Alors le rendez-vous de "patient-fictif-04" est confirmé
+    Quand "patient-fictif-04" annule ce rendez-vous
+    Alors le rendez-vous est annulé
     Et que "valideur-fictif-01" refuse ce remboursement
     Alors le remboursement est refusé
 
@@ -36,8 +38,10 @@ Fonctionnalité: Remboursement d'un rendez-vous payé puis annulé, validé par 
     Quand "patient-fictif-04" réserve un créneau avec "prac-fictif-001"
     Et que "patient-fictif-04" paie avec "airtel" depuis le numéro "+241 00 00 00 00"
     Et que le payeur valide le paiement sur son téléphone
-    Et que "patient-fictif-04" annule ce rendez-vous
-    Alors "valideur-fictif-01" voit un remboursement de 10000 "XAF" à valider pour ce rendez-vous
+    Alors le rendez-vous de "patient-fictif-04" est confirmé
+    Quand "patient-fictif-04" annule ce rendez-vous
+    Alors le rendez-vous est annulé
+    Et "valideur-fictif-01" voit un remboursement de 10000 "XAF" à valider pour ce rendez-vous
     Quand "patient-fictif-04" valide ce remboursement
     Alors la décision de remboursement est refusée
     Quand "medecin-fictif-01" valide ce remboursement
