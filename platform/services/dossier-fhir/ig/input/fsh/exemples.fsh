@@ -156,3 +156,25 @@ Usage: #example
 * section[1].code = MboloSectionCompteRenduCS#conclusion
 * section[1].text.status = #generated
 * section[1].text.div = "<div xmlns=\"http://www.w3.org/1999/xhtml\">[FICTIF] Conclusion du médecin test.</div>"
+
+Instance: fictif-ordonnance-0001
+InstanceOf: MboloOrdonnance
+Title: "[FICTIF] Ligne d'ordonnance : paracétamol"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* status = #active
+* intent = #order
+* groupIdentifier.system = "https://mbolo-sante.example/fhir/identifiant-ordonnance"
+* groupIdentifier.value = "FICTIF-ORD-0001"
+* medicationCodeableConcept = $atc#N02BE01 "paracetamol"
+* subject = Reference(fictif-patient-0001)
+* authoredOn = "2026-10-01T09:30:00+01:00"
+* requester = Reference(fictif-praticien-0001)
+* dosageInstruction[0].timing.repeat.frequency = 3
+* dosageInstruction[0].timing.repeat.period = 1
+* dosageInstruction[0].timing.repeat.periodUnit = #d
+* dosageInstruction[0].timing.repeat.boundsDuration = 5 'd' "jours"
+* dosageInstruction[0].doseAndRate[0].doseQuantity = 500 'mg' "mg"
+* dispenseRequest.validityPeriod.start = "2026-10-01"
+* dispenseRequest.validityPeriod.end = "2026-12-30"
+* dispenseRequest.numberOfRepeatsAllowed = 0

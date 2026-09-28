@@ -206,3 +206,47 @@ Description: "Compte-rendu rédigé et signé par le professionnel de santé apr
 * section.code 1..1 MS
 * section.code from MboloSectionCompteRenduVS (required)
 * section.text 1..1 MS
+
+Invariant: mbolo-ord-1
+Description: "Aucun texte libre dans une ordonnance : posologie structurée et médicament codé ; une consigne écrite n'est jamais exécutée par un agent (principe n°8)."
+Expression: "note.empty() and dosageInstruction.all(text.empty() and patientInstruction.empty()) and medication.ofType(CodeableConcept).text.empty()"
+Severity: #error
+
+Invariant: mbolo-ord-2
+Description: "Principe n°1 : une ordonnance est prescrite par un professionnel de santé, jamais par un agent IA, pour un patient."
+Expression: "requester.reference.startsWith('Practitioner/') and subject.reference.startsWith('Patient/')"
+Severity: #error
+
+Invariant: mbolo-ord-3
+Description: "Médicament codé et posologie structurée (dose, fréquence, période, durée) obligatoires."
+Expression: "medication.ofType(CodeableConcept).coding.all(system.exists() and code.exists()) and dosageInstruction.exists() and dosageInstruction.all(doseAndRate.dose.exists() and timing.repeat.frequency.exists() and timing.repeat.period.exists() and timing.repeat.bounds.exists())"
+Severity: #error
+
+Invariant: mbolo-ord-4
+Description: "Période de validité obligatoire, fin après le début ; au plus 12 renouvellements."
+Expression: "dispenseRequest.validityPeriod.start.exists() and dispenseRequest.validityPeriod.end > dispenseRequest.validityPeriod.start and (dispenseRequest.numberOfRepeatsAllowed.empty() or dispenseRequest.numberOfRepeatsAllowed <= 12)"
+Severity: #error
+
+Profile: MboloOrdonnance
+Parent: MedicationRequest
+Id: mbolo-ordonnance
+Title: "Ligne d'ordonnance électronique Mbolo Santé"
+Description: "Une ligne d'ordonnance rédigée et signée par le professionnel de santé (ADR-0018, proposée). Les lignes d'une même ordonnance partagent un groupIdentifier. Nomenclature des médicaments paramétrable par pays."
+* ^status = #draft
+* ^experimental = true
+* obeys mbolo-ord-1 and mbolo-ord-2 and mbolo-ord-3 and mbolo-ord-4
+* status MS
+* intent = #order
+* groupIdentifier 1..1 MS
+* groupIdentifier.system = "https://mbolo-sante.example/fhir/identifiant-ordonnance"
+* groupIdentifier.value 1..1
+* medication[x] only CodeableConcept
+* medication[x] MS
+* subject only Reference(MboloPatient)
+* subject MS
+* authoredOn 1..1 MS
+* requester 1..1 MS
+* requester only Reference(Practitioner)
+* dosageInstruction 1..* MS
+* dispenseRequest 1..1 MS
+* dispenseRequest.validityPeriod 1..1 MS

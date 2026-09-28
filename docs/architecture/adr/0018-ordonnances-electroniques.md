@@ -74,6 +74,10 @@ Contraintes :
 - **Registre des traitements** : T3 précisé (pharmacie choisie destinataire, durée de conservation légale des ordonnances à confirmer).
 - **Pharmacovigilance** : circuit national à identifier (D-0003, question 11) avant la vague 3.
 
+## Suivi
+
+- **Profil FHIR `mbolo-ordonnance`** (PR BA) : règles et invariants `mbolo-ord-1` à `mbolo-ord-4`, constructeur, exemple fictif, cas invalides rejetés par le validateur officiel.
+
 ## Reste à décider
 
 1. Avis juridique : validité, niveau de signature, prescripteur à l'étranger (D-0003).

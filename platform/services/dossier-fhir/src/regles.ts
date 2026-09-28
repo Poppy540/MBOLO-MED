@@ -15,6 +15,7 @@ import type {
   Provenance,
   Reference,
 } from 'fhir/r4.js';
+import { verifierOrdonnance } from './ordonnance.js';
 import {
   AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
@@ -314,6 +315,8 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierComposition(r);
       case 'Patient':
         return verifierPatient(r);
+      case 'MedicationRequest':
+        return verifierOrdonnance(r);
       default:
         return [];
     }

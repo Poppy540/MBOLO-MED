@@ -14,3 +14,5 @@ Chacune viole une règle des profils Mbolo Santé. Le script `scripts/valider-ig
 | `compte-rendu-par-agent-ia.json` | `mbolo-cr-1` : compte-rendu dont l'auteur est un agent IA (principe n°1) | `mbolo-cr-1` |
 | `patient-sans-prenom.json` | `mbolo-pat-1` : patient sans prénom (le professionnel doit savoir qui il soigne) | `mbolo-pat-1` |
 | `patient-verifie-sans-identifiant.json` | `mbolo-pat-2` : identité « vérifiée » sans numéro d'assurance maladie ni provisoire | `mbolo-pat-2` |
+| `ordonnance-par-agent-ia.json` | `mbolo-ord-2` : ordonnance prescrite par un agent IA (principe n°1, ADR-0018) | `mbolo-ord-2` |
+| `ordonnance-texte-libre.json` | `mbolo-ord-1` : consigne en texte libre dans une ordonnance (principe n°8) | `mbolo-ord-1` |

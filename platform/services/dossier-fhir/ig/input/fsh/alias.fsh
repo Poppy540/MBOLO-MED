@@ -5,3 +5,4 @@ Alias: $condition-clinical = http://terminology.hl7.org/CodeSystem/condition-cli
 Alias: $condition-category = http://terminology.hl7.org/CodeSystem/condition-category
 Alias: $provenance-type = http://terminology.hl7.org/CodeSystem/provenance-participant-type
 Alias: $consent-provision = http://hl7.org/fhir/consent-provision-type
+Alias: $atc = http://www.whocc.no/atc

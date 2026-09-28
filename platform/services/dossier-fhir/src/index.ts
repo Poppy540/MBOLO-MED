@@ -43,3 +43,11 @@ export {
   verifierSlot,
 } from './regles.js';
 export type { Environnement, Violation } from './regles.js';
+export {
+  RENOUVELLEMENTS_MAX,
+  SYSTEME_ORDONNANCE,
+  UCUM,
+  ordonnance,
+  verifierOrdonnance,
+} from './ordonnance.js';
+export type { Code, LigneOrdonnance, OptionsOrdonnance } from './ordonnance.js';
