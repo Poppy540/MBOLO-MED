@@ -44,7 +44,8 @@ type Ecran =
   | { nom: 'report'; rendezVous: RendezVous }
   | { nom: 'dossier'; rendezVous: RendezVous }
   | { nom: 'visio'; rendezVous: RendezVous }
-  | { nom: 'verifications' };
+  | { nom: 'verifications' }
+  | { nom: 'remboursements' };
 
 /** Rôles du compte connecté (jeton Keycloak) : l'affichage suit, le service décide. */
 const roles = (): string[] => {
@@ -52,6 +53,7 @@ const roles = (): string[] => {
   return (r as { roles?: string[] } | undefined)?.roles ?? [];
 };
 const estVerificateur = () => roles().includes('verification-identite');
+const estValideur = () => roles().includes('validation-remboursement');
 const estSoignant = () => roles().some((r) => r === 'professionnel' || r === 'infirmier');
 
 export function App() {
@@ -66,7 +68,13 @@ export function App() {
           jeton = j;
           history.replaceState(null, '', '/');
           setEcran(
-            estVerificateur() && !estSoignant() ? { nom: 'verifications' } : { nom: 'rendez-vous' },
+            estSoignant()
+              ? { nom: 'rendez-vous' }
+              : estVerificateur()
+                ? { nom: 'verifications' }
+                : estValideur()
+                  ? { nom: 'remboursements' }
+                  : { nom: 'rendez-vous' },
           );
         }
       })
@@ -107,9 +115,10 @@ export function App() {
       {jeton &&
         (ecran.nom === 'rendez-vous' ||
           ecran.nom === 'creneaux' ||
-          ecran.nom === 'verifications') && (
+          ecran.nom === 'verifications' ||
+          ecran.nom === 'remboursements') && (
           <nav class="actions">
-            {(estSoignant() || !estVerificateur()) && (
+            {(estSoignant() || (!estVerificateur() && !estValideur())) && (
               <>
                 <button
                   class={ecran.nom === 'rendez-vous' ? 'principal' : ''}
@@ -131,6 +140,14 @@ export function App() {
                 onClick={() => allerA({ nom: 'verifications' })}
               >
                 <span aria-hidden="true">🪪</span> Vérifications
+              </button>
+            )}
+            {estValideur() && (
+              <button
+                class={ecran.nom === 'remboursements' ? 'principal' : ''}
+                onClick={() => allerA({ nom: 'remboursements' })}
+              >
+                <span aria-hidden="true">↩️</span> Remboursements
               </button>
             )}
           </nav>
@@ -168,6 +185,8 @@ export function App() {
         <DossierPatient rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : ecran.nom === 'verifications' ? (
         <EcranVerifications signaler={(m) => setMessage(m)} />
+      ) : ecran.nom === 'remboursements' ? (
+        <EcranRemboursements signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'report' ? (
         <Report rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : (
@@ -189,6 +208,22 @@ function EcranVerifications(p: { signaler: (m: string) => void }) {
   useEffect(() => {
     import('./verifications.js')
       .then((m) => setEcran(() => m.Verifications))
+      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+  }, []);
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
+/** Remboursements à valider (ADR-0017) : écran chargé à la demande. */
+function EcranRemboursements(p: { signaler: (m: string) => void }) {
+  type Props = { jeton: string; quand: (iso: string) => string; signaler: (m: string) => void };
+  const [Ecran, setEcran] = useState<ComponentType<Props>>();
+  useEffect(() => {
+    import('./remboursements.js')
+      .then((m) => setEcran(() => m.Remboursements))
       .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
   }, []);
   return Ecran && jeton ? (

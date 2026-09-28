@@ -38,7 +38,8 @@ type Ecran =
   | { nom: 'rendez-vous' }
   | { nom: 'praticiens' }
   | { nom: 'creneaux'; praticienId: string }
-  | { nom: 'visio'; rendezVous: RendezVous };
+  | { nom: 'visio'; rendezVous: RendezVous }
+  | { nom: 'paiement'; rendezVousId: string };
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -142,7 +143,19 @@ export function App() {
             setMessage(m);
             setEcran({ nom: 'rendez-vous' });
           }}
+          payer={(rendezVousId) => {
+            setMessage(undefined);
+            setEcran({ nom: 'paiement', rendezVousId });
+          }}
           signaler={signaler}
+        />
+      ) : ecran.nom === 'paiement' ? (
+        <EcranPaiement
+          rendezVousId={ecran.rendezVousId}
+          retour={(m) => {
+            setMessage(m);
+            setEcran({ nom: 'rendez-vous' });
+          }}
         />
       ) : (
         <Consultation
@@ -240,6 +253,31 @@ function EcranVerification(p: { retour: () => void }) {
   );
 }
 
+/** Paiement d'une réservation (ADR-0017) : écran chargé à la demande. */
+function EcranPaiement(p: { rendezVousId: string; retour: (message?: string) => void }) {
+  const [Ecran, setEcran] =
+    useState<
+      ComponentType<{ jeton: string; rendezVousId: string; retour: (m?: string) => void }>
+    >();
+  const [echec, setEchec] = useState(false);
+  useEffect(() => {
+    import('./paiement.js').then((m) => setEcran(() => m.Paiement)).catch(() => setEchec(true));
+  }, []);
+  if (echec) {
+    return (
+      <section>
+        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
+        <button onClick={() => p.retour()}>Retour</button>
+      </section>
+    );
+  }
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} rendezVousId={p.rendezVousId} retour={p.retour} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
 function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) => void }) {
   const [liste, setListe] = useState<RendezVous[]>();
   const [horsLigne, setHorsLigne] = useState(false);
@@ -248,9 +286,13 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
       .mesRendezVous()
       .then((l) => {
         const prevus = l
-          .filter((r) => r.statut === 'prevu')
+          .filter((r) => r.statut === 'prevu' || r.statut === 'a-payer')
           .sort((a, b) => a.debut.localeCompare(b.debut));
-        retenirRendezVous(localStorage, prevus);
+        // Hors ligne : seuls les rendez-vous confirmés sont gardés sur le téléphone.
+        retenirRendezVous(
+          localStorage,
+          prevus.filter((r) => r.statut === 'prevu'),
+        );
         setHorsLigne(false);
         setListe(prevus);
       })
@@ -277,10 +319,27 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
           {liste.map((r) => (
             <li key={r.id} data-rendez-vous={r.id} data-creneau={r.creneauId}>
               <strong>{quand(r.debut)}</strong> <span>({r.dureeMinutes} min)</span>
+              {r.statut === 'a-payer' && (
+                <p>
+                  <span aria-hidden="true">⏳</span> En attente de paiement
+                </p>
+              )}
               <div class="actions">
-                <button class="principal" onClick={() => p.allerA({ nom: 'visio', rendezVous: r })}>
-                  <span aria-hidden="true">📹</span> Rejoindre
-                </button>
+                {r.statut === 'a-payer' ? (
+                  <button
+                    class="principal"
+                    onClick={() => p.allerA({ nom: 'paiement', rendezVousId: r.id })}
+                  >
+                    <span aria-hidden="true">💳</span> Payer
+                  </button>
+                ) : (
+                  <button
+                    class="principal"
+                    onClick={() => p.allerA({ nom: 'visio', rendezVous: r })}
+                  >
+                    <span aria-hidden="true">📹</span> Rejoindre
+                  </button>
+                )}
                 <button
                   onClick={() =>
                     api
@@ -312,6 +371,8 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
 function Creneaux(p: {
   praticienId: string;
   retour: (message?: string) => void;
+  /** Réservation payante (ADR-0017) : le créneau est retenu, le paiement s'ouvre. */
+  payer: (rendezVousId: string) => void;
   signaler: (e: unknown) => void;
 }) {
   const [liste, setListe] = useState<Creneau[]>();
@@ -330,7 +391,9 @@ function Creneaux(p: {
           onClick={() =>
             api
               .reserver(choisi.id)
-              .then(() => p.retour('Rendez-vous réservé.'))
+              .then((r) =>
+                r.statut === 'a-payer' ? p.payer(r.id) : p.retour('Rendez-vous réservé.'),
+              )
               .catch((e: unknown) => {
                 setChoisi(undefined);
                 p.signaler(e);
