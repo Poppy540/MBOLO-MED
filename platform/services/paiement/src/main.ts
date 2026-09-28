@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { creerVerificateur } from '@mbolo/identite';
+import { creerVerificateur, exigerHttps } from '@mbolo/identite';
 import { creerJournal, signalerAlerte } from '@mbolo/journal-securise';
 import { DepotPostgres } from './depot.js';
 import { FournisseurSimule } from './fournisseur.js';
@@ -150,6 +150,20 @@ setInterval(
   },
   Number(env['PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS'] ?? '900000'),
 ).unref();
+
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: env['KEYCLOAK_ISSUER'],
+      UNLEASH_API_URL: env['UNLEASH_API_URL'],
+    },
+    env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
+  process.exit(1);
+}
 
 const app = await creerServeur({
   verifierJeton: creerVerificateur({ emetteur, audience }),

@@ -46,6 +46,13 @@ class Refus extends Error {
 
 export async function creerPasserelle(o: OptionsPasserelle): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
+  // Revue ASVS n°1 (C1) : même règle que `entetesSecurite` de @mbolo/identite (la passerelle n'en
+  // dépend pas) : aucune ressource du dossier mise en cache, aucun type deviné par le navigateur.
+  app.addHook('onSend', async (_req, reply, payload) => {
+    reply.header('x-content-type-options', 'nosniff');
+    if (!reply.hasHeader('cache-control')) reply.header('cache-control', 'no-store');
+    return payload;
+  });
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: o.limiteParMinute ?? 3000, timeWindow: '1 minute' });
   const amont = sansBarreFinale(o.amont);

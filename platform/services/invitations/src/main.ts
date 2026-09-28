@@ -3,7 +3,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
+import {
+  authentificationDepuis,
+  creerFournisseurJeton,
+  creerVerificateur,
+  exigerHttps,
+} from '@mbolo/identite';
 import {
   ConsentementsIdentite,
   DossierAssistanceFhir,
@@ -145,6 +150,23 @@ try {
   );
 } catch (e) {
   journal.erreur('paramètres des invitations invalides', { err: e });
+  process.exit(1);
+}
+
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: env['KEYCLOAK_ISSUER'],
+      FHIR_BASE_URL: env['FHIR_BASE_URL'],
+      IDENTITE_URL: env['IDENTITE_URL'],
+      NOTIFICATIONS_URL: env['NOTIFICATIONS_URL'],
+      UNLEASH_API_URL: env['UNLEASH_API_URL'],
+    },
+    env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
   process.exit(1);
 }
 

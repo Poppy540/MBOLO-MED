@@ -1,6 +1,6 @@
 // Démarrage du service de notifications (ADR-0012). Secret du compte de service
 // (clé privée NOTIFICATIONS_SERVICE_CLE_PRIVEE, ADR-0016) depuis le coffre-fort, jamais le dépôt.
-import { authentificationDepuis, creerFournisseurJeton } from '@mbolo/identite';
+import { authentificationDepuis, creerFournisseurJeton, exigerHttps } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { PAYS_PAR_DEFAUT, verifierPays, type Pays } from './gabarits.js';
 import { ContactsFhir } from './dossier.js';
@@ -44,7 +44,22 @@ const entetes = creerFournisseurJeton({
   authentification,
 });
 const canal = new CanalSimule();
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: env['KEYCLOAK_ISSUER'],
+      FHIR_BASE_URL: env['FHIR_BASE_URL'],
+    },
+    env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
+  process.exit(1);
+}
+
 const app = await creerServeur({
+  trustProxy: env['NOTIFICATIONS_TRUST_PROXY'] === 'true',
   limiteParMinute: Number(env['NOTIFICATIONS_LIMITE_PAR_MINUTE'] ?? '600'),
   verifierAppelant: creerVerificateurAppelant({
     emetteur,

@@ -10,6 +10,7 @@ import { ServiceRevue } from './revue.js';
 import { authentificationDepuis, creerFournisseurJeton } from './jeton-service.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
+import { exigerHttps } from './securite-http.js';
 
 const emetteur = process.env['KEYCLOAK_ISSUER'];
 const audience = process.env['IDENTITE_AUDIENCE'] ?? 'mbolo-identite-api';
@@ -70,7 +71,23 @@ if (unleashUrl && unleashJeton) {
   journal.avertissement('Unleash non configuré : toutes les fonctions nouvelles sont désactivées.');
 }
 
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: process.env['KEYCLOAK_ISSUER'],
+      FHIR_BASE_URL: process.env['FHIR_BASE_URL'],
+      UNLEASH_API_URL: process.env['UNLEASH_API_URL'],
+    },
+    process.env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
+  process.exit(1);
+}
+
 const app = await creerServeur({
+  trustProxy: process.env['IDENTITE_TRUST_PROXY'] === 'true',
   limiteParMinute: Number(process.env['IDENTITE_LIMITE_PAR_MINUTE'] ?? '300'),
   verifierJeton: creerVerificateur({ emetteur, audience }),
   consentements: new ServiceConsentements(depot, env, drapeaux),

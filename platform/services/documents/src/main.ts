@@ -4,7 +4,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { connecter, migrer, roleDe } from '@mbolo/base-donnees';
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
+import {
+  authentificationDepuis,
+  creerFournisseurJeton,
+  creerVerificateur,
+  exigerHttps,
+} from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
@@ -138,6 +143,22 @@ const systemes = {
     env['DOCUMENTS_SYSTEME_PROVISOIRE'] ??
     'https://mbolo-sante.example/fhir/identifiant/ga/provisoire',
 };
+
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: env['KEYCLOAK_ISSUER'],
+      FHIR_BASE_URL: env['FHIR_BASE_URL'],
+      STORAGE_ENDPOINT: env['STORAGE_ENDPOINT'],
+      UNLEASH_API_URL: env['UNLEASH_API_URL'],
+    },
+    env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
+  process.exit(1);
+}
 
 const app = await creerServeur({
   verifierJeton: creerVerificateur({

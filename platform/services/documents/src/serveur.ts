@@ -3,7 +3,12 @@
 // vérifié sur le contenu. Le journal ne contient jamais d'image, de nom ni de numéro.
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
+import {
+  ErreurDepot,
+  type Utilisateur,
+  type VerifierJeton,
+  entetesSecurite,
+} from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { MOTIFS_REFUS, RESULTATS, TYPES_DOCUMENT } from './depot.js';
 import { TAILLE_MAX } from './format.js';
@@ -49,6 +54,8 @@ export async function creerServeur(o: {
     // Un champ inconnu est refusé, pas retiré en silence (aucun texte libre dans une décision).
     ajv: { customOptions: { removeAdditional: false } },
   });
+  // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
+  entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;
   // Toutes les routes sont limitées ; enregistré avant elles.
   await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });

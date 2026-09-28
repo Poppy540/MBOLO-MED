@@ -1,7 +1,12 @@
 // Démarrage du service de téléconsultation (prototype, ADR-0011). Secrets : clé et secret d'API
 // LiveKit (WEBRTC_API_KEY, WEBRTC_API_SECRET), depuis le coffre-fort, jamais le dépôt.
 import { drapeauxFixes, drapeauxUnleash } from '@mbolo/drapeaux';
-import { authentificationDepuis, creerFournisseurJeton, creerVerificateur } from '@mbolo/identite';
+import {
+  authentificationDepuis,
+  creerFournisseurJeton,
+  creerVerificateur,
+  exigerHttps,
+} from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
 import { AnnuaireFhir, AnnuaireMemoire, type Annuaire } from './annuaire.js';
@@ -127,6 +132,24 @@ if (paiements) {
         enCours = false;
       });
   }, intervalle).unref();
+}
+
+// Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
+try {
+  exigerHttps(
+    {
+      KEYCLOAK_ISSUER: env['KEYCLOAK_ISSUER'],
+      FHIR_BASE_URL: env['FHIR_BASE_URL'],
+      NOTIFICATIONS_URL: env['NOTIFICATIONS_URL'],
+      PAIEMENT_URL: env['PAIEMENT_URL'],
+      UNLEASH_API_URL: env['UNLEASH_API_URL'],
+      WEBRTC_SERVER_URL: env['WEBRTC_SERVER_URL'],
+    },
+    env['MBOLO_ENV'] === 'prod',
+  );
+} catch (e) {
+  journal.erreur('adresses non chiffrées refusées en production', { err: e });
+  process.exit(1);
 }
 
 const app = await creerServeur({

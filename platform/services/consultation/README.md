@@ -57,3 +57,9 @@ Consultation clinique : côté professionnel, **lire le dossier du patient**, **
 
 - Choix par le patient, au moment du partage, de ce que voit son proche (après avis du comité médical et du juriste).
 - Ordonnances : signature du prescripteur, choix de la pharmacie, code de retrait et délivrance (service `ordonnances`, ADR-0018), après l'avis juridique.
+
+## Sécurité HTTP (revue ASVS n°1)
+
+- Toutes les réponses portent `Cache-Control: no-store` et `X-Content-Type-Options: nosniff` (`entetesSecurite`).
+- En production, les adresses des autres services, de Keycloak et du dossier doivent être en `https://` : sinon le service ne démarre pas (`exigerHttps`).
+- Derrière le proxy de confiance de l'hébergeur : `CONSULTATION_TRUST_PROXY=true`, pour que la limite d'appels vaille par adresse réelle (désactivé par défaut).
