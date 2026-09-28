@@ -52,6 +52,13 @@ Statuts : `a-payer` → `en-attente` → `paye` ou `echoue` (un paiement échou�
 - **Pas encore** : ventilation honoraires / frais de service, taxes, mentions légales définitives (questions du juriste et du comptable, ADR-0020). En attendant, chaque reçu porte `valeurFiscale: false`.
 - **Lecture** : `GET /recus` (patient lui-même, jamais un agent IA ni un professionnel) → `{ recus }` (`cache-control: no-store`) ; fonction fermée : 403 `desactive`.
 
+## Relevés des professionnels (ADR-0020, flag `reversements.professionnels`)
+
+- Chaque paiement retient la **référence opaque du professionnel** du rendez-vous (`praticien`, envoyée par la téléconsultation) ; jamais son nom ni sa spécialité. Les paiements antérieurs n'en ont pas et restent hors relevé.
+- `GET /releves?mois=AAAA-MM` (rôle `validation-reversement`, double authentification, jamais un agent IA) → par professionnel et par devise : consultations payées et montant encaissé dans le mois, remboursements versés dans le mois, **net**, **part à reverser** (arrondie à l'unité inférieure) et, si le net est négatif, montant **à déduire** du relevé suivant. Le mois commence et finit à minuit **dans le pays** (fuseau).
+- **Lecture seule : rien n'est versé.** Le versement (validation par un humain, coordonnées de versement vérifiées et chiffrées) viendra après les réponses du porteur de projet et du juriste.
+- Part reversée : `PAIEMENT_PART_REVERSEE_POURCENT` (défaut `55`, hypothèse du business plan, à valider : partage d'honoraires, ADR-0020 questions 1 et 11).
+
 ## Fournisseur simulé
 
 - Il garde les tentatives en mémoire et ne conserve pas le numéro.
@@ -96,6 +103,7 @@ Le service `teleconsultation` crée le paiement à la réservation et demande «
 | `PAIEMENT_RAPPROCHEMENT_INTERVALLE_MS` (défaut `900000`)                                               | Fréquence du rapprochement avec le prestataire                                                                            |
 | `PAIEMENT_RECUS_PAYS` (défaut `GA`), `PAIEMENT_RECUS_FUSEAU` (défaut `Africa/Libreville`)              | Série des reçus : code pays et année du pays                                                                              |
 | `PAIEMENT_RECUS_EMETTEUR`, `PAIEMENT_RECUS_MENTIONS`, `PAIEMENT_RECUS_VALEUR_FISCALE` (défaut `false`) | Émetteur et mentions des reçus, validés par le juriste ; `true` seulement après validation par le juriste et le comptable |
+| `PAIEMENT_PART_REVERSEE_POURCENT` (défaut `55`)                                                        | Part reversée au professionnel dans les relevés, en pourcentage entier                                                    |
 | `PAIEMENT_SIMULATION` (défaut absent)                                                                  | `true` : route de simulation du payeur (développement et e2e seulement)                                                   |
 
 ## Tests

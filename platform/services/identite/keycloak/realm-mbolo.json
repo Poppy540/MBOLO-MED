@@ -116,6 +116,14 @@
         "composites": {
           "realm": ["mfa-requise"]
         }
+      },
+      {
+        "name": "validation-reversement",
+        "description": "Relit les relevés mensuels des professionnels et validera leurs reversements (ADR-0020) ; aucun accès clinique. MFA obligatoire. Jamais un agent IA ni le bénéficiaire lui-même.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },

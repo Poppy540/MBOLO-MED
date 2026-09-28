@@ -60,6 +60,7 @@ describe('royaume mbolo', () => {
     'verification-identite',
     'validation-remboursement',
     'assistance-patient',
+    'validation-reversement',
     // Le proche voit des données de santé d'une autre personne (ADR-0019, porteur de projet).
     'proche',
   ])('impose la double authentification au rôle %s', (nom) => {
