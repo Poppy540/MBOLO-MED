@@ -36,6 +36,15 @@ export const CATALOGUE: Readonly<Record<string, Readonly<Record<Gabarit, string>
   },
 };
 
+/**
+ * Invitation d'un proche (ADR-0019) : envoyée au numéro saisi par le patient, qui n'est pas gardé.
+ * Ni le nom du patient ni aucune donnée de santé : le patient prévient lui-même son proche.
+ * {code} et {jours} sont les seules variables.
+ */
+export const CATALOGUE_INVITATION_PROCHE: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : vous êtes invité à suivre un proche. Votre code : {code}, valable {jours} jours. Créez votre compte dans l’application.',
+};
+
 /** Paramètres du pays déployé. */
 export interface Pays {
   /** Fuseau horaire IANA, ex. Africa/Libreville. */
@@ -46,7 +55,8 @@ export interface Pays {
 
 export const PAYS_PAR_DEFAUT: Pays = { fuseau: 'Africa/Libreville', langue: 'fr-FR' };
 
-const textes = (langue: string) => CATALOGUE[langue.split('-')[0]?.toLowerCase() ?? ''];
+const langueDe = (langue: string) => langue.split('-')[0]?.toLowerCase() ?? '';
+const textes = (langue: string) => CATALOGUE[langueDe(langue)];
 
 /** Vérifie au démarrage que le pays est utilisable (fuseau connu, textes approuvés). */
 export function verifierPays(p: Pays): void {
@@ -55,7 +65,7 @@ export function verifierPays(p: Pays): void {
   } catch {
     throw new Error(`Fuseau ou langue invalide : ${p.fuseau}, ${p.langue}.`);
   }
-  if (!textes(p.langue)) {
+  if (!textes(p.langue) || !CATALOGUE_INVITATION_PROCHE[langueDe(p.langue)]) {
     throw new Error(`Aucun gabarit approuvé pour la langue ${p.langue}.`);
   }
 }
@@ -82,4 +92,20 @@ export function rediger(g: Gabarit, v: Variables, pays: Pays = PAYS_PAR_DEFAUT):
     minute: '2-digit',
   }).format(t);
   return catalogue[g].replace('{date}', date).replace('{heure}', heure);
+}
+
+/** Code d'invitation présenté (ABCD-EFGH, alphabet sans caractères ambigus). */
+export const FORMAT_CODE = /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
+
+export function redigerInvitationProche(
+  code: string,
+  jours: number,
+  pays: Pays = PAYS_PAR_DEFAUT,
+): string {
+  const texte = CATALOGUE_INVITATION_PROCHE[langueDe(pays.langue)];
+  if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
+  if (!FORMAT_CODE.test(code) || !Number.isInteger(jours) || jours < 1 || jours > 90) {
+    throw new Error('Variables invalides.');
+  }
+  return texte.replace('{code}', code).replace('{jours}', String(jours));
 }

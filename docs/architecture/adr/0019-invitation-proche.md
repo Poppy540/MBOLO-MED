@@ -1,7 +1,7 @@
 # ADR-0019 — Le patient invite un proche depuis son application
 
 - **Date :** 2026-09-28
-- **Statut :** proposée — décisions attendues du porteur de projet (voir « Questions ») ; vague 2
+- **Statut :** acceptée (porteur de projet, 2026-09-28) ; texte `C-PROCHE` à valider par le juriste ; vague 2
 - **Décideurs :** porteur de projet ; texte `C-PROCHE` à valider par le juriste
 
 ## Contexte
@@ -47,43 +47,53 @@ Contraintes :
 - **I. Aucune** : le proche est celui que le patient a choisi ; le risque (code intercepté) est limité par un code court, à usage unique, une lecture réduite, tracée et révocable, et une alerte au patient à l'activation.
 - **II. Photos d'identité** (comme ADR-0015) : plus sûr, mais lourd pour un proche à l'étranger, et plus de données sensibles.
 
-## Décision proposée
+## Décision (porteur de projet, 2026-09-28)
 
 1. **Fiche créée à l'invitation (option A)**, par le service `invitations`, avec le compte de service qui reçoit `system/RelatedPerson.cu` (création, puis activation).
-2. **Code affiché au patient (option 1)** : aucun numéro du proche n'est collecté. Le texte à transmettre est prêt (« Voici ton code Mbolo Santé : … »), avec le bouton de partage du téléphone.
-3. **Pas de vérification d'identité du proche (option I)** en vague 2, avec ces garde-fous :
-   - code de 8 caractères, **valable 7 jours**, **usage unique**, empreinte HMAC seulement (comme ADR-0013) ;
-   - **3 proches au plus par patient** (paramétrable) ;
+2. **Code envoyé par SMS au proche (option 2)** — décision du porteur de projet :
+   - le **patient saisit le numéro de son proche au moment d'inviter** (confirmé par le porteur de projet) : à l'abonnement ou au paiement, ce serait trop tard, car le proche doit d'abord recevoir le code pour créer son compte ; l'abonnement Diaspora Famille se prend ensuite, une fois connecté ;
+   - numéro au **format international** (indicatif choisi dans une liste, celui du pays par défaut), car le proche vit souvent à l'étranger ;
+   - le numéro sert **seulement à envoyer le code**, puis n'est **pas gardé** : ni dans le dossier, ni dans la base, ni dans les journaux (comme le numéro du payeur, ADR-0017). Le proche pourra plus tard donner lui-même son numéro, avec son propre consentement, s'il veut des rappels ;
+   - le SMS, par le service `notifications` (gabarit fermé), ne contient **ni le nom du patient ni aucune donnée de santé** : « Vous êtes invité sur Mbolo Santé. Code : ABCD-EFGH [FICTIF], valable 7 jours. » Le patient prévient lui-même son proche ;
+   - **en secours** (SMS non reçu, fournisseur indisponible), le patient peut aussi lire le code affiché à son proche ;
+   - le coût des SMS internationaux et le fournisseur (question ouverte n°5, ADR-0012) sont à intégrer aux devis.
+3. **Pas de vérification d'identité du proche (option I)** en vague 2 — décision du porteur de projet —, avec ces garde-fous :
+   - code de 8 caractères, **valable 7 jours**, **usage unique**, empreinte HMAC seulement (comme ADR-0013) — décision du porteur de projet ;
+   - **3 proches au plus par patient** (paramétrable) — décision du porteur de projet ;
    - à l'activation du compte du proche, le patient le voit dans « Mes partages et accès » (« Votre proche Serge [FICTIF] a créé son compte ») et peut **retirer** le partage d'un geste ;
    - lecture toujours réduite (`documents.proche`) et tracée.
-4. **Données du proche** : **prénom** (pour que le patient le reconnaisse) et **lien** (enfant, conjoint, frère ou sœur, parent, autre ; codes `v3-RoleCode`). Ni nom, ni téléphone, ni e-mail, ni date de naissance.
+4. **Données du proche** — décision du porteur de projet : **prénom** (pour que le patient le reconnaisse) et **lien** (enfant, conjoint, frère ou sœur, parent, autre ; codes `v3-RoleCode`). Ni nom, ni e-mail, ni date de naissance ; le numéro de téléphone n'est utilisé que le temps d'envoyer le code (point 2).
 5. **Consentement** : le patient accepte le texte `C-PROCHE` **au moment d'inviter**, pour ce proche nommé ; jamais pré-coché, révocable dans « Mes partages et accès ». Le texte est un brouillon tant que le juriste ne l'a pas validé.
 6. **Inscription du proche** : même formulaire Keycloak que le patient (ADR-0014). Le service `invitations` indique à l'extension le **type** du code :
    - code patient → rôle `patient` (inchangé) ;
    - code proche → rôle `proche` et attribut `related_person_id` fournis **par le serveur** ;
    - liste fermée de rôles, vérifiée par test : jamais `professionnel`, `administrateur`, etc.
    - Le proche ne passe pas par l'action « Mon identité » (réservée aux patients).
-7. **Double authentification du proche** : non obligatoire en vague 2 (comme le patient), à confirmer.
+7. **Double authentification du proche obligatoire** — décision du porteur de projet : code à usage unique (OTP) en plus du mot de passe, configuré à la première connexion, comme pour les professionnels (ADR-0009). Le proche voit des données de santé d'une autre personne : un mot de passe seul ne suffit pas.
 8. Tout est derrière le flag `consentement.proche` (inviter) et `documents.proche` (lire).
 
 ## Conséquences
 
 - **Code**, en petites PR :
-  1. `invitations` : codes « proche » créés par le patient lui-même (limite par patient, validité 7 jours), `RelatedPerson` inactive, consentement `C-PROCHE` ;
-  2. extension Keycloak : type de code → rôle `proche` et `related_person_id` ; activation de la fiche ; tests de la liste fermée des rôles ;
+  1. `invitations` : codes « proche » créés par le patient lui-même (limite par patient, validité 7 jours), `RelatedPerson` inactive, consentement `C-PROCHE`, envoi du code par SMS (gabarit fermé `invitation-proche`, numéro jamais gardé) ;
+  2. extension Keycloak : type de code → rôle `proche` et `related_person_id` ; activation de la fiche ; double authentification obligatoire du rôle `proche` ; tests de la liste fermée des rôles ;
   3. application patient : « Inviter un proche » (prénom, lien, texte `C-PROCHE`, code à transmettre) ; « Votre proche a créé son compte » dans « Mes partages et accès » ;
   4. e2e : invitation, inscription du proche, lecture réduite, retrait.
 - **Registre des traitements** : proches (prénom, lien, compte) ; transfert hors du pays si le proche vit à l'étranger.
 - **Modèle de menaces** : code intercepté ou transmis à la mauvaise personne ; patient sous pression d'un proche ; proche malveillant.
 - **Hors périmètre** : abonnement Diaspora Famille (paiement par carte, ADR-0017) ; mineurs et majeurs protégés (avis juridique) ; un proche qui aide plusieurs patients (un compte par patient en vague 2).
 
-## Questions au porteur de projet
+## Suivi
 
-1. Code **affiché au patient** (proposé) ou **envoyé par SMS** au proche ?
-2. **Pas de vérification d'identité** du proche (proposé) ou photos, comme pour le patient ?
-3. Données du proche : **prénom et lien** seulement (proposé) ?
-4. **3 proches** au plus et code valable **7 jours** (proposé) ?
-5. **Double authentification** pour les proches : non (proposé) ou oui ?
+- **Invitations de proches** (PR BG) : service `invitations` (routes `/proches`, 3 proches, 7 jours, verrou par patient), fiche `RelatedPerson` minimale (règles `mbolo-proche-1` à `-3`), consentement `C-PROCHE` avec le jeton du patient, SMS par le gabarit fermé `invitation-proche` (numéro jamais gardé), compte de service `mbolo-invitations-service` (`system/RelatedPerson.cru`). **Tant que l'extension Keycloak n'est pas à jour, un code de proche est refusé à l'inscription** : il ne peut jamais créer un compte patient.
+
+## Réponses du porteur de projet (2026-09-28)
+
+1. **Code envoyé par SMS au proche.** Moment de la saisie du numéro : **par le patient, à l'invitation** (confirmé) ; numéro non conservé après l'envoi.
+2. **Pas de vérification d'identité** du proche.
+3. Données du proche : **prénom et lien** seulement.
+4. **3 proches** au plus, code valable **7 jours**.
+5. **Double authentification obligatoire** pour les proches.
 
 Sources :
 

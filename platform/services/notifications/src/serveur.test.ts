@@ -84,3 +84,85 @@ describe('API notifications', () => {
     expect(r.json()).toEqual({ erreur: 'Trop de requêtes. Réessayez dans une minute.' });
   });
 });
+
+describe('API notifications — invitation d’un proche (ADR-0019)', () => {
+  const monterInvitations = async () => {
+    const canal = new CanalSimule();
+    const lignes: string[] = [];
+    const app = await creerServeur({
+      verifierAppelant: async (j) => {
+        if (j === 'jeton-invitations') return 'mbolo-invitations-service';
+        if (j === 'jeton-valide') return 'mbolo-teleconsultation-service';
+        throw new Error('refusé');
+      },
+      service: new ServiceNotifications(
+        { telephone: async () => '+241 00 00 00 00', accepteRappels: async () => true },
+        canal,
+      ),
+      journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
+      invitations: { canal, appelants: ['mbolo-invitations-service'] },
+    });
+    return { app, canal, lignes };
+  };
+  // Numéro manifestement fictif, au format international.
+  const invitation = { telephone: '+33000000000', code: 'ABCD-EFGH', jours: 7 };
+
+  it('envoie le code au numéro saisi, sans le garder ni le journaliser', async () => {
+    const { app, canal, lignes } = await monterInvitations();
+    const r = await app.inject({
+      method: 'POST',
+      url: '/invitations-proche',
+      headers: { authorization: 'Bearer jeton-invitations' },
+      payload: invitation,
+    });
+    expect(r.statusCode).toBe(202);
+    expect(r.json()).toEqual({ resultat: 'envoyee' });
+    expect(canal.boite).toHaveLength(1);
+    expect(canal.boite[0]?.telephone).toBe('+33000000000');
+    // Ni nom du patient ni donnée de santé : le code et la durée seulement.
+    expect(canal.boite[0]?.texte).toBe(
+      'Mbolo Santé : vous êtes invité à suivre un proche. Votre code : ABCD-EFGH, valable 7 jours. Créez votre compte dans l’application.',
+    );
+    expect(canal.boite[0]?.texte.length).toBeLessThanOrEqual(160);
+    const journal = lignes.join('\n');
+    expect(journal).not.toContain('+33000000000');
+    expect(journal).not.toContain('ABCD-EFGH');
+  });
+
+  it('réservé au service invitations, qui n’envoie rien d’autre', async () => {
+    const { app, canal } = await monterInvitations();
+    const parAutre = await app.inject({
+      method: 'POST',
+      url: '/invitations-proche',
+      headers: { authorization: 'Bearer jeton-valide' },
+      payload: invitation,
+    });
+    expect(parAutre.statusCode).toBe(403);
+    const rappel = await app.inject({
+      method: 'POST',
+      url: '/notifications',
+      headers: { authorization: 'Bearer jeton-invitations' },
+      payload: corps,
+    });
+    expect(rappel.statusCode).toBe(403);
+    expect(canal.boite).toHaveLength(0);
+  });
+
+  it('refuse un numéro non international, un code mal formé ou un texte en plus', async () => {
+    const { app } = await monterInvitations();
+    for (const payload of [
+      { ...invitation, telephone: '00 00 00 00' },
+      { ...invitation, code: 'ABCD-EFG0' },
+      { ...invitation, jours: 0 },
+      { ...invitation, message: '[FICTIF] texte libre' },
+    ]) {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/invitations-proche',
+        headers: { authorization: 'Bearer jeton-invitations' },
+        payload,
+      });
+      expect(r.statusCode).toBe(400);
+    }
+  });
+});

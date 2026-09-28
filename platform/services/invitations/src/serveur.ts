@@ -1,12 +1,17 @@
 // API des invitations. Création, liste et révocation : rôle gestion-invitations uniquement (humain,
 // double authentification). Vérification d'un code : publique, mais limitée en nombre d'essais.
 // Inscription (ADR-0014) : contrôle et utilisation d'un code par l'extension Keycloak seulement.
+// Proches (ADR-0019) : le patient invite, liste et révoque ses propres invitations.
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
-import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
+import { ErreurDepot, type Utilisateur, type VerifierJeton } from '@mbolo/identite';
+import { LIENS_PROCHE, PRENOM_MAX, type LienProche } from '@mbolo/dossier-fhir';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import type { VerifierService } from './jeton-service.js';
 import type { Limiteur } from './limiteur.js';
+import { ErreurServiceAppele } from './adaptateurs.js';
+import { ErreurProche, type ServiceProches } from './proches.js';
+import type { TypeInvitation } from './depot.js';
 import { COHORTE, ErreurInvitation, type ServiceInvitations } from './service.js';
 
 class ErreurAuthentification extends Error {}
@@ -25,6 +30,8 @@ export async function creerServeur(o: {
   trustProxy?: boolean;
   /** Appels permis par adresse et par minute (défaut : 300). */
   limiteParMinute?: number;
+  /** Invitations de proches par le patient (ADR-0019) ; sans lui, les routes /proches sont absentes. */
+  proches?: ServiceProches;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -60,6 +67,21 @@ export async function creerServeur(o: {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
     }
     if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
+    if (err instanceof ErreurProche) {
+      return reply
+        .code(err.statut)
+        .send({ erreur: err.message, ...(err.motif ? { motif: err.motif } : {}) });
+    }
+    if (err instanceof ErreurServiceAppele) {
+      if (err.statut === 403) return reply.code(403).send({ erreur: 'Accès refusé.' });
+      signalerAlerte(o.journal, 'erreur-serveur', 'service appelé indisponible', { err });
+      return reply.code(503).send({ erreur: err.message });
+    }
+    if (err instanceof ErreurDepot) {
+      if (err.statut === 503)
+        signalerAlerte(o.journal, 'erreur-serveur', 'dossier médical indisponible', { err });
+      return reply.code(err.statut).send({ erreur: err.message });
+    }
     if (err instanceof ErreurInvitation) {
       const code = { 'cohorte-inconnue': 400, 'quota-atteint': 409, introuvable: 404 }[err.motif];
       return reply.code(code).send({ erreur: err.message, motif: err.motif });
@@ -173,10 +195,17 @@ export async function creerServeur(o: {
       }
     };
     const code = { type: 'string', maxLength: 32 } as const;
+    // Types de codes que l'extension sait traiter ; par défaut, patient seulement (ADR-0019).
+    const types = {
+      type: 'array',
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: 'string', enum: ['patient', 'proche'] },
+    } as const;
 
     // Contrôle avant la création du compte : les essais sont limités par adresse du navigateur,
     // transmise par Keycloak (sinon tous les patients partageraient l'adresse de Keycloak).
-    app.post<{ Body: { code: string; adresse: string } }>(
+    app.post<{ Body: { code: string; adresse: string; types?: TypeInvitation[] } }>(
       '/inscription/controle',
       {
         schema: {
@@ -184,7 +213,11 @@ export async function creerServeur(o: {
             type: 'object',
             additionalProperties: false,
             required: ['code', 'adresse'],
-            properties: { code, adresse: { type: 'string', minLength: 1, maxLength: 64 } },
+            properties: {
+              code,
+              adresse: { type: 'string', minLength: 1, maxLength: 64 },
+              types,
+            },
           },
         },
       },
@@ -194,12 +227,12 @@ export async function creerServeur(o: {
           o.journal.avertissement('trop d’essais de code à l’inscription');
           return reply.code(429).send({ erreur: 'Trop d’essais.', motif: 'trop-d-essais' });
         }
-        return { valide: await o.service.verifier(req.body.code) };
+        return { valide: await o.service.verifier(req.body.code, req.body.types) };
       },
     );
 
     // Utilisation atomique pour le compte créé ; 409 si le code ne peut plus servir.
-    app.post<{ Body: { code: string; sujet: string } }>(
+    app.post<{ Body: { code: string; sujet: string; types?: TypeInvitation[] } }>(
       '/inscription/utilisation',
       {
         schema: {
@@ -210,19 +243,95 @@ export async function creerServeur(o: {
             properties: {
               code,
               sujet: { type: 'string', pattern: '^[A-Za-z0-9-]{1,64}$' },
+              types,
             },
           },
         },
       },
       async (req, reply) => {
         await extension(req);
-        const cohorte = await o.service.utiliser(req.body.code, req.body.sujet);
-        if (!cohorte) {
+        const utilise = await o.service.utiliser(req.body.code, req.body.sujet, req.body.types);
+        if (!utilise) {
           return reply.code(409).send({ erreur: 'Code non reconnu.', motif: 'code-non-reconnu' });
         }
-        // Jamais le code : le compte et la cohorte suffisent.
-        o.journal.info('code d’invitation utilisé', { sujet: req.body.sujet, cohorte });
-        return { cohorte };
+        // Jamais le code : le compte, la cohorte et le type suffisent.
+        o.journal.info('code d’invitation utilisé', {
+          sujet: req.body.sujet,
+          cohorte: utilise.cohorte,
+          type: utilise.type,
+        });
+        return utilise;
+      },
+    );
+  }
+
+  const proches = o.proches;
+  if (proches) {
+    // Le patient connecté (jeton de l'application patient) ; le jeton sert aussi au consentement.
+    const patient = async (req: FastifyRequest): Promise<{ u: Utilisateur; jeton: string }> => {
+      const entete = req.headers.authorization;
+      if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+      const jeton = entete.slice('Bearer '.length);
+      try {
+        return { u: await o.verifierJeton(jeton), jeton };
+      } catch {
+        throw new ErreurAuthentification();
+      }
+    };
+
+    app.post<{
+      Body: { prenom: string; lien: LienProche; telephone: string; versionTexte: string };
+    }>(
+      '/proches',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['prenom', 'lien', 'telephone', 'versionTexte'],
+            properties: {
+              prenom: { type: 'string', minLength: 1, maxLength: PRENOM_MAX },
+              lien: { type: 'string', enum: [...LIENS_PROCHE] },
+              // Format international (E.164) : utilisé pour le SMS, jamais gardé.
+              telephone: { type: 'string', pattern: '^\\+[1-9][0-9]{7,14}$' },
+              versionTexte: { type: 'string', minLength: 1, maxLength: 200 },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { u, jeton } = await patient(req);
+        const r = await proches.inviter(u, jeton, req.body);
+        // Ni le prénom, ni le numéro, ni le code : l'identifiant et le résultat du SMS.
+        o.journal.info('proche invité', { par: u.sujet, invitation: r.id, sms: r.sms });
+        return reply.code(201).header('cache-control', 'no-store').send(r);
+      },
+    );
+
+    app.get('/proches', async (req) => {
+      const { u } = await patient(req);
+      return { proches: await proches.lister(u) };
+    });
+
+    app.post<{ Params: { id: string } }>(
+      '/proches/:id/revocation',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            required: ['id'],
+            properties: { id: { type: 'string', format: 'uuid' } },
+          },
+        },
+      },
+      async (req) => {
+        const { u } = await patient(req);
+        await proches.revoquer(u, req.params.id);
+        o.journal.info('invitation de proche révoquée', {
+          par: u.sujet,
+          invitation: req.params.id,
+        });
+        return { statut: 'revoque' };
       },
     );
   }

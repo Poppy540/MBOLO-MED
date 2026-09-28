@@ -192,6 +192,12 @@ importers:
       '@mbolo/base-donnees':
         specifier: workspace:*
         version: link:../../packages/base-donnees
+      '@mbolo/dossier-fhir':
+        specifier: workspace:*
+        version: link:../dossier-fhir
+      '@mbolo/drapeaux':
+        specifier: workspace:*
+        version: link:../../packages/drapeaux
       '@mbolo/identite':
         specifier: workspace:*
         version: link:../identite
@@ -204,6 +210,10 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+    devDependencies:
+      '@types/fhir':
+        specifier: ^0.0.41
+        version: 0.0.41
 
   platform/services/notifications:
     dependencies:

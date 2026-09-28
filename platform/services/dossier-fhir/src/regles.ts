@@ -16,6 +16,7 @@ import type {
   Reference,
 } from 'fhir/r4.js';
 import { verifierOrdonnance } from './ordonnance.js';
+import { verifierProche } from './proche.js';
 import {
   AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
@@ -317,6 +318,8 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierPatient(r);
       case 'MedicationRequest':
         return verifierOrdonnance(r);
+      case 'RelatedPerson':
+        return verifierProche(r);
       default:
         return [];
     }

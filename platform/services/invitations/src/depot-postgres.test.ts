@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connecter, migrer, roleDe, type Sql } from '@mbolo/base-donnees';
 import { creerEmpreinte } from './codes.js';
-import { DepotPostgres } from './depot.js';
+import { COHORTE_PROCHES, DepotPostgres } from './depot.js';
 import { ServiceInvitations } from './service.js';
 
 const URL_MIGRATION = process.env['MBOLO_TEST_DATABASE_URL'];
@@ -70,5 +70,38 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
     await expect(execution`delete from invitations.codes where id = ${id}`).rejects.toThrow(
       /permission/,
     );
+  });
+
+  it('ne dépasse pas 3 proches par patient face à des invitations simultanées (ADR-0019)', async () => {
+    const depot = new DepotPostgres(execution);
+    const patient = `sujet-patient-fictif-${randomUUID().slice(0, 8)}`;
+    const maintenant = new Date();
+    const resultats = await Promise.all(
+      Array.from({ length: 8 }, (_, n) =>
+        depot.creerPourProche(
+          {
+            id: randomUUID(),
+            empreinte: empreinte(`PROCHE${n}${randomUUID().slice(0, 4)}`),
+            cohorte: COHORTE_PROCHES,
+            type: 'proche',
+            relatedPersonId: `rp-fictif-${n}`,
+            creePar: patient,
+            creeLe: maintenant,
+            expireLe: new Date(maintenant.getTime() + 7 * 86_400_000),
+          },
+          3,
+          maintenant,
+        ),
+      ),
+    );
+    expect(resultats.filter((r) => r === 'cree')).toHaveLength(3);
+    const liste = await depot.listerProches(patient);
+    expect(liste.map((i) => i.type)).toEqual(['proche', 'proche', 'proche']);
+    // La fiche du proche est obligatoire pour un code de proche (contrainte de la table).
+    await expect(
+      execution`insert into invitations.codes (id, empreinte, cohorte, type, cree_par, cree_le, expire_le)
+                values (${randomUUID()}, ${empreinte('SANSFICHE')}, ${COHORTE_PROCHES}, 'proche',
+                        ${patient}, ${maintenant}, ${new Date(maintenant.getTime() + 1000)})`,
+    ).rejects.toThrow(/codes_proche_fiche/);
   });
 });

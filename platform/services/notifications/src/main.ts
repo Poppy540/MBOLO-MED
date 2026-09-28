@@ -49,7 +49,10 @@ const app = await creerServeur({
   verifierAppelant: creerVerificateurAppelant({
     emetteur,
     audience: env['NOTIFICATIONS_AUDIENCE'] ?? 'mbolo-notifications',
-    clientsAutorises: (env['NOTIFICATIONS_CLIENTS_AUTORISES'] ?? 'mbolo-teleconsultation-service')
+    clientsAutorises: (
+      env['NOTIFICATIONS_CLIENTS_AUTORISES'] ??
+      'mbolo-teleconsultation-service,mbolo-invitations-service'
+    )
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean),
@@ -57,6 +60,15 @@ const app = await creerServeur({
   service: new ServiceNotifications(new ContactsFhir({ base: fhir, entetes }), canal, pays),
   journal,
   simulation: canal,
+  // Invitations de proches (ADR-0019) : seul le service invitations peut les envoyer.
+  invitations: {
+    canal,
+    pays,
+    appelants: (env['NOTIFICATIONS_APPELANTS_INVITATION'] ?? 'mbolo-invitations-service')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean),
+  },
 });
 const port = Number(env['PORT'] ?? '3004');
 await app.listen({ host: '127.0.0.1', port });

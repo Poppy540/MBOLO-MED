@@ -73,7 +73,10 @@ describe('service des invitations', () => {
   it('un code ne sert qu’une fois', async () => {
     const { service: s } = service();
     const { code } = await s.creer({ cohorte: 'ville-fictive', par: 'x' });
-    expect(await s.utiliser(code, 'sujet-patient-fictif-1')).toBe('ville-fictive');
+    expect(await s.utiliser(code, 'sujet-patient-fictif-1')).toEqual({
+      cohorte: 'ville-fictive',
+      type: 'patient',
+    });
     expect(await s.utiliser(code, 'sujet-patient-fictif-2')).toBeUndefined();
     expect(await s.verifier(code)).toBe(false);
   });

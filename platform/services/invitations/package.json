@@ -2,7 +2,7 @@
   "name": "@mbolo/invitations",
   "version": "0.1.0",
   "private": true,
-  "description": "Accès sur invitation de Mbolo Santé (ADR-0013) : codes à usage unique créés par un humain habilité, stockés sous forme d'empreinte, jamais en clair.",
+  "description": "Accès sur invitation de Mbolo Santé : codes à usage unique créés par un humain habilité (ADR-0013) ou par un patient pour un proche (ADR-0019), stockés sous forme d'empreinte, jamais en clair.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,9 +21,14 @@
   "dependencies": {
     "@fastify/rate-limit": "^11.2.0",
     "@mbolo/base-donnees": "workspace:*",
+    "@mbolo/dossier-fhir": "workspace:*",
+    "@mbolo/drapeaux": "workspace:*",
     "@mbolo/identite": "workspace:*",
     "@mbolo/journal-securise": "workspace:*",
     "fastify": "^5.12.5",
     "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@types/fhir": "^0.0.41"
   }
 }

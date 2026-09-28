@@ -149,6 +149,14 @@ export default defineConfig({
         INVITATIONS_COHORTES: COHORTE_TEST,
         // La base de test garde les codes des exécutions précédentes : quota large ici, testé à part.
         INVITATIONS_QUOTA_PAR_COHORTE: '1000000',
+        // Invitations de proches (ADR-0019) : fiche dans le dossier, consentement, SMS du code.
+        FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
+        IDENTITE_URL,
+        NOTIFICATIONS_URL,
+        INVITATIONS_SERVICE_CLE_PRIVEE: process.env['INVITATIONS_SERVICE_CLE_PRIVEE'] ?? '',
+        UNLEASH_API_URL: UNLEASH_URL,
+        UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
+        UNLEASH_REFRESH_MS: '500',
         // En CI, Keycloak (conteneur) appelle le service : écoute sur toutes les interfaces.
         INVITATIONS_HOST: process.env['INVITATIONS_HOST'] ?? '127.0.0.1',
         PORT: new URL(INVITATIONS_URL).port,
