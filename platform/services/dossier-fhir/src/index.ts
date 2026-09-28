@@ -2,6 +2,7 @@ export * from './constantes.js';
 export {
   agendaVideo,
   annulerRendezVous,
+  confirmerRendezVous,
   changerStatutIdentite,
   compteRendu,
   conditionDeclaree,

@@ -14,7 +14,7 @@ async function serveur(limites = { parMinute: 50, identiteParMinute: 3 }) {
     new DepotRendezVousMemoire(),
     new DepotCreneauxMemoire(),
     { preparer: async () => undefined, jeton: async () => 'jeton-salle-fictif' } as never,
-    { estActif: async () => true },
+    { estActif: async (nom) => nom !== 'paiement.mobile-money' },
     () => new Date('2026-09-27T09:00:00Z'),
     undefined,
     undefined,

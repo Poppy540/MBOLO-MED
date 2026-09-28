@@ -172,6 +172,16 @@
             "id.token.claim": "false",
             "userinfo.token.claim": "false"
           }
+        },
+        {
+          "name": "audience-paiement-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-paiement-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
         }
       ],
       "defaultClientScopes": ["web-origins", "acr", "roles", "basic"],
@@ -369,6 +379,16 @@
           }
         },
         {
+          "name": "audience-paiement-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-paiement-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "permissions-smart",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-hardcoded-claim-mapper",
@@ -482,6 +502,13 @@
     {
       "clientId": "mbolo-documents-api",
       "name": "API du service documents (ressource)",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "mbolo-paiement-api",
+      "name": "API du service de paiement (ressource)",
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false

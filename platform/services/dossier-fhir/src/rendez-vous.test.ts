@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   agendaVideo,
   annulerRendezVous,
+  confirmerRendezVous,
   creneauVideo,
   rendezVousVideo,
   reporterRendezVous,
@@ -78,6 +79,36 @@ describe('Appointment — annulation (mbolo-rdv-4)', () => {
       extension: [],
     };
     expect(regles(verifierAppointment(sansDate))).toContain('mbolo-rdv-4');
+  });
+});
+
+describe('Appointment — réservation payante (ADR-0017)', () => {
+  const enAttente = () =>
+    rendezVousVideo({
+      patientId: 'fictif-patient-0001',
+      praticienId: 'fictif-praticien-0001',
+      debut: '2026-10-01T08:00:00Z',
+      dureeMinutes: 20,
+      enAttentePaiement: true,
+      cree: '2026-09-30T10:00:00Z',
+      env: 'dev',
+    });
+
+  it('crée un rendez-vous en attente, daté, puis le confirme après paiement', () => {
+    const a = enAttente();
+    expect(valider(a, 'dev')).toEqual([]);
+    expect(a.status).toBe('pending');
+    expect(a.created).toBe('2026-09-30T10:00:00.000Z');
+    const b = confirmerRendezVous(a);
+    expect(valider(b, 'dev')).toEqual([]);
+    expect(b.status).toBe('booked');
+  });
+
+  it('délai de paiement dépassé : annulé par la plateforme, aucun participant ne décline', () => {
+    const a = annulerRendezVous(enAttente(), 'plateforme', '2026-09-30T10:15:00Z');
+    expect(valider(a, 'dev')).toEqual([]);
+    expect(a.cancelationReason?.coding?.[0]?.code).toBe('plateforme');
+    expect(a.participant.every((p) => p.status === 'accepted')).toBe(true);
   });
 });
 

@@ -78,6 +78,7 @@ const drapeaux =
       })
     : await drapeauxFixes();
 
+const fournisseur = new FournisseurSimule(secretSignature);
 const audience = env['PAIEMENT_AUDIENCE'] ?? 'mbolo-paiement-api';
 const app = await creerServeur({
   verifierJeton: creerVerificateur({ emetteur, audience }),
@@ -91,10 +92,12 @@ const app = await creerServeur({
   }),
   service: new ServicePaiement(
     new DepotPostgres(connecter({ url: urlBase, application: 'paiement', production })),
-    new FournisseurSimule(secretSignature),
+    fournisseur,
     tarifs,
     drapeaux,
   ),
+  // Développement et e2e : le payeur simulé valide ou refuse (jamais en production, refusée plus haut).
+  ...(env['PAIEMENT_SIMULATION'] === 'true' ? { simulation: fournisseur } : {}),
   journal,
   limites: {
     parMinute: Number(env['PAIEMENT_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),

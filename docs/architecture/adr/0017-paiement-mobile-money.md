@@ -95,6 +95,11 @@ Règles :
   - notification perdue : le rapprochement la rattrape ;
   - fraude au remboursement : validation humaine, jamais par le demandeur lui-même.
 
+## Suivi
+
+- **Service `paiement`** (PR AQ) : grille de prix par pays, interface `Fournisseur` et fournisseur simulé, collecte par le patient seul, confirmation relue chez le prestataire, notifications signées.
+- **Branchement au rendez-vous** (PR AR) : rendez-vous « à payer » (`pending`) qui retient le créneau, confirmation après paiement, annulation par la plateforme (code `plateforme`) à la fin du délai, créneau rendu ; scénarios de bout en bout avec le payeur simulé.
+
 ## Reste à décider (porteur de projet)
 
 1. Demander les devis et choisir le prestataire (critères ci-dessus).

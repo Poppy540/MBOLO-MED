@@ -8,6 +8,7 @@ import { AnnuaireFhir, AnnuaireMemoire, type Annuaire } from './annuaire.js';
 import { IdentitesFhir, IdentitesMemoire, type Identites } from './identites.js';
 import { DepotCreneauxFhir, DepotRendezVousFhir } from './depot-fhir.js';
 import { aucunNotificateur, type Notificateur, NotificateurHttp } from './notificateur.js';
+import { PaiementsHttp, type Paiements } from './paiements.js';
 import {
   type DepotRendezVous,
   DepotRendezVousMemoire,
@@ -44,6 +45,8 @@ let notificateur: Notificateur = aucunNotificateur;
 let annuaire: Annuaire = new AnnuaireMemoire();
 // Sans dossier FHIR, aucune identité n'est connue : aucune réservation (ADR-0014).
 let identites: Identites = new IdentitesMemoire();
+// Paiement des réservations (ADR-0017) : même jeton de service, audience mbolo-paiement-api.
+let paiements: Paiements | undefined;
 const fhir = env['FHIR_BASE_URL'];
 if (fhir) {
   const authService = authentificationDepuis(env, 'TELECONSULTATION');
@@ -66,6 +69,7 @@ if (fhir) {
   if (env['NOTIFICATIONS_URL']) {
     notificateur = new NotificateurHttp({ url: env['NOTIFICATIONS_URL'], entetes, journal });
   }
+  if (env['PAIEMENT_URL']) paiements = new PaiementsHttp({ url: env['PAIEMENT_URL'], entetes });
 } else {
   depot = new DepotRendezVousMemoire();
   creneaux = new DepotCreneauxMemoire();
@@ -82,21 +86,54 @@ const drapeaux =
       })
     : await drapeauxFixes();
 
+const delaiMinutes = Number(env['TELECONSULTATION_DELAI_PAIEMENT_MINUTES'] ?? '15');
+// Fraction de minute acceptée pour les tests de bout en bout (ex. 0.25 = 15 s).
+if (!Number.isFinite(delaiMinutes) || delaiMinutes <= 0 || delaiMinutes > 120) {
+  journal.erreur('TELECONSULTATION_DELAI_PAIEMENT_MINUTES : nombre de minutes, 120 au plus.');
+  process.exit(1);
+}
+const service = new ServiceTeleconsultation(
+  depot,
+  creneaux,
+  new SalleLiveKit({ url, cle, secret }),
+  drapeaux,
+  () => new Date(),
+  notificateur,
+  annuaire,
+  identites,
+  paiements ? { service: paiements, delaiMinutes } : undefined,
+);
+
+// Réservations non payées : confirmées si payées entre-temps, sinon annulées après le délai et le
+// créneau rendu. Un passage à la fois ; le paiement injoignable n'annule jamais rien.
+if (paiements) {
+  let enCours = false;
+  const intervalle = Number(env['TELECONSULTATION_EXPIRATION_INTERVALLE_MS'] ?? '60000');
+  setInterval(() => {
+    if (enCours) return;
+    enCours = true;
+    service
+      .expirerPaiements()
+      .then((bilan) => {
+        if (bilan.confirmes || bilan.annules || bilan.reportes) {
+          journal.info('réservations en attente de paiement traitées', { ...bilan });
+        }
+      })
+      .catch((e: unknown) =>
+        journal.avertissement('expiration des réservations impossible', { err: e }),
+      )
+      .finally(() => {
+        enCours = false;
+      });
+  }, intervalle).unref();
+}
+
 const app = await creerServeur({
   verifierJeton: creerVerificateur({
     emetteur,
     audience: env['TELECONSULTATION_AUDIENCE'] ?? 'mbolo-teleconsultation-api',
   }),
-  service: new ServiceTeleconsultation(
-    depot,
-    creneaux,
-    new SalleLiveKit({ url, cle, secret }),
-    drapeaux,
-    () => new Date(),
-    notificateur,
-    annuaire,
-    identites,
-  ),
+  service,
   journal,
   limites: {
     parMinute: Number(env['TELECONSULTATION_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),

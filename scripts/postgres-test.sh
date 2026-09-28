@@ -15,8 +15,10 @@ MDP_ADMIN="$(openssl rand -hex 24)"
 MDP_MIGRATION="$(openssl rand -hex 24)"
 MDP_EXECUTION="$(openssl rand -hex 24)"
 MDP_DOCUMENTS="$(openssl rand -hex 24)"
+MDP_PAIEMENT="$(openssl rand -hex 24)"
 CLE="$(openssl rand -hex 24)"
-for v in "$MDP_ADMIN" "$MDP_MIGRATION" "$MDP_EXECUTION" "$MDP_DOCUMENTS" "$CLE"; do
+SIGNATURE_PAIEMENT="$(openssl rand -hex 32)"
+for v in "$MDP_ADMIN" "$MDP_MIGRATION" "$MDP_EXECUTION" "$MDP_DOCUMENTS" "$MDP_PAIEMENT" "$CLE" "$SIGNATURE_PAIEMENT"; do
   echo "::add-mask::$v"
 done
 
@@ -30,6 +32,7 @@ docker exec -i -e PGPASSWORD="$MDP_ADMIN" mbolo-postgres-test psql -h 127.0.0.1 
 create role mbolo_migration login password '$MDP_MIGRATION';
 create role mbolo_invitations login password '$MDP_EXECUTION';
 create role mbolo_documents login password '$MDP_DOCUMENTS';
+create role mbolo_paiement login password '$MDP_PAIEMENT';
 create database mbolo owner mbolo_migration;
 \c mbolo
 revoke create on schema public from public;
@@ -44,5 +47,9 @@ BASE="127.0.0.1:5432/mbolo"
   echo "INVITATIONS_CLE_EMPREINTE=$CLE"
   echo "DOCUMENTS_MIGRATION_DATABASE_URL=postgres://mbolo_migration:$MDP_MIGRATION@$BASE"
   echo "DOCUMENTS_DATABASE_URL=postgres://mbolo_documents:$MDP_DOCUMENTS@$BASE"
+  echo "PAIEMENT_MIGRATION_DATABASE_URL=postgres://mbolo_migration:$MDP_MIGRATION@$BASE"
+  echo "PAIEMENT_DATABASE_URL=postgres://mbolo_paiement:$MDP_PAIEMENT@$BASE"
+  # Signature des notifications du fournisseur de paiement simulé (ADR-0017).
+  echo "MOBILE_MONEY_WEBHOOK_SIGNING_SECRET=$SIGNATURE_PAIEMENT"
 } >> "$GITHUB_ENV"
 echo "PostgreSQL de test prêt."

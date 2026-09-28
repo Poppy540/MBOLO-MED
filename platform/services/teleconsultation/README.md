@@ -42,6 +42,22 @@ Téléconsultation vidéo avec **LiveKit** (ADR-0002, ADR-0011), derrière le fl
 - **Notifications** (ADR-0012) : après une annulation ou un report, l'**autre participant** est prévenu par le service `notifications` (`NOTIFICATIONS_URL`), avec le même jeton de service. Un échec est journalisé et ne bloque jamais l'action.
 - **Journal** : demande de rendez-vous et entrée en salle (compte, rendez-vous). Le jeton n'est jamais journalisé.
 
+## Réservation payante (ADR-0017)
+
+Quand le flag **`paiement.mobile-money`** est actif pour le patient :
+- `POST /rendez-vous` **retient le créneau** et crée le rendez-vous « à payer » (FHIR `Appointment.status = pending`, date de réservation dans `Appointment.created`).
+  - Le service `paiement` crée le paiement (médecine générale en vague 1, montant de la grille du pays) ; la réponse contient `paiement` (`id`, `montant`, `devise`) et `expireLe`.
+  - Si le paiement ne peut pas être préparé, la réservation est annulée par la plateforme et le créneau rendu (503).
+  - Flag actif sans service de paiement configuré : refus (503), jamais une consultation gratuite par erreur.
+- `POST /rendez-vous/:id/paiement` (patient du rendez-vous) : le service demande « payé ou non » au service `paiement`.
+  - Payé : le rendez-vous est confirmé (`booked`, verrou optimiste).
+  - Délai dépassé sans paiement : annulé par la **plateforme** (code `plateforme`, sans motif) et le créneau redevient libre.
+  - Sinon il reste « à payer », avec `expireLe`.
+- **Passage périodique** (toutes les minutes par défaut) : même traitement pour toutes les réservations en attente. Si le service de paiement ne répond pas, **rien n'est annulé** : la réservation est reprise au passage suivant.
+- Tant que le rendez-vous est « à payer » : pas de salle (409), pas de report (409). Le patient peut l'annuler ; le créneau se libère.
+- Flag fermé : la réservation est confirmée aussitôt, sans paiement (cohorte pilote gratuite).
+- **Limite connue** : un paiement validé après l'annulation (délai dépassé ou abandon) sera repris par le rapprochement et remboursé après validation humaine (PR à venir).
+
 ## Identité vérifiée avant toute réservation (ADR-0014)
 
 - **Réservation** : `POST /rendez-vous` est refusée (403) tant que l'identité du patient n'est pas `verifiee`. Le statut est lu dans le dossier, sans cache.
@@ -67,6 +83,8 @@ Toutes les routes sont limitées par adresse (`@fastify/rate-limit`, module offi
 | `WEBRTC_API_KEY`, `WEBRTC_API_SECRET` | Clé d'API LiveKit, depuis le coffre-fort (`secrets/templates/webrtc.env.example`) |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Feature flags ; sans eux, la fonction est désactivée |
 | `NOTIFICATIONS_URL` | Service de notifications (ex. `http://127.0.0.1:3004`) ; sans elle, personne n'est prévenu |
+| `PAIEMENT_URL` | Service de paiement (ex. `http://127.0.0.1:3008`), même jeton de service (audience `mbolo-paiement-api`) ; sans elle, une réservation payante est refusée |
+| `TELECONSULTATION_DELAI_PAIEMENT_MINUTES` (défaut `15`), `TELECONSULTATION_EXPIRATION_INTERVALLE_MS` (défaut `60000`) | Durée pendant laquelle le créneau est retenu en attendant le paiement ; fréquence du passage d'expiration |
 | `FHIR_BASE_URL` | Adresse de la passerelle du dossier (ex. `https://passerelle.mbolo-sante.example/fhir`) ; sans elle, rendez-vous **en mémoire** (développement seulement) |
 | `TELECONSULTATION_SERVICE_CLIENT_ID` (défaut `mbolo-teleconsultation-service`), `TELECONSULTATION_SERVICE_CLE_PRIVEE` (clé privée, `private_key_jwt`, ADR-0016) | Compte de service pour la passerelle, clé depuis le coffre-fort |
 

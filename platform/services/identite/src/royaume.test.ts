@@ -175,6 +175,23 @@ describe('royaume mbolo', () => {
     expect(audiences('mbolo-app-pro')).toContain('mbolo-documents-api');
   });
 
+  it('paiement (ADR-0017) : le patient et la téléconsultation seulement', () => {
+    const audiences = (id: string) =>
+      (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
+        .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
+        .map((m) => m.config['included.client.audience']);
+    const avecPaiement = royaume.clients
+      .filter((c) => audiences(c.clientId).includes('mbolo-paiement-api'))
+      .map((c) => c.clientId)
+      .sort();
+    // Ni l'espace professionnel, ni un agent IA, ni un autre service ne créent de paiement.
+    expect(avecPaiement).toEqual(['mbolo-app-patient', 'mbolo-teleconsultation-service']);
+    expect(royaume.clients.find((c) => c.clientId === 'mbolo-paiement-api')).toMatchObject({
+      bearerOnly: true,
+      publicClient: false,
+    });
+  });
+
   it('compte de service notifications : lecture du contact et du consentement seulement', () => {
     const c = royaume.clients.find((x) => x.clientId === 'mbolo-notifications-service');
     expect(c).toMatchObject({

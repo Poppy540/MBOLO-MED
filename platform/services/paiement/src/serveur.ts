@@ -8,7 +8,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
-import { ErreurFournisseur } from './fournisseur.js';
+import { ErreurFournisseur, type FournisseurSimule } from './fournisseur.js';
 import type { VerifierAppelant } from './jeton.js';
 import { ErreurPaiement, estAgent, type ServicePaiement } from './service.js';
 import { TYPES_CONSULTATION, type TypeConsultation } from './tarifs.js';
@@ -45,6 +45,11 @@ export async function creerServeur(o: {
   limites?: Limites;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
+  /**
+   * Développement et e2e seulement : le payeur « valide sur son téléphone » auprès du fournisseur
+   * simulé. Sans elle, la route n'existe pas.
+   */
+  simulation?: FournisseurSimule;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -220,6 +225,32 @@ export async function creerServeur(o: {
       return reply.code(204).send();
     });
   });
+
+  if (o.simulation) {
+    const simule = o.simulation;
+    app.post<{ Params: { id: string }; Body: { resultat: 'reussi' | 'echoue' } }>(
+      '/simulation/paiements/:id/conclusion',
+      {
+        schema: {
+          params: { type: 'object', properties: { id: ID }, required: ['id'] },
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['resultat'],
+            properties: { resultat: { type: 'string', enum: ['reussi', 'echoue'] } },
+          },
+        },
+      },
+      async (req, reply) => {
+        const tentative = await o.service.tentativeEnAttente(req.params.id);
+        if (!tentative) return reply.code(404).send({ erreur: 'Aucune collecte en attente.' });
+        // Même chemin qu'un vrai prestataire : notification signée, puis statut relu.
+        const { corps, signature } = simule.conclure(tentative, req.body.resultat);
+        const r = await o.service.notification(corps, { 'x-signature': signature });
+        return { statut: r.paiement?.statut };
+      },
+    );
+  }
 
   return app;
 }
