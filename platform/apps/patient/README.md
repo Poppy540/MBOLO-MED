@@ -33,6 +33,11 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - chaque lecture est **tracée** dans le dossier (visible dans l'historique des accès du patient) ;
    - **rien n'est gardé sur le téléphone**, souvent partagé en famille : sans réseau, l'écran le dit simplement.
 
+8. **Proche désigné** (compte `proche`, flag `documents.proche`) : à la connexion, l'application ouvre directement « Ordonnances et consignes de votre proche » :
+   - ordonnances et consignes du médecin (« Ce qu'il faut faire ») seulement, jamais le motif, les observations ni la conclusion (filtré par le service) ;
+   - message « Votre proche partage avec vous ses ordonnances et les consignes du médecin. Il peut retirer ce partage à tout moment. » ;
+   - même écran que le patient (chargé à la demande, rien gardé sur le téléphone).
+
 Les erreurs sont affichées en phrases simples, sans jargon.
 
 ## Hors ligne et économie de données
@@ -48,15 +53,15 @@ Les erreurs sont affichées en phrases simples, sans jargon.
 
 Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur. Variables de construction :
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `VITE_KEYCLOAK_ISSUER` | `http://127.0.0.1:8081/realms/mbolo` | Émetteur Keycloak |
-| `VITE_KEYCLOAK_CLIENT` | `mbolo-app-patient` | Client public |
-| `VITE_FUSEAU` | `Africa/Libreville` | Fuseau horaire affiché (IANA) |
-| `VITE_LANGUE` | `fr-FR` | Langue et formats (BCP 47) |
-| `VITE_NOM_ASSURANCE` | `CNAMGS` | Nom de l'assurance maladie nationale, affiché dans la vérification d'identité |
-| `VITE_OPERATEURS` | `airtel:Airtel Money,moov:Moov Money` | Opérateurs de mobile money du pays (« code:Nom affiché ») ; les codes doivent être ceux du service de paiement (`PAIEMENT_OPERATEURS`) |
-| `VITE_INDICATIF` | `241` | Indicatif téléphonique du pays, montré dans le champ du numéro |
+| Variable               | Défaut                                | Rôle                                                                                                                                   |
+| ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_KEYCLOAK_ISSUER` | `http://127.0.0.1:8081/realms/mbolo`  | Émetteur Keycloak                                                                                                                      |
+| `VITE_KEYCLOAK_CLIENT` | `mbolo-app-patient`                   | Client public                                                                                                                          |
+| `VITE_FUSEAU`          | `Africa/Libreville`                   | Fuseau horaire affiché (IANA)                                                                                                          |
+| `VITE_LANGUE`          | `fr-FR`                               | Langue et formats (BCP 47)                                                                                                             |
+| `VITE_NOM_ASSURANCE`   | `CNAMGS`                              | Nom de l'assurance maladie nationale, affiché dans la vérification d'identité                                                          |
+| `VITE_OPERATEURS`      | `airtel:Airtel Money,moov:Moov Money` | Opérateurs de mobile money du pays (« code:Nom affiché ») ; les codes doivent être ceux du service de paiement (`PAIEMENT_OPERATEURS`) |
+| `VITE_INDICATIF`       | `241`                                 | Indicatif téléphonique du pays, montré dans le champ du numéro                                                                         |
 
 Les API sont servies sous `/api/<service>` (même origine). En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`), `DOCUMENTS_URL` (`3007`) et `PAIEMENT_URL` (`3008`).
 

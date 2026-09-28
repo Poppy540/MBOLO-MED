@@ -30,6 +30,8 @@ export interface Monde {
   depuis?: string;
   /** Conclusion du compte-rendu rédigé pendant le scénario (unique par exécution). */
   conclusion?: string;
+  /** Rubrique « conduite à tenir » du compte-rendu rédigé pendant le scénario (unique). */
+  consigne?: string;
   /** Invitation créée pendant le scénario (le code n'existe que dans cette mémoire de test). */
   invitation?: { id: string; code: string };
   /** Inscription pendant le scénario : identifiant fictif et jeton obtenu, ou page d'erreur. */

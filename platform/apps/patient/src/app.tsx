@@ -40,7 +40,8 @@ type Ecran =
   | { nom: 'creneaux'; praticienId: string }
   | { nom: 'visio'; rendezVous: RendezVous }
   | { nom: 'paiement'; rendezVousId: string }
-  | { nom: 'documents' };
+  | { nom: 'documents' }
+  | { nom: 'documents-proche' };
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -58,6 +59,13 @@ export function App() {
         if (j) {
           jeton = j;
           history.replaceState(null, '', '/');
+          // Un proche désigné par un patient (C-PROCHE) ne voit que les documents partagés.
+          const r = revendications(j);
+          const roles = (r['realm_access'] as { roles?: string[] } | undefined)?.roles ?? [];
+          if (roles.includes('proche') && r['related_person_id']) {
+            setEcran({ nom: 'documents-proche' });
+            return;
+          }
           // Pas de consultation tant que l'identité n'est pas vérifiée par l'équipe (ADR-0014).
           if (!revendications(j)['patient_id']) {
             setEcran({ nom: 'dossier-a-completer' });
@@ -152,6 +160,8 @@ export function App() {
         />
       ) : ecran.nom === 'documents' ? (
         <EcranDocuments retour={() => setEcran({ nom: 'rendez-vous' })} />
+      ) : ecran.nom === 'documents-proche' ? (
+        <EcranDocuments proche />
       ) : ecran.nom === 'paiement' ? (
         <EcranPaiement
           rendezVousId={ecran.rendezVousId}
@@ -282,8 +292,9 @@ function EcranPaiement(p: { rendezVousId: string; retour: (message?: string) => 
 }
 
 /** Comptes-rendus et ordonnances : écran chargé à la demande. */
-function EcranDocuments(p: { retour: () => void }) {
-  const [Ecran, setEcran] = useState<ComponentType<{ jeton: string; retour: () => void }>>();
+function EcranDocuments(p: { retour?: () => void; proche?: boolean }) {
+  const [Ecran, setEcran] =
+    useState<ComponentType<{ jeton: string; retour?: () => void; proche?: boolean }>>();
   const [echec, setEchec] = useState(false);
   useEffect(() => {
     import('./documents.js').then((m) => setEcran(() => m.Documents)).catch(() => setEchec(true));
@@ -292,12 +303,12 @@ function EcranDocuments(p: { retour: () => void }) {
     return (
       <section>
         <p role="alert">Pas de réseau. Réessayez plus tard.</p>
-        <button onClick={p.retour}>Retour</button>
+        {p.retour && <button onClick={p.retour}>Retour</button>}
       </section>
     );
   }
   return Ecran && jeton ? (
-    <Ecran jeton={jeton} retour={p.retour} />
+    <Ecran jeton={jeton} {...(p.retour ? { retour: p.retour } : {})} proche={p.proche === true} />
   ) : (
     <p aria-live="polite">Chargement…</p>
   );

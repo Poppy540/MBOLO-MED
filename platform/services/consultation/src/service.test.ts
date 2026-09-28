@@ -51,6 +51,7 @@ function monter(o: { autorise?: boolean; heure?: string; rendezVous?: Appointmen
     rendezVous: async (id) => (id === 'rdv-fictif-1' ? (o.rendezVous ?? rdv) : undefined),
     problemes: async () => [probleme],
     comptesRendus: async () => ecrits,
+    patientDuProche: async () => undefined,
     ajouterCompteRendu: async (c) => {
       const cree = { ...c, id: `cr-${ecrits.length + 1}` };
       ecrits.push(cree);

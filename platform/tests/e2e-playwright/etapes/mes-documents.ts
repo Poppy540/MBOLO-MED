@@ -1,8 +1,8 @@
 // Étapes « mes documents » : le patient lit ses comptes-rendus et ses ordonnances, dans l'application
 // patient ou par l'API du service consultation. Données FICTIVES uniquement.
-import { expect, type Page } from '@playwright/test';
-import { CONSULTATION_URL } from '../configuration.js';
-import { Given, Then, When, type Monde } from './fixtures.js';
+import { expect, type Browser, type Page } from '@playwright/test';
+import { APP_PATIENT_URL, CONSULTATION_URL } from '../configuration.js';
+import { Given, Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
 
 const page = (monde: Monde): Page => {
   const p = monde.visio.get('application patient')?.page;
@@ -10,8 +10,12 @@ const page = (monde: Monde): Page => {
   return p;
 };
 
-async function mesDocuments(monde: Monde, jeton: string | undefined): Promise<void> {
-  const r = await fetch(`${CONSULTATION_URL}/mes-documents`, {
+async function mesDocuments(
+  monde: Monde,
+  jeton: string | undefined,
+  chemin = '/mes-documents',
+): Promise<void> {
+  const r = await fetch(`${CONSULTATION_URL}${chemin}`, {
     headers: jeton ? { authorization: `Bearer ${jeton}` } : {},
   });
   monde.reponse = {
@@ -24,7 +28,9 @@ Given(
   '{string} rédige le compte-rendu de ce rendez-vous',
   async ({ monde }, identifiant: string) => {
     // Conclusion unique par exécution : le patient a d'autres comptes-rendus fictifs.
-    monde.conclusion = `[FICTIF] Repos et hydratation (${Date.now()})`;
+    const marque = Date.now();
+    monde.conclusion = `[FICTIF] Repos et hydratation (${marque})`;
+    monde.consigne = `[FICTIF] Boire souvent ; revenir si la fièvre dure (${marque})`;
     const r = await fetch(
       `${CONSULTATION_URL}/rendez-vous/${monde.rendezVousId ?? ''}/compte-rendu`,
       {
@@ -36,6 +42,7 @@ Given(
         body: JSON.stringify({
           motif: '[FICTIF] Fièvre depuis deux jours',
           conclusion: monde.conclusion,
+          conduiteATenir: monde.consigne,
         }),
       },
     );
@@ -57,6 +64,7 @@ Then('l’application affiche ce compte-rendu, tel que le médecin l’a écrit'
   await expect(c).toHaveCount(1);
   await expect(c).toContainText('Motif : [FICTIF] Fièvre depuis deux jours');
   await expect(c).toContainText(`Conclusion : ${monde.conclusion ?? ''}`);
+  await expect(c).toContainText(`Ce qu’il faut faire : ${monde.consigne ?? ''}`);
 });
 
 const ordonnance = (monde: Monde) =>
@@ -103,5 +111,66 @@ Then("l'historique contient une lecture du patient lui-même", ({ monde }) => {
   const acces = (monde.reponse?.corps['acces'] ?? []) as Record<string, unknown>[];
   expect(acces).toContainEqual(
     expect.objectContaining({ autorise: true, motif: 'patient-lui-meme', roles: ['patient'] }),
+  );
+});
+
+// ── Proche désigné par le patient (C-PROCHE, flag documents.proche) ─────────────
+
+When(
+  '{string} ouvre l’application patient en tant que proche',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    const contexte = await browser.newContext();
+    const p = await contexte.newPage();
+    monde.visio.set('application patient', { contexte, page: p });
+    await p.goto(`${APP_PATIENT_URL}/`);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await saisirIdentifiants(p, identifiant, false);
+    await expect(
+      p.getByRole('heading', { name: 'Ordonnances et consignes de votre proche' }),
+    ).toBeVisible();
+  },
+);
+
+Then(
+  'l’application du proche affiche cette ordonnance et la consigne du médecin',
+  async ({ monde }) => {
+    const o = ordonnance(monde);
+    await expect(o).toHaveAttribute('data-statut', 'active');
+    await expect(o).toContainText('500 mg, 3 fois par jour, pendant 5 jours');
+    const c = page(monde).locator('li[data-compte-rendu]', { hasText: monde.consigne ?? 'absent' });
+    await expect(c).toHaveCount(1);
+    await expect(c).toContainText(`Ce qu’il faut faire : ${monde.consigne ?? ''}`);
+  },
+);
+
+Then('l’application du proche n’affiche ni le motif ni la conclusion', async ({ monde }) => {
+  const p = page(monde);
+  await expect(p.getByText(monde.conclusion ?? 'absent')).toHaveCount(0);
+  await expect(p.getByText('Fièvre depuis deux jours')).toHaveCount(0);
+  await expect(p.getByText('Motif :')).toHaveCount(0);
+  await expect(p.getByText('Conclusion :')).toHaveCount(0);
+});
+
+When(
+  '{string} demande les documents partagés par son proche',
+  async ({ monde }, identifiant: string) => {
+    await mesDocuments(monde, monde.jetons.get(identifiant), '/proche/documents');
+  },
+);
+
+Then('les documents partagés lui sont remis, sans motif ni conclusion', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  const comptesRendus = monde.reponse?.corps['comptesRendus'] as {
+    sections: Record<string, string>;
+  }[];
+  expect(Array.isArray(monde.reponse?.corps['ordonnances'])).toBe(true);
+  for (const c of comptesRendus) expect(Object.keys(c.sections)).toEqual(['conduite-a-tenir']);
+});
+
+Then("l'historique contient une lecture par le proche désigné", ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(200);
+  const acces = (monde.reponse?.corps['acces'] ?? []) as Record<string, unknown>[];
+  expect(acces).toContainEqual(
+    expect.objectContaining({ autorise: true, motif: 'consentement-proche', roles: ['proche'] }),
   );
 });

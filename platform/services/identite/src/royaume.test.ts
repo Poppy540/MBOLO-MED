@@ -234,7 +234,7 @@ describe('royaume mbolo', () => {
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
     ).toBe(
-      'system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus',
+      'system/Condition.rs system/Composition.crs system/Appointment.r system/MedicationRequest.crus system/RelatedPerson.r',
     );
     // Les deux applications appellent l'API de consultation : le professionnel pour lire, rédiger et
     // prescrire ; le patient seulement pour lire ses propres documents (le service vérifie le rôle).

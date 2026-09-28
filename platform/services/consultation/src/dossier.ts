@@ -1,6 +1,7 @@
 // Lecture et écriture dans le dossier médical via la passerelle (ADR-0010), avec le compte de
 // service mbolo-consultation-service (system/Condition.rs system/Composition.crs
-// system/Appointment.r system/MedicationRequest.crus). Aucun contenu n'est journalisé ici.
+// system/Appointment.r system/MedicationRequest.crus system/RelatedPerson.r). Aucun contenu n'est
+// journalisé ici.
 import type {
   Appointment,
   Composition,
@@ -16,6 +17,8 @@ export interface Dossier {
   problemes(patientId: string): Promise<Condition[]>;
   comptesRendus(patientId: string): Promise<Composition[]>;
   ajouterCompteRendu(c: Composition): Promise<Composition>;
+  /** Patient auquel un proche (RelatedPerson) est rattaché, s'il existe. */
+  patientDuProche(relatedPersonId: string): Promise<string | undefined>;
 }
 
 /** Ordonnances électroniques (ADR-0018) : une MedicationRequest par ligne. */
@@ -101,6 +104,19 @@ export class DossierFhir extends ClientFhir implements Dossier, DossierOrdonnanc
     if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
     const a = (await r.json()) as FhirResource;
     return a.resourceType === 'Appointment' ? a : undefined;
+  }
+
+  async patientDuProche(relatedPersonId: string): Promise<string | undefined> {
+    const r = await this.appeler(
+      `${this.base}/RelatedPerson/${encodeURIComponent(relatedPersonId)}`,
+      { headers: { 'cache-control': 'no-cache' } },
+    );
+    if (r.status === 404 || r.status === 410) return undefined;
+    if (!r.ok) throw ClientFhir.echec(r, 'Proche');
+    const p = (await r.json()) as FhirResource;
+    if (p.resourceType !== 'RelatedPerson') return undefined;
+    const ref = p.patient.reference ?? '';
+    return ref.startsWith('Patient/') ? ref.slice('Patient/'.length) : undefined;
   }
 
   problemes(patientId: string): Promise<Condition[]> {

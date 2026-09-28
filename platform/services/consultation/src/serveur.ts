@@ -161,6 +161,18 @@ export async function creerServeur(o: {
     return d;
   });
 
+  // Un proche désigné par le patient (C-PROCHE) : ordonnances et « conduite à tenir » seulement.
+  app.get('/proche/documents', async (req) => {
+    const { utilisateur, jeton } = await authentifier(req);
+    const d = await o.service.documentsPourUnProche(utilisateur, jeton);
+    o.journal.info('documents consultés par un proche', {
+      sujet: utilisateur.sujet,
+      comptesRendus: d.comptesRendus.length,
+      ordonnances: d.ordonnances.length,
+    });
+    return d;
+  });
+
   app.post<{
     Params: { id: string };
     Body: { motif?: string; observations?: string; conclusion?: string; conduiteATenir?: string };
