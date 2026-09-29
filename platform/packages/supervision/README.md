@@ -14,7 +14,9 @@ Règles d'alerte de Mbolo Santé, versionnées avec le code.
 | `BrisDeGlace` | chaque accès d'urgence | normale | relecteur des accès |
 | `AccesRefusesEnRafale` | plus de 20 refus en 5 min par compte ou service | critique | responsable sécurité |
 | `CodesRecuperationEnSerie` | plus de 5 codes de récupération de compte remis en 1 h par un même membre de l'équipe (ADR-0021) | critique | responsable sécurité |
+| `CodesConnexionBloques` | un dossier a demandé plus de 10 codes de connexion par SMS en 1 h ; envois bloqués (ADR-0022) — le dossier est dans le journal, jamais dans l'alerte | normale | responsable sécurité |
 | `EssaisBloquesEnRafale` | plus de 20 essais de code d'invitation ou de date de naissance bloqués en 15 min (ASVS D3) | critique | responsable sécurité |
+| `CodesConnexionEnRafale` | plus de 200 codes de connexion envoyés par SMS en 15 min (ADR-0022 ; seuil provisoire, à revoir avec le prix du SMS) | critique | astreinte technique |
 | `LimitesAppelsDepassees` | plus de 100 requêtes refusées en 5 min | normale | astreinte technique |
 | `ErreursServeur` | plus de 10 erreurs internes en 5 min par service (provisoire : 1 % quand les métriques de requêtes existeront) | normale | astreinte technique |
 | `ServiceInjoignable` | `/sante` muet pendant 2 min | critique | astreinte technique |

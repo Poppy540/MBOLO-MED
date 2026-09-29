@@ -78,6 +78,8 @@ Contraintes :
 
 **Étapes 2 et 3 faites ensemble (PR CG)** : fusionnées séparément, les services auraient refusé les actions d'une application qui ne demandait pas encore le code. L'application montre « Confirmer par SMS » avant de payer (avant la saisie du numéro qui paie), ou quand le patient choisit de partager ou d'inviter ; elle ne garde pendant l'aller-retour que l'écran à rouvrir, jamais ce qui a été saisi. Un refus `niveau-insuffisant` (code de plus de 15 minutes) ramène au même écran. Les services répondent avec l'en-tête standard de l'authentification renforcée (RFC 9470).
 
+**Supervision (PR CH)** : au plus 10 codes par dossier et par heure, toutes sessions confondues (une nouvelle session de connexion remettait à zéro la limite de l'extension) ; alertes `CodesConnexionBloques` (responsable sécurité : quelqu'un connaît peut-être le mot de passe) et `CodesConnexionEnRafale` (astreinte : pompage de SMS, seuil provisoire de 200 codes en 15 minutes, à revoir avec le prix du fournisseur).
+
 ## Réponses du porteur de projet (2026-09-29)
 
 1. **Actions sensibles** : payer une consultation, partager son dossier avec un médecin, inviter un proche.

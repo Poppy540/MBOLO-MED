@@ -5,6 +5,7 @@ import { creerJournal } from '@mbolo/journal-securise';
 import { PAYS_PAR_DEFAUT, verifierPays, type Pays } from './gabarits.js';
 import { ContactsFhir } from './dossier.js';
 import { creerVerificateurAppelant } from './jeton.js';
+import { LimiteCodes } from './limite-codes.js';
 import { CanalSimule, ServiceNotifications } from './notifications.js';
 import { creerServeur } from './serveur.js';
 
@@ -35,6 +36,14 @@ try {
   verifierPays(pays);
 } catch (e) {
   journal.erreur('pays de déploiement invalide', { err: e });
+  process.exit(1);
+}
+
+// Limite des codes de double authentification par dossier (ADR-0022) : un entier positif, sinon
+// aucune limite ne s'appliquerait.
+const codesParHeure = Number(env['NOTIFICATIONS_CODES_PAR_HEURE'] ?? '10');
+if (!Number.isInteger(codesParHeure) || codesParHeure < 1) {
+  journal.erreur('NOTIFICATIONS_CODES_PAR_HEURE doit être un entier positif.');
   process.exit(1);
 }
 
@@ -90,6 +99,8 @@ const app = await creerServeur({
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean),
+    // Par dossier, toutes sessions confondues (10 par heure par défaut).
+    limite: new LimiteCodes(codesParHeure),
   },
 });
 const port = Number(env['PORT'] ?? '3004');
