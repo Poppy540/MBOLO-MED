@@ -40,6 +40,15 @@ groups:
         annotations:
           resume: "Plus de 5 codes de récupération de compte remis en une heure par un même membre de l’équipe."
           conduite: "Vérifier les dossiers concernés et les traces ; retirer le rôle assistance-patient si besoin, prévenir les patients."
+      - alert: "CodesConnexionBloques"
+        expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"code-connexion-bloque\" [1h])) > 0"
+        labels:
+          gravite: "normale"
+          destinataire: "responsable-securite"
+          alerte: "code-connexion-bloque"
+        annotations:
+          resume: "Un dossier a demandé plus de 10 codes de connexion par SMS en une heure : envois bloqués."
+          conduite: "Retrouver le dossier dans le journal (alerte code-connexion-bloque) ; rappeler le patient au numéro de son dossier (équipe assistance-patient) : s’il n’a rien demandé, son mot de passe est connu, faire changer le mot de passe (ADR-0021)."
       - alert: "EssaisBloquesEnRafale"
         expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"essais-bloques\" [15m])) > 20"
         labels:
@@ -52,6 +61,15 @@ groups:
   - name: "mbolo-exploitation"
     interval: "1m"
     rules:
+      - alert: "CodesConnexionEnRafale"
+        expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"code-connexion\" [15m])) > 200"
+        labels:
+          gravite: "critique"
+          destinataire: "astreinte-technique"
+          alerte: "code-connexion"
+        annotations:
+          resume: "Plus de 200 codes de connexion envoyés par SMS en 15 minutes."
+          conduite: "Pompage de SMS possible : vérifier les dossiers et les adresses en cause ; plafonner les envois chez le fournisseur SMS si besoin."
       - alert: "LimitesAppelsDepassees"
         expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"limite-appels\" [5m])) > 100"
         labels:

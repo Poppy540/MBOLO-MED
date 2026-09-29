@@ -100,9 +100,13 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
           case ATTENDRE -> "mboloCodeSmsAttendre";
           case TROP_DE_CODES -> "mboloCodeSmsTropDeCodes";
           case NOUVEAU ->
-              client(context.getSession(), context.getRealm()).envoyerCode(dossier, tirage.code())
-                  ? null
-                  : "mboloCodeSmsNonEnvoye";
+              switch (client(context.getSession(), context.getRealm())
+                  .envoyerCode(dossier, tirage.code())) {
+                case ENVOYE -> null;
+                // Limite du service par dossier : une nouvelle session ne la remet pas à zéro.
+                case TROP_DE_CODES -> "mboloCodeSmsTropDeCodes";
+                case RATE -> "mboloCodeSmsNonEnvoye";
+              };
         };
     if (erreur == null) {
       JOURNAL.infof("code SMS envoyé : compte %s", context.getUser().getId());

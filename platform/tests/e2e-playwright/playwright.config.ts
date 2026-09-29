@@ -136,6 +136,9 @@ export default defineConfig({
         PORT: new URL(NOTIFICATIONS_URL).port,
         // En CI, Keycloak (conteneur) demande l'envoi des codes SMS (ADR-0022).
         NOTIFICATIONS_HOST: process.env['NOTIFICATIONS_HOST'] ?? '127.0.0.1',
+        // Les scénarios demandent des dizaines de codes au même dossier fictif dans l'heure ;
+        // la limite par dossier est testée à part (tests du service).
+        NOTIFICATIONS_CODES_PAR_HEURE: '1000',
         MBOLO_ENV: 'dev',
       },
     },

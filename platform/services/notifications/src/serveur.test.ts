@@ -1,6 +1,7 @@
 import { creerJournal } from '@mbolo/journal-securise';
 import { describe, expect, it } from 'vitest';
 import { CanalSimule, ServiceNotifications } from './notifications.js';
+import { LimiteCodes } from './limite-codes.js';
 import { creerServeur } from './serveur.js';
 
 // Données FICTIVES ; vérification de jeton simulée (le vrai contrôle est testé en e2e).
@@ -223,7 +224,7 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
 });
 
 describe('API notifications — code de double authentification (ADR-0022)', () => {
-  const monterCodes = async () => {
+  const monterCodes = async (limite?: LimiteCodes) => {
     const canal = new CanalSimule();
     const lignes: string[] = [];
     const app = await creerServeur({
@@ -238,7 +239,7 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
         canal,
       ),
       journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
-      codesConnexion: { appelants: ['mbolo-keycloak-inscription'] },
+      codesConnexion: { appelants: ['mbolo-keycloak-inscription'], ...(limite ? { limite } : {}) },
     });
     const envoyer = (jeton: string | undefined, payload: object) =>
       app.inject({
@@ -264,6 +265,31 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
     const journal = lignes.join('\n');
     expect(journal).not.toContain('482913');
     expect(journal).not.toContain('+241');
+  });
+
+  it('au plus 10 codes par dossier et par heure, toutes sessions confondues ; alertes nommées', async () => {
+    let t = 0;
+    const { canal, lignes, envoyer } = await monterCodes(new LimiteCodes(10, 3_600_000, () => t));
+    const corps = { patientId: 'pat-fictif-005', code: '482913' };
+    for (let i = 0; i < 10; i++) {
+      expect((await envoyer('jeton-keycloak', corps)).json()).toEqual({ resultat: 'envoyee' });
+    }
+    const bloque = await envoyer('jeton-keycloak', corps);
+    expect(bloque.statusCode).toBe(202);
+    expect(bloque.json()).toEqual({ resultat: 'trop-de-codes' });
+    expect(canal.boite).toHaveLength(10);
+    // Un autre dossier n'est pas touché ; une heure plus tard, le dossier bloqué reçoit de nouveau.
+    const autre = await envoyer('jeton-keycloak', { ...corps, patientId: 'pat-fictif-004' });
+    expect(autre.json()).toEqual({ resultat: 'envoyee' });
+    t = 3_600_000;
+    expect((await envoyer('jeton-keycloak', corps)).json()).toEqual({ resultat: 'envoyee' });
+    const alertes = lignes
+      .map((l) => JSON.parse(l) as { contexte?: { alerte?: string } })
+      .map((l) => l.contexte?.alerte)
+      .filter(Boolean);
+    expect(alertes.filter((a) => a === 'code-connexion')).toHaveLength(12);
+    expect(alertes.filter((a) => a === 'code-connexion-bloque')).toHaveLength(1);
+    expect(lignes.join('\n')).not.toContain('482913');
   });
 
   it('seule l’extension Keycloak envoie un code, et elle n’envoie rien d’autre', async () => {

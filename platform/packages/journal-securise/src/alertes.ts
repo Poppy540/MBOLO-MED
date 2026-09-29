@@ -24,6 +24,16 @@ export const ALERTES = [
    * même membre de l'équipe, signe d'un abus de ce rôle.
    */
   'code-recuperation',
+  /**
+   * Code de double authentification envoyé par SMS à un patient (ADR-0022) : en rafale sur la
+   * plateforme, signe d'un pompage de SMS (coût) ou d'une attaque.
+   */
+  'code-connexion',
+  /**
+   * Codes de double authentification refusés pour un dossier : plus de 10 dans l'heure (ADR-0022).
+   * Quelqu'un connaît le mot de passe du patient, ou cherche à inonder son téléphone.
+   */
+  'code-connexion-bloque',
   /** Paiement reçu pour un rendez-vous annulé : remboursement à valider par un humain (ADR-0017). */
   'remboursement-a-valider',
 ] as const;

@@ -14,6 +14,7 @@ import {
   type Pays,
 } from './gabarits.js';
 import type { VerifierAppelant } from './jeton.js';
+import { LimiteCodes } from './limite-codes.js';
 import {
   envoyerInvitationProche,
   type Canal,
@@ -44,7 +45,11 @@ export async function creerServeur(o: {
    * Codes de double authentification (ADR-0022) : seuls clients autorisés (l'extension Keycloak).
    * Ces clients n'envoient rien d'autre.
    */
-  codesConnexion?: { appelants: readonly string[] };
+  /**
+   * Codes de double authentification (ADR-0022) : appelants autorisés (l'extension Keycloak) et
+   * limite par dossier (10 par heure par défaut).
+   */
+  codesConnexion?: { appelants: readonly string[]; limite?: LimiteCodes };
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -197,6 +202,7 @@ export async function creerServeur(o: {
 
   const codes = o.codesConnexion;
   if (codes) {
+    const limite = codes.limite ?? new LimiteCodes();
     // Double authentification du patient (ADR-0022) : seule l'extension Keycloak demande l'envoi.
     app.post<{ Body: { patientId: string; code: string } }>(
       '/codes-connexion',
@@ -216,7 +222,20 @@ export async function creerServeur(o: {
       async (req, reply) => {
         const appelant = await authentifier(req);
         if (!codes.appelants.includes(appelant)) throw new ErreurInterdite();
-        const resultat = await o.service.envoyerCodeConnexion(req.body.patientId, req.body.code);
+        const { patientId } = req.body;
+        if (!limite.accepter(patientId)) {
+          // Quelqu'un qui connaît le mot de passe demande des codes en boucle, ou veut inonder le
+          // téléphone du patient : rien n'est envoyé, le responsable sécurité est prévenu.
+          signalerAlerte(o.journal, 'code-connexion-bloque', 'trop de codes de connexion', {
+            patientId,
+          });
+          return reply.code(202).send({ resultat: 'trop-de-codes' });
+        }
+        const resultat = await o.service.envoyerCodeConnexion(patientId, req.body.code);
+        // Chaque code envoyé coûte un SMS : compté par la supervision (pompage de SMS).
+        if (resultat === 'envoyee') {
+          signalerAlerte(o.journal, 'code-connexion', 'code de connexion envoyé', { patientId });
+        }
         // Ni le code ni le numéro : le dossier et le résultat.
         o.journal.info('code de connexion traité', {
           appelant,

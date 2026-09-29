@@ -100,6 +100,24 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
           },
         },
         {
+          // Une connexion normale demande un ou deux codes : plus de 10 dans l'heure, toutes
+          // sessions confondues, pour un même dossier n'a pas d'explication normale (ADR-0022).
+          alert: 'CodesConnexionBloques',
+          // Sans regroupement par dossier : l'identifiant ne sort pas dans l'alerte (messagerie).
+          expr: `${compter('code-connexion-bloque', '1h')} > 0`,
+          labels: {
+            gravite: 'normale',
+            destinataire: 'responsable-securite',
+            alerte: 'code-connexion-bloque',
+          },
+          annotations: {
+            resume:
+              'Un dossier a demandé plus de 10 codes de connexion par SMS en une heure : envois bloqués.',
+            conduite:
+              'Retrouver le dossier dans le journal (alerte code-connexion-bloque) ; rappeler le patient au numéro de son dossier (équipe assistance-patient) : s’il n’a rien demandé, son mot de passe est connu, faire changer le mot de passe (ADR-0021).',
+          },
+        },
+        {
           // Les limites par adresse ou par dossier bloquent un essai isolé ; une rafale sur toute la
           // plateforme signale une recherche de codes répartie ou une usurpation (ASVS n°1, D3).
           alert: 'EssaisBloquesEnRafale',
@@ -122,6 +140,22 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
       name: 'mbolo-exploitation',
       interval: '1m',
       rules: [
+        {
+          // Seuil provisoire pour la vague 1 (100 patients) : à revoir avec le volume réel et le
+          // prix du SMS du fournisseur choisi (ADR-0012).
+          alert: 'CodesConnexionEnRafale',
+          expr: `${compter('code-connexion', '15m')} > 200`,
+          labels: {
+            gravite: 'critique',
+            destinataire: 'astreinte-technique',
+            alerte: 'code-connexion',
+          },
+          annotations: {
+            resume: 'Plus de 200 codes de connexion envoyés par SMS en 15 minutes.',
+            conduite:
+              'Pompage de SMS possible : vérifier les dossiers et les adresses en cause ; plafonner les envois chez le fournisseur SMS si besoin.',
+          },
+        },
         {
           alert: 'LimitesAppelsDepassees',
           expr: `${compter('limite-appels', '5m')} > 100`,

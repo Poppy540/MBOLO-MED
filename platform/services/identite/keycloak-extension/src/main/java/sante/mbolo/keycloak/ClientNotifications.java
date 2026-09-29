@@ -29,8 +29,18 @@ public final class ClientNotifications {
     this.http = HttpClient.newBuilder().connectTimeout(DELAI).build();
   }
 
-  /** Vrai seulement si le service confirme l'envoi du SMS au numéro du dossier. */
-  public boolean envoyerCode(String patientId, String code) {
+  /** Résultat d'une demande d'envoi, tel que le patient doit le comprendre. */
+  public enum Envoi {
+    /** Le service confirme l'envoi au numéro du dossier. */
+    ENVOYE,
+    /** Trop de codes pour ce dossier dans l'heure, toutes sessions confondues (limite du service). */
+    TROP_DE_CODES,
+    /** Tout autre cas : service injoignable, pas de numéro, réponse inattendue. */
+    RATE
+  }
+
+  /** ENVOYE seulement si le service confirme l'envoi du SMS au numéro du dossier. */
+  public Envoi envoyerCode(String patientId, String code) {
     try {
       HttpRequest requete =
           HttpRequest.newBuilder(base.resolve("/codes-connexion"))
@@ -43,13 +53,15 @@ public final class ClientNotifications {
                           Map.of("patientId", patientId, "code", code))))
               .build();
       HttpResponse<String> r = http.send(requete, HttpResponse.BodyHandlers.ofString());
-      if (r.statusCode() != 202) return false;
-      return "envoyee".equals(JsonSerialization.readValue(r.body(), Map.class).get("resultat"));
+      if (r.statusCode() != 202) return Envoi.RATE;
+      Object resultat = JsonSerialization.readValue(r.body(), Map.class).get("resultat");
+      if ("envoyee".equals(resultat)) return Envoi.ENVOYE;
+      return "trop-de-codes".equals(resultat) ? Envoi.TROP_DE_CODES : Envoi.RATE;
     } catch (IOException | RuntimeException e) {
-      return false;
+      return Envoi.RATE;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return false;
+      return Envoi.RATE;
     }
   }
 }

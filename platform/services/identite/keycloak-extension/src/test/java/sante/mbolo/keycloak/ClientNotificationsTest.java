@@ -1,6 +1,6 @@
 package sante.mbolo.keycloak;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
@@ -56,7 +56,7 @@ class ClientNotificationsTest {
 
   @Test
   void envoieLeCodePourLeDossierAvecLeJeton() {
-    assertTrue(client().envoyerCode("pat-fictif-005", "482913"));
+    assertEquals(ClientNotifications.Envoi.ENVOYE, client().envoyerCode("pat-fictif-005", "482913"));
     String requete = requetes.get(0);
     assertTrue(requete.startsWith("/codes-connexion Bearer jeton-fictif "));
     assertTrue(requete.contains("\"patientId\":\"pat-fictif-005\""));
@@ -66,13 +66,22 @@ class ClientNotificationsTest {
   void envoiRateSiLeServiceNeConfirmePas() {
     for (String r : List.of("{\"resultat\":\"ignoree-sans-numero\"}", "{}", "pas du json")) {
       reponse = r;
-      assertFalse(client().envoyerCode("pat-fictif-005", "482913"), r);
+      assertEquals(
+          ClientNotifications.Envoi.RATE, client().envoyerCode("pat-fictif-005", "482913"), r);
     }
     statut = 403;
     reponse = "{\"resultat\":\"envoyee\"}";
-    assertFalse(client().envoyerCode("pat-fictif-005", "482913"));
-    assertFalse(
+    assertEquals(ClientNotifications.Envoi.RATE, client().envoyerCode("pat-fictif-005", "482913"));
+    assertEquals(
+        ClientNotifications.Envoi.RATE,
         new ClientNotifications(URI.create("http://127.0.0.1:1/"), () -> "jeton-fictif")
             .envoyerCode("pat-fictif-005", "482913"));
+  }
+
+  @Test
+  void limiteDuServiceParDossier() {
+    reponse = "{\"resultat\":\"trop-de-codes\"}";
+    assertEquals(
+        ClientNotifications.Envoi.TROP_DE_CODES, client().envoyerCode("pat-fictif-005", "482913"));
   }
 }
