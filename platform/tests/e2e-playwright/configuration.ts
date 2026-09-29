@@ -51,6 +51,8 @@ export const COHORTES: Record<string, string[]> = {
   'reversements.professionnels': ['reversements-fictif-01'],
   // Ordonnances électroniques (ADR-0018) : un seul médecin, l'infirmier n'en fait pas partie.
   'ordonnances.electroniques': ['medecin-fictif-01'],
+  // Récupération du compte (ADR-0021) : le flag est évalué pour le membre de l'équipe.
+  'compte.recuperation': ['assistant-fictif-01'],
 };
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
@@ -109,6 +111,14 @@ export const COMPTES: CompteFictif[] = [
     role: 'patient',
     application: 'patient',
     attributs: { patient_id: 'pat-fictif-004' },
+  },
+  {
+    // Récupération du compte (ADR-0021) : son mot de passe change pendant les scénarios.
+    identifiant: 'patient-fictif-05',
+    prenom: 'Mireille',
+    role: 'patient',
+    application: 'patient',
+    attributs: { patient_id: 'pat-fictif-005' },
   },
   {
     identifiant: 'medecin-fictif-01',

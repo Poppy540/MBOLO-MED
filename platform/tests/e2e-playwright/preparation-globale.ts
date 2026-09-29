@@ -59,12 +59,15 @@ async function preparerDossier(): Promise<void> {
         // Patients déjà vérifiés (ADR-0014) : identité contrôlée, numéro d'assurance fictif.
         ...(type === 'Patient'
           ? {
-              // Le patient de la cohorte payante a son propre numéro : ses SMS de paiement
-              // (confirmation, expiration périodique) ne se mêlent pas à ceux des autres scénarios.
+              // Le patient de la cohorte payante et celui de la récupération du compte ont leur
+              // propre numéro : leurs SMS ne se mêlent pas à ceux des autres scénarios.
               telecom: [
                 {
                   system: 'phone',
-                  value: id === 'pat-fictif-004' ? '+241 00 00 00 04' : '+241 00 00 00 01',
+                  value:
+                    { 'pat-fictif-004': '+241 00 00 00 04', 'pat-fictif-005': '+241 00 00 00 05' }[
+                      id
+                    ] ?? '+241 00 00 00 01',
                 },
               ],
               birthDate: '1990-01-01',

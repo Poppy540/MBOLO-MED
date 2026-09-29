@@ -882,6 +882,36 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "alias": "identifiants-oublies-mbolo",
+      "description": "Mot de passe oublié d'un patient sans e-mail (ADR-0021) : identifiant, code dicté par l'équipe d'assistance, nouveau mot de passe. Aucun e-mail.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "reset-credentials-choose-user",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "mbolo-code-recuperation",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "reset-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ]
     }
   ],
   "authenticatorConfig": [
@@ -914,6 +944,7 @@
   },
   "loginTheme": "mbolo",
   "registrationFlow": "inscription-mbolo",
+  "resetCredentialsFlow": "identifiants-oublies-mbolo",
   "requiredActions": [
     {
       "alias": "TERMS_AND_CONDITIONS",

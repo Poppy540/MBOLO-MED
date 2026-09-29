@@ -87,11 +87,21 @@ Action requise `mbolo-identite-patient` :
   - `..._IDENTIFIANT_ASSURANCE_SYSTEME` : système du numéro d'assurance du pays (Gabon : CNAMGS). Sans lui, le numéro saisi n'est pas retenu, et un professionnel attribuera un numéro provisoire.
 - **Actions requises du royaume** : déclarer une action dans le royaume supprime celles qui ne sont pas déclarées. Les actions par défaut (dont `CONFIGURE_TOTP`) sont donc listées explicitement, et un test le vérifie.
 
+### Mot de passe oublié d'un patient sans e-mail (ADR-0021)
+
+Flux `identifiants-oublies-mbolo` (`resetCredentialsFlow`), **sans aucun e-mail** :
+
+1. **Identifiant** du compte (étape native `reset-credentials-choose-user`).
+2. **Code de l'équipe** (authentificateur `mbolo-code-recuperation`, page `code-recuperation.ftl`) : le code que l'équipe `assistance-patient` a dicté après avoir rappelé le patient au numéro de son dossier. L'extension demande au service `invitations` de l'utiliser (`POST /recuperation/utilisation`) pour le **dossier du compte** (`patient_id`, lu dans Keycloak, jamais saisi). Même message pour un identifiant inconnu, un compte sans dossier (professionnel, proche) ou un code refusé, et le service est toujours appelé : rien ne révèle si un compte existe. Les autres sessions du compte sont fermées.
+3. **Nouveau mot de passe** (étape native `reset-password`) : il ne sort jamais de Keycloak.
+
+Le patient est prévenu par SMS (`compte-recupere`), et le flag `compte.recuperation` est vérifié par le service. Configuration : `KC_SPI_AUTHENTICATOR_MBOLO_CODE_RECUPERATION_INVITATIONS_URL` (même adresse que l'inscription, pas un secret).
+
 ### Construction et configuration
 
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.
 - **Version de Keycloak** : épinglée à 26.7.4 (26.0.8 avait des failles hautes connues), identique dans `pom.xml` et `docker-compose.yml`. Toute montée de version se fait dans les deux fichiers, avec la suite e2e.
-- **Adresse du service des invitations** : variable `KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL`, par défaut `http://host.docker.internal:3006/` depuis le conteneur. Ce n'est pas un secret.
+- **Adresse du service des invitations** : variables `KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL` (inscription) et `KC_SPI_AUTHENTICATOR_MBOLO_CODE_RECUPERATION_INVITATIONS_URL` (récupération du compte), par défaut `http://host.docker.internal:3006/` depuis le conteneur. Ce n'est pas un secret.
 
 ## MFA
 
