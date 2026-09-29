@@ -63,6 +63,13 @@ export const CATALOGUE = {
     dependances: ['paiement.mobile-money'],
     branche: true,
   },
+  'compte.recuperation': {
+    description:
+      "L'équipe d'assistance remet à un patient sans e-mail un code de récupération de son compte, après rappel au numéro du dossier, date de naissance et numéro d'assurance (ADR-0021).",
+    vague: 1,
+    dependances: [],
+    branche: true,
+  },
   'ordonnances.electroniques': {
     description:
       "Le professionnel prescrit une ordonnance électronique à l'issue d'une consultation (ADR-0018).",

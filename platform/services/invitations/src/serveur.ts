@@ -434,6 +434,96 @@ export async function creerServeur(o: {
         return r;
       },
     );
+
+    // Récupération du compte d'un patient sans e-mail (ADR-0021) : code montré une seule fois au
+    // membre de l'équipe, qui le dicte pendant l'appel au numéro du dossier.
+    app.post<{
+      Body: {
+        patientId: string;
+        naissance: string;
+        type: TypeIdentifiantPatient;
+        numero: string;
+        rappel: true;
+      };
+    }>(
+      '/assistance/recuperation',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId', 'naissance', 'type', 'numero', 'rappel'],
+            properties: {
+              patientId,
+              naissance: { type: 'string', pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' },
+              type: { type: 'string', enum: [...TYPES_IDENTIFIANT_PATIENT] },
+              numero: { type: 'string', pattern: '^[A-Za-z0-9\\-]{1,64}$' },
+              rappel: { type: 'boolean', const: true },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { u } = await membre(req);
+        const r = await assistance.creerCodeRecuperation(u, req.body);
+        // Jamais le code ni le numéro : qui, pour quel dossier, jusqu'à quand.
+        o.journal.avertissement('code de récupération remis par l’équipe d’assistance', {
+          par: u.sujet,
+          patientId: req.body.patientId,
+          expireLe: r.expireLe,
+        });
+        return reply.code(201).header('cache-control', 'no-store').send(r);
+      },
+    );
+
+    if (o.verifierService) {
+      const verifierService = o.verifierService;
+      // Extension Keycloak (flux « identifiants oubliés ») : le compte et son dossier viennent de
+      // Keycloak, jamais du formulaire. Essais limités par adresse du navigateur.
+      app.post<{ Body: { code: string; sujet: string; patientId: string; adresse: string } }>(
+        '/recuperation/utilisation',
+        {
+          schema: {
+            body: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['code', 'sujet', 'patientId', 'adresse'],
+              properties: {
+                code: { type: 'string', maxLength: 32 },
+                sujet: { type: 'string', pattern: '^[A-Za-z0-9-]{1,64}$' },
+                patientId,
+                adresse: { type: 'string', minLength: 1, maxLength: 64 },
+              },
+            },
+          },
+        },
+        async (req, reply) => {
+          const entete = req.headers.authorization;
+          if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+          try {
+            await verifierService(entete.slice('Bearer '.length));
+          } catch {
+            throw new ErreurAuthentification();
+          }
+          if (!(await o.limiteur.essayer(`recuperation:${req.body.adresse}`))) {
+            signalerAlerte(o.journal, 'essais-bloques', 'trop d’essais de code de récupération', {
+              verification: 'recuperation',
+            });
+            return reply.code(429).send({ erreur: 'Trop d’essais.', motif: 'trop-d-essais' });
+          }
+          const r = await assistance.utiliserCodeRecuperation(req.body);
+          if (!r.utilise) {
+            return reply.code(409).send({ erreur: 'Code non reconnu.', motif: 'code-non-reconnu' });
+          }
+          o.journal.avertissement('code de récupération utilisé', {
+            sujet: req.body.sujet,
+            patientId: req.body.patientId,
+            sms: r.sms,
+          });
+          return { utilise: true };
+        },
+      );
+    }
   }
 
   return app;

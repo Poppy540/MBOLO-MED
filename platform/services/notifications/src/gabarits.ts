@@ -63,10 +63,20 @@ export const CATALOGUE_ALERTE_RETRAIT_PROCHES: Readonly<Record<string, string>> 
   fr: 'Mbolo Santé : à votre demande, l’équipe a retiré l’accès de vos proches à votre dossier. Si vous n’avez rien demandé, contactez l’équipe.',
 };
 
+/**
+ * Alerte au patient (ADR-0021) : un code de récupération, remis par l'équipe d'assistance, vient de
+ * servir à changer le mot de passe de son compte. Sans donnée de santé ; envoyée même sans
+ * C-RAPPELS : si ce n'est pas lui, il le sait aussitôt. Brouillon à faire relire.
+ */
+export const CATALOGUE_ALERTE_COMPTE_RECUPERE: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : le mot de passe de votre compte vient d’être changé avec un code de l’équipe. Si ce n’est pas vous, contactez l’équipe.',
+};
+
 /** Alertes de sécurité envoyées au patient, sans condition C-RAPPELS. */
 export const ALERTES_PATIENT = {
   'proche-inscrit': CATALOGUE_ALERTE_PROCHE,
   'proches-retires': CATALOGUE_ALERTE_RETRAIT_PROCHES,
+  'compte-recupere': CATALOGUE_ALERTE_COMPTE_RECUPERE,
 } as const;
 export type AlertePatient = keyof typeof ALERTES_PATIENT;
 

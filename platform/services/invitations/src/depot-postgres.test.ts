@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connecter, migrer, roleDe, type Sql } from '@mbolo/base-donnees';
 import { creerEmpreinte } from './codes.js';
-import { COHORTE_PROCHES, DepotPostgres } from './depot.js';
+import { COHORTE_PROCHES, COHORTE_RECUPERATION, DepotPostgres } from './depot.js';
 import { ServiceInvitations } from './service.js';
 
 const URL_MIGRATION = process.env['MBOLO_TEST_DATABASE_URL'];
@@ -159,5 +159,36 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
     expect((await depot.parFiche(fiche))?.revoqueLe).toBeDefined();
     expect(await depot.revoquerParFiche(fiche, maintenant)).toBe(false);
     expect(await depot.parFiche('rp-fictif-inconnu')).toBeUndefined();
+  });
+
+  it('un seul code de récupération valable par dossier, même créés simultanément (ADR-0021)', async () => {
+    const depot = new DepotPostgres(execution);
+    const dossier = `pat-fictif-${randomUUID().slice(0, 8)}`;
+    const maintenant = new Date();
+    const codes = Array.from({ length: 5 }, (_, n) => ({
+      id: randomUUID(),
+      empreinte: empreinte(`RECUP${n}${randomUUID().slice(0, 4)}`),
+      cohorte: COHORTE_RECUPERATION,
+      type: 'recuperation' as const,
+      patientId: dossier,
+      creePar: 'sujet-assistant-fictif',
+      creeLe: maintenant,
+      expireLe: new Date(maintenant.getTime() + 24 * 3_600_000),
+    }));
+    const resultats = await Promise.all(codes.map((c) => depot.creerRecuperation(c, maintenant)));
+    expect(resultats).toEqual(Array(5).fill('cree'));
+    const [valables] = await proprietaire<{ n: number }[]>`
+      select count(*)::int as n from invitations.codes
+       where patient_id = ${dossier} and revoque_le is null`;
+    expect(valables?.n).toBe(1);
+    const trouve = await depot.trouver(codes[0]?.empreinte ?? Buffer.alloc(0));
+    expect(trouve).toMatchObject({ type: 'recuperation', patientId: dossier });
+    // Le dossier est obligatoire pour un code de récupération (contrainte de la table).
+    await expect(
+      execution`insert into invitations.codes (id, empreinte, cohorte, type, cree_par, cree_le, expire_le)
+                values (${randomUUID()}, ${empreinte('SANSDOSSIER')}, ${COHORTE_RECUPERATION},
+                        'recuperation', 'sujet-assistant-fictif', ${maintenant},
+                        ${new Date(maintenant.getTime() + 1000)})`,
+    ).rejects.toThrow(/codes_recuperation_dossier/);
   });
 });

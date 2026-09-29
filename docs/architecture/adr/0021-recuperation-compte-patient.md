@@ -1,7 +1,7 @@
 # ADR-0021 — Récupération du compte d'un patient sans e-mail
 
 - **Date :** 2026-09-29
-- **Statut :** proposée (décision D2 de la revue ASVS n°1, en attente du porteur de projet)
+- **Statut :** acceptée (porteur de projet, 2026-09-29) ; texte du SMS d'alerte et fréquence de revue à confirmer
 - **Décideurs :** porteur de projet ; responsable sécurité (à désigner)
 
 ## Contexte
@@ -73,7 +73,22 @@ Contraintes :
   - **Vol de carte SIM** : le rappel arrive au voleur. La date de naissance reste nécessaire, et le SMS d'alerte arriverait lui aussi au voleur. Ce risque est à peser avec D1.
   - Une date de naissance est souvent connue des proches : elle ne suffit pas seule.
 
-## Questions au porteur de projet
+## Réponses du porteur de projet (2026-09-29)
+
+1. **Option retenue** : l'option 3, l'équipe d'assistance.
+2. **Validité du code** : 24 h (paramètre `INVITATIONS_RECUPERATION_VALIDITE_HEURES`, 1 à 72 h).
+3. **Aidant** : oui, le code peut être dicté à un aidant, patient présent et consentant, comme pour l'inscription (ADR-0014).
+4. **Vérification supplémentaire** : le patient lit aussi son **numéro d'assurance ou provisoire** ; le service le compare au dossier, sans jamais l'afficher, en plus de la date de naissance.
+5. **Revue** : par défaut, **mensuelle, par le responsable sécurité** (à désigner) ; à confirmer.
+6. **SMS d'alerte** : brouillon « Mbolo Santé : le mot de passe de votre compte vient d'être changé avec un code de l'équipe. Si ce n'est pas vous, contactez l'équipe. », envoyé quand le code sert ; à faire relire avec les autres gabarits.
+
+## Mise en œuvre
+
+- **Serveur (service `invitations`)** : code de type `recuperation` rattaché au dossier (`patient_id`, migration `0005`), un seul valable par dossier ; `POST /assistance/recuperation` (rôle `assistance-patient`, flag `compte.recuperation`) et `POST /recuperation/utilisation` (extension Keycloak seulement, essais limités par adresse). Le flag est relu à l'utilisation, pour le membre de l'équipe qui a remis le code.
+- **Keycloak** : authentificateur dans le flux « identifiants oubliés », à la place de l'e-mail (PR suivante).
+- **Espace professionnel** : écran de l'équipe d'assistance (PR suivante).
+
+## Questions au porteur de projet (posées le 2026-09-29)
 
 1. **Option retenue** : l'option 3 (équipe), l'option 2 (SMS en libre-service, avec D1), ou l'option 3 d'abord puis l'option 2 plus tard ?
 2. **Durée de validité** du code : 24 h, ou moins (1 h, pendant l'appel) ?

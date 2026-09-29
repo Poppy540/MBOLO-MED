@@ -338,7 +338,22 @@ describe('API de l’équipe d’assistance (ADR-0019)', () => {
           appels.push({ jeton, d });
           return { retires: 1, sms: 'envoyee' as const };
         },
+        creerCodeRecuperation: async (_u: Utilisateur, d: unknown) => {
+          appels.push(d);
+          return { code: 'ABCD-EFGH', expireLe: '2026-10-02T08:00:00.000Z' };
+        },
+        utiliserCodeRecuperation: async (d: { code: string }) => {
+          appels.push(d);
+          return d.code === 'ABCD-EFGH'
+            ? { utilise: true, sms: 'envoyee' as const }
+            : { utilise: false };
+        },
       } as unknown as ServiceAssistance,
+      // Jeton factice de l'extension Keycloak ; tout autre jeton est refusé.
+      verifierService: async (j) => {
+        if (j !== 'extension') throw new Error('jeton de service invalide');
+        return 'mbolo-keycloak-inscription';
+      },
     });
     return { app, appels, lignes };
   }
@@ -403,5 +418,59 @@ describe('API de l’équipe d’assistance (ADR-0019)', () => {
     for (const interdit of ['FICTIF-0001', '+241', '1990-01-01']) {
       expect(journal).not.toContain(interdit);
     }
+  });
+
+  it('récupération (ADR-0021) : code remis une fois, sans cache, jamais journalisé', async () => {
+    const { app, lignes } = await monter();
+    const demande = {
+      patientId: 'pat-fictif-001',
+      naissance: '1990-01-01',
+      type: 'assurance-maladie',
+      numero: 'FICTIF-0001',
+      rappel: true,
+    };
+    expect((await post(app, '/assistance/recuperation', demande)).statusCode).toBe(401);
+    for (const corps of [
+      { ...demande, rappel: false },
+      { ...demande, numero: 'FICTIF 0001; drop' },
+      { ...demande, telephone: '+33000000009' },
+    ]) {
+      expect((await post(app, '/assistance/recuperation', corps, 'assistant')).statusCode).toBe(
+        400,
+      );
+    }
+    const r = await post(app, '/assistance/recuperation', demande, 'assistant');
+    expect(r.statusCode).toBe(201);
+    expect(r.headers['cache-control']).toBe('no-store');
+    expect(r.json()).toEqual({ code: 'ABCD-EFGH', expireLe: '2026-10-02T08:00:00.000Z' });
+    const journal = lignes.join('\n');
+    for (const interdit of ['ABCD-EFGH', 'FICTIF-0001', '1990-01-01']) {
+      expect(journal).not.toContain(interdit);
+    }
+  });
+
+  it('récupération : seule l’extension Keycloak utilise un code, même réponse pour tout refus', async () => {
+    const { app, lignes } = await monter();
+    const corps = {
+      code: 'ABCD-EFGH',
+      sujet: 'u-p1',
+      patientId: 'pat-fictif-001',
+      adresse: '192.0.2.1',
+    };
+    for (const jeton of [undefined, 'assistant', 'patient']) {
+      expect((await post(app, '/recuperation/utilisation', corps, jeton)).statusCode).toBe(401);
+    }
+    const refus = await post(
+      app,
+      '/recuperation/utilisation',
+      { ...corps, code: 'ZZZZ-ZZZZ' },
+      'extension',
+    );
+    expect(refus.statusCode).toBe(409);
+    expect(refus.json()).toEqual({ erreur: 'Code non reconnu.', motif: 'code-non-reconnu' });
+    const ok = await post(app, '/recuperation/utilisation', corps, 'extension');
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toEqual({ utilise: true });
+    expect(lignes.join('\n')).not.toContain('ABCD-EFGH');
   });
 });

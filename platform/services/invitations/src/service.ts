@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { genererCode, normaliser, presenter, type Empreinte } from './codes.js';
 import {
   COHORTE_PROCHES,
+  COHORTE_RECUPERATION,
   statut,
   type DepotInvitations,
   type Invitation,
@@ -55,8 +56,10 @@ export interface CodeUtilise {
 }
 
 export function verifierParametres(p: ParametresInvitations): void {
-  if (p.cohortes.includes(COHORTE_PROCHES)) {
-    throw new Error(`La cohorte « ${COHORTE_PROCHES} » est réservée aux codes de proches.`);
+  for (const reservee of [COHORTE_PROCHES, COHORTE_RECUPERATION]) {
+    if (p.cohortes.includes(reservee)) {
+      throw new Error(`La cohorte « ${reservee} » est réservée aux codes techniques.`);
+    }
   }
   if (p.cohortes.length === 0 || !p.cohortes.every((c) => COHORTE.test(c))) {
     throw new Error('Cohortes invalides (minuscules, chiffres et tirets, au moins une).');
