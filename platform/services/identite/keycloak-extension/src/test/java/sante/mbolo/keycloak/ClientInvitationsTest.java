@@ -113,6 +113,46 @@ class ClientInvitationsTest {
   }
 
   @Test
+  void recuperationPourLeDossierDuCompte() {
+    reponse = "{\"utilise\":true}";
+    assertEquals(
+        ClientInvitations.Recuperation.UTILISE,
+        client().recuperer("ABCD-EFGH", "sujet-fictif", "pat-fictif-001", "192.0.2.1"));
+    String requete = requetes.get(0);
+    assertTrue(requete.startsWith("/recuperation/utilisation Bearer jeton-fictif "));
+    assertTrue(requete.contains("\"patientId\":\"pat-fictif-001\""));
+    assertTrue(requete.contains("\"adresse\":\"192.0.2.1\""));
+  }
+
+  @Test
+  void recuperationRefuseeOuIndisponibleNeDonneJamaisAcces() {
+    statut = 409;
+    reponse = "{\"motif\":\"code-non-reconnu\"}";
+    assertEquals(
+        ClientInvitations.Recuperation.NON_RECONNU, client().recuperer("ZZZZ-ZZZZ", "s", "p", "x"));
+    statut = 429;
+    assertEquals(
+        ClientInvitations.Recuperation.TROP_D_ESSAIS,
+        client().recuperer("ZZZZ-ZZZZ", "s", "p", "x"));
+    // Réponse 200 incohérente, erreur, service injoignable : jamais utilisé.
+    for (String r : List.of("{\"utilise\":false}", "{}", "pas du json")) {
+      statut = 200;
+      reponse = r;
+      assertEquals(
+          ClientInvitations.Recuperation.INDISPONIBLE,
+          client().recuperer("ABCD-EFGH", "s", "p", "x"),
+          r);
+    }
+    statut = 500;
+    assertEquals(
+        ClientInvitations.Recuperation.INDISPONIBLE, client().recuperer("ABCD-EFGH", "s", "p", "x"));
+    assertEquals(
+        ClientInvitations.Recuperation.INDISPONIBLE,
+        new ClientInvitations(URI.create("http://127.0.0.1:1/"), () -> "jeton-fictif")
+            .recuperer("ABCD-EFGH", "s", "p", "x"));
+  }
+
+  @Test
   void refuseUneReponseIncoherente() {
     // Type hors de la liste fermée, proche sans fiche, ou réponse sans type : jamais de compte.
     for (String r :

@@ -96,6 +96,46 @@ public final class ClientInvitations {
     }
   }
 
+  /** Résultat de l'utilisation d'un code de récupération du compte (ADR-0021). */
+  public enum Recuperation {
+    UTILISE,
+    NON_RECONNU,
+    TROP_D_ESSAIS,
+    INDISPONIBLE
+  }
+
+  /**
+   * Utilise un code de récupération (ADR-0021) pour le compte {@code sujet}, rattaché au dossier
+   * {@code patientId} lu dans Keycloak : le service ne l'accepte que pour ce dossier. L'adresse du
+   * navigateur limite les essais. En cas de doute, jamais {@link Recuperation#UTILISE}.
+   */
+  public Recuperation recuperer(String code, String sujet, String patientId, String adresse) {
+    try {
+      HttpResponse<String> r =
+          poster(
+              "/recuperation/utilisation",
+              Map.of(
+                  "code",
+                  valeur(code),
+                  "sujet",
+                  valeur(sujet),
+                  "patientId",
+                  valeur(patientId),
+                  "adresse",
+                  valeur(adresse)));
+      if (r.statusCode() == 429) return Recuperation.TROP_D_ESSAIS;
+      if (r.statusCode() == 409) return Recuperation.NON_RECONNU;
+      if (r.statusCode() != 200) return Recuperation.INDISPONIBLE;
+      Object utilise = JsonSerialization.readValue(r.body(), Map.class).get("utilise");
+      return Boolean.TRUE.equals(utilise) ? Recuperation.UTILISE : Recuperation.INDISPONIBLE;
+    } catch (IOException | RuntimeException e) {
+      return Recuperation.INDISPONIBLE;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return Recuperation.INDISPONIBLE;
+    }
+  }
+
   private HttpResponse<String> poster(String chemin, Map<String, ?> corps)
       throws IOException, InterruptedException {
     HttpRequest requete =

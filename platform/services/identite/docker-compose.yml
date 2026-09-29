@@ -24,6 +24,8 @@ services:
       MBOLO_KEYCLOAK_SSL_REQUIRED: ${MBOLO_KEYCLOAK_SSL_REQUIRED:-external}
       # Extension d'inscription (ADR-0014) : adresse du service des invitations, vue depuis le conteneur.
       KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL: ${INVITATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3006/}
+      # Récupération du compte (ADR-0021) : même service, étape du flux « identifiants oubliés ».
+      KC_SPI_AUTHENTICATOR_MBOLO_CODE_RECUPERATION_INVITATIONS_URL: ${INVITATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3006/}
       # Identité saisie après l'inscription : dossier créé par la passerelle (ADR-0014).
       KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_DOSSIER_URL: ${PASSERELLE_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3002/fhir/}
       KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_ENVIRONNEMENT: dev

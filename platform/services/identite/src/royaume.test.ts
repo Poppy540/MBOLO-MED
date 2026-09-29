@@ -13,6 +13,7 @@ interface Royaume {
   requiredActions: { alias: string; enabled: boolean; defaultAction?: boolean }[];
   registrationAllowed: boolean;
   registrationFlow: string;
+  resetCredentialsFlow?: string;
   loginTheme: string;
   roles: { realm: { name: string; description?: string; composites?: { realm?: string[] } }[] };
   clients: {
@@ -305,6 +306,17 @@ describe('royaume mbolo', () => {
       'registration-user-creation',
       'registration-password-action',
       'mbolo-code-invitation',
+    ]);
+  });
+
+  it('mot de passe oublié : code de l’équipe à la place de l’e-mail (ADR-0021)', () => {
+    expect(royaume.resetCredentialsFlow).toBe('identifiants-oublies-mbolo');
+    const flux = royaume.authenticationFlows.find((f) => f.alias === 'identifiants-oublies-mbolo');
+    // Aucune étape par e-mail : le code est vérifié avant le choix du nouveau mot de passe.
+    expect(flux?.authenticationExecutions.map((e) => e.authenticator)).toEqual([
+      'reset-credentials-choose-user',
+      'mbolo-code-recuperation',
+      'reset-password',
     ]);
   });
 
