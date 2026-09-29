@@ -20,6 +20,8 @@ services:
       CONSULTATION_SERVICE_CERTIFICAT: ${CONSULTATION_SERVICE_CERTIFICAT:?Définir CONSULTATION_SERVICE_CERTIFICAT dans l'environnement local}
       INVITATIONS_SERVICE_CERTIFICAT: ${INVITATIONS_SERVICE_CERTIFICAT:?Définir INVITATIONS_SERVICE_CERTIFICAT dans l'environnement local}
       DOCUMENTS_SERVICE_CERTIFICAT: ${DOCUMENTS_SERVICE_CERTIFICAT:?Définir DOCUMENTS_SERVICE_CERTIFICAT dans l'environnement local}
+      # Revue ASVS n°1 (C5) : TLS exigé hors réseau privé en local ; « all » en production.
+      MBOLO_KEYCLOAK_SSL_REQUIRED: ${MBOLO_KEYCLOAK_SSL_REQUIRED:-external}
       # Extension d'inscription (ADR-0014) : adresse du service des invitations, vue depuis le conteneur.
       KC_SPI_FORM_ACTION_MBOLO_CODE_INVITATION_INVITATIONS_URL: ${INVITATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3006/}
       # Identité saisie après l'inscription : dossier créé par la passerelle (ADR-0014).

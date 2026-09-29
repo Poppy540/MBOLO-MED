@@ -6,6 +6,9 @@ const lire = (fichier: string): unknown =>
   JSON.parse(readFileSync(new URL(`../keycloak/${fichier}`, import.meta.url), 'utf8'));
 
 interface Royaume {
+  sslRequired: string;
+  revokeRefreshToken?: boolean;
+  refreshTokenMaxReuse?: number;
   browserFlow: string;
   requiredActions: { alias: string; enabled: boolean; defaultAction?: boolean }[];
   registrationAllowed: boolean;
@@ -72,6 +75,16 @@ describe('royaume mbolo', () => {
     for (const r of royaume.roles.realm) {
       expect(r.description?.length ?? 0, r.name).toBeLessThanOrEqual(255);
     }
+  });
+
+  it('fait tourner les jetons de rafraîchissement, à usage unique (ASVS C5)', () => {
+    expect(royaume.revokeRefreshToken).toBe(true);
+    expect(royaume.refreshTokenMaxReuse).toBe(0);
+  });
+
+  it('exige TLS hors réseau privé par défaut, et partout si la production le demande (ASVS C5)', () => {
+    // MBOLO_KEYCLOAK_SSL_REQUIRED=all en production ; « external » en local et en CI (HTTP).
+    expect(royaume.sslRequired).toBe('${MBOLO_KEYCLOAK_SSL_REQUIRED:external}');
   });
 
   it("n'impose pas la double authentification aux patients", () => {
