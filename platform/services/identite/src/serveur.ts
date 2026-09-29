@@ -21,6 +21,7 @@ import {
 import { ErreurDepot } from './depot-fhir.js';
 import type { VerifierJeton } from './jeton.js';
 import type { JournalAcces } from './journal-acces.js';
+import { ErreurNiveauInsuffisant, reponseNiveauInsuffisant } from './niveau.js';
 import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
 import { entetesSecurite } from './securite-http.js';
@@ -79,6 +80,10 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
     }
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
+    }
+    if (err instanceof ErreurNiveauInsuffisant) {
+      const r = reponseNiveauInsuffisant(err);
+      return reply.code(r.statut).headers(r.entetes).send(r.corps);
     }
     if (err instanceof ErreurAcces) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if (err instanceof ErreurRevue) return reply.code(err.statut).send({ erreur: err.message });

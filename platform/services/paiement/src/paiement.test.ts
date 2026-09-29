@@ -20,15 +20,20 @@ const TARIFS: Tarifs = {
   indicatif: '241',
 };
 
+// Niveau 2 (code SMS récent, ADR-0022) : exigé pour payer ; l'agent l'a aussi ici, pour vérifier
+// qu'il est refusé pour son rôle et non pour son niveau.
 const COMPTES: Record<string, Utilisateur> = {
-  patient: { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001' },
-  autre: { sujet: 'u-p2', roles: ['patient'], patientId: 'pat-fictif-002' },
-  ferme: { sujet: 'u-p3', roles: ['patient'], patientId: 'pat-fictif-003' },
+  patient: { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001', niveau: 2 },
+  autre: { sujet: 'u-p2', roles: ['patient'], patientId: 'pat-fictif-002', niveau: 2 },
+  ferme: { sujet: 'u-p3', roles: ['patient'], patientId: 'pat-fictif-003', niveau: 2 },
   agent: {
     sujet: 'u-agent',
     roles: ['agent-ia', 'patient'],
     agent: { nom: 'agent-01-accueil', patientSession: 'pat-fictif-001' },
+    niveau: 2,
   },
+  // Le même patient, connecté avec son seul mot de passe (niveau 1).
+  patientNiveau1: { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001' },
   medecin: { sujet: 'u-m1', roles: ['professionnel'], practitionerId: 'prac-fictif-001' },
 };
 
@@ -170,6 +175,19 @@ describe('API de paiement', () => {
     expect((await m.notifier(corps, signature)).statusCode).toBe(204);
     expect((await m.lire(p.id)).json()).toMatchObject({ statut: 'paye', montant: 10_000 });
     expect(await m.estPaye()).toBe(true);
+  });
+
+  it('payer demande le niveau 2 : 401 « niveau-insuffisant », rien envoyé au prestataire (ADR-0022)', async () => {
+    const m = await monter();
+    const p = (await m.creer()).json<{ id: string }>();
+    const r = await m.collecter(p.id, 'patientNiveau1');
+    expect(r.statusCode).toBe(401);
+    expect(r.json()).toMatchObject({ motif: 'niveau-insuffisant' });
+    expect(r.headers['www-authenticate']).toContain('acr_values="2"');
+    expect(m.fournisseur.tentatives.size).toBe(0);
+    expect((await m.lire(p.id, 'patientNiveau1')).json()).toMatchObject({ statut: 'a-payer' });
+    // Après le code SMS, le même paiement se collecte.
+    expect((await m.collecter(p.id)).statusCode).toBe(202);
   });
 
   it('le montant vient de la grille : consultation spécialisée, et création idempotente', async () => {
