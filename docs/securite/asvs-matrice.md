@@ -1,4 +1,4 @@
-# Matrice OWASP ASVS 5.0 — revue n°1 (paiement, reçus, relevés, proches)
+# Matrice OWASP ASVS 5.0 — revue n°1 (paiement, reçus, relevés, proches) et revue n°2 (connexion avec code SMS, récupération du compte)
 
 > Revue documentaire et de code, **sans test intrusif** (aucun test sur une production ni sur des données réelles). Données fictives uniquement. Skill `verification-owasp-asvs`, sous-agent `pilote-securite`.
 > Date : 2026-09-28. Version du code : `main` après la PR n°82.
@@ -81,6 +81,39 @@ Aucune non-conformité ne touche le contrôle d'accès, les sorties d'argent ni 
 - **D1 — Double authentification des patients** : **décidée** (porteur de projet, 2026-09-29) : code par SMS pour les actions sensibles, [ADR-0022](../architecture/adr/0022-double-authentification-patients.md) (modalités confirmées le même jour) ; **mise en œuvre** (PR CF : code SMS dans Keycloak ; PR CG : niveau 2 exigé par les services et demandé par l'application). Question d'origine : OTP par SMS ou WhatsApp à la connexion (D-0001), au moins pour les actions sensibles (paiement, partage du dossier, invitation d'un proche) ? Coût des SMS et risque de vol de carte SIM à mettre en balance.
 - **D2 — Récupération du compte d'un patient sans e-mail** : parcours détaillé dans l'[ADR-0021](../architecture/adr/0021-recuperation-compte-patient.md) (acceptée le 2026-09-29 ; **faite** : serveur en PR CA, flux Keycloak sans e-mail en PR CB, écran de l'assistance en PR CC) ; proposé, un nouveau code d'invitation remis par l'équipe après vérification (même procédure que le retrait des proches : rappel au numéro du dossier, date de naissance), jamais par un agent IA.
 - **D3 — Limites d'essais partagées** : **fait (PR BX)**. Compteurs des codes d'invitation et des dates de naissance dans PostgreSQL (`invitations.essais`, un seul `insert … on conflict` atomique, clé sous empreinte HMAC) ; preuve : `limiteur-postgres.test.ts` (20 essais simultanés depuis deux connexions, 5 acceptés). Les limites d'appels générales (`@fastify/rate-limit`) restent par instance : à compléter par l'hébergeur (proxy) avant plusieurs instances.
+
+## Revue n°2 — connexion avec code SMS et récupération du compte (2026-09-29)
+
+> Même méthode que la revue n°1, sans test intrusif. Périmètre : flux Keycloak `navigateur-mbolo` à deux niveaux et authentificateur `mbolo-code-sms` (ADR-0022), flux `identifiants-oublies-mbolo` et authentificateur `mbolo-code-recuperation` (ADR-0021), route `POST /codes-connexion` du service `notifications`, vérification du niveau dans les services, écran « Confirmer par SMS » de l'application patient. Version du code : `main` après la PR n°99.
+
+| Domaine ASVS (5.0) | Exigence (résumé) | Statut | Preuve ou écart |
+| --- | --- | --- | --- |
+| Code hors bande (V6.5, V6.6) | Code tiré par un générateur sûr, au moins 20 bits (6 chiffres) | Conforme | `CodeSms.tirer` : `SecureRandom`, 6 chiffres |
+| Code hors bande | Durée de vie courte (10 minutes au plus) | Conforme | 5 minutes (`VALIDITE_MS`), test `CodeSmsTest` |
+| Code hors bande | Usage unique, lié à la session d'authentification | Conforme | Empreinte salée dans les notes de la session ; effacée dès qu'il est bon, expiré ou épuisé |
+| Code hors bande | Protection contre la force brute | Conforme | 3 essais par code ; 1 envoi par minute et 5 par heure par session ; **10 codes par heure et par dossier, toutes sessions** (PR n°99) : au plus 30 essais par heure et par dossier |
+| Code hors bande | Comparaison en temps constant, code jamais en clair ni journalisé | Conforme | `MessageDigest.isEqual` ; test du journal de `notifications` |
+| Code hors bande | Un code faux ne bloque pas le compte (déni de service) | Conforme | `challenge` et non `failureChallenge` : la protection contre la force brute du mot de passe n'est pas déclenchée (e2e « Trois codes faux ») |
+| Code hors bande (V6.6.1) | Numéro **validé au préalable**, méthode plus forte proposée, risques expliqués | **Partiel** | Le numéro est **déclaré** à l'étape « Mon identité », jamais validé par un code ; pas d'alternative (application d'authentification) ; le SMS dit « Ne le donnez à personne » → **C8**, **D4** |
+| Authentification renforcée | Niveau exigé par le serveur, pas seulement par l'application | Conforme | `exigerNiveau` dans `paiement`, `identite`, `invitations` ; 401 `niveau-insuffisant` + `WWW-Authenticate` (RFC 9470) ; e2e « Avec son seul mot de passe… » |
+| Authentification renforcée | Durée du niveau 2 bornée | **Conforme** (PR CI) | `loa-max-age` 900 s, jeton d'accès de 5 minutes, **aucun jeton de rafraîchissement** pour le client patient (C7, `royaume.test.ts`) |
+| Authentification renforcée | Retirer un accès reste possible sans code | Conforme | Refuser ou retirer un consentement, retirer un proche : niveau 1 (tests des services) |
+| Récupération du compte | Pas de secret de repli faible ; action humaine vérifiée ; utilisateur prévenu ; sessions fermées | Conforme | ADR-0021 : code de l'équipe après rappel, date de naissance et numéro d'assurance, 24 h, un seul valable ; SMS `compte-recupere` ; alerte `CodesRecuperationEnSerie` |
+| Récupération du compte | Une récupération ne donne pas le niveau 2 | Conforme | Après récupération, payer, partager ou inviter demandent encore le code envoyé au numéro du dossier |
+| Supervision | Abus des codes détectés | Conforme | Alertes `CodesConnexionBloques`, `CodesConnexionEnRafale` (PR n°99) |
+| Protection des données | Pas de donnée de santé ni d'identifiant de dossier dans les alertes | Conforme | Test de garde de `@mbolo/supervision` |
+| SIM | Protection contre le vol ou l'échange de carte SIM | **Non traitable ici** | Dépend des opérateurs ; atténué : mot de passe toujours exigé, alertes, SMS d'alerte au patient → **D4** |
+
+### Corrections proposées (revue n°2)
+
+| N° | Gravité | Correction | Où |
+| --- | --- | --- | --- |
+| **C7** | Moyenne — **faite (PR CI)** | Le client patient ne reçoit plus de jeton de rafraîchissement (`use.refresh.tokens: false`). Mesuré en local avant la correction : un jeton rafraîchi 16 minutes après le code SMS portait **encore `acr` = 2**, donc le niveau 2 durait autant que la session (10 heures au plus) pour qui détenait ce jeton. Aucune application ne s'en servait. Après : jeton d'accès de niveau 2 seul, 5 minutes | `realm-mbolo.json` (client `mbolo-app-patient`) |
+| **C8** | Moyenne, avant la vague 1 | Valider le numéro à l'étape « Mon identité » par un code envoyé à ce numéro (mêmes règles que `CodeSms`), avant la création du dossier ; changer de numéro plus tard passe par la même validation | Extension Keycloak (action `mbolo-identite-patient`) |
+
+### Décision demandée (revue n°2)
+
+- **D4 — Alternative au SMS pour les patients** : proposer, à ceux qui le veulent, une application d'authentification (code TOTP, déjà utilisé par les professionnels) à la place du SMS ? Plus sûre (vol de carte SIM) et gratuite, mais une étape de plus pour des patients peu familiers du numérique. Recommandation : la proposer en option, le SMS restant le choix par défaut.
 
 ## Test d'intrusion externe (à prévoir avant la vague 1)
 

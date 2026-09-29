@@ -140,6 +140,9 @@ describe('royaume mbolo', () => {
     expect(config('niveau-2')).toEqual({ 'loa-condition-level': '2', 'loa-max-age': '900' });
     const patient = royaume.clients.find((c) => c.clientId === 'mbolo-app-patient');
     expect(JSON.parse(patient?.attributes?.['acr.loa.map'] ?? '{}')).toEqual({ '1': 1, '2': 2 });
+    // Revue ASVS n°2 (C7) : un jeton rafraîchi garde le niveau 2 de la session (mesuré : encore 2
+    // après 16 minutes) ; l'application ne s'en sert pas, le client n'en reçoit donc aucun.
+    expect(patient?.attributes?.['use.refresh.tokens']).toBe('false');
   });
 
   it('ne met ni e-mail ni nom dans le jeton des applications, et interdit la connexion directe', () => {
