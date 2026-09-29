@@ -285,3 +285,32 @@ describe('annulation au moment où le paiement confirme le rendez-vous', () => {
     expect(essais).toBe(1);
   });
 });
+
+describe('confirmation simultanée d’un rendez-vous payé', () => {
+  it('le patient revient au moment où le passage périodique confirme : pas d’erreur, un seul SMS', async () => {
+    const m = await monter();
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    m.paiements.payer(r.id);
+    // Le passage périodique confirme juste avant l'écriture demandée par le patient.
+    const confirmer = m.depot.confirmer.bind(m.depot);
+    m.depot.confirmer = async (id) => {
+      await confirmer(id);
+      throw new ErreurDepot('Le rendez-vous a changé.', 409);
+    };
+    expect((await m.service.verifierPaiement(patient, r.id)).statut).toBe('prevu');
+    // L'autre chemin a déjà prévenu le patient : aucun second SMS ici.
+    expect(m.sms).toEqual([]);
+  });
+
+  it('conflit alors que le rendez-vous n’est pas confirmé : l’erreur est rendue', async () => {
+    const m = await monter();
+    const r = await m.service.demander(patient, { creneauId: m.c.id });
+    m.paiements.payer(r.id);
+    m.depot.confirmer = async () => {
+      throw new ErreurDepot('Le rendez-vous a changé.', 409);
+    };
+    await expect(m.service.verifierPaiement(patient, r.id)).rejects.toMatchObject({
+      statut: 409,
+    });
+  });
+});

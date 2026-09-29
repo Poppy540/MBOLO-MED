@@ -380,7 +380,18 @@ export class ServiceTeleconsultation {
   private async traiterEnAttente(r: RendezVous): Promise<RendezVous> {
     if (!this.paiement) return r;
     if (await this.paiement.service.estPaye(r.id)) {
-      const confirme = await this.depot.confirmer(r.id);
+      let confirme: RendezVous;
+      try {
+        confirme = await this.depot.confirmer(r.id);
+      } catch (e) {
+        // Confirmé à la même seconde par l'autre chemin (le patient qui revient, ou le passage
+        // périodique) : le dossier refuse la 2ᵉ écriture (verrou optimiste). On relit : s'il est
+        // déjà confirmé, c'est le résultat attendu, sans erreur et sans second SMS.
+        if (!(e instanceof ErreurDepot && e.statut === 409)) throw e;
+        const relu = await this.depot.lire(r.id);
+        if (relu?.statut !== 'prevu') throw e;
+        return relu;
+      }
       // Le patient garde une trace (s'il a accepté les rappels, C-RAPPELS) ; aucune donnée de santé.
       await this.notificateur.prevenir(`Patient/${r.patientId}`, 'rendez-vous-confirme', r.debut);
       return confirme;
