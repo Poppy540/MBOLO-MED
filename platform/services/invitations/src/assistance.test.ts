@@ -4,7 +4,7 @@ import type { Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
 import { ServiceAssistance } from './assistance.js';
 import { COHORTE_PROCHES, DepotMemoire, type Invitation } from './depot.js';
-import { Limiteur } from './limiteur.js';
+import { LimiteurMemoire } from './limiteur.js';
 import { ErreurProche } from './proches.js';
 
 const SYSTEME = 'https://mbolo-sante.example/fhir/identifiant/fictif/assurance-maladie';
@@ -90,7 +90,7 @@ function monter(o: { patients?: Patient[] } = {}) {
         return 'envoyee';
       },
     },
-    new Limiteur(3, 15 * 60_000),
+    new LimiteurMemoire(3, 15 * 60_000),
     { systemes: { 'assurance-maladie': SYSTEME, provisoire: `${SYSTEME}-provisoire` }, env: 'dev' },
     () => maintenant,
   );

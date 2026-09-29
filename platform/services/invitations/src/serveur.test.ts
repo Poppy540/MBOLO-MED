@@ -3,7 +3,7 @@ import type { Utilisateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { creerEmpreinte } from './codes.js';
 import { DepotMemoire } from './depot.js';
-import { Limiteur } from './limiteur.js';
+import { LimiteurMemoire } from './limiteur.js';
 import { creerServeur } from './serveur.js';
 import { ServiceProches } from './proches.js';
 import type { ServiceAssistance } from './assistance.js';
@@ -37,7 +37,7 @@ async function serveur(maxEssais = 10, limiteParMinute?: number) {
       quotaParCohorte: 100,
       validiteJours: 14,
     }),
-    limiteur: new Limiteur(maxEssais, 60_000),
+    limiteur: new LimiteurMemoire(maxEssais, 60_000),
     journal: creerJournal({ service: 'invitations', ecrire: (l) => lignes.push(l) }),
     // Jeton factice de l'extension Keycloak ; tout autre jeton est refusé.
     verifierService: async (j) => {
@@ -247,7 +247,7 @@ describe('API des proches (ADR-0019)', () => {
         quotaParCohorte: 100,
         validiteJours: 14,
       }),
-      limiteur: new Limiteur(10, 60_000),
+      limiteur: new LimiteurMemoire(10, 60_000),
       journal: creerJournal({ service: 'invitations', ecrire: (l) => lignes.push(l) }),
       proches,
     });
@@ -318,7 +318,7 @@ describe('API de l’équipe d’assistance (ADR-0019)', () => {
         quotaParCohorte: 100,
         validiteJours: 14,
       }),
-      limiteur: new Limiteur(10, 60_000),
+      limiteur: new LimiteurMemoire(10, 60_000),
       journal: creerJournal({ service: 'invitations', ecrire: (l) => lignes.push(l) }),
       // Le service est testé à part (assistance.test.ts) : ici, la route et ses contrôles.
       assistance: {

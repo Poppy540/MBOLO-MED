@@ -11,7 +11,7 @@ Accès sur invitation de la vague 1 (ADR-0013). Un humain habilité crée des co
   - `GET /invitations?cohorte=…` → identifiant, dates et statut (`valide`, `utilise`, `revoque`, `expire`), jamais le code.
   - `POST /invitations/:id/revocation` → un code encore inutilisé ne peut plus servir.
 - **Quota** : nombre maximal d'invitations par cohorte (révoquées comprises). Un verrou par cohorte empêche de le dépasser, même avec des créations simultanées.
-- **Vérification** : `POST /invitations/verification` `{ code }` → `{ valide }`. Publique, **même réponse** pour un code inconnu, expiré, révoqué ou déjà utilisé. Limitée à `INVITATIONS_ESSAIS_MAX` essais par adresse et par fenêtre.
+- **Vérification** : `POST /invitations/verification` `{ code }` → `{ valide }`. Publique, **même réponse** pour un code inconnu, expiré, révoqué ou déjà utilisé. Limitée à `INVITATIONS_ESSAIS_MAX` essais par adresse et par fenêtre. Les compteurs d'essais (codes et dates de naissance) sont dans PostgreSQL (`invitations.essais`, revue ASVS D3) : la limite vaut pour toutes les instances, et la clé (adresse, sujet et dossier) n'y est gardée que sous forme d'empreinte HMAC.
 - **Usage unique** : `ServiceInvitations.utiliser` marque le code utilisé par un compte, de façon atomique (un même code ne sert jamais deux fois).
 - **Inscription (ADR-0014)** : routes réservées à l'extension Keycloak. Elles exigent un jeton signé par le royaume, d'audience `mbolo-invitations-api` et de client `mbolo-keycloak-inscription` ; un jeton d'utilisateur est refusé.
   - `POST /inscription/controle` `{ code, adresse }` → `{ valide }`. Essais limités par adresse du navigateur.
@@ -78,4 +78,3 @@ En local, un PostgreSQL 16 avec une base `mbolo` appartenant à un rôle de migr
 
 - Saisie de l'identité dans le dossier FHIR après l'inscription, puis vérification (photos, charte, rôle `verification-identite`, ADR-0014).
 - Écran de gestion des invitations (backoffice), désignation nominative de la personne de confiance.
-- Limite des essais partagée entre plusieurs instances (aujourd'hui en mémoire, par instance).

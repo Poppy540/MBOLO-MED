@@ -160,6 +160,10 @@ export default defineConfig({
         // Le patient de test invite des proches à chaque exécution : limite par jour large ici,
         // testée à part (tests unitaires et PostgreSQL).
         INVITATIONS_PROCHES_PAR_JOUR: '1000',
+        // Compteurs d'essais gardés dans PostgreSQL (D3) : ils survivent d'une exécution à l'autre.
+        // Limites larges ici pour pouvoir relancer la suite ; testées à part (unitaires et PostgreSQL).
+        INVITATIONS_ESSAIS_MAX: '1000',
+        INVITATIONS_ASSISTANCE_ESSAIS_MAX: '1000',
         // Système des numéros d'assurance des patients fictifs (preparation-globale.ts).
         INVITATIONS_SYSTEME_ASSURANCE:
           'https://mbolo-sante.example/fhir/identifiant-patient/assurance-maladie',
