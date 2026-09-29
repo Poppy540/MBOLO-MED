@@ -64,6 +64,7 @@ Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur
 | Variable               | Défaut                                | Rôle                                                                                                                                   |
 | ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `VITE_KEYCLOAK_ISSUER` | `http://127.0.0.1:8081/realms/mbolo`  | Émetteur Keycloak                                                                                                                      |
+| `VITE_WEBRTC_URL` | `ws://127.0.0.1:7880` | Serveur de visio (LiveKit), seule adresse de visio autorisée par la politique de sécurité du contenu |
 | `VITE_KEYCLOAK_CLIENT` | `mbolo-app-patient`                   | Client public                                                                                                                          |
 | `VITE_FUSEAU`          | `Africa/Libreville`                   | Fuseau horaire affiché (IANA)                                                                                                          |
 | `VITE_LANGUE`          | `fr-FR`                               | Langue et formats (BCP 47)                                                                                                             |
@@ -71,7 +72,7 @@ Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur
 | `VITE_OPERATEURS`      | `airtel:Airtel Money,moov:Moov Money` | Opérateurs de mobile money du pays (« code:Nom affiché ») ; les codes doivent être ceux du service de paiement (`PAIEMENT_OPERATEURS`) |
 | `VITE_INDICATIF`       | `241`                                 | Indicatif téléphonique du pays, montré dans le champ du numéro                                                                         |
 
-Les API sont servies sous `/api/<service>` (même origine). En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`), `DOCUMENTS_URL` (`3007`) et `PAIEMENT_URL` (`3008`).
+Les API sont servies sous `/api/<service>` (même origine). L'application construite porte une politique de sécurité du contenu (balise `<meta>`, revue ASVS C6) : scripts de la même origine seulement, connexions limitées à la même origine, à Keycloak et à la visio ; les en-têtes `frame-ancestors`, HSTS et `Referrer-Policy` sont à poser par l'hébergement. En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`), `DOCUMENTS_URL` (`3007`) et `PAIEMENT_URL` (`3008`).
 
 ## Budget de poids
 
