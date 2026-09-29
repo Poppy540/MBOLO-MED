@@ -20,6 +20,7 @@ interface RevendicationsMbolo extends JWTPayload {
   related_person_id?: string;
   agent_nom?: string;
   agent_patient_session?: string;
+  acr?: unknown;
 }
 
 export function creerVerificateur(o: OptionsJeton): VerifierJeton {
@@ -32,12 +33,18 @@ export function creerVerificateur(o: OptionsJeton): VerifierJeton {
     });
     if (!payload.sub) throw new Error('Jeton sans sujet.');
     const roles = (payload.realm_access?.roles ?? []).filter(estRole);
+    // Niveau d'authentification (ADR-0022) : seuls les entiers attendus sont retenus.
+    const niveau =
+      typeof payload.acr === 'string' && /^[1-9]$/.test(payload.acr)
+        ? Number(payload.acr)
+        : undefined;
     return {
       sujet: payload.sub,
       roles,
       ...(payload.patient_id ? { patientId: payload.patient_id } : {}),
       ...(payload.practitioner_id ? { practitionerId: payload.practitioner_id } : {}),
       ...(payload.related_person_id ? { relatedPersonId: payload.related_person_id } : {}),
+      ...(niveau ? { niveau } : {}),
       ...(payload.agent_nom && payload.agent_patient_session
         ? { agent: { nom: payload.agent_nom, patientSession: payload.agent_patient_session } }
         : {}),

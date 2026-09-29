@@ -1,9 +1,17 @@
 // Étapes « double authentification du patient » (ADR-0022) : vrai Keycloak (flux à deux niveaux,
 // extension Mbolo), service des notifications et sa boîte SMS simulée. Données FICTIVES uniquement.
 import { expect, type Browser, type Page, type Request } from '@playwright/test';
-import { APPLICATIONS, EMETTEUR, compte, motDePasse } from '../configuration.js';
+import {
+  APPLICATIONS,
+  EMETTEUR,
+  IDENTITE_URL,
+  INVITATIONS_URL,
+  PAIEMENT_URL,
+  compte,
+  motDePasse,
+} from '../configuration.js';
 import { Then, When, revendications, urlAutorisation, type Monde } from './fixtures.js';
-import { boite } from './teleconsultation.js';
+import { codeSmsRecu, telephoneDu } from './niveau.js';
 
 interface Parcours {
   page: Page;
@@ -12,11 +20,6 @@ interface Parcours {
   identifiant: string;
 }
 const parcours = new WeakMap<Monde, Parcours>();
-
-const telephoneDu = (identifiant: string) =>
-  ({ 'pat-fictif-004': '+241 00 00 00 04', 'pat-fictif-005': '+241 00 00 00 05' })[
-    compte(identifiant).attributs['patient_id'] ?? ''
-  ] ?? '+241 00 00 00 01';
 
 When(
   '{string} se connecte, puis l’application demande une confirmation par SMS',
@@ -59,26 +62,8 @@ Then('Keycloak demande le code reçu par SMS', async ({ monde }) => {
 });
 
 /** Dernier code reçu par le patient depuis la relève de la boîte. */
-async function codeRecu(monde: Monde, identifiant: string): Promise<string> {
-  const telephone = telephoneDu(identifiant);
-  let code: string | undefined;
-  await expect
-    .poll(
-      async () => {
-        const recus = (await boite()).filter(
-          (m) => m.telephone === telephone && m.date >= (monde.depuis ?? ''),
-        );
-        code = recus
-          .map((m) => /votre code est ([0-9]{6})/.exec(m.texte)?.[1])
-          .filter(Boolean)
-          .at(-1);
-        return code;
-      },
-      { timeout: 5_000 },
-    )
-    .toBeDefined();
-  return code ?? '';
-}
+const codeRecu = (monde: Monde, identifiant: string) =>
+  codeSmsRecu(telephoneDu(identifiant), monde.depuis ?? '');
 
 When('le patient saisit le code reçu', async ({ monde }) => {
   const p = courant(monde);
@@ -128,3 +113,63 @@ Then(
     expect(revendications(jeton ?? '')['acr']).toBe(String(niveau));
   },
 );
+
+// ── Refus des actions sensibles au niveau 1 (API directes) ───────────────────
+
+let entete: string | null = null;
+
+async function tenter(monde: Monde, url: string, identifiant: string, corps: unknown) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${monde.jetons.get(identifiant) ?? ''}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(corps),
+  });
+  monde.reponse = {
+    statut: r.status,
+    corps: (await r.json().catch(() => ({}))) as Record<string, unknown>,
+  };
+  entete = r.headers.get('www-authenticate');
+}
+
+When(
+  '{string} partage son dossier avec {string} avec son seul mot de passe',
+  async ({ monde }, identifiant: string, praticien: string) => {
+    const patient = compte(identifiant).attributs['patient_id'] ?? '';
+    await tenter(monde, `${IDENTITE_URL}/patients/${patient}/consentements`, identifiant, {
+      categorie: 'C-PARTAGE-PRO',
+      mode: 'texte',
+      versionTexte: 'consentement-v0-FICTIF',
+      accepte: true,
+      beneficiaire: `Practitioner/${praticien}`,
+    });
+  },
+);
+
+When(
+  '{string} invite un proche avec son seul mot de passe',
+  async ({ monde }, identifiant: string) => {
+    await tenter(monde, `${INVITATIONS_URL}/proches`, identifiant, {
+      prenom: 'Paul [FICTIF]',
+      lien: 'CHILD',
+      telephone: '+33000000009',
+      versionTexte: 'c-proche-v0.1-brouillon',
+    });
+  },
+);
+
+When('{string} paie avec son seul mot de passe', async ({ monde }, identifiant: string) => {
+  await tenter(monde, `${PAIEMENT_URL}/paiements/${monde.paiementId ?? ''}/collecte`, identifiant, {
+    operateur: 'airtel',
+    numero: '+241 00 00 00 00',
+  });
+});
+
+Then('la demande est refusée tant que le code SMS n’est pas saisi', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(401);
+  expect(monde.reponse?.corps['motif']).toBe('niveau-insuffisant');
+  // En-tête de l'authentification renforcée (RFC 9470), lu par l'application.
+  expect(entete).toBe('Bearer error="insufficient_user_authentication", acr_values="2"');
+});

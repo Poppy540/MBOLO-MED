@@ -1,13 +1,19 @@
 // Invitation d'un proche par le patient (ADR-0019). Données FICTIVES uniquement.
 import type { RelatedPerson } from 'fhir/r4.js';
-import type { Utilisateur } from '@mbolo/identite';
+import { ErreurNiveauInsuffisant, type Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
 import { creerEmpreinte } from './codes.js';
 import { DepotMemoire } from './depot.js';
 import { ServiceProches, type DossierProches } from './proches.js';
 import { ServiceInvitations } from './service.js';
 
-const patient: Utilisateur = { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001' };
+// Niveau 2 (code SMS récent, ADR-0022) : exigé pour inviter un proche.
+const patient: Utilisateur = {
+  sujet: 'u-p1',
+  roles: ['patient'],
+  patientId: 'pat-fictif-001',
+  niveau: 2,
+};
 const demande = {
   prenom: 'Serge [FICTIF]',
   lien: 'CHILD' as const,
@@ -160,6 +166,16 @@ describe('invitation d’un proche par le patient (ADR-0019)', () => {
       m.proches.inviter(patient, 'j', { ...demande, prenom: '   ' }),
     ).rejects.toMatchObject({ statut: 400 });
     expect(m.fiches.size).toBe(0);
+    expect(m.sms).toEqual([]);
+  });
+
+  it('niveau 1 (mot de passe seul) : ni fiche, ni code, ni SMS (ADR-0022)', async () => {
+    const m = monter();
+    await expect(m.proches.inviter({ ...patient, niveau: 1 }, 'j', demande)).rejects.toBeInstanceOf(
+      ErreurNiveauInsuffisant,
+    );
+    expect(m.fiches.size).toBe(0);
+    expect(m.depot.invitations).toHaveLength(0);
     expect(m.sms).toEqual([]);
   });
 

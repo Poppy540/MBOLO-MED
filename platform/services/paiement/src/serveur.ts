@@ -7,7 +7,12 @@
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
-import { entetesSecurite } from '@mbolo/identite';
+import {
+  ErreurNiveauInsuffisant,
+  entetesSecurite,
+  exigerNiveau,
+  reponseNiveauInsuffisant,
+} from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurFournisseur, type FournisseurSimule } from './fournisseur.js';
 import type { VerifierAppelant } from './jeton.js';
@@ -116,6 +121,10 @@ export async function creerServeur(o: {
     }
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
+    }
+    if (err instanceof ErreurNiveauInsuffisant) {
+      const r = reponseNiveauInsuffisant(err);
+      return reply.code(r.statut).headers(r.entetes).send(r.corps);
     }
     if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if (err instanceof ErreurReleves) {
@@ -300,6 +309,8 @@ export async function creerServeur(o: {
     async (req, reply) => {
       const u = await patient(req);
       try {
+        // ADR-0022 : payer demande un code SMS récent (niveau 2), vérifié avant tout appel au prestataire.
+        exigerNiveau(u);
         const p = await o.service.collecter(u, req.params.id, req.body);
         // Qui, quel paiement, quel opérateur ; jamais le numéro.
         o.journal.info('collecte lancée', {
@@ -312,7 +323,10 @@ export async function creerServeur(o: {
         o.journal.avertissement('collecte refusée', {
           sujet: u.sujet,
           paiementId: req.params.id,
-          motif: e instanceof ErreurPaiement ? e.motif : 'prestataire',
+          motif:
+            e instanceof ErreurPaiement || e instanceof ErreurNiveauInsuffisant
+              ? e.motif
+              : 'prestataire',
         });
         throw e;
       }

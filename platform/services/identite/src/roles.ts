@@ -48,6 +48,11 @@ export interface Utilisateur {
   patientId?: string;
   practitionerId?: string;
   relatedPersonId?: string;
+  /**
+   * Niveau d'authentification (`acr` du jeton, ADR-0022) : 2 après un code SMS de moins de
+   * 15 minutes. Absent : niveau 1 (mot de passe seul, ou compte de service).
+   */
+  niveau?: number;
   /** Pour un agent IA : nom de l'agent et patient de la session en cours (et lui seul). */
   agent?: { nom: string; patientSession: string };
 }

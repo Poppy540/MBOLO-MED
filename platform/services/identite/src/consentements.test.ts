@@ -6,11 +6,13 @@ import {
   ErreurValidation,
   ServiceConsentements,
 } from './consentements.js';
+import { ErreurNiveauInsuffisant } from './niveau.js';
 import type { Utilisateur } from './roles.js';
 
 // Données FICTIVES.
 const P1 = 'fictif-patient-0001';
-const patient1: Utilisateur = { sujet: 'u-p1', roles: ['patient'], patientId: P1 };
+// Niveau 2 (code SMS récent, ADR-0022) : exigé pour ouvrir le dossier à un tiers.
+const patient1: Utilisateur = { sujet: 'u-p1', roles: ['patient'], patientId: P1, niveau: 2 };
 const patient2: Utilisateur = {
   sujet: 'u-p2',
   roles: ['patient'],
@@ -52,6 +54,38 @@ describe('ServiceConsentements', () => {
       .catch((x: unknown) => x);
     expect(e).toBeInstanceOf(ErreurValidation);
     expect((e as ErreurValidation).regles).toContain('mbolo-consent-1');
+  });
+
+  it('ouvrir le dossier à un tiers exige le niveau 2 ; le refuser ou retirer, jamais (ADR-0022)', async () => {
+    const s = service();
+    const niveau1: Utilisateur = { ...patient1, niveau: 1 };
+    const sansNiveau: Utilisateur = { sujet: 'u-p1', roles: ['patient'], patientId: P1 };
+    const partage = {
+      ...soins,
+      categorie: 'C-PARTAGE-PRO',
+      mode: 'texte',
+      beneficiaire: 'Practitioner/fictif-medecin-0001',
+    } as const;
+    const proche = {
+      ...partage,
+      categorie: 'C-PROCHE',
+      beneficiaire: 'RelatedPerson/fictif-proche-0001',
+    } as const;
+    for (const u of [niveau1, sansNiveau]) {
+      await expect(s.enregistrer(u, P1, partage)).rejects.toBeInstanceOf(ErreurNiveauInsuffisant);
+      await expect(s.enregistrer(u, P1, proche)).rejects.toBeInstanceOf(ErreurNiveauInsuffisant);
+      // Les autres consentements, et le refus d'un partage, restent au niveau 1.
+      await expect(s.enregistrer(u, P1, soins)).resolves.toBeDefined();
+      await expect(s.enregistrer(u, P1, { ...partage, accepte: false })).resolves.toBeDefined();
+    }
+    // Un agent IA n'a jamais de code SMS : il ne peut pas ouvrir le dossier à un tiers.
+    const agent: Utilisateur = {
+      sujet: 'u-agent',
+      roles: ['agent-ia'],
+      agent: { nom: 'agent-01-accueil', patientSession: P1 },
+    };
+    await expect(s.enregistrer(agent, P1, partage)).rejects.toBeInstanceOf(ErreurNiveauInsuffisant);
+    await expect(s.enregistrer(patient1, P1, partage)).resolves.toBeDefined();
   });
 
   it('révoque avec effet immédiat et conserve la ressource (inactive)', async () => {

@@ -218,10 +218,12 @@ describe('limite générale d’appels', () => {
 });
 
 describe('API des proches (ADR-0019)', () => {
+  // Niveau 2 (code SMS récent, ADR-0022) : exigé pour inviter un proche.
   const PATIENT: Utilisateur = {
     sujet: 'sujet-patient-fictif',
     roles: ['patient'],
     patientId: 'pat-fictif-001',
+    niveau: 2,
   };
   const monterProches = async () => {
     const lignes: string[] = [];
@@ -243,7 +245,12 @@ describe('API des proches (ADR-0019)', () => {
     );
     const app = await creerServeur({
       verifierJeton: async (j) => {
-        const u = j === 'patient' ? PATIENT : UTILISATEURS[j];
+        const u =
+          j === 'patient'
+            ? PATIENT
+            : j === 'patient-niveau-1'
+              ? { ...PATIENT, niveau: 1 }
+              : UTILISATEURS[j];
         if (!u) throw new Error('jeton invalide');
         return u;
       },
@@ -293,6 +300,25 @@ describe('API des proches (ADR-0019)', () => {
       headers: { authorization: 'Bearer patient' },
     });
     expect(liste.json<{ proches: unknown[] }>().proches).toHaveLength(1);
+  });
+
+  it('inviter demande le niveau 2 : 401 « niveau-insuffisant », aucun code ni SMS (ADR-0022)', async () => {
+    const { app, lignes } = await monterProches();
+    const r = await inviter(app, 'patient-niveau-1');
+    expect(r.statusCode).toBe(401);
+    expect(r.json()).toMatchObject({ motif: 'niveau-insuffisant' });
+    expect(r.headers['www-authenticate']).toContain('acr_values="2"');
+    expect(lignes.join('\n')).not.toContain('proche invité');
+    // La liste des proches et leur retrait restent au niveau 1.
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/proches',
+          headers: { authorization: 'Bearer patient-niveau-1' },
+        })
+      ).statusCode,
+    ).toBe(200);
   });
 
   it('401 sans jeton ; 403 pour un médecin ; 400 pour un numéro local ou un champ inconnu', async () => {

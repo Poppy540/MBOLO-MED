@@ -14,6 +14,7 @@ Fonctionnalité: Payer et rembourser depuis les applications
     Et un créneau libre de "prac-fictif-001" est publié dans 10 jours
     Quand "patient-fictif-04" ouvre l’application patient pour "prac-fictif-001"
     Et que le patient réserve ce créneau dans l’application
+    Et que le patient confirme avec le code reçu par SMS
     Alors l’application demande de payer 10000 "XAF"
     Quand le patient paie avec "Moov Money" depuis le numéro "+241 00 00 00 00" dans l’application
     Alors l’application demande de valider le paiement sur le téléphone avec "Moov Money"
@@ -26,6 +27,7 @@ Fonctionnalité: Payer et rembourser depuis les applications
     Et un créneau libre de "prac-fictif-001" est publié dans 11 jours
     Quand "patient-fictif-04" ouvre l’application patient pour "prac-fictif-001"
     Et que le patient réserve ce créneau dans l’application
+    Et que le patient confirme avec le code reçu par SMS
     Et que le patient paie avec "Airtel Money" depuis le numéro "+241 00 00 00 00" dans l’application
     Et que le payeur refuse sur son téléphone le paiement de ce créneau
     Alors l’application indique que le paiement n’a pas abouti et propose de réessayer

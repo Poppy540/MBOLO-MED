@@ -4,6 +4,8 @@ export {
   aleatoire,
   defiPkce,
   demarrerConnexion,
+  MOTIF_NIVEAU_INSUFFISANT,
+  niveauDuJeton,
   revendications,
   terminerConnexion,
   urlAutorisation,

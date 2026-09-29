@@ -1,5 +1,5 @@
 // Étapes des scénarios « identité et accès au dossier ». Données FICTIVES uniquement.
-import { expect } from '@playwright/test';
+import { expect, type Browser } from '@playwright/test';
 import {
   APPLICATIONS,
   EMETTEUR,
@@ -19,6 +19,7 @@ import {
   urlAutorisation,
   type Monde,
 } from './fixtures.js';
+import { jetonActionSensible } from './niveau.js';
 
 const jeton = (monde: Monde, identifiant: string): string => {
   const j = monde.jetons.get(identifiant);
@@ -239,11 +240,22 @@ Then("la demande est rejetée faute d'authentification", ({ monde }) => {
 
 // ── Consentements ────────────────────────────────────────────────────────────
 
+/** Ouvrir le dossier à un tiers demande le code SMS (niveau 2, ADR-0022) ; les autres, non. */
+const jetonConsentement = async (
+  monde: Monde,
+  browser: Browser,
+  identifiant: string,
+  categorie: string,
+) =>
+  ['C-PARTAGE-PRO', 'C-PROCHE'].includes(categorie)
+    ? ((await jetonActionSensible(monde, browser, identifiant)) ?? jeton(monde, identifiant))
+    : jeton(monde, identifiant);
+
 When(
   '{string} donne son consentement {string} à {string}',
-  async ({ monde }, identifiant: string, categorie: string, beneficiaire: string) => {
+  async ({ monde, browser }, identifiant: string, categorie: string, beneficiaire: string) => {
     await appeler(monde, 'POST', `/patients/${patientId(identifiant)}/consentements`, {
-      jeton: jeton(monde, identifiant),
+      jeton: await jetonConsentement(monde, browser, identifiant, categorie),
       corps: {
         categorie,
         mode: 'texte',
@@ -272,9 +284,9 @@ When('{string} accepte de recevoir les rappels', async ({ monde }, identifiant: 
 
 When(
   '{string} tente de donner son consentement {string} à {string}',
-  async ({ monde }, identifiant: string, categorie: string, beneficiaire: string) => {
+  async ({ monde, browser }, identifiant: string, categorie: string, beneficiaire: string) => {
     await appeler(monde, 'POST', `/patients/${patientId(identifiant)}/consentements`, {
-      jeton: jeton(monde, identifiant),
+      jeton: await jetonConsentement(monde, browser, identifiant, categorie),
       corps: {
         categorie,
         mode: 'texte',

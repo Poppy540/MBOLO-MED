@@ -7,9 +7,11 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   ErreurDepot,
+  ErreurNiveauInsuffisant,
   type Utilisateur,
   type VerifierJeton,
   entetesSecurite,
+  reponseNiveauInsuffisant,
 } from '@mbolo/identite';
 import {
   LIENS_PROCHE,
@@ -82,6 +84,10 @@ export async function creerServeur(o: {
     }
     if (err instanceof ErreurAuthentification) {
       return reply.code(401).send({ erreur: 'Authentification requise.' });
+    }
+    if (err instanceof ErreurNiveauInsuffisant) {
+      const r = reponseNiveauInsuffisant(err);
+      return reply.code(r.statut).headers(r.entetes).send(r.corps);
     }
     if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if (err instanceof ErreurProche) {

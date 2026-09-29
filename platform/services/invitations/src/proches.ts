@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import type { RelatedPerson } from 'fhir/r4.js';
 import { procheInvite, valider, type Environnement, type LienProche } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
-import type { Utilisateur } from '@mbolo/identite';
+import { exigerNiveau, type Utilisateur } from '@mbolo/identite';
 import { genererCode, presenter, type Empreinte } from './codes.js';
 import {
   COHORTE_PROCHES,
@@ -151,6 +151,8 @@ export class ServiceProches {
     d: { prenom: string; lien: LienProche; telephone: string; versionTexte: string },
   ): Promise<ProcheInvite> {
     const patientId = await this.exigerPatient(u);
+    // ADR-0022 : inviter un proche demande un code SMS récent (niveau 2), avant tout code ou SMS.
+    exigerNiveau(u);
     const maintenant = this.horloge();
     // Contrôles avant d'écrire dans le dossier ; les limites sont de nouveau vérifiées sous verrou.
     const invitations = await this.depot.listerProches(u.sujet);

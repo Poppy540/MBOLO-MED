@@ -13,6 +13,7 @@ import {
 } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
 import { peutGererConsentements } from './acces.js';
+import { exigerNiveau } from './niveau.js';
 import type { Utilisateur } from './roles.js';
 
 export interface DepotConsentements {
@@ -45,6 +46,9 @@ export class DepotMemoire implements DepotConsentements {
     );
   }
 }
+
+/** Consentements qui ouvrent le dossier à un tiers : niveau 2 exigé pour les accorder (ADR-0022). */
+export const CATEGORIES_NIVEAU_2: readonly CategorieConsentement[] = ['C-PARTAGE-PRO', 'C-PROCHE'];
 
 export class ErreurAcces extends Error {
   constructor(message: string) {
@@ -99,6 +103,8 @@ export class ServiceConsentements {
     if (CATEGORIES_PATIENT_SEUL.includes(d.categorie) && !u.roles.includes('patient')) {
       throw new ErreurAcces('Accès refusé.');
     }
+    // ADR-0022 : accorder un accès au dossier demande un code SMS récent ; le retirer, jamais.
+    if (d.accepte && CATEGORIES_NIVEAU_2.includes(d.categorie)) exigerNiveau(u);
     if (
       d.categorie === 'C-PROCHE' &&
       !(await this.drapeaux.estActif('consentement.proche', {

@@ -60,8 +60,14 @@ const app = async (
   });
 };
 
-const jetonPatient = () =>
-  signer({ sub: 'u-p1', realm_access: { roles: ['patient'] }, patient_id: 'fictif-patient-0001' });
+// Niveau 2 par défaut (code SMS récent, ADR-0022) ; `niveau` 1 : mot de passe seul.
+const jetonPatient = (niveau = 2) =>
+  signer({
+    sub: 'u-p1',
+    realm_access: { roles: ['patient'] },
+    patient_id: 'fictif-patient-0001',
+    acr: String(niveau),
+  });
 const jetonMedecin = () =>
   signer({
     sub: 'u-m1',
@@ -104,6 +110,42 @@ describe('API identité', () => {
         })
       ).statusCode,
     ).toBe(401);
+  });
+
+  it('partage avec un médecin au niveau 1 : 401 « niveau-insuffisant » à redemander (ADR-0022)', async () => {
+    const a = await app();
+    const partage = (jeton: string, accepte = true) =>
+      a.inject({
+        method: 'POST',
+        url: '/patients/fictif-patient-0001/consentements',
+        headers: { authorization: `Bearer ${jeton}` },
+        payload: {
+          categorie: 'C-PARTAGE-PRO',
+          mode: 'texte',
+          versionTexte: 'C-PARTAGE-PRO v0.1 (fr)',
+          accepte,
+          beneficiaire: 'Practitioner/fictif-medecin-0001',
+        },
+      });
+    const r = await partage(await jetonPatient(1));
+    expect(r.statusCode).toBe(401);
+    expect(r.json()).toEqual({
+      erreur: 'Confirmation par code SMS requise.',
+      motif: 'niveau-insuffisant',
+    });
+    expect(r.headers['www-authenticate']).toBe(
+      'Bearer error="insufficient_user_authentication", acr_values="2"',
+    );
+    // Un acr inattendu ne vaut pas le niveau 2.
+    const bizarre = await signer({
+      sub: 'u-p1',
+      realm_access: { roles: ['patient'] },
+      patient_id: 'fictif-patient-0001',
+      acr: '2 ',
+    });
+    expect((await partage(bizarre)).statusCode).toBe(401);
+    expect((await partage(await jetonPatient(1), false)).statusCode).toBe(201);
+    expect((await partage(await jetonPatient(2))).statusCode).toBe(201);
   });
 
   it('parcours complet : consentement de partage, accès du médecin, révocation, refus', async () => {

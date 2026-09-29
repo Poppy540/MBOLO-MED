@@ -2,7 +2,7 @@
 // patient, vérifications dans le dossier FHIR de test et la boîte des SMS simulés.
 // Données FICTIVES uniquement (numéros manifestement inventés).
 import { randomBytes } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Browser, type Page } from '@playwright/test';
 import {
   APP_PATIENT_URL,
   FHIR_URL,
@@ -15,6 +15,7 @@ import {
 } from '../configuration.js';
 import { jetonService } from './dossier.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
+import { jetonActionSensible } from './niveau.js';
 import { codeUnique, retenirSecret } from './totp.js';
 
 const LIENS: Record<string, string> = { enfant: 'CHILD', conjoint: 'SPS', parent: 'PRN' };
@@ -44,6 +45,7 @@ async function appeler(
 
 async function inviter(
   monde: Monde,
+  browser: Browser,
   identifiant: string | undefined,
   prenom: string,
   lien: string,
@@ -53,7 +55,8 @@ async function inviter(
     monde,
     'POST',
     '/proches',
-    identifiant ? monde.jetons.get(identifiant) : undefined,
+    // Inviter un proche demande le code SMS (niveau 2, ADR-0022).
+    await jetonActionSensible(monde, browser, identifiant),
     {
       prenom,
       lien: LIENS[lien] ?? lien,
@@ -128,21 +131,37 @@ Given(
 
 When(
   '{string} invite son proche {string}, son {word}, au numéro {string}',
-  async ({ monde }, identifiant: string, prenom: string, lien: string, telephone: string) => {
-    await inviter(monde, identifiant, prenom, lien, telephone);
+  async (
+    { monde, browser },
+    identifiant: string,
+    prenom: string,
+    lien: string,
+    telephone: string,
+  ) => {
+    await inviter(monde, browser, identifiant, prenom, lien, telephone);
   },
 );
 
-When('une personne sans jeton invite un proche', async ({ monde }) => {
-  await inviter(monde, undefined, 'Paul [FICTIF]', 'enfant', '+33000000009');
+When('une personne sans jeton invite un proche', async ({ monde, browser }) => {
+  await inviter(monde, browser, undefined, 'Paul [FICTIF]', 'enfant', '+33000000009');
 });
 
-When('{string} invite {int} proches', async ({ monde }, identifiant: string, n: number) => {
-  for (let i = 0; i < n; i++) {
-    await inviter(monde, identifiant, `Proche ${i + 1} [FICTIF]`, 'enfant', '+33000000009');
-    expect(monde.reponse?.statut).toBe(201);
-  }
-});
+When(
+  '{string} invite {int} proches',
+  async ({ monde, browser }, identifiant: string, n: number) => {
+    for (let i = 0; i < n; i++) {
+      await inviter(
+        monde,
+        browser,
+        identifiant,
+        `Proche ${i + 1} [FICTIF]`,
+        'enfant',
+        '+33000000009',
+      );
+      expect(monde.reponse?.statut).toBe(201);
+    }
+  },
+);
 
 Then("l'invitation du proche est créée et le code envoyé par SMS", ({ monde }) => {
   expect(monde.reponse?.statut).toBe(201);
@@ -378,6 +397,11 @@ const application = (monde: Monde): Page => {
   if (!p) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
   return p;
 };
+
+When('le patient demande à inviter un proche', async ({ monde }) => {
+  // Sans code SMS récent (niveau 2, ADR-0022), l'application le demande avant le formulaire.
+  await application(monde).getByRole('button', { name: 'Inviter un proche' }).click();
+});
 
 When(
   'le patient invite son proche {string}, son {word}, au numéro {string} dans l’application',

@@ -17,8 +17,9 @@ const TARIFS: Tarifs = {
   indicatif: '241',
 };
 
+// Niveau 2 (code SMS récent, ADR-0022) : exigé pour payer.
 const COMPTES: Record<string, Utilisateur> = {
-  patient: { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001' },
+  patient: { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001', niveau: 2 },
   valideur: { sujet: 'u-v1', roles: ['validation-remboursement'] },
   // Un valideur qui est aussi le patient concerné ne décide jamais de son propre paiement.
   soiMeme: { sujet: 'u-p1', roles: ['validation-remboursement', 'patient'] },
