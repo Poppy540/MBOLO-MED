@@ -13,6 +13,7 @@ Règles d'alerte de Mbolo Santé, versionnées avec le code.
 | `ConsultationsPhotosAnormales` | plus de 60 photos en 1 h par vérificateur | critique | responsable sécurité |
 | `BrisDeGlace` | chaque accès d'urgence | normale | relecteur des accès |
 | `AccesRefusesEnRafale` | plus de 20 refus en 5 min par compte ou service | critique | responsable sécurité |
+| `EssaisBloquesEnRafale` | plus de 20 essais de code d'invitation ou de date de naissance bloqués en 15 min (ASVS D3) | critique | responsable sécurité |
 | `LimitesAppelsDepassees` | plus de 100 requêtes refusées en 5 min | normale | astreinte technique |
 | `ErreursServeur` | plus de 10 erreurs internes en 5 min par service (provisoire : 1 % quand les métriques de requêtes existeront) | normale | astreinte technique |
 | `ServiceInjoignable` | `/sante` muet pendant 2 min | critique | astreinte technique |

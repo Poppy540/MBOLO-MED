@@ -31,6 +31,15 @@ groups:
         annotations:
           resume: "Plus de 20 refus d’accès au dossier en 5 minutes pour un même compte ou service."
           conduite: "Vérifier le compte ; le désactiver dans Keycloak en cas de tentative d’intrusion."
+      - alert: "EssaisBloquesEnRafale"
+        expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"essais-bloques\" [15m])) > 20"
+        labels:
+          gravite: "critique"
+          destinataire: "responsable-securite"
+          alerte: "essais-bloques"
+        annotations:
+          resume: "Plus de 20 essais de code d’invitation ou de date de naissance bloqués en 15 minutes."
+          conduite: "Vérifier les adresses et les comptes en cause ; suspendre les invitations ou l’assistance si c’est une attaque."
   - name: "mbolo-exploitation"
     interval: "1m"
     rules:

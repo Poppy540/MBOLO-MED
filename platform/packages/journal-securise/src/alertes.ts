@@ -14,6 +14,11 @@ export const ALERTES = [
   'limite-appels',
   /** Erreur interne d'un service, ou dossier médical indisponible (5xx). */
   'erreur-serveur',
+  /**
+   * Essais de code d'invitation ou de date de naissance bloqués par la limite (revue ASVS n°1, D3) :
+   * en rafale, signe d'une recherche de codes ou d'une usurpation auprès de l'assistance.
+   */
+  'essais-bloques',
   /** Paiement reçu pour un rendez-vous annulé : remboursement à valider par un humain (ADR-0017). */
   'remboursement-a-valider',
 ] as const;

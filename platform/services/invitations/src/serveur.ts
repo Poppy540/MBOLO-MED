@@ -85,6 +85,11 @@ export async function creerServeur(o: {
     }
     if (err instanceof ErreurInterdite) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if (err instanceof ErreurProche) {
+      if (err.motif === 'trop-d-essais') {
+        signalerAlerte(o.journal, 'essais-bloques', 'trop d’essais de date de naissance', {
+          verification: 'naissance',
+        });
+      }
       return reply
         .code(err.statut)
         .send({ erreur: err.message, ...(err.motif ? { motif: err.motif } : {}) });
@@ -190,7 +195,9 @@ export async function creerServeur(o: {
     },
     async (req, reply) => {
       if (!(await o.limiteur.essayer(req.ip))) {
-        o.journal.avertissement('trop d’essais de code d’invitation');
+        signalerAlerte(o.journal, 'essais-bloques', 'trop d’essais de code d’invitation', {
+          verification: 'code',
+        });
         return reply
           .code(429)
           .send({ erreur: 'Trop d’essais. Réessayez plus tard.', motif: 'trop-d-essais' });
@@ -241,7 +248,9 @@ export async function creerServeur(o: {
       async (req, reply) => {
         await extension(req);
         if (!(await o.limiteur.essayer(`inscription:${req.body.adresse}`))) {
-          o.journal.avertissement('trop d’essais de code à l’inscription');
+          signalerAlerte(o.journal, 'essais-bloques', 'trop d’essais de code à l’inscription', {
+            verification: 'inscription',
+          });
           return reply.code(429).send({ erreur: 'Trop d’essais.', motif: 'trop-d-essais' });
         }
         return { valide: await o.service.verifier(req.body.code, req.body.types) };
