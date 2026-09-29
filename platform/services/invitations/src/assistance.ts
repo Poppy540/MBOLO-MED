@@ -133,7 +133,7 @@ export class ServiceAssistance {
     d: { patientId: string; naissance: string },
   ): Promise<{ retires: number; sms: 'envoyee' | 'echec' }> {
     ServiceAssistance.exiger(u, d.patientId);
-    if (!this.essais.essayer(`${u.sujet}:${d.patientId}`, this.horloge().getTime())) {
+    if (!(await this.essais.essayer(`${u.sujet}:${d.patientId}`, this.horloge().getTime()))) {
       throw new ErreurProche(429, 'Trop d’essais. Réessayez plus tard.', 'trop-d-essais');
     }
     const p = await this.dossier.patient(d.patientId);

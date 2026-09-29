@@ -20,7 +20,7 @@ import { creerJournal } from '@mbolo/journal-securise';
 import { creerEmpreinte } from './codes.js';
 import { creerVerificateurService } from './jeton-service.js';
 import { DepotPostgres } from './depot.js';
-import { Limiteur } from './limiteur.js';
+import { LimiteurPostgres } from './limiteur.js';
 import { creerServeur } from './serveur.js';
 import { ServiceProches } from './proches.js';
 import { ServiceInvitations } from './service.js';
@@ -79,10 +79,12 @@ const fhir = env['FHIR_BASE_URL'];
 const identite = env['IDENTITE_URL'];
 const notifications = env['NOTIFICATIONS_URL'];
 const authentification = authentificationDepuis(env, 'INVITATIONS');
-const depot = new DepotPostgres(
-  connecter({ url: urlBase, application: 'invitations', production }),
-);
+const sql = connecter({ url: urlBase, application: 'invitations', production });
+const depot = new DepotPostgres(sql);
 const empreinte = creerEmpreinte(cle);
+// Compteurs d'essais partagés entre les instances (revue ASVS n°1, D3), clés sous empreinte HMAC.
+const limiteur = (portee: string, maximum: number, fenetreMinutes: number) =>
+  new LimiteurPostgres(sql, { portee, maximum, fenetreMs: fenetreMinutes * 60_000, empreinte });
 let proches: ServiceProches | undefined;
 let assistance: ServiceAssistance | undefined;
 let service: ServiceInvitations;
@@ -119,9 +121,10 @@ try {
       fiches,
       consentements,
       sms,
-      new Limiteur(
+      limiteur(
+        'assistance-naissance',
         Number(env['INVITATIONS_ASSISTANCE_ESSAIS_MAX'] ?? '3'),
-        Number(env['INVITATIONS_ASSISTANCE_FENETRE_MINUTES'] ?? '15') * 60_000,
+        Number(env['INVITATIONS_ASSISTANCE_FENETRE_MINUTES'] ?? '15'),
       ),
       {
         systemes: {
@@ -177,9 +180,10 @@ const app = await creerServeur({
     audience: env['INVITATIONS_AUDIENCE'] ?? 'mbolo-invitations-api',
   }),
   service,
-  limiteur: new Limiteur(
+  limiteur: limiteur(
+    'verification-code',
     Number(env['INVITATIONS_ESSAIS_MAX'] ?? '10'),
-    Number(env['INVITATIONS_ESSAIS_FENETRE_MINUTES'] ?? '15') * 60_000,
+    Number(env['INVITATIONS_ESSAIS_FENETRE_MINUTES'] ?? '15'),
   ),
   journal,
   ...(proches ? { proches } : {}),

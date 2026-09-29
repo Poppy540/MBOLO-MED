@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALPHABET, creerEmpreinte, genererCode, normaliser, presenter } from './codes.js';
 import { DepotMemoire } from './depot.js';
-import { Limiteur } from './limiteur.js';
+import { LimiteurMemoire } from './limiteur.js';
 import { ErreurInvitation, ServiceInvitations } from './service.js';
 
 // Clé de test construite à l'exécution (aucune clé dans le dépôt).
@@ -132,12 +132,12 @@ describe('service des invitations', () => {
 });
 
 describe('limiteur', () => {
-  it('bloque au-delà du maximum puis rouvre après la fenêtre', () => {
-    const l = new Limiteur(2, 1_000);
-    expect(l.essayer('ip', 0)).toBe(true);
-    expect(l.essayer('ip', 10)).toBe(true);
-    expect(l.essayer('ip', 20)).toBe(false);
-    expect(l.essayer('autre-ip', 20)).toBe(true);
-    expect(l.essayer('ip', 1_000)).toBe(true);
+  it('bloque au-delà du maximum puis rouvre après la fenêtre', async () => {
+    const l = new LimiteurMemoire(2, 1_000);
+    expect(await l.essayer('ip', 0)).toBe(true);
+    expect(await l.essayer('ip', 10)).toBe(true);
+    expect(await l.essayer('ip', 20)).toBe(false);
+    expect(await l.essayer('autre-ip', 20)).toBe(true);
+    expect(await l.essayer('ip', 1_000)).toBe(true);
   });
 });

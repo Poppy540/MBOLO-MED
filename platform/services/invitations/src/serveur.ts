@@ -189,7 +189,7 @@ export async function creerServeur(o: {
       },
     },
     async (req, reply) => {
-      if (!o.limiteur.essayer(req.ip)) {
+      if (!(await o.limiteur.essayer(req.ip))) {
         o.journal.avertissement('trop d’essais de code d’invitation');
         return reply
           .code(429)
@@ -240,7 +240,7 @@ export async function creerServeur(o: {
       },
       async (req, reply) => {
         await extension(req);
-        if (!o.limiteur.essayer(`inscription:${req.body.adresse}`)) {
+        if (!(await o.limiteur.essayer(`inscription:${req.body.adresse}`))) {
           o.journal.avertissement('trop d’essais de code à l’inscription');
           return reply.code(429).send({ erreur: 'Trop d’essais.', motif: 'trop-d-essais' });
         }
