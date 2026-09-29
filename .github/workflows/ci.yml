@@ -184,8 +184,9 @@ jobs:
         run: timeout 60 bash -c 'until curl -sf http://127.0.0.1:7880 > /dev/null; do sleep 2; done'
       - run: pnpm e2e
         env:
-          # Keycloak (conteneur) joint le service des invitations par la passerelle Docker.
+          # Keycloak (conteneur) joint les services des invitations et des notifications par la passerelle Docker.
           INVITATIONS_HOST: 0.0.0.0
+          NOTIFICATIONS_HOST: 0.0.0.0
           PASSERELLE_HOST: 0.0.0.0
       - name: Journaux Keycloak, HAPI, Unleash et LiveKit en cas d'échec
         if: failure()

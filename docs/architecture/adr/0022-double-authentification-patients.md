@@ -72,7 +72,7 @@ Contraintes :
 
 ## Mise en œuvre (petites PR)
 
-1. **Keycloak** : authentificateur `mbolo-code-sms` et flux de connexion à deux niveaux ; gabarit `code-connexion` du service `notifications`. E2E : code reçu dans la boîte SMS simulée, niveau 2 dans le jeton.
+1. **Keycloak** : authentificateur `mbolo-code-sms` et flux de connexion à deux niveaux ; gabarit `code-connexion` du service `notifications`. E2E : code reçu dans la boîte SMS simulée, niveau 2 dans le jeton. **Fait (PR CF)** ; un code faux n'est pas compté comme un échec de connexion, pour ne pas bloquer le mot de passe.
 2. **Services** : `acr` exigé sur les trois routes sensibles (refus 401 avec le motif `niveau-insuffisant`).
 3. **Application patient** : demande du niveau 2 avant ces trois actions, puis reprise de l'action.
 

@@ -97,6 +97,15 @@ Flux `identifiants-oublies-mbolo` (`resetCredentialsFlow`), **sans aucun e-mail*
 
 Le patient est prévenu par SMS (`compte-recupere`), et le flag `compte.recuperation` est vérifié par le service. Configuration : `KC_SPI_AUTHENTICATOR_MBOLO_CODE_RECUPERATION_INVITATIONS_URL` (même adresse que l'inscription, pas un secret).
 
+### Double authentification des patients (ADR-0022)
+
+Le flux `navigateur-mbolo` a **deux niveaux** (authentification renforcée de Keycloak, `conditional-level-of-authentication`) :
+
+- **Niveau 1** (`navigateur-mbolo niveau 1`) : mot de passe, puis OTP pour les rôles `mfa-requise` (inchangé). C'est la connexion de tous les jours ; valable 10 heures.
+- **Niveau 2** (`navigateur-mbolo niveau 2`) : seulement quand l'application le demande (`acr_values=2`), juste avant une action sensible. Authentificateur `mbolo-code-sms`, page `code-sms.ftl` : un code de **6 chiffres**, envoyé au **numéro du dossier** (`patient_id`, jamais saisi) par le service `notifications` (`POST /codes-connexion`, jeton de service signé par le royaume). Code valable **5 minutes**, **3 essais**, un envoi par minute et 5 par heure ; il est gardé dans la session d'authentification sous empreinte salée, jamais en clair ni dans le journal. Le niveau 2 reste valable **15 minutes** (`loa-max-age` 900) ; le jeton porte alors `acr` = `2`.
+- Un code faux ne compte **pas** comme un échec de connexion (pas de blocage du mot de passe par la protection contre la force brute) : les 3 essais suffisent. Un compte sans dossier (professionnel, proche) ne peut pas atteindre le niveau 2.
+- Le client `mbolo-app-patient` déclare la correspondance `acr.loa.map` `{"1":1,"2":2}`. Configuration : `KC_SPI_AUTHENTICATOR_MBOLO_CODE_SMS_NOTIFICATIONS_URL` (adresse du service des notifications, pas un secret).
+
 ### Construction et configuration
 
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.

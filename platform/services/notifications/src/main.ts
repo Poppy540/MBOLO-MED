@@ -66,7 +66,7 @@ const app = await creerServeur({
     audience: env['NOTIFICATIONS_AUDIENCE'] ?? 'mbolo-notifications',
     clientsAutorises: (
       env['NOTIFICATIONS_CLIENTS_AUTORISES'] ??
-      'mbolo-teleconsultation-service,mbolo-invitations-service'
+      'mbolo-teleconsultation-service,mbolo-invitations-service,mbolo-keycloak-inscription'
     )
       .split(',')
       .map((x) => x.trim())
@@ -84,7 +84,16 @@ const app = await creerServeur({
       .map((x) => x.trim())
       .filter(Boolean),
   },
+  // Codes de double authentification des patients (ADR-0022) : seule l'extension Keycloak.
+  codesConnexion: {
+    appelants: (env['NOTIFICATIONS_APPELANTS_CODE'] ?? 'mbolo-keycloak-inscription')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean),
+  },
 });
 const port = Number(env['PORT'] ?? '3004');
-await app.listen({ host: '127.0.0.1', port });
+// Par défaut, seulement la machine locale ; `NOTIFICATIONS_HOST` permet à un Keycloak en conteneur
+// de joindre le service (CI : code de double authentification, ADR-0022).
+await app.listen({ host: env['NOTIFICATIONS_HOST'] ?? '127.0.0.1', port });
 journal.info('service de notifications démarré (canal simulé)', { port, ...pays });
