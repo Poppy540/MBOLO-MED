@@ -86,7 +86,7 @@ Contraintes :
 
 - **Serveur (service `invitations`)** : code de type `recuperation` rattaché au dossier (`patient_id`, migration `0005`), un seul valable par dossier ; `POST /assistance/recuperation` (rôle `assistance-patient`, flag `compte.recuperation`) et `POST /recuperation/utilisation` (extension Keycloak seulement, essais limités par adresse). Le flag est relu à l'utilisation, pour le membre de l'équipe qui a remis le code.
 - **Keycloak** : flux `identifiants-oublies-mbolo` (identifiant, code de l'équipe avec l'authentificateur `mbolo-code-recuperation`, nouveau mot de passe), sans e-mail ; même réponse pour un compte inconnu ou sans dossier ; autres sessions fermées. E2E `identite/recuperation-compte.feature` (compte `patient-fictif-05`).
-- **Espace professionnel** : écran de l'équipe d'assistance (PR suivante).
+- **Espace professionnel** : écran « Aider un patient qui appelle » (retrait des proches ou code de récupération, au choix après le rappel) ; code affiché une seule fois, en grand, avec son expiration, puis effacé. Parcours complet en e2e, de l'écran de l'équipe au nouveau mot de passe.
 
 ## Questions au porteur de projet (posées le 2026-09-29)
 

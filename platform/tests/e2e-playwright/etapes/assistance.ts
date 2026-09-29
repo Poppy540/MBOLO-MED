@@ -22,9 +22,7 @@ When(
     await p.goto(APP_PRO_URL);
     await p.getByRole('button', { name: 'Se connecter' }).click();
     await saisirIdentifiants(p, identifiant, true);
-    await expect(
-      p.getByRole('heading', { name: 'Retirer les proches d’un patient' }),
-    ).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'Aider un patient qui appelle' })).toBeVisible();
     // Aucun écran clinique pour ce rôle.
     await expect(p.getByRole('button', { name: /Rendez-vous/ })).toHaveCount(0);
   },
