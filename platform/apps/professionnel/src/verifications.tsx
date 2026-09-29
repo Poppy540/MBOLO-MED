@@ -203,11 +203,7 @@ function FicheVerification(p: {
         {fiche.documents.map((d) => (
           <figure key={d.id}>
             {images[d.id] ? (
-              <img
-                src={images[d.id]}
-                alt={`Photo : ${LIBELLES_TYPE[d.type] ?? d.type}`}
-                style="max-width:100%"
-              />
+              <img src={images[d.id]} alt={`Photo : ${LIBELLES_TYPE[d.type] ?? d.type}`} />
             ) : (
               <p aria-live="polite">Chargement…</p>
             )}

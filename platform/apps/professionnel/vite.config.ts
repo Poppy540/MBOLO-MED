@@ -2,7 +2,26 @@
 // retours de connexion aux tests e2e. APIs servies sous /api/teleconsultation, /api/consultation, /api/documents, /api/paiement
 // et /api/invitations (même origine).
 import preact from '@preact/preset-vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+// Chemin relatif : la configuration Vite est compilée avec lui (pas d'import TypeScript par Node).
+import { avecCsp } from '../../packages/client-web/src/csp.js';
+
+// Revue ASVS n°1 (C6) : politique de sécurité du contenu, posée dans la page construite seulement
+// (le serveur de développement en a besoin d'une plus large). Keycloak et la visio : mêmes
+// variables que l'application ; en-têtes complets (frame-ancestors, HSTS) sur l'hébergement.
+const csp: Plugin = {
+  name: 'mbolo-csp',
+  apply: 'build',
+  // En dernier : l'empreinte porte sur le style tel qu'il sera servi.
+  transformIndexHtml: {
+    order: 'post',
+    handler: (html) =>
+      avecCsp(html, {
+        emetteur: process.env['VITE_KEYCLOAK_ISSUER'] ?? 'http://127.0.0.1:8081/realms/mbolo',
+        webrtc: process.env['VITE_WEBRTC_URL'] ?? 'ws://127.0.0.1:7880',
+      }),
+  },
+};
 
 const api = process.env['TELECONSULTATION_URL'] ?? 'http://127.0.0.1:3003';
 const consultation = process.env['CONSULTATION_URL'] ?? 'http://127.0.0.1:3005';
@@ -26,7 +45,7 @@ const proxy = {
 };
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [preact(), csp],
   server: { host: 'localhost', port: 5181, strictPort: true, proxy },
   preview: { host: 'localhost', port: 5181, strictPort: true, proxy },
   // La bibliothèque vidéo (LiveKit) est volumineuse mais chargée à part, seulement pour rejoindre

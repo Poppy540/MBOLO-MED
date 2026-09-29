@@ -26,7 +26,7 @@ Aucune donnée de santé n'est affichée ici : le dossier du patient s'ouvre par
 
 ## Déploiement dans un autre pays
 
-Mêmes variables que l'application patient (`VITE_KEYCLOAK_ISSUER`, `VITE_KEYCLOAK_CLIENT`, défaut `mbolo-app-pro`, `VITE_FUSEAU`, `VITE_LANGUE`, `VITE_NOM_ASSURANCE`). L'heure saisie est convertie en instant selon `VITE_FUSEAU`, heure d'été comprise.
+Mêmes variables que l'application patient (`VITE_KEYCLOAK_ISSUER`, `VITE_KEYCLOAK_CLIENT`, défaut `mbolo-app-pro`, `VITE_FUSEAU`, `VITE_LANGUE`, `VITE_NOM_ASSURANCE`, `VITE_WEBRTC_URL`) et même politique de sécurité du contenu. L'heure saisie est convertie en instant selon `VITE_FUSEAU`, heure d'été comprise.
 
 ## Lancer
 

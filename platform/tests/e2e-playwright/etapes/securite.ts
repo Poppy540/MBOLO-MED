@@ -1,7 +1,9 @@
 // Étapes « en-têtes de sécurité des API » (revue ASVS n°1, C1). Données FICTIVES uniquement.
-import { expect } from '@playwright/test';
+import { expect, type Browser } from '@playwright/test';
 import type { DataTable } from 'playwright-bdd';
 import {
+  APP_PATIENT_URL,
+  APP_PRO_URL,
   CONSULTATION_URL,
   DOCUMENTS_URL,
   IDENTITE_URL,
@@ -49,5 +51,26 @@ Then(
     monde.reponse = { statut: r.status, corps: {} };
     expect(r.status).toBe(401);
     verifier(r, `${service} sans jeton`);
+  },
+);
+
+Then(
+  'l’application {string} se charge avec sa politique de sécurité du contenu, sans violation',
+  async ({ browser }: { browser: Browser }, application: string) => {
+    const contexte = await browser.newContext();
+    const page = await contexte.newPage();
+    const violations: string[] = [];
+    page.on('console', (m) => {
+      if (/Content Security Policy/i.test(m.text())) violations.push(m.text());
+    });
+    await page.goto(application === 'patient' ? APP_PATIENT_URL : APP_PRO_URL);
+    await expect(page.getByRole('button', { name: 'Se connecter' })).toBeVisible();
+    const csp = await page
+      .locator('meta[http-equiv="Content-Security-Policy"]')
+      .getAttribute('content');
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("object-src 'none'");
+    expect(violations).toEqual([]);
+    await contexte.close();
   },
 );

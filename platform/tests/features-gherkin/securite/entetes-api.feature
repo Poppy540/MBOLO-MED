@@ -18,3 +18,7 @@ Fonctionnalité: Aucune réponse d'API n'est gardée en cache
       | notifications    | /sante                            |
       | documents        | /verification                     |
     Et une réponse d’erreur sans jeton de "consultation" interdit aussi le cache
+
+  Scénario: Les applications portent une politique de sécurité du contenu, sans violation au chargement
+    Alors l’application "patient" se charge avec sa politique de sécurité du contenu, sans violation
+    Et l’application "professionnel" se charge avec sa politique de sécurité du contenu, sans violation
