@@ -3,6 +3,7 @@
 // par SMS et s'affiche aussi, en secours. Le patient retire un proche à tout moment.
 // Le numéro n'est jamais gardé, ni ici ni sur le serveur.
 import { useState } from 'preact/hooks';
+import { MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { numeroInternational } from './telephone.js';
 
@@ -48,6 +49,10 @@ export function MesProches(p: {
   /** `null` : fonction non ouverte pour ce patient (rien n'est affiché). */
   proches: Proche[] | null;
   recharger: () => Promise<void>;
+  /** Niveau 2 (code SMS de moins de 15 minutes), exigé pour inviter (ADR-0022). */
+  niveauSuffisant: boolean;
+  /** Redemande le code SMS, puis rouvre « Mes partages et accès ». */
+  confirmer: () => void;
 }) {
   const [formulaire, setFormulaire] = useState(false);
   const [invite, setInvite] = useState<Invite>();
@@ -78,7 +83,14 @@ export function MesProches(p: {
           versionTexte: VERSION_PARTAGE_PROCHE,
         }),
       });
-      const corps = (await r.json().catch(() => ({}))) as Partial<Invite> & { erreur?: string };
+      const corps = (await r.json().catch(() => ({}))) as Partial<Invite> & {
+        erreur?: string;
+        motif?: string;
+      };
+      if (r.status === 401 && corps.motif === MOTIF_NIVEAU_INSUFFISANT) {
+        f.reset();
+        return p.confirmer();
+      }
       if (!r.ok) return setErreur(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
       // Le champ du numéro est vidé aussitôt : il n'est gardé nulle part.
       f.reset();
@@ -207,6 +219,7 @@ export function MesProches(p: {
         actifs.length < PROCHES_MAX && (
           <button
             onClick={() => {
+              if (!p.niveauSuffisant) return p.confirmer();
               setInvite(undefined);
               setErreur(undefined);
               setPrenom('');

@@ -4,6 +4,7 @@
 // seulement à la demande (budget de l'ouverture).
 // Le consentement est donné par le patient lui-même, jamais pré-coché ni groupé.
 import { useEffect, useState } from 'preact/hooks';
+import { MOTIF_NIVEAU_INSUFFISANT, niveauDuJeton } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { MesProches, type Proche } from './proches.js';
 
@@ -34,7 +35,10 @@ interface Partage {
   depuis?: string;
 }
 
-class ErreurPartage extends Error {}
+class ErreurPartage extends Error {
+  /** Refus parce que le code SMS manque ou a plus de 15 minutes (ADR-0022). */
+  niveauInsuffisant = false;
+}
 
 async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): Promise<T> {
   let r: Response;
@@ -47,8 +51,10 @@ async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): P
     throw new ErreurPartage('Pas de réseau. Réessayez plus tard.');
   }
   if (!r.ok) {
-    const corps = (await r.json().catch(() => ({}))) as { erreur?: string };
-    throw new ErreurPartage(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    const corps = (await r.json().catch(() => ({}))) as { erreur?: string; motif?: string };
+    const e = new ErreurPartage(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    e.niveauInsuffisant = r.status === 401 && corps.motif === MOTIF_NIVEAU_INSUFFISANT;
+    throw e;
   }
   return (await r.json()) as T;
 }
@@ -81,7 +87,15 @@ function qui(a: Acces): string {
   return 'Une personne de l’équipe';
 }
 
-export function Partages(p: { jeton: string; patientId: string; retour: () => void }) {
+export function Partages(p: {
+  jeton: string;
+  patientId: string;
+  retour: () => void;
+  /** Redemande le code SMS, puis rouvre cet écran (ADR-0022). */
+  confirmer: () => void;
+}) {
+  // Partager et inviter demandent le code SMS ; retirer un accès, jamais (ADR-0022).
+  const niveauSuffisant = niveauDuJeton(p.jeton) >= 2;
   const [partages, setPartages] = useState<Partage[]>();
   const [medecins, setMedecins] = useState<{ id: string; nom: string }[]>([]);
   const [historique, setHistorique] = useState<Acces[]>([]);
@@ -153,6 +167,7 @@ export function Partages(p: { jeton: string; patientId: string; retour: () => vo
       setMessage(`Votre dossier est partagé avec ${m.nom}.`);
       await charger();
     } catch (e) {
+      if (e instanceof ErreurPartage && e.niveauInsuffisant) return p.confirmer();
       setMessage(e instanceof ErreurPartage ? e.message : 'Service indisponible.');
     }
   };
@@ -233,11 +248,21 @@ export function Partages(p: { jeton: string; patientId: string; retour: () => vo
             </ul>
           )}
           {aPartager.map((m) => (
-            <button key={m.id} data-partager={m.id} onClick={() => setPropose(m)}>
+            <button
+              key={m.id}
+              data-partager={m.id}
+              onClick={() => (niveauSuffisant ? setPropose(m) : p.confirmer())}
+            >
               <span aria-hidden="true">🤝</span> Partager mon dossier avec {m.nom}
             </button>
           ))}
-          <MesProches jeton={p.jeton} proches={proches} recharger={charger} />
+          <MesProches
+            jeton={p.jeton}
+            proches={proches}
+            recharger={charger}
+            niveauSuffisant={niveauSuffisant}
+            confirmer={p.confirmer}
+          />
           <h3>Qui a demandé à lire mon dossier</h3>
           {historique.length === 0 ? (
             <p>Personne pour le moment.</p>

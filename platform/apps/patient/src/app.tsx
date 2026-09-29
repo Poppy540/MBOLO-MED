@@ -7,6 +7,7 @@ import {
   demarrerConnexion,
   ErreurApi,
   estHorsLigne,
+  niveauDuJeton,
   oublierRendezVous,
   RendezVousHorsLigne,
   retenirRendezVous,
@@ -27,6 +28,44 @@ const connexion = () => ({
 /** Professionnel choisi (lien reçu du point de consultation), gardé le temps de la connexion. */
 const CLE_PRATICIEN = 'mbolo.praticien';
 
+/**
+ * Écran à rouvrir après le code SMS (ADR-0022), le temps de l'aller-retour vers Keycloak : le nom de
+ * l'écran et l'identifiant du rendez-vous seulement, jamais ce que le patient a saisi.
+ */
+const CLE_REPRISE = 'mbolo.reprise';
+
+/** Actions sensibles : niveau 2 (mot de passe et code SMS de moins de 15 minutes). */
+const NIVEAU_SENSIBLE = 2;
+const niveauSuffisant = () => niveauDuJeton(jeton) >= NIVEAU_SENSIBLE;
+
+/** Écrans qui mènent à une action sensible, et que l'on peut rouvrir après le code. */
+type EcranSensible = { nom: 'paiement'; rendezVousId: string } | { nom: 'partages' };
+
+/** Relit l'écran à reprendre ; toute autre valeur est ignorée. */
+function lireReprise(): EcranSensible | undefined {
+  const brut = sessionStorage.getItem(CLE_REPRISE);
+  sessionStorage.removeItem(CLE_REPRISE);
+  try {
+    const e = JSON.parse(brut ?? 'null') as Partial<{ nom: string; rendezVousId: unknown }> | null;
+    if (e?.nom === 'partages') return { nom: 'partages' };
+    if (
+      e?.nom === 'paiement' &&
+      typeof e.rendezVousId === 'string' &&
+      /^[A-Za-z0-9\-.]{1,64}$/.test(e.rendezVousId)
+    ) {
+      return { nom: 'paiement', rendezVousId: e.rendezVousId };
+    }
+  } catch {
+    // Valeur illisible : rien à reprendre.
+  }
+  return undefined;
+}
+
+async function confirmerParSms(reprise: EcranSensible) {
+  sessionStorage.setItem(CLE_REPRISE, JSON.stringify(reprise));
+  location.assign(await demarrerConnexion(connexion(), sessionStorage, false, NIVEAU_SENSIBLE));
+}
+
 let jeton: string | undefined;
 const api = creerApi(CONFIG.api, () => jeton);
 const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
@@ -43,6 +82,7 @@ type Ecran =
   | { nom: 'documents' }
   | { nom: 'documents-proche' }
   | { nom: 'partages' }
+  | { nom: 'confirmation-sms'; reprise: EcranSensible }
   | { nom: 'recus' };
 
 export function App() {
@@ -68,6 +108,12 @@ export function App() {
             setEcran({ nom: 'documents-proche' });
             return;
           }
+          // Retour du code SMS (ADR-0022) : l'écran de l'action sensible est rouvert.
+          const reprise = lireReprise();
+          if (reprise && r['patient_id'] && niveauSuffisant()) {
+            setEcran(reprise);
+            return;
+          }
           // Pas de consultation tant que l'identité n'est pas vérifiée par l'équipe (ADR-0014).
           if (!revendications(j)['patient_id']) {
             setEcran({ nom: 'dossier-a-completer' });
@@ -87,6 +133,16 @@ export function App() {
       .catch(() => setMessage('La connexion a échoué. Réessayez.'))
       .finally(() => setAttente(false));
   }, []);
+
+  /** Payer demande d'abord le code SMS, avant la saisie du numéro qui paie. */
+  const ouvrir = (e: Ecran) =>
+    setEcran(
+      e.nom === 'paiement' && !niveauSuffisant() ? { nom: 'confirmation-sms', reprise: e } : e,
+    );
+  const confirmer = (reprise: EcranSensible) => () => {
+    setMessage(undefined);
+    setEcran({ nom: 'confirmation-sms', reprise });
+  };
 
   const signaler = (e: unknown) => {
     setMessage(e instanceof ErreurApi ? e.message : 'Service indisponible. Réessayez plus tard.');
@@ -137,7 +193,7 @@ export function App() {
         <MesRendezVous
           allerA={(e) => {
             setMessage(undefined);
-            setEcran(e);
+            ouvrir(e);
           }}
           signaler={signaler}
         />
@@ -156,7 +212,7 @@ export function App() {
           }}
           payer={(rendezVousId) => {
             setMessage(undefined);
-            setEcran({ nom: 'paiement', rendezVousId });
+            ouvrir({ nom: 'paiement', rendezVousId });
           }}
           signaler={signaler}
         />
@@ -165,12 +221,24 @@ export function App() {
       ) : ecran.nom === 'recus' ? (
         <EcranRecus retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'partages' ? (
-        <EcranPartages retour={() => setEcran({ nom: 'rendez-vous' })} />
+        <EcranPartages
+          retour={() => setEcran({ nom: 'rendez-vous' })}
+          confirmer={confirmer({ nom: 'partages' })}
+        />
+      ) : ecran.nom === 'confirmation-sms' ? (
+        <ConfirmationSms
+          action={ecran.reprise.nom === 'paiement' ? 'payer' : 'partager'}
+          confirmer={() => void confirmerParSms(ecran.reprise)}
+          retour={() =>
+            setEcran(ecran.reprise.nom === 'partages' ? ecran.reprise : { nom: 'rendez-vous' })
+          }
+        />
       ) : ecran.nom === 'documents-proche' ? (
         <EcranDocuments proche />
       ) : ecran.nom === 'paiement' ? (
         <EcranPaiement
           rendezVousId={ecran.rendezVousId}
+          confirmer={confirmer(ecran)}
           retour={(m) => {
             setMessage(m);
             setEcran({ nom: 'rendez-vous' });
@@ -248,6 +316,41 @@ function DossierACompleter(p: { refusee: boolean; verifier: () => void }) {
   );
 }
 
+/**
+ * Avant une action sensible (ADR-0022) : le patient reçoit un code par SMS au numéro de son
+ * dossier, le saisit dans la page de connexion, puis revient à son action. Rien n'est envoyé sans
+ * qu'il le demande.
+ */
+function ConfirmationSms(p: {
+  action: 'payer' | 'partager';
+  confirmer: () => void;
+  retour: () => void;
+}) {
+  return (
+    <section data-confirmation-sms>
+      <h2>
+        <span aria-hidden="true">🔐</span> Confirmer par SMS
+      </h2>
+      <p>
+        {p.action === 'payer'
+          ? 'Avant de payer, '
+          : 'Avant de partager votre dossier ou d’inviter un proche, '}
+        nous envoyons un code par SMS au numéro de votre dossier. Il protège votre compte si
+        quelqu’un d’autre connaît votre mot de passe.
+      </p>
+      <p>Ne donnez ce code à personne, même pas à l’équipe.</p>
+      <button class="principal" onClick={p.confirmer}>
+        <span aria-hidden="true">📱</span> Recevoir le code
+      </button>
+      <button onClick={p.retour}>Retour</button>
+      <p>
+        Plus de téléphone ou plus de numéro ? Appelez l’équipe Mbolo Santé.{' '}
+        <strong>En cas d'urgence, appelez les secours.</strong>
+      </p>
+    </section>
+  );
+}
+
 /** Écran chargé à la demande : il ne pèse rien à l'ouverture de l'application. */
 function EcranVerification(p: { retour: () => void }) {
   const [Ecran, setEcran] = useState<ComponentType<{ jeton: string; retour: () => void }>>();
@@ -273,11 +376,19 @@ function EcranVerification(p: { retour: () => void }) {
 }
 
 /** Paiement d'une réservation (ADR-0017) : écran chargé à la demande. */
-function EcranPaiement(p: { rendezVousId: string; retour: (message?: string) => void }) {
-  const [Ecran, setEcran] =
-    useState<
-      ComponentType<{ jeton: string; rendezVousId: string; retour: (m?: string) => void }>
-    >();
+function EcranPaiement(p: {
+  rendezVousId: string;
+  retour: (message?: string) => void;
+  confirmer: () => void;
+}) {
+  const [Ecran, setEcran] = useState<
+    ComponentType<{
+      jeton: string;
+      rendezVousId: string;
+      retour: (m?: string) => void;
+      confirmer: () => void;
+    }>
+  >();
   const [echec, setEchec] = useState(false);
   useEffect(() => {
     import('./paiement.js').then((m) => setEcran(() => m.Paiement)).catch(() => setEchec(true));
@@ -291,7 +402,7 @@ function EcranPaiement(p: { rendezVousId: string; retour: (message?: string) => 
     );
   }
   return Ecran && jeton ? (
-    <Ecran jeton={jeton} rendezVousId={p.rendezVousId} retour={p.retour} />
+    <Ecran jeton={jeton} rendezVousId={p.rendezVousId} retour={p.retour} confirmer={p.confirmer} />
   ) : (
     <p aria-live="polite">Chargement…</p>
   );
@@ -343,9 +454,15 @@ function EcranRecus(p: { retour: () => void }) {
 }
 
 /** Partages du dossier et historique des accès : écran chargé à la demande. */
-function EcranPartages(p: { retour: () => void }) {
-  const [Ecran, setEcran] =
-    useState<ComponentType<{ jeton: string; patientId: string; retour: () => void }>>();
+function EcranPartages(p: { retour: () => void; confirmer: () => void }) {
+  const [Ecran, setEcran] = useState<
+    ComponentType<{
+      jeton: string;
+      patientId: string;
+      retour: () => void;
+      confirmer: () => void;
+    }>
+  >();
   const [echec, setEchec] = useState(false);
   useEffect(() => {
     import('./partages.js').then((m) => setEcran(() => m.Partages)).catch(() => setEchec(true));
@@ -360,7 +477,7 @@ function EcranPartages(p: { retour: () => void }) {
     );
   }
   return Ecran && jeton ? (
-    <Ecran jeton={jeton} patientId={patientId} retour={p.retour} />
+    <Ecran jeton={jeton} patientId={patientId} retour={p.retour} confirmer={p.confirmer} />
   ) : (
     <p aria-live="polite">Chargement…</p>
   );

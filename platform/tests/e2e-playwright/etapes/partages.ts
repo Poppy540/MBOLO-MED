@@ -45,6 +45,14 @@ When('le patient ouvre ses partages et accès', async ({ monde }) => {
 });
 
 When(
+  'le patient demande à partager son dossier avec {string}',
+  async ({ monde }, praticien: string) => {
+    // Sans code SMS récent (niveau 2, ADR-0022), l'application le demande avant le texte de partage.
+    await page(monde).locator(`[data-partager="${praticien}"]`).click();
+  },
+);
+
+When(
   'le patient lit le texte de partage puis partage son dossier avec {string}',
   async ({ monde }, praticien: string) => {
     const p = page(monde);

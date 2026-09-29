@@ -3,6 +3,7 @@
 // qui paie (le sien ou celui d'un proche), puis valide sur son téléphone. Le numéro n'est jamais
 // gardé dans le navigateur ; le rendez-vous n'est confirmé que par le serveur.
 import { useEffect, useState } from 'preact/hooks';
+import { MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 interface Reservation {
@@ -18,7 +19,10 @@ type Etape =
   | { nom: 'attente'; operateur: string }
   | { nom: 'fin'; message: string };
 
-class ErreurPaiement extends Error {}
+class ErreurPaiement extends Error {
+  /** Refus parce que le code SMS manque ou a plus de 15 minutes (ADR-0022). */
+  niveauInsuffisant = false;
+}
 
 /** Vérification du paiement, puis du rendez-vous, toutes les 3 secondes pendant l'attente. */
 const INTERVALLE_MS = 3_000;
@@ -44,8 +48,10 @@ async function appeler<T>(
   }
   if (!r.ok) {
     // Messages des services, déjà en phrases simples ; sinon un message général.
-    const e = (await r.json().catch(() => ({}))) as { erreur?: string };
-    throw new ErreurPaiement(e.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    const e = (await r.json().catch(() => ({}))) as { erreur?: string; motif?: string };
+    const x = new ErreurPaiement(e.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    x.niveauInsuffisant = r.status === 401 && e.motif === MOTIF_NIVEAU_INSUFFISANT;
+    throw x;
   }
   return (await r.json()) as T;
 }
@@ -64,6 +70,8 @@ export function Paiement(p: {
   jeton: string;
   rendezVousId: string;
   retour: (message?: string) => void;
+  /** Redemande le code SMS, puis rouvre cet écran (ADR-0022). */
+  confirmer: () => void;
 }) {
   const [reservation, setReservation] = useState<Reservation>();
   const [etape, setEtape] = useState<Etape>({ nom: 'chargement' });
@@ -136,6 +144,10 @@ export function Paiement(p: {
       formulaire.reset();
       setEtape({ nom: 'attente', operateur });
     } catch (x) {
+      if (x instanceof ErreurPaiement && x.niveauInsuffisant) {
+        formulaire.reset();
+        return p.confirmer();
+      }
       setErreur((x as Error).message);
     }
   };

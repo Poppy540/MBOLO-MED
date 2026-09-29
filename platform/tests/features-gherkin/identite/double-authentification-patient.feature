@@ -28,3 +28,14 @@ Fonctionnalité: Un code reçu par SMS protège les actions sensibles du patient
     Quand "patient-fictif-02" est connecté
     Alors le jeton de "patient-fictif-02" est de niveau 1
     Et le numéro "+241 00 00 00 01" ne reçoit aucun message
+
+  Scénario: Avec son seul mot de passe, le patient ne peut ni partager, ni inviter, ni payer
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "patient-fictif-04" est connecté
+    Quand "patient-fictif-01" partage son dossier avec "prac-fictif-001" avec son seul mot de passe
+    Alors la demande est refusée tant que le code SMS n’est pas saisi
+    Quand "patient-fictif-01" invite un proche avec son seul mot de passe
+    Alors la demande est refusée tant que le code SMS n’est pas saisi
+    Quand "patient-fictif-04" réserve un créneau avec "prac-fictif-001"
+    Et que "patient-fictif-04" paie avec son seul mot de passe
+    Alors la demande est refusée tant que le code SMS n’est pas saisi

@@ -4,6 +4,7 @@ import { creerRequete, ErreurApi } from './api.js';
 import {
   defiPkce,
   demarrerConnexion,
+  niveauDuJeton,
   revendications,
   terminerConnexion,
   type Memoire,
@@ -84,6 +85,23 @@ describe('inscription avec un code (ADR-0014)', () => {
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     const connexion = new URL(await demarrerConnexion(p, memoire()));
     expect(connexion.pathname).toBe('/realms/mbolo/protocol/openid-connect/auth');
+  });
+
+  it('demande le niveau 2 (code SMS) seulement quand on le lui dit (ADR-0022)', async () => {
+    const niveau2 = new URL(await demarrerConnexion(p, memoire(), false, 2));
+    expect(niveau2.pathname).toBe('/realms/mbolo/protocol/openid-connect/auth');
+    expect(niveau2.searchParams.get('acr_values')).toBe('2');
+    expect(new URL(await demarrerConnexion(p, memoire())).searchParams.has('acr_values')).toBe(
+      false,
+    );
+    const jeton = (acr: unknown) =>
+      `e.${Buffer.from(JSON.stringify({ sub: 'x', acr })).toString('base64url')}.s`;
+    expect(niveauDuJeton(jeton('2'))).toBe(2);
+    expect(niveauDuJeton(jeton('1'))).toBe(1);
+    // Absent, inattendu ou illisible : niveau 1, l'application redemande le code.
+    for (const j of [jeton(undefined), jeton(2), jeton('2 '), 'pas-un-jeton', undefined]) {
+      expect(niveauDuJeton(j)).toBe(1);
+    }
   });
 
   it('lit les revendications d’un jeton pour l’affichage, sans planter sur un jeton illisible', () => {

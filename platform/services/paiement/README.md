@@ -10,7 +10,7 @@ Paiement des consultations par mobile money (ADR-0017, **proposée**). Le presta
   - `reference` est l'identifiant opaque du rendez-vous et `sujet` le compte Keycloak du patient.
   - La création est idempotente : un seul paiement par rendez-vous, même en simultané. Une référence déjà liée à un patient n'est jamais rattachée à un autre (403).
 - **Statut pour la téléconsultation** : `GET /rendez-vous/:reference/paiement` → `{ paye }`, rien d'autre (même jeton de service).
-- **Collecte** : `POST /paiements/:id/collecte` `{ operateur, numero }` → 202 `{ statut: "en-attente", … }`.
+- **Collecte** : `POST /paiements/:id/collecte` `{ operateur, numero }` → 202 `{ statut: "en-attente", … }`. Exige un jeton de **niveau 2** (code SMS de moins de 15 minutes, ADR-0022) : sinon 401 `niveau-insuffisant`, rien n'est envoyé au prestataire.
   - Réservée au patient concerné : rôle `patient`, **jamais un agent IA**. Un autre compte reçoit 404.
   - Le numéro peut être celui d'un proche. Il doit être au format international du pays (`PAIEMENT_INDICATIF`).
   - Le numéro est transmis au prestataire, **ni stocké ni journalisé**.

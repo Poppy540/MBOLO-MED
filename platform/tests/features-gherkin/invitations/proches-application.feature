@@ -12,6 +12,8 @@ Fonctionnalité: Le patient invite et retire ses proches depuis son application
     Et que la boîte des notifications simulées est relevée
     Quand "patient-fictif-01" ouvre l’application patient
     Et que le patient ouvre ses partages et accès
+    Et que le patient demande à inviter un proche
+    Et que le patient confirme avec le code reçu par SMS
     Et que le patient invite son proche "Serge [FICTIF]", son enfant, au numéro "+33 0 00 00 00 09" dans l’application
     Alors l’application confirme l’envoi du code par SMS et le montre en secours
     Et le numéro "+33000000009" reçoit ce code, sans le nom du patient ni aucune donnée de santé
@@ -26,5 +28,7 @@ Fonctionnalité: Le patient invite et retire ses proches depuis son application
     Et que "patient-fictif-01" n'a aucune invitation de proche en cours
     Quand "patient-fictif-01" ouvre l’application patient
     Et que le patient ouvre ses partages et accès
+    Et que le patient demande à inviter un proche
+    Et que le patient confirme avec le code reçu par SMS
     Et que le patient invite son proche "Paul [FICTIF]", son enfant, au numéro "00 00 00 00" dans l’application
     Alors l’application demande un numéro au format international et n’invite personne

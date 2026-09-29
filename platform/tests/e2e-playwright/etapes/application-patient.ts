@@ -4,6 +4,8 @@ import { expect, type Browser, type Page } from '@playwright/test';
 import { creneauVideo } from '@mbolo/dossier-fhir';
 import { APP_PATIENT_URL, FHIR_URL } from '../configuration.js';
 import { Given, Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
+import { codeSmsRecu, telephoneDu } from './niveau.js';
+import { boite } from './teleconsultation.js';
 
 const APP = 'application patient';
 
@@ -40,6 +42,7 @@ async function ouvrir(monde: Monde, browser: Browser, identifiant: string, adres
   const contexte = await browser.newContext({ permissions: ['microphone', 'camera'] });
   const p = await contexte.newPage();
   monde.visio.set(APP, { contexte, page: p });
+  monde.patientApplication = identifiant;
   await p.goto(adresse);
   await p.getByRole('button', { name: 'Se connecter' }).click();
   await saisirIdentifiants(p, identifiant, false);
@@ -170,4 +173,37 @@ Then('l’application affiche sans réseau les rendez-vous connus', async ({ mon
   expect(garde).toContain(monde.rendezVousId ?? 'absent');
   expect(garde).not.toMatch(/prac-|pat-|praticien|patient/);
   await p.context().setOffline(false);
+});
+
+// ── Code SMS avant une action sensible (ADR-0022) ────────────────────────────
+
+When('le patient confirme avec le code reçu par SMS', async ({ monde }) => {
+  const p = page(monde);
+  await expect(p.getByRole('heading', { name: 'Confirmer par SMS' })).toBeVisible();
+  const depuis = new Date().toISOString();
+  await p.getByRole('button', { name: 'Recevoir le code' }).click();
+  // Page de Keycloak (même session) : seul le code est demandé, pas le mot de passe.
+  await expect(p.locator('#code_sms')).toBeVisible();
+  await expect(p.locator('#password')).toHaveCount(0);
+  const telephone = telephoneDu(monde.patientApplication ?? '');
+  await p.locator('#code_sms').fill(await codeSmsRecu(telephone, depuis));
+  await p.locator('#kc-submit').click();
+  // Retour dans l'application, sur l'écran de l'action (rouvert, sans nouvelle confirmation).
+  await expect(p.locator('#code_sms')).toHaveCount(0);
+  await expect(p.getByRole('heading', { name: 'Confirmer par SMS' })).toHaveCount(0);
+  await expect(p.getByRole('heading', { name: 'Mbolo Santé' })).toBeVisible();
+});
+
+When('le patient renonce à recevoir le code', async ({ monde }) => {
+  const p = page(monde);
+  await expect(p.getByRole('heading', { name: 'Confirmer par SMS' })).toBeVisible();
+  await p.getByRole('button', { name: 'Retour' }).click();
+});
+
+Then('aucun code n’est envoyé au numéro {string}', async ({ monde }, telephone: string) => {
+  const recus = (await boite()).filter(
+    (m) =>
+      m.telephone === telephone && m.date >= (monde.depuis ?? '') && /votre code est/.test(m.texte),
+  );
+  expect(recus).toEqual([]);
 });

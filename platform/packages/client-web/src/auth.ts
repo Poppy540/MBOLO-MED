@@ -30,6 +30,7 @@ export async function urlAutorisation(
   verificateur: string,
   etat: string,
   inscription = false,
+  niveau?: number,
 ): Promise<string> {
   const q = new URLSearchParams({
     client_id: p.client,
@@ -39,6 +40,8 @@ export async function urlAutorisation(
     state: etat,
     code_challenge: await defiPkce(verificateur),
     code_challenge_method: 'S256',
+    // Double authentification (ADR-0022) : niveau 2 demandé juste avant une action sensible.
+    ...(niveau ? { acr_values: String(niveau) } : {}),
   });
   const point = inscription ? 'registrations' : 'auth';
   return `${p.emetteur}/protocol/openid-connect/${point}?${q.toString()}`;
@@ -57,11 +60,12 @@ export async function demarrerConnexion(
   p: ParametresConnexion,
   m: Memoire,
   inscription = false,
+  niveau?: number,
 ): Promise<string> {
   const verificateur = aleatoire();
   const etat = aleatoire(16);
   m.setItem(CLE, JSON.stringify({ verificateur, etat }));
-  return urlAutorisation(p, verificateur, etat, inscription);
+  return urlAutorisation(p, verificateur, etat, inscription, niveau);
 }
 
 /**
@@ -82,6 +86,18 @@ export function revendications(jeton: string): Record<string, unknown> {
     return {};
   }
 }
+
+/**
+ * Niveau d'authentification du jeton (`acr`, ADR-0022), pour décider s'il faut demander le code SMS
+ * avant d'agir. Les services le vérifient de leur côté.
+ */
+export function niveauDuJeton(jeton: string | undefined): number {
+  const acr = jeton ? revendications(jeton)['acr'] : undefined;
+  return typeof acr === 'string' && /^[1-9]$/.test(acr) ? Number(acr) : 1;
+}
+
+/** Refus d'un service parce que l'action demande le code SMS (401, motif `niveau-insuffisant`). */
+export const MOTIF_NIVEAU_INSUFFISANT = 'niveau-insuffisant';
 
 /**
  * Retour de Keycloak : vérifie l'état (protection CSRF), puis échange le code contre un jeton.

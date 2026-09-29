@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 import { FHIR_URL, PAIEMENT_URL, TELECONSULTATION_URL } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 import { creneauImminent } from './teleconsultation.js';
+import { jetonActionSensible } from './niveau.js';
 
 /** Champs lus d'un Appointment FHIR (sans dépendre des types FHIR dans ce paquet de tests). */
 interface Appointment {
@@ -97,13 +98,14 @@ Then('{string} ne peut pas encore entrer dans la salle', async ({ monde }, ident
 
 When(
   '{string} paie avec {string} depuis le numéro {string}',
-  async ({ monde }, identifiant: string, operateur: string, numero: string) => {
+  async ({ monde, browser }, identifiant: string, operateur: string, numero: string) => {
     await appeler(
       monde,
       PAIEMENT_URL,
       'POST',
       `/paiements/${monde.paiementId ?? ''}/collecte`,
-      monde.jetons.get(identifiant),
+      // Payer demande le code SMS (niveau 2, ADR-0022).
+      await jetonActionSensible(monde, browser, identifiant),
       { operateur, numero },
     );
   },

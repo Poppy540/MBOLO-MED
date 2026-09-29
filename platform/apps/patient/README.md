@@ -46,6 +46,8 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - **Mes proches** (ADR-0019, section visible seulement si le flag `consentement.proche` est ouvert pour le patient) : la liste des proches (prénom, lien, « Invitation envoyée, valable jusqu'au … » ou « A créé son compte »), **« Retirer ce proche »** (le proche perd l'accès, la place est libérée), et **« Inviter un proche »** (3 au plus) : prénom, lien (liste fermée), numéro **au format international** (vérifié avant l'envoi), texte de partage `C-PROCHE` qui nomme le proche et dit ce qu'il verra (**brouillon** `c-proche-v0.1-brouillon`, à valider par le juriste), puis « J'accepte et j'envoie le code ». Le code part par SMS et s'affiche aussi, **en secours**. Le numéro est effacé du formulaire et n'est gardé nulle part ; un partage avec un proche porte son prénom.
 10. **Mes reçus** (ADR-0020, flag `facturation.recus`), depuis « Mes rendez-vous » ; écran chargé **seulement à la demande** : un reçu par paiement reçu et un avoir par remboursement, chacun comme une fiche à montrer (montant, date, opérateur sans le numéro, numéro du reçu, reçu annulé pour un avoir, émetteur) ; « Reçu sans valeur fiscale » tant que les mentions ne sont pas validées ; rien n'est gardé sur le téléphone ; fonction fermée pour le patient : le message du service s'affiche.
 
+11. **Confirmer par SMS** (ADR-0022) : avant de **payer** (avant la saisie du numéro qui paie), ou quand le patient choisit de **partager son dossier** ou d'**inviter un proche**, un écran explique qu'un code part au numéro du dossier. « Recevoir le code » ouvre la page de Keycloak (`acr_values=2`, même session : le code seul, pas le mot de passe), puis l'application rouvre l'écran de l'action. Pendant l'aller-retour, seul l'écran à rouvrir est gardé (`sessionStorage`, nom et identifiant du rendez-vous), jamais ce qui a été saisi. Le code vaut 15 minutes ; après, un refus `niveau-insuffisant` d'un service ramène au même écran. Retirer un partage ou un proche ne demande jamais de code.
+
 Les erreurs sont affichées en phrases simples, sans jargon.
 
 ## Hors ligne et économie de données
@@ -76,7 +78,7 @@ Les API sont servies sous `/api/<service>` (même origine). L'application constr
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **11,5 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **12,9 Ko**.
 
 ## Lancer
 
