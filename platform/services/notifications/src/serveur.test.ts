@@ -224,7 +224,7 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
 });
 
 describe('API notifications — code de double authentification (ADR-0022)', () => {
-  const monterCodes = async (limite?: LimiteCodes) => {
+  const monterCodes = async (limite?: LimiteCodes, limiteParNumero?: LimiteCodes) => {
     const canal = new CanalSimule();
     const lignes: string[] = [];
     const app = await creerServeur({
@@ -239,7 +239,11 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
         canal,
       ),
       journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
-      codesConnexion: { appelants: ['mbolo-keycloak-inscription'], ...(limite ? { limite } : {}) },
+      codesConnexion: {
+        appelants: ['mbolo-keycloak-inscription'],
+        ...(limite ? { limite } : {}),
+        ...(limiteParNumero ? { limiteParNumero } : {}),
+      },
     });
     const envoyer = (jeton: string | undefined, payload: object) =>
       app.inject({
@@ -290,6 +294,48 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
     expect(alertes.filter((a) => a === 'code-connexion')).toHaveLength(12);
     expect(alertes.filter((a) => a === 'code-connexion-bloque')).toHaveLength(1);
     expect(lignes.join('\n')).not.toContain('482913');
+  });
+
+  it('valide le numéro saisi à « Mon identité » : code au numéro donné, limité par numéro (C8)', async () => {
+    const { app, canal, lignes } = await monterCodes(
+      undefined,
+      new LimiteCodes(2, 3_600_000, () => 0),
+    );
+    const verifier = (jeton: string, payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: '/codes-verification',
+        headers: { authorization: `Bearer ${jeton}` },
+        payload,
+      });
+    const r = await verifier('jeton-keycloak', { telephone: '+241 00 00 00 09', code: '482913' });
+    expect(r.statusCode).toBe(202);
+    expect(r.json()).toEqual({ resultat: 'envoyee' });
+    expect(canal.boite[0]).toMatchObject({
+      telephone: '+241 00 00 00 09',
+      texte: expect.stringContaining('votre code est 482913') as unknown,
+    });
+    // Même numéro écrit autrement : même compteur ; au-delà de la limite, rien n'est envoyé.
+    await verifier('jeton-keycloak', { telephone: '24100000009', code: '482913' });
+    const bloque = await verifier('jeton-keycloak', { telephone: '+241000 00009', code: '482913' });
+    expect(bloque.json()).toEqual({ resultat: 'trop-de-codes' });
+    expect(canal.boite).toHaveLength(2);
+    // Réservé à l'extension Keycloak ; numéro et code au format attendu seulement.
+    expect(
+      (await verifier('jeton-valide', { telephone: '+241 00 00 00 09', code: '482913' }))
+        .statusCode,
+    ).toBe(403);
+    for (const payload of [
+      { telephone: 'appelez-moi', code: '482913' },
+      { telephone: '+241 00 00 00 09', code: '4829' },
+      { telephone: '+241 00 00 00 09', code: '482913', nom: 'x' },
+    ]) {
+      expect((await verifier('jeton-keycloak', payload)).statusCode).toBe(400);
+    }
+    const journal = lignes.join('\n');
+    expect(journal).not.toContain('482913');
+    expect(journal).not.toContain('00 00 09');
+    expect(journal).not.toContain('00000009');
   });
 
   it('seule l’extension Keycloak envoie un code, et elle n’envoie rien d’autre', async () => {

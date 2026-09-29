@@ -79,6 +79,15 @@ class ClientNotificationsTest {
   }
 
   @Test
+  void valideLeNumeroSaisiSansDossier() {
+    assertEquals(
+        ClientNotifications.Envoi.ENVOYE, client().verifierTelephone("+241 00 00 00 09", "482913"));
+    String requete = requetes.get(0);
+    assertTrue(requete.startsWith("/codes-verification Bearer jeton-fictif "));
+    assertTrue(requete.contains("\"telephone\":\"+241 00 00 00 09\""));
+  }
+
+  @Test
   void limiteDuServiceParDossier() {
     reponse = "{\"resultat\":\"trop-de-codes\"}";
     assertEquals(

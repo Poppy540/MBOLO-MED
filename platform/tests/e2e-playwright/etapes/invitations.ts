@@ -1,6 +1,6 @@
 // Étapes « accès sur invitation » (ADR-0013). Données FICTIVES uniquement.
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { expect, type Page, type Request } from '@playwright/test';
+import { expect, test, type Page, type Request } from '@playwright/test';
 import { EXTENSION_STATUT_IDENTITE } from '@mbolo/dossier-fhir';
 import {
   APP_PATIENT_URL,
@@ -16,6 +16,7 @@ import {
   TELECONSULTATION_URL,
 } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
+import { codeSmsRecu } from './niveau.js';
 
 async function appeler(
   monde: Monde,
@@ -127,18 +128,59 @@ const IDENTITE_FICTIVE = {
   numero_assurance: 'FICTIF-INSCR',
 };
 
-/** Formulaire « Mon identité » de Keycloak, affiché juste après l'inscription. */
-async function saisirIdentite(page: Page, naissance = IDENTITE_FICTIVE.naissance): Promise<void> {
+/**
+ * Formulaire « Mon identité » de Keycloak, affiché juste après l'inscription, puis code reçu au
+ * numéro saisi (revue ASVS n°2, C8). Avec `corrigerEn`, la personne corrige d'abord son numéro.
+ */
+async function saisirIdentite(
+  page: Page,
+  naissance = IDENTITE_FICTIVE.naissance,
+  corrigerEn?: string,
+): Promise<void> {
   await expect(page.locator('#kc-identite-form')).toBeVisible();
   for (const [champ, valeur] of Object.entries({ ...IDENTITE_FICTIVE, naissance })) {
     await page.locator(`#${champ}`).fill(valeur);
   }
   await page.locator('#sexe').selectOption('female');
+  let depuis = new Date().toISOString();
   await page.locator('#kc-identite-form [type=submit]').click();
+  await page.waitForLoadState().catch(() => undefined);
+  // Identité refusée (ex. naissance dans le futur) : aucun code, le formulaire reste affiché.
+  if (!(await page.locator('#kc-verification-telephone-form').count())) return;
+  let telephone = IDENTITE_FICTIVE.telephone;
+  // Le numéro saisi est rappelé, pour repérer une faute de frappe.
+  await expect(page.locator('body')).toContainText(`envoyé par SMS au ${telephone}`);
+  if (corrigerEn) {
+    await page.locator('#kc-corriger').click();
+    await expect(page.locator('#kc-identite-form')).toBeVisible();
+    await expect(page.locator('#nom')).toHaveValue(IDENTITE_FICTIVE.nom);
+    await page.locator('#telephone').fill(corrigerEn);
+    await page.locator('#kc-identite-form [type=submit]').click();
+    // Un code par minute : le nouveau numéro attend, la saisie est conservée.
+    await expect(page.locator('body')).toContainText('Attendez une minute');
+    await expect(page.locator('#telephone')).toHaveValue(corrigerEn);
+    await page.waitForTimeout(61_000);
+    depuis = new Date().toISOString();
+    await page.locator('#kc-identite-form [type=submit]').click();
+    telephone = corrigerEn;
+    await expect(page.locator('body')).toContainText(`envoyé par SMS au ${telephone}`);
+    // Un nouveau code demandé trop tôt : on reste sur la page du code, le premier vaut encore.
+    await page.locator('#kc-renvoyer').click();
+    await expect(page.locator('body')).toContainText('Attendez une minute');
+    await expect(page.locator('#code_sms')).toBeVisible();
+  }
+  await page.locator('#code_sms').fill(await codeSmsRecu(telephone, depuis));
+  await page.locator('#kc-submit').click();
   await page.waitForLoadState().catch(() => undefined);
 }
 
-async function inscrire(page: Page, monde: Monde, code: string, naissance?: string): Promise<void> {
+async function inscrire(
+  page: Page,
+  monde: Monde,
+  code: string,
+  naissance?: string,
+  corrigerEn?: string,
+): Promise<void> {
   const identifiant = `${PREFIXE_INSCRITS}${randomBytes(4).toString('hex')}`;
   const { clientId, redirection } = APPLICATIONS.patient;
   const verificateur = await ouvrirInscription(page);
@@ -156,7 +198,9 @@ async function inscrire(page: Page, monde: Monde, code: string, naissance?: stri
   await page.locator('#kc-register-form [type=submit]').click();
   await page.waitForLoadState().catch(() => undefined);
   // Compte créé : Keycloak demande aussitôt l'identité, qui va dans le dossier.
-  if (await page.locator('#kc-identite-form').count()) await saisirIdentite(page, naissance);
+  if (await page.locator('#kc-identite-form').count()) {
+    await saisirIdentite(page, naissance, corrigerEn);
+  }
   await page.waitForTimeout(500);
   page.off('request', surRequete);
   monde.inscription = { identifiant, page };
@@ -246,6 +290,24 @@ Then('son dossier est créé avec une identité à vérifier', async ({ monde })
 });
 
 When(
+  "une personne s'inscrit avec ce code, puis corrige son numéro en {string}",
+  async ({ page, monde }, telephone: string) => {
+    test.setTimeout(120_000);
+    await inscrire(page, monde, monde.invitation?.code ?? '', undefined, telephone);
+  },
+);
+
+Then('son dossier porte le numéro {string}', async ({ monde }, telephone: string) => {
+  const patientId = revendications(monde.inscription?.jeton ?? '')['patient_id'];
+  const r = await fetch(`${FHIR_URL}/Patient/${String(patientId)}`, {
+    headers: { 'cache-control': 'no-cache' },
+  });
+  expect(r.status).toBe(200);
+  const p = (await r.json()) as { telecom?: { value?: string }[] };
+  expect(p.telecom?.map((t) => t.value)).toEqual([telephone]);
+});
+
+When(
   "une personne s'inscrit avec ce code en indiquant une naissance dans le futur",
   async ({ page, monde }) => {
     await inscrire(page, monde, monde.invitation?.code ?? '', '2999-01-01');
@@ -258,6 +320,8 @@ Then("le formulaire d'identité signale la date de naissance", async ({ monde })
   expect(monde.inscription?.jeton).toBeUndefined();
   await expect(page.locator('#kc-identite-form')).toBeVisible();
   await expect(page.getByText('Indiquez une date de naissance valable.')).toBeVisible();
+  // Le reste de la saisie est conservé : on ne corrige que la date.
+  await expect(page.locator('#nom')).toHaveValue(IDENTITE_FICTIVE.nom);
 });
 
 Then("l'inscription est refusée avec le message « Code non reconnu »", async ({ monde }) => {

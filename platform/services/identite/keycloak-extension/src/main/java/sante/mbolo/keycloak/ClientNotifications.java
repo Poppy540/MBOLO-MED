@@ -41,16 +41,25 @@ public final class ClientNotifications {
 
   /** ENVOYE seulement si le service confirme l'envoi du SMS au numéro du dossier. */
   public Envoi envoyerCode(String patientId, String code) {
+    return poster("/codes-connexion", Map.of("patientId", patientId, "code", code));
+  }
+
+  /**
+   * Validation du numéro saisi à « Mon identité » (revue ASVS n°2, C8), avant que le dossier
+   * existe : ENVOYE seulement si le service confirme l'envoi au numéro donné.
+   */
+  public Envoi verifierTelephone(String telephone, String code) {
+    return poster("/codes-verification", Map.of("telephone", telephone, "code", code));
+  }
+
+  private Envoi poster(String chemin, Map<String, String> corps) {
     try {
       HttpRequest requete =
-          HttpRequest.newBuilder(base.resolve("/codes-connexion"))
+          HttpRequest.newBuilder(base.resolve(chemin))
               .timeout(DELAI)
               .header("content-type", "application/json")
               .header("authorization", "Bearer " + jeton.get())
-              .POST(
-                  HttpRequest.BodyPublishers.ofString(
-                      JsonSerialization.writeValueAsString(
-                          Map.of("patientId", patientId, "code", code))))
+              .POST(HttpRequest.BodyPublishers.ofString(JsonSerialization.writeValueAsString(corps)))
               .build();
       HttpResponse<String> r = http.send(requete, HttpResponse.BodyHandlers.ofString());
       if (r.statusCode() != 202) return Envoi.RATE;
