@@ -248,7 +248,10 @@ function EcranRemboursements(p: { signaler: (m: string) => void }) {
   );
 }
 
-/** Retrait des proches par l'équipe d'assistance (ADR-0019) : écran chargé à la demande. */
+/**
+ * Équipe d'assistance : retrait des proches (ADR-0019) et code de récupération du compte
+ * (ADR-0021) ; écran chargé à la demande.
+ */
 function EcranAssistance(p: { signaler: (m?: string) => void }) {
   type Props = { jeton: string; signaler: (m?: string) => void };
   const [Ecran, setEcran] = useState<ComponentType<Props>>();

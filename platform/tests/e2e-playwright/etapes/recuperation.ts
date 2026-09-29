@@ -48,6 +48,47 @@ When(
   },
 );
 
+// ── Espace d'assistance (écran de l'équipe) ────────────────────────────────────
+
+const espace = (monde: Monde): Page => {
+  const p = monde.visio.get('espace d’assistance')?.page;
+  if (!p) throw new Error('L’espace d’assistance n’est pas ouvert dans ce scénario.');
+  return p;
+};
+
+When(
+  'il confirme avoir rappelé le patient qui veut retrouver son compte, avec la date {string} et le numéro lu {string}',
+  async ({ monde }, naissance: string, numero: string) => {
+    const p = espace(monde);
+    await p.getByLabel(/J’ai rappelé le patient/).check();
+    await p.getByLabel(/Retrouver son compte/).check();
+    await p.getByLabel('2. Date de naissance dite par le patient').fill(naissance);
+    await p.getByLabel('3. Numéro lu par le patient sur sa carte').fill(numero);
+    await p.getByRole('button', { name: 'Donner un code' }).click();
+  },
+);
+
+When('il corrige le numéro lu en {string}', async ({ monde }, numero: string) => {
+  const p = espace(monde);
+  await p.getByLabel('3. Numéro lu par le patient sur sa carte').fill(numero);
+  await p.getByRole('button', { name: 'Donner un code' }).click();
+});
+
+Then('l’espace d’assistance affiche un code à dicter, une seule fois', async ({ monde }) => {
+  const p = espace(monde);
+  const bloc = p.locator('[data-code-recuperation]');
+  await expect(bloc).toBeVisible();
+  const code = (await bloc.locator('.code').innerText()).trim();
+  expect(code).toMatch(/^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/);
+  codes.set(monde, code);
+  // Le dossier n'est plus affiché ; ni date de naissance ni numéro à l'écran.
+  await expect(p.locator('[data-assistance]')).toHaveCount(0);
+  await expect(p.locator('main')).not.toContainText('1990');
+  // Une fois dicté, le code disparaît de l'écran.
+  await p.getByRole('button', { name: 'J’ai dicté le code' }).click();
+  await expect(bloc).toHaveCount(0);
+});
+
 /**
  * Parcours « Mot de passe oublié ? » de l'application patient jusqu'à l'écran du code ; rend la page
  * et l'adresse de retour vers l'application, relevée si Keycloak y renvoie.
