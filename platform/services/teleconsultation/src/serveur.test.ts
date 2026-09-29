@@ -64,3 +64,17 @@ describe('API de téléconsultation : statut d’identité et limites d’appels
     expect((await rdv()).statusCode).toBe(429);
   });
 });
+
+describe('API de téléconsultation : champs inconnus (revue ASVS n°1, C4)', () => {
+  it('refuse un champ inconnu (400) au lieu de le retirer en silence', async () => {
+    const app = await serveur();
+    const r = await app.inject({
+      method: 'POST',
+      url: '/rendez-vous',
+      headers: { authorization: 'Bearer patient' },
+      payload: { creneauId: '00000000-0000-4000-8000-000000000001', motif: 'texte libre [FICTIF]' },
+    });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toEqual({ erreur: 'Requête invalide.' });
+  });
+});

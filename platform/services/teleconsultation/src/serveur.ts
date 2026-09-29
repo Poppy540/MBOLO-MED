@@ -36,7 +36,13 @@ export async function creerServeur(o: {
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
 }): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false, bodyLimit: 8 * 1024, trustProxy: o.trustProxy ?? false });
+  const app = Fastify({
+    logger: false,
+    bodyLimit: 8 * 1024,
+    trustProxy: o.trustProxy ?? false,
+    // Revue ASVS n°1 (C4) : un champ inconnu est refusé, pas retiré en silence.
+    ajv: { customOptions: { removeAdditional: false } },
+  });
   // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
   entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;

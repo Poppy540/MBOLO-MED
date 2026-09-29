@@ -209,6 +209,24 @@ describe('API identité', () => {
     expect(sansBeneficiaire.statusCode).toBe(422);
   });
 
+  it('refuse un champ inconnu (400) au lieu de le retirer en silence (ASVS C4)', async () => {
+    const a = await app();
+    const r = await a.inject({
+      method: 'POST',
+      url: '/patients/fictif-patient-0001/consentements',
+      headers: { authorization: `Bearer ${await jetonPatient()}` },
+      payload: {
+        categorie: 'C-RAPPELS',
+        mode: 'texte',
+        versionTexte: 'x',
+        accepte: true,
+        note: 'texte libre [FICTIF]',
+      },
+    });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toEqual({ erreur: 'Requête invalide.' });
+  });
+
   it('bris de glace : accordé, journalisé en avertissement pour revue humaine', async () => {
     lignes.length = 0;
     const r = await (
