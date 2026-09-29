@@ -107,7 +107,7 @@ Conséquences :
   - blocage de patients sans document : le parcours accompagné par un professionnel, avec l'acte de naissance, y répond.
 
 ## Mise en œuvre de la saisie d'identité (PR AD)
-- **Action requise Keycloak `mbolo-identite-patient`** : elle s'affiche juste après l'inscription, pour tout compte `patient` sans `patient_id`.
+- **Action requise Keycloak `mbolo-identite-patient`** : elle s'affiche juste après l'inscription, pour tout compte `patient` sans `patient_id`. Depuis la revue ASVS n°2 (C8), le numéro saisi est validé par un code SMS avant la création du dossier.
 - **Champs demandés** : nom, prénom, date de naissance, sexe (facultatif), téléphone, numéro d'assurance maladie (facultatif).
 - **Création du dossier** : l'extension crée le `Patient` au statut `a-verifier` par la passerelle, avec un jeton de 60 s limité à `system/Patient.c`, puis pose `patient_id`. Aucun service de la plateforme ne modifie de compte, et l'identité ne reste pas dans Keycloak.
 - **Blocage des consultations** : la réservation est refusée tant que le statut n'est pas `verifiee`, et l'application affiche « identité à vérifier ». Le service de téléconsultation ne lit, du patient, que ce statut (`Patient.extension`).

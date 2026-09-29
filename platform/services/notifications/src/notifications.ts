@@ -84,6 +84,21 @@ export class ServiceNotifications {
     }
   }
 
+  /**
+   * Validation du numéro saisi à l'étape « Mon identité » (revue ASVS n°2, C8), avant que le
+   * dossier existe : même texte que le code de connexion, envoyé au numéro donné par Keycloak.
+   * Ni le numéro ni le code ne sont journalisés.
+   */
+  async envoyerCodeVerification(telephone: string, code: string): Promise<Resultat> {
+    const texte = redigerCodeConnexion(code, this.pays);
+    try {
+      await this.canal.envoyer(telephone, texte);
+      return 'envoyee';
+    } catch {
+      return 'echec';
+    }
+  }
+
   async alerterPatient(patientId: string, alerte: AlertePatient): Promise<Resultat> {
     const texte = redigerAlerteProche(alerte, this.pays);
     const telephone = await this.contacts.telephone(`Patient/${patientId}`);

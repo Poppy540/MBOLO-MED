@@ -78,12 +78,14 @@ L'inscription passe par le **formulaire natif de Keycloak**, complété par l'ex
 Action requise `mbolo-identite-patient` :
 
 - **Formulaire « Mon identité »** : nom, prénom, date de naissance, sexe (facultatif), téléphone, numéro d'assurance maladie (facultatif).
-- **Validation** : dans l'extension, avec des messages en français. Une date de naissance dans le futur est refusée.
+- **Validation** : dans l'extension, avec des messages en français. Une date de naissance dans le futur est refusée ; le reste de la saisie est conservé.
+- **Numéro vérifié** (revue ASVS n°2, C8) : un code à 6 chiffres part au numéro saisi (`POST /codes-verification` du service `notifications`, mêmes règles que le code de connexion : 5 minutes, 3 essais, 1 envoi par minute, 10 par heure et par numéro). La page `verification-telephone.ftl` rappelle le numéro, propose « Recevoir un nouveau code » et « Corriger mon numéro » (formulaire prérempli). Tant que le code n'est pas saisi, l'identité reste dans la session d'authentification : ni compte rattaché, ni dossier. Les codes de connexion (ADR-0022) et les rappels de l'équipe (ADR-0021) vont donc à un numéro vérifié.
 - **Dossier** : créé au statut « à vérifier » par la passerelle (`system/Patient.c` seulement). L'extension pose ensuite `patient_id` sur le compte.
 - **Journal** : le compte et la création du dossier, jamais l'identité.
 - **Configuration** (variables d'environnement de Keycloak, pas des secrets) :
   - `KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_DOSSIER_URL` : adresse de la passerelle, suivie de `/fhir/` ;
   - `..._ENVIRONNEMENT` : `prod` en production, sinon les dossiers portent le marqueur `fictif` ;
+  - `KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_NOTIFICATIONS_URL` : adresse du service des notifications (validation du numéro) ; sans elle, aucun code ne part et l'inscription ne se termine pas ;
   - `..._IDENTIFIANT_ASSURANCE_SYSTEME` : système du numéro d'assurance du pays (Gabon : CNAMGS). Sans lui, le numéro saisi n'est pas retenu, et un professionnel attribuera un numéro provisoire.
 - **Actions requises du royaume** : déclarer une action dans le royaume supprime celles qui ne sont pas déclarées. Les actions par défaut (dont `CONFIGURE_TOTP`) sont donc listées explicitement, et un test le vérifie.
 

@@ -116,7 +116,8 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
     }
   }
 
-  private static CodeSms.Notes notes(AuthenticationSessionModel session) {
+  /** Notes de la session d'authentification, partagées avec « Mon identité » (C8). */
+  static CodeSms.Notes notes(AuthenticationSessionModel session) {
     return new CodeSms.Notes() {
       @Override
       public String lire(String cle) {

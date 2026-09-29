@@ -49,7 +49,12 @@ export async function creerServeur(o: {
    * Codes de double authentification (ADR-0022) : appelants autorisés (l'extension Keycloak) et
    * limite par dossier (10 par heure par défaut).
    */
-  codesConnexion?: { appelants: readonly string[]; limite?: LimiteCodes };
+  codesConnexion?: {
+    appelants: readonly string[];
+    limite?: LimiteCodes;
+    /** Même règle par numéro, pour la validation du numéro avant la création du dossier (C8). */
+    limiteParNumero?: LimiteCodes;
+  };
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -242,6 +247,50 @@ export async function creerServeur(o: {
           patientId: req.body.patientId,
           resultat,
         });
+        return reply.code(202).send({ resultat });
+      },
+    );
+  }
+
+  if (codes) {
+    const limiteParNumero = codes.limiteParNumero ?? new LimiteCodes();
+    // Validation du numéro saisi à « Mon identité » (revue ASVS n°2, C8) : le dossier n'existe pas
+    // encore, Keycloak donne le numéro. Seule l'extension Keycloak l'appelle ; rien n'est gardé.
+    app.post<{ Body: { telephone: string; code: string } }>(
+      '/codes-verification',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['telephone', 'code'],
+            properties: {
+              // Même format que la saisie « Mon identité » (extension Keycloak).
+              telephone: { type: 'string', pattern: '^\\+?[0-9 ]{6,20}$' },
+              code: { type: 'string', pattern: FORMAT_CODE_CONNEXION.source },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const appelant = await authentifier(req);
+        if (!codes.appelants.includes(appelant)) throw new ErreurInterdite();
+        const { telephone, code } = req.body;
+        // Par numéro, espaces et « + » ignorés : on ne contourne pas la limite en changeant l'écriture.
+        if (!limiteParNumero.accepter(telephone.replace(/[^0-9]/g, ''))) {
+          signalerAlerte(o.journal, 'code-connexion-bloque', 'trop de codes pour un numéro', {
+            verification: 'telephone',
+          });
+          return reply.code(202).send({ resultat: 'trop-de-codes' });
+        }
+        const resultat = await o.service.envoyerCodeVerification(telephone, code);
+        if (resultat === 'envoyee') {
+          signalerAlerte(o.journal, 'code-connexion', 'code de vérification du numéro envoyé', {
+            verification: 'telephone',
+          });
+        }
+        // Ni le numéro ni le code : l'appelant et le résultat.
+        o.journal.info('code de vérification du numéro traité', { appelant, resultat });
         return reply.code(202).send({ resultat });
       },
     );

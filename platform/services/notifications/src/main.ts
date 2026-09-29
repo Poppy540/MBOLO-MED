@@ -101,6 +101,7 @@ const app = await creerServeur({
       .filter(Boolean),
     // Par dossier, toutes sessions confondues (10 par heure par défaut).
     limite: new LimiteCodes(codesParHeure),
+    limiteParNumero: new LimiteCodes(codesParHeure),
   },
 });
 const port = Number(env['PORT'] ?? '3004');

@@ -44,6 +44,14 @@ Fonctionnalité: Accès sur invitation
     Et son dossier est créé avec une identité à vérifier
     Et le code n'est pas reconnu
 
+  # Revue ASVS n°2 (C8) : les codes de connexion et les rappels de l'équipe iront à ce numéro.
+  Scénario: Le numéro saisi est vérifié par un code avant la création du dossier
+    Étant donné que "gestionnaire-fictif-01" est connecté
+    Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
+    Quand une personne s'inscrit avec ce code, puis corrige son numéro en "+241 00 00 00 08"
+    Alors son compte est créé avec le seul rôle patient, sans nom ni e-mail dans le jeton
+    Et son dossier porte le numéro "+241 00 00 00 08"
+
   Scénario: Un code déjà utilisé ne permet pas une seconde inscription
     Étant donné que "gestionnaire-fictif-01" est connecté
     Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
