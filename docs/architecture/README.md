@@ -24,7 +24,7 @@
 | [0018](adr/0018-ordonnances-electroniques.md)                | Ordonnances électroniques : signature du prescripteur, transmission à la pharmacie choisie, délivrance unique                                                                  | Proposée (suspendue à l'avis juridique, vague 2)           |
 | [0019](adr/0019-invitation-proche.md)                        | Le patient invite un proche depuis son application : fiche créée à l'invitation, code envoyé par SMS au proche, double authentification, rôle `proche` attribué par le serveur | Acceptée (vague 2)                                         |
 | [0020](adr/0020-facturation.md)                              | Facturation : encaissement centralisé (sauf médicaments), reçus, reversements validés par un humain, abonnements                                                               | Proposée (modèle centralisé retenu ; juriste et comptable) |
-| [0021](adr/0021-recuperation-compte-patient.md)              | Récupération du compte d'un patient sans e-mail : code remis par l'équipe d'assistance après rappel au numéro du dossier et date de naissance                                  | Proposée (D2 de la revue ASVS)                             |
+| [0021](adr/0021-recuperation-compte-patient.md)              | Récupération du compte d'un patient sans e-mail : code remis par l'équipe d'assistance après rappel au numéro du dossier et date de naissance                                  | Acceptée (vague 1)                                         |
 
 ## Vue d'ensemble (cible, à détailler)
 

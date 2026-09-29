@@ -79,7 +79,7 @@ Aucune non-conformité ne touche le contrôle d'accès, les sorties d'argent ni 
 ## Décisions demandées au porteur de projet
 
 - **D1 — Double authentification des patients** : OTP par SMS ou WhatsApp à la connexion (D-0001), au moins pour les actions sensibles (paiement, partage du dossier, invitation d'un proche) ? Coût des SMS et risque de vol de carte SIM à mettre en balance.
-- **D2 — Récupération du compte d'un patient sans e-mail** : parcours détaillé dans l'[ADR-0021](../architecture/adr/0021-recuperation-compte-patient.md) (proposée, 6 questions au porteur de projet) ; proposé, un nouveau code d'invitation remis par l'équipe après vérification (même procédure que le retrait des proches : rappel au numéro du dossier, date de naissance), jamais par un agent IA.
+- **D2 — Récupération du compte d'un patient sans e-mail** : parcours détaillé dans l'[ADR-0021](../architecture/adr/0021-recuperation-compte-patient.md) (acceptée le 2026-09-29 ; côté serveur fait en PR CA, extension Keycloak et écran de l'assistance à suivre) ; proposé, un nouveau code d'invitation remis par l'équipe après vérification (même procédure que le retrait des proches : rappel au numéro du dossier, date de naissance), jamais par un agent IA.
 - **D3 — Limites d'essais partagées** : **fait (PR BX)**. Compteurs des codes d'invitation et des dates de naissance dans PostgreSQL (`invitations.essais`, un seul `insert … on conflict` atomique, clé sous empreinte HMAC) ; preuve : `limiteur-postgres.test.ts` (20 essais simultanés depuis deux connexions, 5 acceptés). Les limites d'appels générales (`@fastify/rate-limit`) restent par instance : à compléter par l'hébergeur (proxy) avant plusieurs instances.
 
 ## Test d'intrusion externe (à prévoir avant la vague 1)

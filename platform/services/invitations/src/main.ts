@@ -82,6 +82,14 @@ const authentification = authentificationDepuis(env, 'INVITATIONS');
 const sql = connecter({ url: urlBase, application: 'invitations', production });
 const depot = new DepotPostgres(sql);
 const empreinte = creerEmpreinte(cle);
+/** Validité d'un code de récupération (ADR-0021 : 24 h par défaut, 1 à 72 h). */
+function validiteRecuperation(valeur: string | undefined): number {
+  const heures = Number(valeur ?? '24');
+  if (!Number.isInteger(heures) || heures < 1 || heures > 72) {
+    throw new Error('INVITATIONS_RECUPERATION_VALIDITE_HEURES invalide (1 à 72).');
+  }
+  return heures;
+}
 // Compteurs d'essais partagés entre les instances (revue ASVS n°1, D3), clés sous empreinte HMAC.
 const limiteur = (portee: string, maximum: number, fenetreMinutes: number) =>
   new LimiteurPostgres(sql, { portee, maximum, fenetreMs: fenetreMinutes * 60_000, empreinte });
@@ -136,6 +144,12 @@ try {
             'https://mbolo-sante.example/fhir/identifiant/ga/provisoire',
         },
         env: production ? 'prod' : 'dev',
+        // Récupération du compte d'un patient sans e-mail (ADR-0021), derrière compte.recuperation.
+        recuperation: {
+          empreinte,
+          validiteHeures: validiteRecuperation(env['INVITATIONS_RECUPERATION_VALIDITE_HEURES']),
+          drapeaux,
+        },
       },
     );
   }

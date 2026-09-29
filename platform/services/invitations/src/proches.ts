@@ -45,14 +45,14 @@ export interface ConsentementsProche {
 export interface SmsInvitation {
   envoyer(o: { telephone: string; code: string; jours: number }): Promise<'envoyee' | 'echec'>;
   /**
-   * Alerte au patient (numéro lu dans le dossier) : son proche a créé son compte, ou l'équipe a
-   * retiré ses proches à sa demande.
+   * Alerte au patient (numéro lu dans le dossier) : son proche a créé son compte, l'équipe a
+   * retiré ses proches à sa demande, ou un code de récupération de son compte a servi (ADR-0021).
    */
-  alerterPatient(
-    patientId: string,
-    alerte: 'proche-inscrit' | 'proches-retires',
-  ): Promise<'envoyee' | 'echec'>;
+  alerterPatient(patientId: string, alerte: AlerteSms): Promise<'envoyee' | 'echec'>;
 }
+
+/** Alertes de sécurité au patient (gabarits fermés du service notifications). */
+export type AlerteSms = 'proche-inscrit' | 'proches-retires' | 'compte-recupere';
 
 export interface ParametresProches {
   /** Proches au plus par patient (ADR-0019 : 3). */

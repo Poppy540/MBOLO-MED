@@ -7,7 +7,7 @@
 import type { AuditEvent, FhirResource, Patient, RelatedPerson } from 'fhir/r4.js';
 import { ClientFhir, ErreurDepot, TYPE_FHIR, type FournisseurJeton } from '@mbolo/identite';
 import type { ConsentementsAssistance, DossierAssistance } from './assistance.js';
-import type { ConsentementsProche, DossierProches, SmsInvitation } from './proches.js';
+import type { AlerteSms, ConsentementsProche, DossierProches, SmsInvitation } from './proches.js';
 
 export class DossierProchesFhir extends ClientFhir implements DossierProches {
   private static fiche(x: unknown): RelatedPerson {
@@ -240,10 +240,7 @@ export class SmsNotifications implements SmsInvitation {
     }
   }
 
-  async alerterPatient(
-    patientId: string,
-    alerte: 'proche-inscrit' | 'proches-retires',
-  ): Promise<'envoyee' | 'echec'> {
+  async alerterPatient(patientId: string, alerte: AlerteSms): Promise<'envoyee' | 'echec'> {
     try {
       const r = await this.appeler(`${this.url}/alertes/${alerte}`, {
         method: 'POST',

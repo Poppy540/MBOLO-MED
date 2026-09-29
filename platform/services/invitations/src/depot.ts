@@ -9,6 +9,8 @@ export interface Invitation {
   type: TypeInvitation;
   /** Fiche du proche dans le dossier (RelatedPerson), pour un code de proche seulement. */
   relatedPersonId?: string;
+  /** Dossier du patient (référence opaque), pour un code de récupération seulement (ADR-0021). */
+  patientId?: string;
   /** Identifiant Keycloak opaque (sub) du créateur. */
   creePar: string;
   creeLe: Date;
@@ -19,10 +21,16 @@ export interface Invitation {
 }
 
 export type Statut = 'valide' | 'utilise' | 'revoque' | 'expire';
-export type TypeInvitation = 'patient' | 'proche';
+/**
+ * `patient` et `proche` créent un compte ; `recuperation` (ADR-0021) rend l'accès à un compte
+ * existant et n'est jamais accepté à l'inscription.
+ */
+export type TypeInvitation = 'patient' | 'proche' | 'recuperation';
 
 /** Cohorte technique des codes de proches : jamais une cohorte ouverte par un déploiement. */
 export const COHORTE_PROCHES = 'proches';
+/** Cohorte technique des codes de récupération (ADR-0021). */
+export const COHORTE_RECUPERATION = 'recuperation';
 
 /** Proches qui comptent dans la limite : invitation en cours ou compte créé (pas révoquée ni expirée). */
 const compteDansLimite = (i: Invitation, maintenant: Date) =>
@@ -71,6 +79,11 @@ export interface DepotInvitations {
    * d'assistance, à la demande du patient (ADR-0019).
    */
   revoquerParFiche(relatedPersonId: string, maintenant: Date): Promise<boolean>;
+  /**
+   * Enregistre un code de récupération (ADR-0021) et révoque, dans la même transaction, les codes
+   * de récupération encore inutilisés de ce dossier : un seul code valable à la fois.
+   */
+  creerRecuperation(i: Invitation, maintenant: Date): Promise<'cree' | 'doublon'>;
 }
 
 export class DepotMemoire implements DepotInvitations {
@@ -172,6 +185,22 @@ export class DepotMemoire implements DepotInvitations {
     }
     return n > 0;
   }
+
+  async creerRecuperation(i: Invitation, maintenant: Date): Promise<'cree' | 'doublon'> {
+    if (this.invitations.some((x) => x.empreinte.equals(i.empreinte))) return 'doublon';
+    for (const x of this.invitations) {
+      if (
+        x.type === 'recuperation' &&
+        x.patientId === i.patientId &&
+        !x.utiliseLe &&
+        !x.revoqueLe
+      ) {
+        x.revoqueLe = maintenant;
+      }
+    }
+    this.invitations.push({ ...i });
+    return 'cree';
+  }
 }
 
 interface Ligne {
@@ -180,6 +209,7 @@ interface Ligne {
   cohorte: string;
   type: TypeInvitation;
   related_person_id: string | null;
+  patient_id: string | null;
   cree_par: string;
   cree_le: Date;
   expire_le: Date;
@@ -194,6 +224,7 @@ const versInvitation = (l: Ligne): Invitation => ({
   cohorte: l.cohorte,
   type: l.type,
   ...(l.related_person_id ? { relatedPersonId: l.related_person_id } : {}),
+  ...(l.patient_id ? { patientId: l.patient_id } : {}),
   creePar: l.cree_par,
   creeLe: l.cree_le,
   expireLe: l.expire_le,
@@ -313,5 +344,23 @@ export class DepotPostgres implements DepotInvitations {
       update invitations.codes set revoque_le = ${maintenant}
        where related_person_id = ${relatedPersonId} and type = 'proche' and revoque_le is null`;
     return r.count > 0;
+  }
+
+  async creerRecuperation(i: Invitation, maintenant: Date): Promise<'cree' | 'doublon'> {
+    return this.sql.begin(async (tx) => {
+      // Un verrou par dossier : deux créations simultanées ne laissent qu'un code valable.
+      await tx`select pg_advisory_xact_lock(hashtext(${`mbolo-recuperation:${i.patientId ?? ''}`}))`;
+      await tx`
+        update invitations.codes set revoque_le = ${maintenant}
+         where type = 'recuperation' and patient_id = ${i.patientId ?? null}
+           and utilise_le is null and revoque_le is null`;
+      const inserees = await tx`
+        insert into invitations.codes
+          (id, empreinte, cohorte, type, patient_id, cree_par, cree_le, expire_le)
+        values (${i.id}, ${i.empreinte}, ${i.cohorte}, 'recuperation', ${i.patientId ?? null},
+                ${i.creePar}, ${i.creeLe}, ${i.expireLe})
+        on conflict (empreinte) do nothing`;
+      return inserees.count === 1 ? ('cree' as const) : ('doublon' as const);
+    });
   }
 }
