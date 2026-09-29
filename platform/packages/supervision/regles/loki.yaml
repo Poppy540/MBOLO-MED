@@ -31,6 +31,15 @@ groups:
         annotations:
           resume: "Plus de 20 refus d’accès au dossier en 5 minutes pour un même compte ou service."
           conduite: "Vérifier le compte ; le désactiver dans Keycloak en cas de tentative d’intrusion."
+      - alert: "CodesRecuperationEnSerie"
+        expr: "sum by (contexte_par) (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"code-recuperation\" [1h])) > 5"
+        labels:
+          gravite: "critique"
+          destinataire: "responsable-securite"
+          alerte: "code-recuperation"
+        annotations:
+          resume: "Plus de 5 codes de récupération de compte remis en une heure par un même membre de l’équipe."
+          conduite: "Vérifier les dossiers concernés et les traces ; retirer le rôle assistance-patient si besoin, prévenir les patients."
       - alert: "EssaisBloquesEnRafale"
         expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"essais-bloques\" [15m])) > 20"
         labels:

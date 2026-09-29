@@ -83,6 +83,23 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
           },
         },
         {
+          // Chaque code donne accès à un compte (ADR-0021) : une série par un même membre de
+          // l'équipe d'assistance n'a pas d'explication normale.
+          alert: 'CodesRecuperationEnSerie',
+          expr: `${compter('code-recuperation', '1h', 'contexte_par')} > 5`,
+          labels: {
+            gravite: 'critique',
+            destinataire: 'responsable-securite',
+            alerte: 'code-recuperation',
+          },
+          annotations: {
+            resume:
+              'Plus de 5 codes de récupération de compte remis en une heure par un même membre de l’équipe.',
+            conduite:
+              'Vérifier les dossiers concernés et les traces ; retirer le rôle assistance-patient si besoin, prévenir les patients.',
+          },
+        },
+        {
           // Les limites par adresse ou par dossier bloquent un essai isolé ; une rafale sur toute la
           // plateforme signale une recherche de codes répartie ou une usurpation (ASVS n°1, D3).
           alert: 'EssaisBloquesEnRafale',

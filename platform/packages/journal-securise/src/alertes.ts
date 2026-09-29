@@ -19,6 +19,11 @@ export const ALERTES = [
    * en rafale, signe d'une recherche de codes ou d'une usurpation auprès de l'assistance.
    */
   'essais-bloques',
+  /**
+   * Code de récupération du compte remis par l'équipe d'assistance (ADR-0021) : en série pour un
+   * même membre de l'équipe, signe d'un abus de ce rôle.
+   */
+  'code-recuperation',
   /** Paiement reçu pour un rendez-vous annulé : remboursement à valider par un humain (ADR-0017). */
   'remboursement-a-valider',
 ] as const;

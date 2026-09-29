@@ -447,6 +447,12 @@ describe('API de l’équipe d’assistance (ADR-0019)', () => {
     for (const interdit of ['ABCD-EFGH', 'FICTIF-0001', '1990-01-01']) {
       expect(journal).not.toContain(interdit);
     }
+    // Alerte nommée pour la supervision (codes en série par un même membre de l'équipe).
+    const alertes = lignes
+      .map((l) => JSON.parse(l) as { contexte?: { alerte?: string; par?: string } })
+      .filter((l) => l.contexte?.alerte === 'code-recuperation');
+    expect(alertes).toHaveLength(1);
+    expect(alertes[0]?.contexte?.par).toBe('u-assist');
   });
 
   it('récupération : seule l’extension Keycloak utilise un code, même réponse pour tout refus', async () => {
