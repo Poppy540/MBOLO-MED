@@ -1,7 +1,7 @@
 # ADR-0022 — Double authentification des patients pour les actions sensibles
 
 - **Date :** 2026-09-29
-- **Statut :** acceptée sur le principe (porteur de projet, 2026-09-29 : code par **SMS**, pour les **actions sensibles** seulement) ; modalités ci-dessous proposées, à confirmer
+- **Statut :** acceptée (porteur de projet, 2026-09-29 : code par **SMS**, pour les **actions sensibles** seulement ; modalités confirmées le même jour)
 - **Décideurs :** porteur de projet ; responsable sécurité (à désigner)
 
 ## Contexte
@@ -24,7 +24,7 @@ Contraintes :
 2. **Code pour les actions sensibles seulement** (retenu) : la connexion reste simple ; un code est demandé juste avant l'action.
 3. **Application d'authentification (TOTP)** : gratuite et plus sûre, mais trop difficile pour beaucoup de patients. Écartée pour les patients ; elle reste en place pour les professionnels et les proches.
 
-## Décision (principe) et modalités proposées
+## Décision
 
 ### Mécanisme : authentification renforcée par Keycloak (« step-up »)
 
@@ -41,7 +41,7 @@ Contraintes :
 - **Côté services** : les routes sensibles exigent un jeton de **niveau 2** (revendication `acr`). Le niveau 2 reste valable **15 minutes** (âge maximal du niveau dans Keycloak). Au-delà, un nouveau code est demandé.
 - **Mot de passe et code** : ils ne sortent jamais de Keycloak. Le service `notifications` reçoit le texte fermé et le dossier, jamais le mot de passe.
 
-### Actions sensibles (proposé)
+### Actions sensibles
 
 | Action | Service | Pourquoi |
 | --- | --- | --- |
@@ -76,9 +76,9 @@ Contraintes :
 2. **Services** : `acr` exigé sur les trois routes sensibles (refus 401 avec le motif `niveau-insuffisant`).
 3. **Application patient** : demande du niveau 2 avant ces trois actions, puis reprise de l'action.
 
-## Questions au porteur de projet (modalités)
+## Réponses du porteur de projet (2026-09-29)
 
-1. **Liste des actions sensibles** : les trois du tableau vous conviennent-elles ?
-2. **Durée du niveau 2** : 15 minutes avant de redemander un code ?
-3. **Code** : 6 chiffres, valable 5 minutes, 3 essais ?
-4. **Texte du SMS** : « Mbolo Santé : votre code est 123456. Il expire dans 5 minutes. Ne le donnez à personne, même à l'équipe. »
+1. **Actions sensibles** : payer une consultation, partager son dossier avec un médecin, inviter un proche.
+2. **Durée du niveau 2** : le code reste valable **15 minutes** après sa saisie, avant qu'un nouveau code soit demandé.
+3. **Code** : **6 chiffres**, valable **5 minutes**, **3 essais**.
+4. **Texte du SMS** (gabarit `code-connexion`) : « Mbolo Santé : votre code est 123456. Il expire dans 5 minutes. Ne le donnez à personne, même pas à l'équipe. » (à faire relire par le juriste avec les autres gabarits).

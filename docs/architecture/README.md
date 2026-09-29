@@ -25,7 +25,7 @@
 | [0019](adr/0019-invitation-proche.md)                        | Le patient invite un proche depuis son application : fiche créée à l'invitation, code envoyé par SMS au proche, double authentification, rôle `proche` attribué par le serveur | Acceptée (vague 2)                                         |
 | [0020](adr/0020-facturation.md)                              | Facturation : encaissement centralisé (sauf médicaments), reçus, reversements validés par un humain, abonnements                                                               | Proposée (modèle centralisé retenu ; juriste et comptable) |
 | [0021](adr/0021-recuperation-compte-patient.md)              | Récupération du compte d'un patient sans e-mail : code remis par l'équipe d'assistance après rappel au numéro du dossier et date de naissance                                  | Acceptée (vague 1)                                         |
-| [0022](adr/0022-double-authentification-patients.md)         | Double authentification des patients : code SMS pour les actions sensibles (payer, partager le dossier, inviter un proche), niveau 2 Keycloak exigé par les services           | Acceptée (principe) ; modalités à confirmer                |
+| [0022](adr/0022-double-authentification-patients.md)         | Double authentification des patients : code SMS pour les actions sensibles (payer, partager le dossier, inviter un proche), niveau 2 Keycloak exigé par les services           | Acceptée                                                   |
 
 ## Vue d'ensemble (cible, à détailler)
 
