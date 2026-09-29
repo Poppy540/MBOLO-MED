@@ -130,3 +130,4 @@
 - 2026-09-29 — En local, HAPI remis à zéro (redémarrage du conteneur) réutilise les numéros de rendez-vous alors que la base des paiements les garde : `paiement` refuse une référence déjà liée à un autre patient (→ 503 à la réservation). Après une remise à zéro de HAPI, vider aussi les tables locales du schéma `paiement`.
 - 2026-09-29 — Keycloak : un fichier de royaume importé accepte `${VAR:défaut}` (vérifié sur 26.7.4) ; utile pour un réglage qui change en production sans casser le local.
 - 2026-09-29 — Un compteur gardé en base survit d'une exécution e2e à l'autre (contrairement à la mémoire) : relever la limite dans la configuration e2e et tester la limite à part.
+- 2026-09-29 — E2E locaux : les services tournent depuis `dist/` ; reconstruire le service modifié (`pnpm build`) avant de lancer la suite, sinon elle teste l'ancien code (la CI, elle, reconstruit tout).
