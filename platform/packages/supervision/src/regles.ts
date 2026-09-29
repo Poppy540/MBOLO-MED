@@ -82,6 +82,23 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
               'Vérifier le compte ; le désactiver dans Keycloak en cas de tentative d’intrusion.',
           },
         },
+        {
+          // Les limites par adresse ou par dossier bloquent un essai isolé ; une rafale sur toute la
+          // plateforme signale une recherche de codes répartie ou une usurpation (ASVS n°1, D3).
+          alert: 'EssaisBloquesEnRafale',
+          expr: `${compter('essais-bloques', '15m')} > 20`,
+          labels: {
+            gravite: 'critique',
+            destinataire: 'responsable-securite',
+            alerte: 'essais-bloques',
+          },
+          annotations: {
+            resume:
+              'Plus de 20 essais de code d’invitation ou de date de naissance bloqués en 15 minutes.',
+            conduite:
+              'Vérifier les adresses et les comptes en cause ; suspendre les invitations ou l’assistance si c’est une attaque.',
+          },
+        },
       ],
     },
     {

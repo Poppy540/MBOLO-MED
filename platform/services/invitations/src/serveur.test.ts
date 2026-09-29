@@ -5,7 +5,7 @@ import { creerEmpreinte } from './codes.js';
 import { DepotMemoire } from './depot.js';
 import { LimiteurMemoire } from './limiteur.js';
 import { creerServeur } from './serveur.js';
-import { ServiceProches } from './proches.js';
+import { ErreurProche, ServiceProches } from './proches.js';
 import type { ServiceAssistance } from './assistance.js';
 import { ServiceInvitations } from './service.js';
 
@@ -119,8 +119,8 @@ describe('API des invitations', () => {
     expect((await verifier('ZZZZ-ZZZZ')).json()).toEqual({ valide: false });
   });
 
-  it('limite les essais de code', async () => {
-    const { app } = await serveur(2);
+  it('limite les essais de code, et signale l’essai bloqué à la supervision', async () => {
+    const { app, lignes } = await serveur(2);
     const essai = () =>
       app.inject({
         method: 'POST',
@@ -132,6 +132,11 @@ describe('API des invitations', () => {
     const r = await essai();
     expect(r.statusCode).toBe(429);
     expect(r.json()).toMatchObject({ motif: 'trop-d-essais' });
+    const alertes = lignes
+      .map((l) => JSON.parse(l) as { contexte?: { alerte?: string; verification?: string } })
+      .filter((l) => l.contexte?.alerte === 'essais-bloques');
+    expect(alertes).toHaveLength(1);
+    expect(alertes[0]?.contexte?.verification).toBe('code');
   });
 
   it('refuse la révocation à un médecin', async () => {
@@ -303,7 +308,7 @@ describe('API des proches (ADR-0019)', () => {
 });
 
 describe('API de l’équipe d’assistance (ADR-0019)', () => {
-  async function monter() {
+  async function monter(tropDEssais = false) {
     const appels: unknown[] = [];
     const lignes: string[] = [];
     const app = await creerServeur({
@@ -327,6 +332,9 @@ describe('API de l’équipe d’assistance (ADR-0019)', () => {
           return { patientId: 'pat-fictif-001', telephone: '+241 00 00 00 01', proches: 1 };
         },
         retirerProches: async (_u: Utilisateur, jeton: string, d: unknown) => {
+          if (tropDEssais) {
+            throw new ErreurProche(429, 'Trop d’essais. Réessayez plus tard.', 'trop-d-essais');
+          }
           appels.push({ jeton, d });
           return { retires: 1, sms: 'envoyee' as const };
         },
@@ -346,6 +354,23 @@ describe('API de l’équipe d’assistance (ADR-0019)', () => {
       payload,
       headers: jeton ? { authorization: `Bearer ${jeton}` } : {},
     });
+
+  it('signale à la supervision un essai de date de naissance bloqué, sans la date', async () => {
+    const { app, lignes } = await monter(true);
+    const r = await post(
+      app,
+      '/assistance/retrait-proches',
+      { patientId: 'pat-fictif-001', naissance: '1990-01-01', rappel: true },
+      'assistant',
+    );
+    expect(r.statusCode).toBe(429);
+    const alertes = lignes
+      .map((l) => JSON.parse(l) as { contexte?: { alerte?: string; verification?: string } })
+      .filter((l) => l.contexte?.alerte === 'essais-bloques');
+    expect(alertes).toHaveLength(1);
+    expect(alertes[0]?.contexte?.verification).toBe('naissance');
+    expect(lignes.join('\n')).not.toContain('1990-01-01');
+  });
 
   it('recherche et retrait : contrôles de la requête, rien de personnel dans le journal', async () => {
     const { app, appels, lignes } = await monter();
