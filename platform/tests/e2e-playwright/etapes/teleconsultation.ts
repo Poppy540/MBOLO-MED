@@ -380,7 +380,7 @@ Then('le retrait est refusé car le créneau est réservé', ({ monde }) => {
 });
 
 /** Boîte du canal simulé des notifications (lue avec le jeton du service de téléconsultation). */
-async function boite(): Promise<{ telephone: string; texte: string; date: string }[]> {
+export async function boite(): Promise<{ telephone: string; texte: string; date: string }[]> {
   const r = await fetch(`${NOTIFICATIONS_URL}/simulation/boite`, {
     headers: { authorization: `Bearer ${await jetonService('téléconsultation')}` },
   });

@@ -144,7 +144,8 @@
       "webOrigins": ["http://localhost:5173", "http://localhost:5180"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:5180/*"
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:5180/*",
+        "acr.loa.map": "{\"1\":1,\"2\":2}"
       },
       "protocolMappers": [
         {
@@ -791,22 +792,77 @@
     },
     {
       "alias": "navigateur-mbolo formulaires",
-      "description": "Identifiant et mot de passe, puis MFA conditionnelle.",
+      "description": "Deux niveaux (ADR-0022) : niveau 1 (mot de passe, OTP pour les rôles à MFA), niveau 2 (code SMS du patient, demandé par l'application avant une action sensible).",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
         {
-          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": true,
+          "flowAlias": "navigateur-mbolo niveau 1",
+          "requirement": "CONDITIONAL",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "navigateur-mbolo niveau 2",
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "navigateur-mbolo niveau 1",
+      "description": "Identifiant et mot de passe, puis MFA conditionnelle (rôles professionnels et proches).",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "niveau-1",
+          "authenticator": "conditional-level-of-authentication",
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 10,
           "userSetupAllowed": false
         },
         {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
           "authenticatorFlow": true,
           "flowAlias": "navigateur-mbolo mfa",
           "requirement": "CONDITIONAL",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "navigateur-mbolo niveau 2",
+      "description": "Code reçu par SMS au numéro du dossier du patient (ADR-0022), valable 15 minutes une fois saisi.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "niveau-2",
+          "authenticator": "conditional-level-of-authentication",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "mbolo-code-sms",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
           "priority": 20,
           "userSetupAllowed": false
         }
@@ -920,6 +976,20 @@
       "config": {
         "condUserRole": "mfa-requise",
         "negate": "false"
+      }
+    },
+    {
+      "alias": "niveau-1",
+      "config": {
+        "loa-condition-level": "1",
+        "loa-max-age": "36000"
+      }
+    },
+    {
+      "alias": "niveau-2",
+      "config": {
+        "loa-condition-level": "2",
+        "loa-max-age": "900"
       }
     }
   ],

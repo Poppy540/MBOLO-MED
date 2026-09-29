@@ -29,7 +29,16 @@ interface Royaume {
     protocolMappers?: { protocolMapper: string; config: Record<string, string> }[];
   }[];
   components: Record<string, { config: Record<string, string[]> }[]>;
-  authenticationFlows: { alias: string; authenticationExecutions: { authenticator?: string }[] }[];
+  authenticationFlows: {
+    alias: string;
+    authenticationExecutions: {
+      authenticator?: string;
+      flowAlias?: string;
+      requirement?: string;
+      authenticatorConfig?: string;
+    }[];
+  }[];
+  authenticatorConfig: { alias: string; config: Record<string, string> }[];
 }
 
 const royaume = lire('realm-mbolo.json') as Royaume;
@@ -99,6 +108,38 @@ describe('royaume mbolo', () => {
       'conditional-user-role',
       'auth-otp-form',
     ]);
+  });
+
+  it('niveau 2 du patient : code SMS valable 15 minutes, jamais à chaque connexion (ADR-0022)', () => {
+    const executions = (alias: string) =>
+      royaume.authenticationFlows
+        .find((f) => f.alias === alias)
+        ?.authenticationExecutions.map((e) => ({
+          etape: e.authenticator ?? e.flowAlias,
+          exigence: e.requirement,
+          config: e.authenticatorConfig,
+        }));
+    expect(executions('navigateur-mbolo formulaires')).toEqual([
+      { etape: 'navigateur-mbolo niveau 1', exigence: 'CONDITIONAL', config: undefined },
+      { etape: 'navigateur-mbolo niveau 2', exigence: 'CONDITIONAL', config: undefined },
+    ]);
+    // Niveau 1 : mot de passe, puis OTP pour les rôles professionnels (inchangé).
+    expect(executions('navigateur-mbolo niveau 1')).toEqual([
+      { etape: 'conditional-level-of-authentication', exigence: 'REQUIRED', config: 'niveau-1' },
+      { etape: 'auth-username-password-form', exigence: 'REQUIRED', config: undefined },
+      { etape: 'navigateur-mbolo mfa', exigence: 'CONDITIONAL', config: undefined },
+    ]);
+    // Niveau 2 : seulement quand l'application le demande, avant une action sensible.
+    expect(executions('navigateur-mbolo niveau 2')).toEqual([
+      { etape: 'conditional-level-of-authentication', exigence: 'REQUIRED', config: 'niveau-2' },
+      { etape: 'mbolo-code-sms', exigence: 'REQUIRED', config: undefined },
+    ]);
+    const config = (alias: string) =>
+      royaume.authenticatorConfig.find((c) => c.alias === alias)?.config;
+    expect(config('niveau-1')).toEqual({ 'loa-condition-level': '1', 'loa-max-age': '36000' });
+    expect(config('niveau-2')).toEqual({ 'loa-condition-level': '2', 'loa-max-age': '900' });
+    const patient = royaume.clients.find((c) => c.clientId === 'mbolo-app-patient');
+    expect(JSON.parse(patient?.attributes?.['acr.loa.map'] ?? '{}')).toEqual({ '1': 1, '2': 2 });
   });
 
   it('ne met ni e-mail ni nom dans le jeton des applications, et interdit la connexion directe', () => {

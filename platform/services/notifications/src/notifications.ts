@@ -4,6 +4,7 @@ import {
   PAYS_PAR_DEFAUT,
   rediger,
   redigerAlerteProche,
+  redigerCodeConnexion,
   type AlertePatient,
   redigerInvitationProche,
   type Gabarit,
@@ -66,6 +67,23 @@ export class ServiceNotifications {
    * retiré ses proches à sa demande. Numéro lu dans le dossier ; pas de condition C-RAPPELS
    * (information sur l'accès au dossier, pas un rappel).
    */
+  /**
+   * Code de double authentification (ADR-0022), demandé par Keycloak : numéro lu dans le dossier,
+   * pas de condition C-RAPPELS (c'est le patient qui le demande). Ni le numéro ni le code ne sont
+   * journalisés.
+   */
+  async envoyerCodeConnexion(patientId: string, code: string): Promise<Resultat> {
+    const texte = redigerCodeConnexion(code, this.pays);
+    const telephone = await this.contacts.telephone(`Patient/${patientId}`);
+    if (!telephone) return 'ignoree-sans-numero';
+    try {
+      await this.canal.envoyer(telephone, texte);
+      return 'envoyee';
+    } catch {
+      return 'echec';
+    }
+  }
+
   async alerterPatient(patientId: string, alerte: AlertePatient): Promise<Resultat> {
     const texte = redigerAlerteProche(alerte, this.pays);
     const telephone = await this.contacts.telephone(`Patient/${patientId}`);

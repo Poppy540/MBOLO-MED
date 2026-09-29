@@ -134,6 +134,8 @@ export default defineConfig({
         FHIR_BASE_URL: `${PASSERELLE_URL}/fhir`,
         NOTIFICATIONS_SERVICE_CLE_PRIVEE: process.env['NOTIFICATIONS_SERVICE_CLE_PRIVEE'] ?? '',
         PORT: new URL(NOTIFICATIONS_URL).port,
+        // En CI, Keycloak (conteneur) demande l'envoi des codes SMS (ADR-0022).
+        NOTIFICATIONS_HOST: process.env['NOTIFICATIONS_HOST'] ?? '127.0.0.1',
         MBOLO_ENV: 'dev',
       },
     },

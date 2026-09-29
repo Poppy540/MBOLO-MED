@@ -221,3 +221,75 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
     expect(lignes.join('\n')).not.toContain('+241');
   });
 });
+
+describe('API notifications — code de double authentification (ADR-0022)', () => {
+  const monterCodes = async () => {
+    const canal = new CanalSimule();
+    const lignes: string[] = [];
+    const app = await creerServeur({
+      verifierAppelant: async (j) => {
+        if (j === 'jeton-keycloak') return 'mbolo-keycloak-inscription';
+        if (j === 'jeton-valide') return 'mbolo-teleconsultation-service';
+        throw new Error('refusé');
+      },
+      // Sans consentement aux rappels : le code part quand même, c'est le patient qui le demande.
+      service: new ServiceNotifications(
+        { telephone: async () => '+241 00 00 00 05', accepteRappels: async () => false },
+        canal,
+      ),
+      journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
+      codesConnexion: { appelants: ['mbolo-keycloak-inscription'] },
+    });
+    const envoyer = (jeton: string | undefined, payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: '/codes-connexion',
+        ...(jeton ? { headers: { authorization: `Bearer ${jeton}` } } : {}),
+        payload,
+      });
+    return { app, canal, lignes, envoyer };
+  };
+
+  it('envoie le code au numéro du dossier, sans le journaliser', async () => {
+    const { canal, lignes, envoyer } = await monterCodes();
+    const r = await envoyer('jeton-keycloak', { patientId: 'pat-fictif-005', code: '482913' });
+    expect(r.statusCode).toBe(202);
+    expect(r.json()).toEqual({ resultat: 'envoyee' });
+    expect(canal.boite[0]?.telephone).toBe('+241 00 00 00 05');
+    const texte = canal.boite[0]?.texte ?? '';
+    expect(texte).toBe(
+      'Mbolo Santé : votre code est 482913. Il expire dans 5 minutes. Ne le donnez à personne, même pas à l’équipe.',
+    );
+    expect(texte.length).toBeLessThanOrEqual(160);
+    const journal = lignes.join('\n');
+    expect(journal).not.toContain('482913');
+    expect(journal).not.toContain('+241');
+  });
+
+  it('seule l’extension Keycloak envoie un code, et elle n’envoie rien d’autre', async () => {
+    const { app, canal, envoyer } = await monterCodes();
+    const corps = { patientId: 'pat-fictif-005', code: '482913' };
+    expect((await envoyer(undefined, corps)).statusCode).toBe(401);
+    expect((await envoyer('jeton-valide', corps)).statusCode).toBe(403);
+    for (const payload of [
+      { ...corps, code: '12345' },
+      { ...corps, code: 'ABCDEF' },
+      { ...corps, patientId: '../x' },
+      { ...corps, telephone: '+33000000009' },
+    ]) {
+      expect((await envoyer('jeton-keycloak', payload)).statusCode).toBe(400);
+    }
+    const autre = await app.inject({
+      method: 'POST',
+      url: '/notifications',
+      headers: { authorization: 'Bearer jeton-keycloak' },
+      payload: {
+        destinataire: 'Patient/pat-fictif-005',
+        gabarit: 'rendez-vous-annule',
+        instant: '2026-10-01T08:00:00Z',
+      },
+    });
+    expect(autre.statusCode).toBe(403);
+    expect(canal.boite).toHaveLength(0);
+  });
+});

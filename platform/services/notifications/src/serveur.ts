@@ -6,6 +6,7 @@ import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import {
   ALERTES_PATIENT,
   FORMAT_CODE,
+  FORMAT_CODE_CONNEXION,
   IDENTIFIANTS_GABARITS,
   PAYS_PAR_DEFAUT,
   type AlertePatient,
@@ -39,6 +40,11 @@ export async function creerServeur(o: {
    * (le service invitations). Ces clients n'envoient rien d'autre.
    */
   invitations?: { canal: Canal; pays?: Pays; appelants: readonly string[] };
+  /**
+   * Codes de double authentification (ADR-0022) : seuls clients autorisés (l'extension Keycloak).
+   * Ces clients n'envoient rien d'autre.
+   */
+  codesConnexion?: { appelants: readonly string[] };
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -101,7 +107,12 @@ export async function creerServeur(o: {
     },
     async (req, reply) => {
       const appelant = await authentifier(req);
-      if (o.invitations?.appelants.includes(appelant)) throw new ErreurInterdite();
+      if (
+        o.invitations?.appelants.includes(appelant) ||
+        o.codesConnexion?.appelants.includes(appelant)
+      ) {
+        throw new ErreurInterdite();
+      }
       const { destinataire, gabarit, instant } = req.body;
       const resultat = await o.service.envoyer({
         destinataire,
@@ -177,6 +188,39 @@ export async function creerServeur(o: {
         o.journal.info('alerte au patient traitée', {
           appelant,
           alerte: req.params.alerte,
+          resultat,
+        });
+        return reply.code(202).send({ resultat });
+      },
+    );
+  }
+
+  const codes = o.codesConnexion;
+  if (codes) {
+    // Double authentification du patient (ADR-0022) : seule l'extension Keycloak demande l'envoi.
+    app.post<{ Body: { patientId: string; code: string } }>(
+      '/codes-connexion',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId', 'code'],
+            properties: {
+              patientId: { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' },
+              code: { type: 'string', pattern: FORMAT_CODE_CONNEXION.source },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const appelant = await authentifier(req);
+        if (!codes.appelants.includes(appelant)) throw new ErreurInterdite();
+        const resultat = await o.service.envoyerCodeConnexion(req.body.patientId, req.body.code);
+        // Ni le code ni le numéro : le dossier et le résultat.
+        o.journal.info('code de connexion traité', {
+          appelant,
+          patientId: req.body.patientId,
           resultat,
         });
         return reply.code(202).send({ resultat });

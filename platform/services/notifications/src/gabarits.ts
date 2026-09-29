@@ -73,6 +73,25 @@ export const CATALOGUE_ALERTE_COMPTE_RECUPERE: Readonly<Record<string, string>> 
   fr: 'Mbolo Santé : le mot de passe de votre compte vient d’être changé avec un code de l’équipe. Si ce n’est pas vous, contactez l’équipe.',
 };
 
+/**
+ * Code de double authentification du patient (ADR-0022), demandé par Keycloak avant une action
+ * sensible. Envoyé au numéro du dossier, sans condition C-RAPPELS ; {code} (6 chiffres) est la seule
+ * variable. Texte validé par le porteur de projet (2026-09-29), à faire relire par le juriste.
+ */
+export const CATALOGUE_CODE_CONNEXION: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : votre code est {code}. Il expire dans 5 minutes. Ne le donnez à personne, même pas à l’équipe.',
+};
+
+/** Code de double authentification : 6 chiffres. */
+export const FORMAT_CODE_CONNEXION = /^[0-9]{6}$/;
+
+export function redigerCodeConnexion(code: string, pays: Pays = PAYS_PAR_DEFAUT): string {
+  const texte = CATALOGUE_CODE_CONNEXION[langueDe(pays.langue)];
+  if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
+  if (!FORMAT_CODE_CONNEXION.test(code)) throw new Error('Variables invalides.');
+  return texte.replace('{code}', code);
+}
+
 /** Alertes de sécurité envoyées au patient, sans condition C-RAPPELS. */
 export const ALERTES_PATIENT = {
   'proche-inscrit': CATALOGUE_ALERTE_PROCHE,
@@ -105,6 +124,7 @@ export function verifierPays(p: Pays): void {
   if (
     !textes(p.langue) ||
     !CATALOGUE_INVITATION_PROCHE[langue] ||
+    !CATALOGUE_CODE_CONNEXION[langue] ||
     Object.values(ALERTES_PATIENT).some((c) => !c[langue])
   ) {
     throw new Error(`Aucun gabarit approuvé pour la langue ${p.langue}.`);
