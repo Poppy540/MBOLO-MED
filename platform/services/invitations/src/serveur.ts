@@ -467,7 +467,7 @@ export async function creerServeur(o: {
         const { u } = await membre(req);
         const r = await assistance.creerCodeRecuperation(u, req.body);
         // Jamais le code ni le numéro : qui, pour quel dossier, jusqu'à quand.
-        o.journal.avertissement('code de récupération remis par l’équipe d’assistance', {
+        signalerAlerte(o.journal, 'code-recuperation', 'code de récupération remis par l’équipe', {
           par: u.sujet,
           patientId: req.body.patientId,
           expireLe: r.expireLe,
