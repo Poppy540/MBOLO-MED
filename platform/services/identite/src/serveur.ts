@@ -50,7 +50,13 @@ const REFERENCE = {
 } as const;
 
 export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false, bodyLimit: 16 * 1024, trustProxy: o.trustProxy ?? false });
+  const app = Fastify({
+    logger: false,
+    bodyLimit: 16 * 1024,
+    trustProxy: o.trustProxy ?? false,
+    // Revue ASVS n°1 (C4) : un champ inconnu est refusé, pas retiré en silence.
+    ajv: { customOptions: { removeAdditional: false } },
+  });
   // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
   entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
