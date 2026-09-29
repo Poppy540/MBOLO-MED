@@ -66,7 +66,8 @@ export const CATALOGUE_ALERTE_RETRAIT_PROCHES: Readonly<Record<string, string>> 
 /**
  * Alerte au patient (ADR-0021) : un code de récupération, remis par l'équipe d'assistance, vient de
  * servir à changer le mot de passe de son compte. Sans donnée de santé ; envoyée même sans
- * C-RAPPELS : si ce n'est pas lui, il le sait aussitôt. Brouillon à faire relire.
+ * C-RAPPELS : si ce n'est pas lui, il le sait aussitôt. Texte validé par le porteur de projet
+ * (2026-09-29), à faire relire par le juriste avec les autres gabarits.
  */
 export const CATALOGUE_ALERTE_COMPTE_RECUPERE: Readonly<Record<string, string>> = {
   fr: 'Mbolo Santé : le mot de passe de votre compte vient d’être changé avec un code de l’équipe. Si ce n’est pas vous, contactez l’équipe.',

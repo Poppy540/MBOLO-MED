@@ -1,7 +1,7 @@
 # ADR-0021 — Récupération du compte d'un patient sans e-mail
 
 - **Date :** 2026-09-29
-- **Statut :** acceptée (porteur de projet, 2026-09-29) ; texte du SMS d'alerte et fréquence de revue à confirmer
+- **Statut :** acceptée (porteur de projet, 2026-09-29), entièrement mise en œuvre (PR n°92 à n°95)
 - **Décideurs :** porteur de projet ; responsable sécurité (à désigner)
 
 ## Contexte
@@ -79,8 +79,8 @@ Contraintes :
 2. **Validité du code** : 24 h (paramètre `INVITATIONS_RECUPERATION_VALIDITE_HEURES`, 1 à 72 h).
 3. **Aidant** : oui, le code peut être dicté à un aidant, patient présent et consentant, comme pour l'inscription (ADR-0014).
 4. **Vérification supplémentaire** : le patient lit aussi son **numéro d'assurance ou provisoire** ; le service le compare au dossier, sans jamais l'afficher, en plus de la date de naissance.
-5. **Revue** : par défaut, **mensuelle, par le responsable sécurité** (à désigner) ; à confirmer.
-6. **SMS d'alerte** : brouillon « Mbolo Santé : le mot de passe de votre compte vient d'être changé avec un code de l'équipe. Si ce n'est pas vous, contactez l'équipe. », envoyé quand le code sert ; à faire relire avec les autres gabarits.
+5. **Revue** : **hebdomadaire, par le responsable sécurité** (à désigner) ; entre deux revues, l'alerte `CodesRecuperationEnSerie` signale un membre de l'équipe qui remet des codes en série.
+6. **SMS d'alerte** : **validé tel quel** par le porteur de projet : « Mbolo Santé : le mot de passe de votre compte vient d'être changé avec un code de l'équipe. Si ce n'est pas vous, contactez l'équipe. », envoyé quand le code sert ; relecture par le juriste avec les autres gabarits.
 
 ## Mise en œuvre
 
