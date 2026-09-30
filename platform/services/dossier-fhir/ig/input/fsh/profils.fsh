@@ -20,6 +20,11 @@ Description: "Une identité vérifiée repose sur un identifiant typé : numéro
 Expression: "extension.where(url = 'https://mbolo-sante.example/fhir/StructureDefinition/statut-identite' and value = 'verifiee').exists() implies identifier.where(type.coding.where(system = 'https://mbolo-sante.example/fhir/CodeSystem/mbolo-type-identifiant-patient').exists()).exists()"
 Severity: #error
 
+Invariant: mbolo-pat-3
+Description: "Un numéro changé porte la date du changement (ADR-0023) : c'est elle qui ouvre les 24 heures sans code de connexion après une perte."
+Expression: "extension.where(url = 'https://mbolo-sante.example/fhir/StructureDefinition/changement-telephone').exists() implies period.start.exists()"
+Severity: #error
+
 Profile: MboloPatient
 Parent: Patient
 Id: mbolo-patient
@@ -37,6 +42,8 @@ Description: "Patient avec le minimum d'informations nécessaires aux soins (min
 * gender MS
 * birthDate 1..1 MS
 * telecom MS
+* telecom obeys mbolo-pat-3
+* telecom.extension contains ChangementTelephone named changementTelephone 0..1 MS
 
 Profile: MboloConsent
 Parent: Consent

@@ -236,6 +236,7 @@ public final class ChangerTelephoneRequiredAction
     return switch (envoi) {
       case ENVOYE -> null;
       case TROP_DE_CODES -> "mboloCodeSmsTropDeCodes";
+      case ATTENTE_APRES_PERTE -> "mboloCodeSmsAttentePerte";
       case RATE -> "mboloCodeSmsNonEnvoye";
     };
   }

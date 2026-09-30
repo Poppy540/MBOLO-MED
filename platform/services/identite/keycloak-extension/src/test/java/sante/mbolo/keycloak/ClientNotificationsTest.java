@@ -95,6 +95,14 @@ class ClientNotificationsTest {
   }
 
   @Test
+  void attenteApresPerteDuTelephone() {
+    reponse = "{\"resultat\":\"attente-apres-perte\"}";
+    assertEquals(
+        ClientNotifications.Envoi.ATTENTE_APRES_PERTE,
+        client().envoyerCode("pat-fictif-005", "482913"));
+  }
+
+  @Test
   void alerteNumeroChangePourLeDossier() {
     assertEquals(
         ClientNotifications.Envoi.ENVOYE, client().alerterNumeroChange("pat-fictif-005"));

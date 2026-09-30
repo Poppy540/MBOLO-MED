@@ -20,6 +20,9 @@ public final class ClientDossier {
 
   private static final Duration DELAI = Duration.ofSeconds(8);
   private static final Pattern IDENTIFIANT = Pattern.compile("^[A-Za-z0-9\\-.]{1,64}$");
+  /** Parcours et date du changement du numéro (ADR-0023), profil mbolo-patient. */
+  static final String EXTENSION_CHANGEMENT_TELEPHONE =
+      "https://mbolo-sante.example/fhir/StructureDefinition/changement-telephone";
 
   private final URI base;
   private final Supplier<String> jeton;
@@ -58,7 +61,8 @@ public final class ClientDossier {
 
   /**
    * Remplace le numéro du dossier (ADR-0023) : seul {@code Patient.telecom} est envoyé ; la
-   * passerelle ne remplace que cet élément. Vrai seulement si le dossier confirme.
+   * passerelle ne remplace que cet élément. Le numéro porte le parcours (« patient » : codes à
+   * l'ancien et au nouveau numéro) et la date du changement. Vrai seulement si le dossier confirme.
    */
   public boolean modifierTelephone(String patientId, String telephone) {
     if (!IDENTIFIANT.matcher(patientId).matches()) return false;
@@ -67,7 +71,16 @@ public final class ClientDossier {
           Map.of(
               "resourceType", "Patient",
               "id", patientId,
-              "telecom", java.util.List.of(Map.of("system", "phone", "value", telephone, "use", "mobile")));
+              "telecom",
+              java.util.List.of(
+                  Map.of(
+                      "extension",
+                      java.util.List.of(
+                          Map.of("url", EXTENSION_CHANGEMENT_TELEPHONE, "valueCode", "patient")),
+                      "system", "phone",
+                      "value", telephone,
+                      "use", "mobile",
+                      "period", Map.of("start", java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()))));
       HttpRequest requete =
           HttpRequest.newBuilder(base.resolve("Patient/" + patientId))
               .timeout(DELAI)

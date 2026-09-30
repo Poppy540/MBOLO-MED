@@ -15,6 +15,8 @@ Usage: #example
 * birthDate = "1990-01-01"
 * telecom.system = #phone
 * telecom.value = "+241 00 00 00 00"
+* telecom.period.start = "2026-09-30T08:00:00Z"
+* telecom.extension[changementTelephone].valueCode = MboloChangementTelephoneCS#perte
 
 Instance: fictif-patient-a-verifier-0002
 InstanceOf: MboloPatient

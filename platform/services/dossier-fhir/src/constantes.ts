@@ -41,11 +41,13 @@ export const SYSTEMES = {
   sectionCompteRendu: `${CANONIQUE}/CodeSystem/mbolo-section-compte-rendu`,
   typeIdentifiantPatient: `${CANONIQUE}/CodeSystem/mbolo-type-identifiant-patient`,
   statutIdentite: `${CANONIQUE}/CodeSystem/mbolo-statut-identite`,
+  changementTelephone: `${CANONIQUE}/CodeSystem/mbolo-changement-telephone`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;
 export const EXTENSION_DATE_ANNULATION = `${CANONIQUE}/StructureDefinition/date-annulation`;
 export const EXTENSION_STATUT_IDENTITE = `${CANONIQUE}/StructureDefinition/statut-identite`;
+export const EXTENSION_CHANGEMENT_TELEPHONE = `${CANONIQUE}/StructureDefinition/changement-telephone`;
 
 /**
  * Types d'identifiant du patient (ADR-0014). Le système (URI) de chaque identifiant dépend du pays
@@ -57,6 +59,13 @@ export type TypeIdentifiantPatient = (typeof TYPES_IDENTIFIANT_PATIENT)[number];
 /** Vérification d'identité par un humain habilité ; aucune consultation avant « verifiee ». */
 export const STATUTS_IDENTITE = ['a-verifier', 'verifiee', 'refusee'] as const;
 export type StatutIdentite = (typeof STATUTS_IDENTITE)[number];
+
+/**
+ * Comment le numéro du dossier a été changé (ADR-0023) : par le patient avec les deux numéros, ou
+ * après une perte, sur décision d'une personne habilitée (24 heures sans code de connexion).
+ */
+export const PARCOURS_CHANGEMENT_TELEPHONE = ['patient', 'perte'] as const;
+export type ParcoursChangementTelephone = (typeof PARCOURS_CHANGEMENT_TELEPHONE)[number];
 
 /**
  * Qui a annulé un rendez-vous (code, jamais de motif en texte libre). « plateforme » : paiement non

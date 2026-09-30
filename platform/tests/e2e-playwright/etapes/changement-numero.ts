@@ -1,8 +1,9 @@
 // Étapes « changement du numéro du dossier » (ADR-0023) : action Keycloak lancée par l'application
 // (`kc_action`), codes lus dans la boîte SMS simulée. Données FICTIVES uniquement.
 import { expect, type Page, type Request } from '@playwright/test';
-import { APP_PATIENT_URL, APPLICATIONS } from '../configuration.js';
-import { Then, When, urlAutorisation, type Monde } from './fixtures.js';
+import { EXTENSION_CHANGEMENT_TELEPHONE } from '@mbolo/dossier-fhir';
+import { APP_PATIENT_URL, APPLICATIONS, FHIR_URL } from '../configuration.js';
+import { Given, Then, When, revendications, urlAutorisation, type Monde } from './fixtures.js';
 import { codeSmsRecu } from './niveau.js';
 
 /** Numéro saisi par la personne inscrite dans les scénarios (`IDENTITE_FICTIVE`, invitations.ts). */
@@ -98,4 +99,64 @@ Then('Keycloak refuse un second changement de numéro le même jour', async ({ m
   await expect(page(monde).locator('body')).toContainText(
     'Vous avez déjà changé de numéro il y a moins de 24 heures.',
   );
+});
+
+/** Éléments du dossier lus par ces étapes. */
+interface Patient {
+  id?: string;
+  telecom?: {
+    value?: string;
+    extension?: { url: string; valueCode?: string }[];
+    period?: { start?: string };
+  }[];
+}
+
+/** Dossier de la personne inscrite, lu directement dans le serveur FHIR (sans cache). */
+async function dossier(monde: Monde): Promise<Patient> {
+  const patientId = String(revendications(monde.inscription?.jeton ?? '')['patient_id']);
+  const r = await fetch(`${FHIR_URL}/Patient/${patientId}`, {
+    headers: { 'cache-control': 'no-cache' },
+  });
+  expect(r.status).toBe(200);
+  return (await r.json()) as Patient;
+}
+
+Given(
+  'le numéro de son dossier a été changé après une perte il y a {int} heures',
+  async ({ monde }, heures: number) => {
+    // Préparation : ce que fera la décision d'une personne habilitée (ADR-0023, parcours « perte »).
+    const p = await dossier(monde);
+    const le = new Date(Date.now() - heures * 3_600_000);
+    le.setUTCMilliseconds(0);
+    const telecom = (p.telecom ?? []).map((t) => ({
+      ...t,
+      extension: [{ url: EXTENSION_CHANGEMENT_TELEPHONE, valueCode: 'perte' }],
+      period: { start: le.toISOString() },
+    }));
+    const r = await fetch(`${FHIR_URL}/Patient/${p.id ?? ''}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/fhir+json' },
+      body: JSON.stringify({ ...p, telecom }),
+    });
+    expect(r.status).toBe(200);
+    monde.depuis = new Date().toISOString();
+  },
+);
+
+Then('Keycloak explique qu’aucun code n’est envoyé pendant 24 heures', async ({ monde }) => {
+  await expect(page(monde).locator('body')).toContainText(
+    "Par sécurité, aucun code n'est envoyé pendant 24 heures après ce changement.",
+  );
+});
+
+Then('un code arrive au numéro {string}', async ({ monde }, telephone: string) => {
+  expect(await codeSmsRecu(telephone, monde.depuis ?? '')).toMatch(/^[0-9]{6}$/);
+});
+
+Then('son dossier note un changement de numéro fait par le patient', async ({ monde }) => {
+  const [numero] = (await dossier(monde)).telecom ?? [];
+  expect(numero?.extension).toEqual([
+    { url: EXTENSION_CHANGEMENT_TELEPHONE, valueCode: 'patient' },
+  ]);
+  expect(Date.now() - new Date(numero?.period?.start ?? 0).getTime()).toBeLessThan(600_000);
 });

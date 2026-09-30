@@ -22,6 +22,8 @@ export const estDestinataire = (x: string): x is Destinataire =>
 export interface SourceContacts {
   telephone(d: Destinataire): Promise<string | undefined>;
   accepteRappels(patientId: string): Promise<boolean>;
+  /** Vrai pendant les 24 heures qui suivent un changement du numéro pour perte (ADR-0023). */
+  enAttenteApresPerte(patientId: string): Promise<boolean>;
 }
 
 /** Canal d'envoi (fournisseur SMS ou WhatsApp, ou canal simulé). */
@@ -72,7 +74,13 @@ export class ServiceNotifications {
    * pas de condition C-RAPPELS (c'est le patient qui le demande). Ni le numéro ni le code ne sont
    * journalisés.
    */
-  async envoyerCodeConnexion(patientId: string, code: string): Promise<Resultat> {
+  async envoyerCodeConnexion(
+    patientId: string,
+    code: string,
+  ): Promise<Resultat | 'attente-apres-perte'> {
+    // Après une perte, le nouveau numéro ne reçoit aucun code pendant 24 heures : si ce n'est pas
+    // le vrai patient, celui-ci a le temps de réagir à l'alerte reçue à l'ancien numéro (ADR-0023).
+    if (await this.contacts.enAttenteApresPerte(patientId)) return 'attente-apres-perte';
     const texte = redigerCodeConnexion(code, this.pays);
     const telephone = await this.contacts.telephone(`Patient/${patientId}`);
     if (!telephone) return 'ignoree-sans-numero';

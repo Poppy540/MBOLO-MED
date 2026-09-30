@@ -14,7 +14,11 @@ const monter = async (limiteParMinute?: number) => {
       return 'mbolo-teleconsultation-service';
     },
     service: new ServiceNotifications(
-      { telephone: async () => '+241 00 00 00 00', accepteRappels: async () => true },
+      {
+        telephone: async () => '+241 00 00 00 00',
+        accepteRappels: async () => true,
+        enAttenteApresPerte: async () => false,
+      },
       canal,
     ),
     journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
@@ -97,7 +101,11 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
         throw new Error('refusé');
       },
       service: new ServiceNotifications(
-        { telephone: async () => '+241 00 00 00 00', accepteRappels: async () => true },
+        {
+          telephone: async () => '+241 00 00 00 00',
+          accepteRappels: async () => true,
+          enAttenteApresPerte: async () => false,
+        },
         canal,
       ),
       journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
@@ -177,7 +185,11 @@ describe('API notifications — invitation d’un proche (ADR-0019)', () => {
         throw new Error('refusé');
       },
       service: new ServiceNotifications(
-        { telephone: async () => '+241 00 00 00 01', accepteRappels: async () => false },
+        {
+          telephone: async () => '+241 00 00 00 01',
+          accepteRappels: async () => false,
+          enAttenteApresPerte: async () => false,
+        },
         canal,
       ),
       journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),
@@ -235,7 +247,11 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
       },
       // Sans consentement aux rappels : le code part quand même, c'est le patient qui le demande.
       service: new ServiceNotifications(
-        { telephone: async () => '+241 00 00 00 05', accepteRappels: async () => false },
+        {
+          telephone: async () => '+241 00 00 00 05',
+          accepteRappels: async () => false,
+          enAttenteApresPerte: async () => false,
+        },
         canal,
       ),
       journal: creerJournal({ service: 'test', ecrire: (l) => lignes.push(l) }),

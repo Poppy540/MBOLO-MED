@@ -3,9 +3,12 @@ import { CATALOGUE, IDENTIFIANTS_GABARITS, rediger, verifierPays } from './gabar
 import { CanalSimule, ServiceNotifications, type SourceContacts } from './notifications.js';
 
 // Données FICTIVES.
-const contacts = (o: { rappels?: boolean; numero?: string | undefined } = {}): SourceContacts => ({
+const contacts = (
+  o: { rappels?: boolean; numero?: string | undefined; attente?: boolean } = {},
+): SourceContacts => ({
   telephone: async () => ('numero' in o ? o.numero : '+241 00 00 00 00'),
   accepteRappels: async () => o.rappels ?? true,
+  enAttenteApresPerte: async () => o.attente ?? false,
 });
 
 const demande = {
@@ -81,5 +84,16 @@ describe('ServiceNotifications', () => {
     ).toBe('ignoree-sans-numero');
     const enPanne = { nom: 'panne', envoyer: async () => Promise.reject(new Error('x')) };
     expect(await new ServiceNotifications(contacts(), enPanne).envoyer(demande)).toBe('echec');
+  });
+
+  it('n’envoie aucun code de connexion dans les 24 heures qui suivent une perte (ADR-0023)', async () => {
+    const canal = new CanalSimule();
+    const service = new ServiceNotifications(contacts({ attente: true }), canal);
+    expect(await service.envoyerCodeConnexion('pat-fictif-005', '482913')).toBe(
+      'attente-apres-perte',
+    );
+    expect(canal.boite).toEqual([]);
+    // Les autres messages (rappels, alertes de sécurité) partent normalement.
+    expect(await service.envoyer(demande)).toBe('envoyee');
   });
 });

@@ -153,3 +153,21 @@ Description: "Statuts admis pour la vérification d'identité (ADR-0014)."
 * ^status = #draft
 * ^experimental = true
 * include codes from system MboloStatutIdentiteCS
+
+CodeSystem: MboloChangementTelephoneCS
+Id: mbolo-changement-telephone
+Title: "Parcours de changement du numéro"
+Description: "Comment le numéro du dossier a été changé (ADR-0023)."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #patient "Par le patient" "Code reçu à l'ancien numéro, puis au nouveau numéro."
+* #perte "Après une perte" "Code reçu au nouveau numéro, nouvelles photos, décision d'une personne habilitée ; 24 heures sans code de connexion."
+
+ValueSet: MboloChangementTelephoneVS
+Id: mbolo-changement-telephone
+Title: "Parcours de changement du numéro"
+Description: "Parcours admis pour un changement de numéro (ADR-0023)."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloChangementTelephoneCS
