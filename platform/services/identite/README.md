@@ -138,7 +138,7 @@ Le SMS reste le choix par défaut. Le patient qui le veut le remplace par une ap
 - **Niveau 2 ensuite** : `mbolo-code-sms` demande le code de l'application et **n'accepte plus le SMS**. Seul le justificatif désigné compte : un code TOTP ajouté par l'action standard `CONFIGURE_TOTP` (possible avec le seul mot de passe) ne remplace jamais le SMS. Un code faux compte comme un échec de connexion (protection contre la force brute, comme le formulaire OTP de Keycloak). Justificatif désigné disparu : niveau 2 refusé, sans retour au SMS ; seule l'équipe peut rétablir le compte.
 - **Retirer** : action `mbolo-retirer-application` (`kc_action`), un code de l'application exigé (5 essais), SMS `application-retiree`, puis justificatif et attribut retirés : retour au SMS.
 
-Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_ACTIVER_APPLICATION_NOTIFICATIONS_URL` et `KC_SPI_REQUIRED_ACTION_MBOLO_RETIRER_APPLICATION_NOTIFICATIONS_URL`. Application perdue : code de récupération de l'équipe (ADR-0021), étape suivante de l'ADR-0024.
+Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_ACTIVER_APPLICATION_NOTIFICATIONS_URL` et `KC_SPI_REQUIRED_ACTION_MBOLO_RETIRER_APPLICATION_NOTIFICATIONS_URL`. **Application perdue** : le code de récupération de l'équipe (ADR-0021, `mbolo-code-recuperation`) retire aussi l'application (justificatif et attribut) et note la date (`mbolo_application_retiree_le`) ; pendant **24 heures**, le niveau 2 est refusé (ni code SMS ni code d'application, message Keycloak) pour que le vrai patient, prévenu par le SMS `compte-recupere`, ait le temps de réagir. Un patient sans application n'est pas concerné.
 
 ### Construction et configuration
 

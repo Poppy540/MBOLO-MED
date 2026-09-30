@@ -10,6 +10,13 @@ const codes = new WeakMap<Monde, string>();
 /** Nouveaux mots de passe choisis pendant l'exécution (jamais écrits sur disque). */
 const nouveaux = new Map<string, string>();
 
+/** Mot de passe choisi par le patient avec un code de récupération, dans cette exécution. */
+export function nouveauMotDePasse(identifiant: string): string {
+  const mdp = nouveaux.get(identifiant);
+  if (!mdp) throw new Error(`${identifiant} n'a pas récupéré son compte dans cette exécution.`);
+  return mdp;
+}
+
 async function demanderCode(monde: Monde, jeton: string, patient: string) {
   const patientId = compte(patient).attributs['patient_id'] ?? '';
   const r = await fetch(`${INVITATIONS_URL}/assistance/recuperation`, {

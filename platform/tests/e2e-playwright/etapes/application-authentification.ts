@@ -4,6 +4,7 @@ import { expect, type Browser, type Page, type Request } from '@playwright/test'
 import { APPLICATIONS, EMETTEUR } from '../configuration.js';
 import { Then, When, saisirIdentifiants, urlAutorisation, type Monde } from './fixtures.js';
 import { codeSmsRecu, telephoneDu } from './niveau.js';
+import { nouveauMotDePasse } from './recuperation.js';
 import { boite } from './teleconsultation.js';
 import { codeUnique, retenirSecret } from './totp.js';
 
@@ -163,5 +164,32 @@ When(
     await page.goto(`${url}&kc_action=CONFIGURE_TOTP`).catch(() => undefined);
     // Page standard de Keycloak : le justificatif est créé, mais il ne désigne pas l'application.
     expect(await saisirIdentifiants(page, identifiant, true)).toBe('connecte');
+  },
+);
+
+Then(
+  'pendant 24 heures, Keycloak ne demande à {string} ni code SMS ni code d’application',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    const contexte = await browser.newContext();
+    monde.visio.set(CLE, { contexte, page: await contexte.newPage() });
+    const page = (monde.visio.get(CLE) as { page: Page }).page;
+    const { url } = urlAutorisation('patient', true);
+    const depuis = new Date().toISOString();
+    await page.goto(`${url}&acr_values=2`).catch(() => undefined);
+    // Mot de passe choisi avec le code de l'équipe (l'ancien ne fonctionne plus).
+    await page.locator('#username').fill(identifiant);
+    await page.locator('#password').fill(nouveauMotDePasse(identifiant));
+    await page.locator('#kc-login').click();
+    await expect(page.locator('body')).toContainText('aucun code n');
+    await expect(page.locator('body')).toContainText('24 heures');
+    await expect(page.locator('#code_sms')).toHaveCount(0);
+    await expect(page.locator('#code_application')).toHaveCount(0);
+    const codes = (await boite()).filter(
+      (m) =>
+        m.telephone === telephoneDu(identifiant) &&
+        m.date >= depuis &&
+        /votre code est/.test(m.texte),
+    );
+    expect(codes).toEqual([]);
   },
 );

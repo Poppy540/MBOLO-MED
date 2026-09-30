@@ -22,6 +22,13 @@ final class ApplicationAuthentification {
   static final String LIBELLE = "Application Mbolo Santé";
   /** Essais de code dans une même action (activer ou retirer). */
   static final int ESSAIS_MAX = 5;
+  /**
+   * Date (millisecondes) du retrait de l'application par un code de récupération de l'équipe
+   * (application perdue) : pendant {@link #ATTENTE_APRES_RETRAIT_MS}, aucun code SMS ne donne le
+   * niveau 2, pour que le vrai patient, prévenu par SMS, ait le temps de réagir.
+   */
+  static final String ATTRIBUT_RETRAIT = "mbolo_application_retiree_le";
+  static final long ATTENTE_APRES_RETRAIT_MS = 24 * 3_600_000L;
 
   enum Etat {
     /** Pas d'application : le code arrive par SMS. */
@@ -39,6 +46,31 @@ final class ApplicationAuthentification {
     if (id == null || id.isBlank()) return Etat.AUCUNE;
     CredentialModel c = user.credentialManager().getStoredCredentialById(id);
     return c != null && OTPCredentialModel.TYPE.equals(c.getType()) ? Etat.ACTIVE : Etat.INTROUVABLE;
+  }
+
+  /**
+   * Application perdue (ADR-0024) : le code de récupération de l'équipe vient d'être utilisé. Le
+   * justificatif désigné (s'il existe encore) et l'attribut sont retirés, la date est notée.
+   * Renvoie vrai si le compte avait une application.
+   */
+  static boolean retirerApresRecuperation(UserModel user, long maintenant) {
+    String id = user.getFirstAttribute(ATTRIBUT);
+    if (id == null || id.isBlank()) return false;
+    user.credentialManager().removeStoredCredentialById(id);
+    user.removeAttribute(ATTRIBUT);
+    user.setSingleAttribute(ATTRIBUT_RETRAIT, Long.toString(maintenant));
+    return true;
+  }
+
+  /** Vrai pendant les 24 heures qui suivent un retrait par code de récupération. */
+  static boolean enAttente(UserModel user, long maintenant) {
+    return enAttente(user.getFirstAttribute(ATTRIBUT_RETRAIT), maintenant);
+  }
+
+  static boolean enAttente(String retraitLe, long maintenant) {
+    if (retraitLe == null || !retraitLe.matches("[0-9]{1,15}")) return false;
+    // Un écart négatif (horloge d'un autre nœud en retard) compte comme une attente en cours.
+    return maintenant - Long.parseLong(retraitLe) < ATTENTE_APRES_RETRAIT_MS;
   }
 
   /** Vrai si le code est celui du justificatif désigné (et seulement de celui-là). */

@@ -73,6 +73,7 @@ Les professionnels et les proches utilisent déjà une application d'authentific
    - le code de l'équipe (flux `identifiants-oublies-mbolo`) retire aussi l'application ;
    - 24 heures sans code SMS ensuite, avec un message Keycloak clair.
    - E2E.
+   - **Faite (PR CS)** : attribut `mbolo_application_retiree_le` (date du retrait), posé seulement si le compte avait une application ; un patient sans application récupère son compte comme avant ; l'alerte est le SMS `compte-recupere` de l'ADR-0021.
 3. **Application patient** :
    - écran « Protéger mon compte » (explication simple, les trois applications citées, activer ou retirer), message au retour selon `kc_action_status` ;
    - ligne « faite » dans la matrice ASVS (V6.6.1).
