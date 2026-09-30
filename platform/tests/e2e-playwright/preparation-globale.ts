@@ -17,6 +17,7 @@ import {
   PREFIXE_INSCRITS,
   RESSOURCES_FHIR,
   ROYAUME,
+  SPECIALITES_FICTIVES,
   TELEPHONES_FICTIFS,
   UNLEASH_URL,
   VARIABLE_MOTS_DE_PASSE,
@@ -84,7 +85,11 @@ async function preparerDossier(): Promise<void> {
             }
           : {}),
         ...(type === 'Practitioner'
-          ? { telecom: [{ system: 'phone', value: '+241 00 00 00 02' }] }
+          ? {
+              telecom: [{ system: 'phone', value: '+241 00 00 00 02' }],
+              // Spécialité affichée dans l'annuaire (filtre de l'application patient).
+              qualification: [{ code: { text: SPECIALITES_FICTIVES[id] ?? 'Médecine générale' } }],
+            }
           : {}),
       }),
     });

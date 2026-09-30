@@ -213,6 +213,11 @@ export const COMPTES: CompteFictif[] = [
   },
 ];
 
+/** [FICTIF] Spécialité de chaque professionnel fictif (les autres : médecine générale). */
+export const SPECIALITES_FICTIVES: Record<string, string> = {
+  'prac-fictif-002': 'Pédiatrie',
+};
+
 /** [FICTIF] Ressources du dossier référencées par les comptes (créées dans le serveur FHIR de test). */
 export const RESSOURCES_FHIR = [
   ...COMPTES.flatMap((c) =>
