@@ -36,6 +36,9 @@ services:
       # Changement du numéro par le patient (ADR-0023) : dossier (numéro seul) et notifications (codes, alerte).
       KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_DOSSIER_URL: ${PASSERELLE_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3002/fhir/}
       KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_NOTIFICATIONS_URL: ${NOTIFICATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3004/}
+      # Téléphone perdu (ADR-0023) : code au nouveau numéro, puis demande au service documents.
+      KC_SPI_REQUIRED_ACTION_MBOLO_TELEPHONE_PERDU_NOTIFICATIONS_URL: ${NOTIFICATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3004/}
+      KC_SPI_REQUIRED_ACTION_MBOLO_TELEPHONE_PERDU_DOCUMENTS_URL: ${DOCUMENTS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3007/}
       # Système du numéro d'assurance maladie nationale du pays déployé (Gabon : CNAMGS) [FICTIF en dev].
       KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_IDENTIFIANT_ASSURANCE_SYSTEME: ${IDENTIFIANT_ASSURANCE_SYSTEME:-https://mbolo-sante.example/fhir/identifiant/ga/assurance-maladie}
     extra_hosts:

@@ -67,8 +67,27 @@ async function confirmerParSms(reprise: EcranSensible) {
   location.assign(await demarrerConnexion(connexion(), sessionStorage, false, NIVEAU_SENSIBLE));
 }
 
-/** Action Keycloak « Changer mon numéro » (ADR-0023) : codes à l'ancien puis au nouveau numéro. */
-const ACTION_CHANGER_NUMERO = 'mbolo-changer-telephone';
+/**
+ * Actions Keycloak lancées par l'application (ADR-0023) : « changer » (codes à l'ancien puis au
+ * nouveau numéro) et « perte » (code au nouveau numéro, puis photos et décision de l'équipe).
+ */
+type Parcours = 'changer' | 'perte';
+const ACTIONS: Record<Parcours, string> = {
+  changer: 'mbolo-changer-telephone',
+  perte: 'mbolo-telephone-perdu',
+};
+/**
+ * Parcours en cours, le temps de l'aller-retour (pour lire son résultat au retour) : un mot fixe
+ * de la liste, jamais une saisie ni un numéro.
+ */
+const CLE_PARCOURS = 'mbolo.parcours';
+
+async function lancerAction(parcours: Parcours) {
+  sessionStorage.setItem(CLE_PARCOURS, parcours === 'perte' ? 'perte' : 'changer');
+  location.assign(
+    await demarrerConnexion(connexion(), sessionStorage, false, undefined, ACTIONS[parcours]),
+  );
+}
 
 const MESSAGES_NUMERO = {
   success: 'Votre numéro est changé. Les prochains codes arriveront à ce numéro.',
@@ -94,6 +113,7 @@ type Ecran =
   | { nom: 'partages' }
   | { nom: 'confirmation-sms'; reprise: EcranSensible }
   | { nom: 'changer-numero'; depuis: Ecran }
+  | { nom: 'perte' }
   | { nom: 'recus' };
 
 export function App() {
@@ -111,10 +131,18 @@ export function App() {
       .then((j) => {
         if (j) {
           jeton = j;
-          // Retour de « Changer mon numéro » : résultat de l'action, lu avant d'effacer l'adresse.
+          // Retour d'une action Keycloak : résultat lu avant d'effacer l'adresse.
           const numero = statutAction(adresse);
-          if (numero) setMessage(MESSAGES_NUMERO[numero]);
+          const parcours = sessionStorage.getItem(CLE_PARCOURS);
+          sessionStorage.removeItem(CLE_PARCOURS);
           history.replaceState(null, '', '/');
+          if (numero === 'success' && parcours === 'perte') {
+            // Demande enregistrée : le patient envoie tout de suite ses nouvelles photos.
+            setMessage('Demande enregistrée. Envoyez maintenant deux nouvelles photos.');
+            setEcran({ nom: 'perte' });
+            return;
+          }
+          if (numero) setMessage(MESSAGES_NUMERO[numero]);
           // Un proche désigné par un patient (C-PROCHE) ne voit que les documents partagés.
           const r = revendications(j);
           const roles = (r['realm_access'] as { roles?: string[] } | undefined)?.roles ?? [];
@@ -252,7 +280,15 @@ export function App() {
           }
         />
       ) : ecran.nom === 'changer-numero' ? (
-        <ChangerNumero retour={() => setEcran(ecran.depuis)} />
+        <ChangerNumero
+          retour={() => setEcran(ecran.depuis)}
+          photos={() => {
+            setMessage(undefined);
+            setEcran({ nom: 'perte' });
+          }}
+        />
+      ) : ecran.nom === 'perte' ? (
+        <EcranVerification perte retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'documents-proche' ? (
         <EcranDocuments proche />
       ) : ecran.nom === 'paiement' ? (
@@ -386,7 +422,7 @@ function ConfirmationSms(p: {
  * nouveau numéro, code au nouveau numéro), puis l'application affiche le résultat. Le numéro ne
  * passe jamais par l'application.
  */
-function ChangerNumero(p: { retour: () => void }) {
+function ChangerNumero(p: { retour: () => void; photos: () => void }) {
   return (
     <section data-changer-numero>
       <h2>
@@ -399,25 +435,22 @@ function ChangerNumero(p: { retour: () => void }) {
         <li>un autre code arrive à ce nouveau numéro.</li>
       </ol>
       <p>Votre ancien numéro recevra un message pour vous prévenir du changement.</p>
-      <button
-        class="principal"
-        onClick={async () =>
-          location.assign(
-            await demarrerConnexion(
-              connexion(),
-              sessionStorage,
-              false,
-              undefined,
-              ACTION_CHANGER_NUMERO,
-            ),
-          )
-        }
-      >
+      <button class="principal" onClick={() => void lancerAction('changer')}>
         <span aria-hidden="true">📨</span> Recevoir le code
+      </button>
+      <h3>Vous avez perdu votre téléphone ?</h3>
+      <p>
+        Indiquez votre nouveau numéro, puis envoyez deux nouvelles photos. Une personne de l’équipe
+        Mbolo Santé vérifiera que c’est bien vous avant de changer le numéro.
+      </p>
+      <button onClick={() => void lancerAction('perte')}>
+        <span aria-hidden="true">🆘</span> J’ai perdu mon téléphone
+      </button>
+      <button onClick={p.photos}>
+        <span aria-hidden="true">📷</span> Envoyer mes photos (demande déjà faite)
       </button>
       <button onClick={p.retour}>Retour</button>
       <p>
-        Plus de téléphone ou plus de numéro ? Appelez l’équipe Mbolo Santé.{' '}
         <strong>En cas d'urgence, appelez les secours.</strong>
       </p>
     </section>
@@ -425,8 +458,9 @@ function ChangerNumero(p: { retour: () => void }) {
 }
 
 /** Écran chargé à la demande : il ne pèse rien à l'ouverture de l'application. */
-function EcranVerification(p: { retour: () => void }) {
-  const [Ecran, setEcran] = useState<ComponentType<{ jeton: string; retour: () => void }>>();
+function EcranVerification(p: { retour: () => void; perte?: boolean }) {
+  const [Ecran, setEcran] =
+    useState<ComponentType<{ jeton: string; retour: () => void; perte?: boolean }>>();
   const [echec, setEchec] = useState(false);
   useEffect(() => {
     import('./verification.js')
@@ -442,7 +476,7 @@ function EcranVerification(p: { retour: () => void }) {
     );
   }
   return Ecran && jeton ? (
-    <Ecran jeton={jeton} retour={p.retour} />
+    <Ecran jeton={jeton} retour={p.retour} perte={p.perte === true} />
   ) : (
     <p aria-live="polite">Chargement…</p>
   );

@@ -52,7 +52,8 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
     - un écran explique qu'il faut les deux téléphones : un code à l'ancien numéro, le nouveau numéro, puis un code au nouveau numéro ; l'ancien numéro est prévenu ;
     - « Recevoir le code » ouvre l'action Keycloak `mbolo-changer-telephone` (`kc_action`) : **le numéro et les codes ne passent jamais par l'application** ;
     - au retour, l'application lit `kc_action_status` et affiche « Votre numéro est changé… », « Votre numéro n'a pas changé. » ou « …n'a pas pu être changé. Réessayez plus tard. » ;
-    - pas de flag : c'est une fonction de sécurité. Téléphone perdu : « Appelez l'équipe Mbolo Santé » en attendant le parcours « perte » (ADR-0023, étape 3).
+    - pas de flag : c'est une fonction de sécurité ;
+    - **« J'ai perdu mon téléphone »** (même écran) : action Keycloak `mbolo-telephone-perdu` (nouveau numéro et son code seulement). Au retour réussi, l'application ouvre « Vos deux nouvelles photos » (même écran que la vérification d'identité, chargé à la demande, charte déjà acceptée) ; une personne de l'équipe vérifie avant de changer le numéro, et l'ancien numéro est prévenu. « Envoyer mes photos (demande déjà faite) » rouvre cet écran plus tard.
 
 Les erreurs sont affichées en phrases simples, sans jargon.
 

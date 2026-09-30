@@ -385,6 +385,8 @@ describe('royaume mbolo', () => {
     // Changement de numéro (ADR-0023) : lancé par l'application seulement, jamais par défaut.
     const changer = royaume.requiredActions.find((a) => a.alias === 'mbolo-changer-telephone');
     expect(changer).toMatchObject({ enabled: true, defaultAction: false });
+    const perte = royaume.requiredActions.find((a) => a.alias === 'mbolo-telephone-perdu');
+    expect(perte).toMatchObject({ enabled: true, defaultAction: false });
   });
 
   it("ne demande ni nom ni e-mail à l'inscription : identité dans le dossier seulement", () => {

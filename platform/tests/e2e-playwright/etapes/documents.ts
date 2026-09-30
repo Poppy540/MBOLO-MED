@@ -36,7 +36,13 @@ const patientId = (identifiant: string): string => {
 };
 
 /** Image PNG [FICTIF] : un aplat de couleur, de quoi passer la compression du téléphone. */
-function pngFictif(rouge: number, vert: number, bleu: number, largeur = 64, hauteur = 48): Buffer {
+export function pngFictif(
+  rouge: number,
+  vert: number,
+  bleu: number,
+  largeur = 64,
+  hauteur = 48,
+): Buffer {
   const crc = (octets: Buffer): number => {
     let c = ~0;
     for (const o of octets) {

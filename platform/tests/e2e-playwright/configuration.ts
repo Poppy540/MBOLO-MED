@@ -41,7 +41,8 @@ export const COHORTES: Record<string, string[]> = {
   'consentement.proche': ['patient-fictif-01', 'proche-fictif-01'],
   'documents.proche': ['proche-fictif-01'],
   'teleconsultation.video': ['patient-fictif-01', 'medecin-fictif-01', 'patient-fictif-04'],
-  'identite.photos': ['patient-fictif-01', 'patient-fictif-03'],
+  // Téléphone perdu (ADR-0023) : patient-fictif-06 envoie de nouvelles photos.
+  'identite.photos': ['patient-fictif-01', 'patient-fictif-03', 'patient-fictif-06'],
   // Réservation payante (ADR-0017) : un seul patient, les autres réservent sans paiement.
   // Le compte des relevés y est aussi : reversements.professionnels dépend de ce flag.
   'paiement.mobile-money': ['patient-fictif-04', 'reversements-fictif-01'],
@@ -119,6 +120,14 @@ export const COMPTES: CompteFictif[] = [
     role: 'patient',
     application: 'patient',
     attributs: { patient_id: 'pat-fictif-005' },
+  },
+  {
+    // Téléphone perdu (ADR-0023) : son numéro change pendant les scénarios (remis à la préparation).
+    identifiant: 'patient-fictif-06',
+    prenom: 'Serge',
+    role: 'patient',
+    application: 'patient',
+    attributs: { patient_id: 'pat-fictif-006' },
   },
   {
     identifiant: 'medecin-fictif-01',
@@ -208,6 +217,16 @@ export const RESSOURCES_FHIR = [
     })),
   ),
 ];
+
+/**
+ * [FICTIF] Numéro du dossier de chaque patient (préparation) : ceux dont les SMS ne doivent pas se
+ * mêler aux autres ont leur propre numéro ; les autres partagent +241 00 00 00 01.
+ */
+export const TELEPHONES_FICTIFS: Record<string, string> = {
+  'pat-fictif-004': '+241 00 00 00 04',
+  'pat-fictif-005': '+241 00 00 00 05',
+  'pat-fictif-006': '+241 00 00 00 06',
+};
 
 /** [FICTIF] Patients dont l'identité reste « à vérifier » après la préparation. */
 export const PATIENTS_A_VERIFIER = ['pat-fictif-003'];

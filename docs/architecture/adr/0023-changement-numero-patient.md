@@ -72,7 +72,7 @@ Dans l'application (connexion par mot de passe, niveau 1) : « J'ai perdu mon t�
 3. **Perte du téléphone**, en trois PR :
    1. **Dossier et attente de 24 h** (**faite, PR CN**) : le numéro changé porte son parcours (`patient` ou `perte`, extension `changement-telephone`) et sa date (`period.start`, règle `mbolo-pat-3`) ; le changement par le patient (étape 1) les écrit ; `notifications` n'envoie aucun code de connexion pendant 24 h après une perte (`attente-apres-perte`), Keycloak l'explique au patient. E2E.
    2. **Demande et décision** (service `documents`, **faite, PR CO**) : demande « perte » ouverte après le code au nouveau numéro (le nouveau numéro est gardé chiffré jusqu'à la décision, puis effacé), nouvelles photos, décision de `verification-identite` (accepter ou refuser, sans texte libre) ; si c'est accepté, le dossier reçoit le numéro avec le parcours `perte` et l'ancien numéro est prévenu.
-   3. **Parcours complet** : action Keycloak « J'ai perdu mon téléphone », écran de l'application patient, écran de décision de l'espace professionnel. E2E.
+   3. **Parcours complet** : action Keycloak `mbolo-telephone-perdu` et écran de l'application patient (**faits, PR CP**, e2e avec la décision par l'API), puis écran de décision de l'espace professionnel (PR suivante).
 
 ## Sources
 
