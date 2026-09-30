@@ -10,7 +10,7 @@ interface EnAttente {
   depuis: string;
 }
 
-interface Fiche {
+export interface Fiche {
   patientId: string;
   statut: string;
   nom?: string;
@@ -20,14 +20,14 @@ interface Fiche {
   documents: { id: string; type: string; deposeLe: string }[];
 }
 
-const LIBELLES_TYPE: Record<string, string> = {
+export const LIBELLES_TYPE: Record<string, string> = {
   'piece-identite': "Pièce d'identité",
   'acte-naissance': 'Acte de naissance',
   visage: 'Visage',
 };
 
 /** Motifs de refus : liste fermée, identique à celle du service (aucun texte libre). */
-const MOTIFS: [string, string][] = [
+export const MOTIFS: [string, string][] = [
   ['photo-illisible', 'Photo illisible'],
   ['document-non-conforme', 'Document non conforme'],
   ['visage-different', 'Le visage ne correspond pas'],
@@ -37,7 +37,11 @@ const MOTIFS: [string, string][] = [
 
 class ErreurVerif extends Error {}
 
-async function appeler(jeton: string, chemin: string, init: RequestInit = {}): Promise<Response> {
+export async function appeler(
+  jeton: string,
+  chemin: string,
+  init: RequestInit = {},
+): Promise<Response> {
   let r: Response;
   try {
     r = await fetch(`${CONFIG.apiDocuments}${chemin}`, {
@@ -117,27 +121,13 @@ function FicheVerification(p: {
   retour: (message?: string) => void;
 }) {
   const [fiche, setFiche] = useState<Fiche>();
-  const [images, setImages] = useState<Record<string, string>>({});
   const [resultat, setResultat] = useState<'verifiee' | 'refusee' | 'a-refaire'>();
   const [envoi, setEnvoi] = useState(false);
 
   useEffect(() => {
-    const adresses: string[] = [];
-    const chemin = `/verifications/${encodeURIComponent(p.patientId)}`;
-    appeler(p.jeton, chemin)
-      .then(async (r) => {
-        const f = (await r.json()) as Fiche;
-        setFiche(f);
-        for (const d of f.documents) {
-          const photo = await appeler(p.jeton, `${chemin}/documents/${d.id}`);
-          const adresse = URL.createObjectURL(await photo.blob());
-          adresses.push(adresse);
-          setImages((x) => ({ ...x, [d.id]: adresse }));
-        }
-      })
+    appeler(p.jeton, `/verifications/${encodeURIComponent(p.patientId)}`)
+      .then(async (r) => setFiche((await r.json()) as Fiche))
       .catch((e: unknown) => p.signaler((e as Error).message));
-    // Les photos quittent la mémoire avec l'écran.
-    return () => adresses.forEach((a) => URL.revokeObjectURL(a));
   }, [p.patientId]);
 
   const decider = async (e: Event) => {
@@ -180,39 +170,15 @@ function FicheVerification(p: {
   }
   return (
     <section>
-      <h2>Identité déclarée</h2>
-      <dl class="identite">
-        <dt>Nom</dt>
-        <dd>{fiche.nom ?? '—'}</dd>
-        <dt>Prénom(s)</dt>
-        <dd>{fiche.prenoms.join(' ') || '—'}</dd>
-        <dt>Date de naissance</dt>
-        <dd>{fiche.naissance ?? '—'}</dd>
-        {fiche.identifiants.flatMap((i) => [
-          <dt key={`t-${i.type}`}>
-            {i.type === 'assurance-maladie' ? 'Assurance maladie' : 'Numéro provisoire'}
-          </dt>,
-          <dd key={`v-${i.type}`}>{i.valeur}</dd>,
-        ])}
-      </dl>
+      <IdentiteDeclaree fiche={fiche} />
       <h3>Photos</h3>
-      <p>
-        <small>Chaque ouverture est enregistrée dans le dossier du patient.</small>
-      </p>
-      <div class="photos">
-        {fiche.documents.map((d) => (
-          <figure key={d.id}>
-            {images[d.id] ? (
-              <img src={images[d.id]} alt={`Photo : ${LIBELLES_TYPE[d.type] ?? d.type}`} />
-            ) : (
-              <p aria-live="polite">Chargement…</p>
-            )}
-            <figcaption>
-              {LIBELLES_TYPE[d.type] ?? d.type} — {p.quand(d.deposeLe)}
-            </figcaption>
-          </figure>
-        ))}
-      </div>
+      <Photos
+        jeton={p.jeton}
+        patientId={p.patientId}
+        documents={fiche.documents}
+        quand={p.quand}
+        signaler={p.signaler}
+      />
       <form onSubmit={(e) => void decider(e)}>
         <fieldset>
           <legend>Décision</legend>
@@ -273,5 +239,78 @@ function FicheVerification(p: {
       </form>
       <button onClick={() => p.retour()}>Retour</button>
     </section>
+  );
+}
+
+export function IdentiteDeclaree(p: { fiche: Omit<Fiche, 'documents'> }) {
+  const f = p.fiche;
+  return (
+    <>
+      <h2>Identité déclarée</h2>
+      <dl class="identite">
+        <dt>Nom</dt>
+        <dd>{f.nom ?? '—'}</dd>
+        <dt>Prénom(s)</dt>
+        <dd>{f.prenoms.join(' ') || '—'}</dd>
+        <dt>Date de naissance</dt>
+        <dd>{f.naissance ?? '—'}</dd>
+        {f.identifiants.flatMap((i) => [
+          <dt key={`t-${i.type}`}>
+            {i.type === 'assurance-maladie' ? 'Assurance maladie' : 'Numéro provisoire'}
+          </dt>,
+          <dd key={`v-${i.type}`}>{i.valeur}</dd>,
+        ])}
+      </dl>
+    </>
+  );
+}
+
+/** Photos déchiffrées par le service : chaque ouverture est tracée dans le dossier du patient. */
+export function Photos(p: {
+  jeton: string;
+  patientId: string;
+  documents: Fiche['documents'];
+  quand: (iso: string) => string;
+  signaler: (message: string) => void;
+}) {
+  const [images, setImages] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const adresses: string[] = [];
+    let fini = false;
+    (async () => {
+      for (const d of p.documents) {
+        const chemin = `/verifications/${encodeURIComponent(p.patientId)}/documents/${d.id}`;
+        const adresse = URL.createObjectURL(await (await appeler(p.jeton, chemin)).blob());
+        adresses.push(adresse);
+        if (fini) return URL.revokeObjectURL(adresse);
+        setImages((x) => ({ ...x, [d.id]: adresse }));
+      }
+    })().catch((e: unknown) => p.signaler((e as Error).message));
+    // Les photos quittent la mémoire avec l'écran.
+    return () => {
+      fini = true;
+      adresses.forEach((a) => URL.revokeObjectURL(a));
+    };
+  }, [p.patientId]);
+  return (
+    <>
+      <p>
+        <small>Chaque ouverture est enregistrée dans le dossier du patient.</small>
+      </p>
+      <div class="photos">
+        {p.documents.map((d) => (
+          <figure key={d.id}>
+            {images[d.id] ? (
+              <img src={images[d.id]} alt={`Photo : ${LIBELLES_TYPE[d.type] ?? d.type}`} />
+            ) : (
+              <p aria-live="polite">Chargement…</p>
+            )}
+            <figcaption>
+              {LIBELLES_TYPE[d.type] ?? d.type} — {p.quand(d.deposeLe)}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </>
   );
 }

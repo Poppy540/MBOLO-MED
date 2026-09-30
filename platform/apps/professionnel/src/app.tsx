@@ -45,6 +45,7 @@ type Ecran =
   | { nom: 'dossier'; rendezVous: RendezVous }
   | { nom: 'visio'; rendezVous: RendezVous }
   | { nom: 'verifications' }
+  | { nom: 'pertes' }
   | { nom: 'remboursements' }
   | { nom: 'assistance' };
 
@@ -120,6 +121,7 @@ export function App() {
         (ecran.nom === 'rendez-vous' ||
           ecran.nom === 'creneaux' ||
           ecran.nom === 'verifications' ||
+          ecran.nom === 'pertes' ||
           ecran.nom === 'remboursements' ||
           ecran.nom === 'assistance') && (
           <nav class="actions">
@@ -145,6 +147,14 @@ export function App() {
                 onClick={() => allerA({ nom: 'verifications' })}
               >
                 <span aria-hidden="true">🪪</span> Vérifications
+              </button>
+            )}
+            {estVerificateur() && (
+              <button
+                class={ecran.nom === 'pertes' ? 'principal' : ''}
+                onClick={() => allerA({ nom: 'pertes' })}
+              >
+                <span aria-hidden="true">📱</span> Numéros perdus
               </button>
             )}
             {estValideur() && (
@@ -198,6 +208,8 @@ export function App() {
         <DossierPatient rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : ecran.nom === 'verifications' ? (
         <EcranVerifications signaler={(m) => setMessage(m)} />
+      ) : ecran.nom === 'pertes' ? (
+        <EcranPertes signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'remboursements' ? (
         <EcranRemboursements signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'assistance' ? (
@@ -223,6 +235,22 @@ function EcranVerifications(p: { signaler: (m: string) => void }) {
   useEffect(() => {
     import('./verifications.js')
       .then((m) => setEcran(() => m.Verifications))
+      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+  }, []);
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
+  ) : (
+    <p aria-live="polite">Chargement…</p>
+  );
+}
+
+/** Changements de numéro après un téléphone perdu (ADR-0023) : écran chargé à la demande. */
+function EcranPertes(p: { signaler: (m: string) => void }) {
+  type Props = { jeton: string; quand: (iso: string) => string; signaler: (m: string) => void };
+  const [Ecran, setEcran] = useState<ComponentType<Props>>();
+  useEffect(() => {
+    import('./pertes.js')
+      .then((m) => setEcran(() => m.Pertes))
       .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
   }, []);
   return Ecran && jeton ? (
