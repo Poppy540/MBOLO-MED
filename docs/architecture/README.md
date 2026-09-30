@@ -26,6 +26,7 @@
 | [0020](adr/0020-facturation.md)                              | Facturation : encaissement centralisé (sauf médicaments), reçus, reversements validés par un humain, abonnements                                                               | Proposée (modèle centralisé retenu ; juriste et comptable) |
 | [0021](adr/0021-recuperation-compte-patient.md)              | Récupération du compte d'un patient sans e-mail : code remis par l'équipe d'assistance après rappel au numéro du dossier et date de naissance                                  | Acceptée (vague 1)                                         |
 | [0022](adr/0022-double-authentification-patients.md)         | Double authentification des patients : code SMS pour les actions sensibles (payer, partager le dossier, inviter un proche), niveau 2 Keycloak exigé par les services           | Acceptée                                                   |
+| [0023](adr/0023-changement-numero-patient.md)                | Changement du numéro d'un patient : code à l'ancien et au nouveau numéro ; en cas de perte, vérification d'identité et 24 h d'attente ; SMS d'alerte à l'ancien numéro       | Acceptée                                                   |
 
 ## Vue d'ensemble (cible, à détailler)
 
