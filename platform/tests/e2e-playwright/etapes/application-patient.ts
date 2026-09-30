@@ -175,6 +175,17 @@ Then('l’application affiche sans réseau les rendez-vous connus', async ({ mon
   await p.context().setOffline(false);
 });
 
+// Principe n°2 : visible sur tous les écrans, sans rien charger. Aucun numéro n'est configuré pour
+// les tests (les numéros du pays sont fournis au déploiement) : pas de lien d'appel.
+Then(
+  'l’application rappelle, même sans réseau, d’appeler les secours en cas d’urgence',
+  async ({ monde }) => {
+    const secours = page(monde).getByRole('note');
+    await expect(secours).toHaveText("🚑 En cas d'urgence, appelez les secours.");
+    await expect(secours.locator('a')).toHaveCount(0);
+  },
+);
+
 // ── Code SMS avant une action sensible (ADR-0022) ────────────────────────────
 
 When('le patient confirme avec le code reçu par SMS', async ({ monde }) => {

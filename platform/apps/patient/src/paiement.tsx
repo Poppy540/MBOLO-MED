@@ -231,9 +231,6 @@ export function Paiement(p: {
           <button onClick={() => p.retour()}>Plus tard</button>
         </>
       )}
-      <p>
-        <strong>En cas d'urgence, appelez les secours.</strong>
-      </p>
     </section>
   );
 }

@@ -251,6 +251,7 @@ export function App() {
           </button>
         )}
       </header>
+      <Secours />
       {message && (
         <p class="message" role="alert">
           {message}
@@ -353,6 +354,26 @@ export function App() {
   );
 }
 
+/**
+ * Toujours visible, sur tous les écrans, même avant la connexion et hors ligne (principe n°2) :
+ * rien à ouvrir ni à charger pour appeler les secours.
+ */
+function Secours() {
+  return (
+    <p class="secours" role="note">
+      <strong>
+        <span aria-hidden="true">🚑</span> En cas d'urgence, appelez les secours
+        {CONFIG.secours.length > 0 ? ' :' : '.'}
+      </strong>{' '}
+      {CONFIG.secours.map((s) => (
+        <a key={s.numero} href={`tel:${s.numero}`}>
+          {s.nom} ({s.numero})
+        </a>
+      ))}
+    </p>
+  );
+}
+
 function Accueil() {
   // Sans réseau, la connexion est impossible : on montre les rendez-vous déjà connus.
   if (!navigator.onLine) {
@@ -416,9 +437,6 @@ function DossierACompleter(p: {
           <span aria-hidden="true">📱</span> Changer mon numéro
         </button>
       )}
-      <p>
-        <strong>En cas d'urgence, appelez les secours.</strong>
-      </p>
     </section>
   );
 }
@@ -450,10 +468,7 @@ function ConfirmationSms(p: {
         <span aria-hidden="true">📱</span> Recevoir le code
       </button>
       <button onClick={p.retour}>Retour</button>
-      <p>
-        Plus de téléphone ou plus de numéro ? Appelez l’équipe Mbolo Santé.{' '}
-        <strong>En cas d'urgence, appelez les secours.</strong>
-      </p>
+      <p>Plus de téléphone ou plus de numéro ? Appelez l’équipe Mbolo Santé.</p>
     </section>
   );
 }
@@ -491,9 +506,6 @@ function ChangerNumero(p: { retour: () => void; photos: () => void }) {
         <span aria-hidden="true">📷</span> Envoyer mes photos (demande déjà faite)
       </button>
       <button onClick={p.retour}>Retour</button>
-      <p>
-        <strong>En cas d'urgence, appelez les secours.</strong>
-      </p>
     </section>
   );
 }
@@ -538,9 +550,6 @@ function ProtegerCompte(p: { retour: () => void }) {
         bien vous.
       </p>
       <button onClick={p.retour}>Retour</button>
-      <p>
-        <strong>En cas d'urgence, appelez les secours.</strong>
-      </p>
     </section>
   );
 }

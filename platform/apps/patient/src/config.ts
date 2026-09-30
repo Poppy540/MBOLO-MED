@@ -1,7 +1,9 @@
 // Configuration publique (aucun secret : l'application est un client public, PKCE obligatoire).
 // Le Gabon est le premier pays : tout ce qui dépend du pays (fuseau, langue) est paramétrable au
 // déploiement, sans modifier le code (VITE_FUSEAU, VITE_LANGUE, VITE_NOM_ASSURANCE, VITE_OPERATEURS,
-// VITE_INDICATIF).
+// VITE_INDICATIF, VITE_NUMEROS_SECOURS).
+import { numerosSecours } from './secours.js';
+
 const env = import.meta.env;
 const lire = (cle: string, defaut: string): string => (env[cle] as string | undefined) ?? defaut;
 
@@ -30,6 +32,11 @@ export const CONFIG = {
   assurance: lire('VITE_NOM_ASSURANCE', 'CNAMGS'),
   /** Fuseau horaire du pays déployé (IANA). */
   fuseau: lire('VITE_FUSEAU', 'Africa/Libreville'),
+  /**
+   * Numéros des secours du pays (« Nom:numéro », séparés par des virgules), validés par le comité
+   * médical ; aucun par défaut.
+   */
+  secours: numerosSecours(lire('VITE_NUMEROS_SECOURS', '')),
   /** Langue et formats (BCP 47). */
   langue: lire('VITE_LANGUE', 'fr-FR'),
 };
