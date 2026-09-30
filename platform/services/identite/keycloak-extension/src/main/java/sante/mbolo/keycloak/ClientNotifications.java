@@ -35,6 +35,8 @@ public final class ClientNotifications {
     ENVOYE,
     /** Trop de codes pour ce dossier dans l'heure, toutes sessions confondues (limite du service). */
     TROP_DE_CODES,
+    /** Numéro changé après une perte il y a moins de 24 heures : aucun code (ADR-0023). */
+    ATTENTE_APRES_PERTE,
     /** Tout autre cas : service injoignable, pas de numéro, réponse inattendue. */
     RATE
   }
@@ -70,7 +72,8 @@ public final class ClientNotifications {
       if (r.statusCode() != 202) return Envoi.RATE;
       Object resultat = JsonSerialization.readValue(r.body(), Map.class).get("resultat");
       if ("envoyee".equals(resultat)) return Envoi.ENVOYE;
-      return "trop-de-codes".equals(resultat) ? Envoi.TROP_DE_CODES : Envoi.RATE;
+      if ("trop-de-codes".equals(resultat)) return Envoi.TROP_DE_CODES;
+      return "attente-apres-perte".equals(resultat) ? Envoi.ATTENTE_APRES_PERTE : Envoi.RATE;
     } catch (IOException | RuntimeException e) {
       return Envoi.RATE;
     } catch (InterruptedException e) {

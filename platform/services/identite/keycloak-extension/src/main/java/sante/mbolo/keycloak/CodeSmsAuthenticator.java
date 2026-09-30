@@ -105,6 +105,7 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
                 case ENVOYE -> null;
                 // Limite du service par dossier : une nouvelle session ne la remet pas à zéro.
                 case TROP_DE_CODES -> "mboloCodeSmsTropDeCodes";
+                case ATTENTE_APRES_PERTE -> "mboloCodeSmsAttentePerte";
                 case RATE -> "mboloCodeSmsNonEnvoye";
               };
         };

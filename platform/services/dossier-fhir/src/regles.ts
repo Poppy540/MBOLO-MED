@@ -17,6 +17,7 @@ import type {
 } from 'fhir/r4.js';
 import { verifierOrdonnance } from './ordonnance.js';
 import { verifierProche } from './proche.js';
+import { verifierTelephones } from './telephone.js';
 import {
   AUTEURS_ANNULATION,
   CATEGORIES_AVEC_BENEFICIAIRE,
@@ -278,6 +279,7 @@ export function verifierPatient(p: Patient): Violation[] {
       message: 'Une identité vérifiée exige un numéro d’assurance maladie ou provisoire.',
     });
   }
+  v.push(...verifierTelephones(p.telecom));
   return v;
 }
 

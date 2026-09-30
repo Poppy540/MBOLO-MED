@@ -53,3 +53,10 @@ export {
 export type { Code, LigneOrdonnance, OptionsOrdonnance } from './ordonnance.js';
 export { LIENS_PROCHE, PRENOM_MAX, SYSTEME_LIEN, procheInvite, verifierProche } from './proche.js';
 export type { LienProche, OptionsProche } from './proche.js';
+export {
+  ATTENTE_APRES_PERTE_MS,
+  changementTelephone,
+  enAttenteApresPerte,
+  telephoneChange,
+  verifierTelephones,
+} from './telephone.js';

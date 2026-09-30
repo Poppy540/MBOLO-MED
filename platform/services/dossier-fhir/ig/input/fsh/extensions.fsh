@@ -26,3 +26,13 @@ Description: "Où en est la vérification d'identité du patient (ADR-0014). Le 
 * value[x] only code
 * valueCode 1..1
 * valueCode from MboloStatutIdentiteVS (required)
+
+Extension: ChangementTelephone
+Id: changement-telephone
+Title: "Changement du numéro"
+Description: "Comment le numéro du patient a été changé (ADR-0023) : par le patient avec les deux numéros, ou après une perte, sur décision d'une personne habilitée. La date du changement est dans `period.start`. Après une perte, aucun code de connexion n'est envoyé pendant 24 heures."
+* ^context[0].type = #element
+* ^context[0].expression = "Patient.telecom"
+* value[x] only code
+* valueCode 1..1
+* valueCode from MboloChangementTelephoneVS (required)

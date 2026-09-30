@@ -84,6 +84,10 @@ class ClientDossierTest {
     assertTrue(requete.startsWith("PUT /fhir/Patient/pat-fictif-123 Bearer jeton-fictif "));
     assertTrue(requete.contains("\"telecom\""));
     assertTrue(requete.contains("+241 00 00 00 09"));
+    // Parcours « patient » et date du changement (ADR-0023, règle mbolo-pat-3).
+    assertTrue(requete.contains(ClientDossier.EXTENSION_CHANGEMENT_TELEPHONE));
+    assertTrue(requete.contains("\"valueCode\":\"patient\""));
+    assertTrue(requete.contains("\"period\":{\"start\":\""));
     // Rien d'autre que le numéro : ni nom, ni naissance, ni statut d'identité.
     assertTrue(!requete.contains("\"name\"") && !requete.contains("\"birthDate\""));
   }

@@ -134,6 +134,7 @@ public final class IdentitePatientRequiredAction
               switch (client(context).verifierTelephone(saisie.telephone, tirage.code())) {
                 case ENVOYE -> null;
                 case TROP_DE_CODES -> "mboloCodeSmsTropDeCodes";
+                case ATTENTE_APRES_PERTE -> "mboloCodeSmsAttentePerte";
                 case RATE -> "mboloCodeSmsNonEnvoye";
               };
         };
