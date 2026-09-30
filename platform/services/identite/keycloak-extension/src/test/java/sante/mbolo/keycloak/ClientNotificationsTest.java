@@ -93,4 +93,11 @@ class ClientNotificationsTest {
     assertEquals(
         ClientNotifications.Envoi.TROP_DE_CODES, client().envoyerCode("pat-fictif-005", "482913"));
   }
+
+  @Test
+  void alerteNumeroChangePourLeDossier() {
+    assertEquals(
+        ClientNotifications.Envoi.ENVOYE, client().alerterNumeroChange("pat-fictif-005"));
+    assertTrue(requetes.get(0).startsWith("/numero-change Bearer jeton-fictif "));
+  }
 }

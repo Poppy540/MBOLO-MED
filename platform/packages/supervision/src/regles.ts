@@ -118,6 +118,22 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
           },
         },
         {
+          // Un patient change rarement de numéro : une série en une heure signale une prise de
+          // comptes (ADR-0023). Seuil provisoire pour la vague 1 (100 patients).
+          alert: 'NumerosChangesEnSerie',
+          expr: `${compter('numero-change', '1h')} > 5`,
+          labels: {
+            gravite: 'critique',
+            destinataire: 'responsable-securite',
+            alerte: 'numero-change',
+          },
+          annotations: {
+            resume: 'Plus de 5 numéros de téléphone de patients changés en une heure.',
+            conduite:
+              'Retrouver les dossiers dans le journal (alerte numero-change) ; faire rappeler les patients par l’équipe assistance-patient à leur ancien numéro ; suspendre le changement de numéro si c’est une attaque.',
+          },
+        },
+        {
           // Les limites par adresse ou par dossier bloquent un essai isolé ; une rafale sur toute la
           // plateforme signale une recherche de codes répartie ou une usurpation (ASVS n°1, D3).
           alert: 'EssaisBloquesEnRafale',

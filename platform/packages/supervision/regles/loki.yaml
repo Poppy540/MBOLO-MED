@@ -49,6 +49,15 @@ groups:
         annotations:
           resume: "Un dossier a demandé plus de 10 codes de connexion par SMS en une heure : envois bloqués."
           conduite: "Retrouver le dossier dans le journal (alerte code-connexion-bloque) ; rappeler le patient au numéro de son dossier (équipe assistance-patient) : s’il n’a rien demandé, son mot de passe est connu, faire changer le mot de passe (ADR-0021)."
+      - alert: "NumerosChangesEnSerie"
+        expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"numero-change\" [1h])) > 5"
+        labels:
+          gravite: "critique"
+          destinataire: "responsable-securite"
+          alerte: "numero-change"
+        annotations:
+          resume: "Plus de 5 numéros de téléphone de patients changés en une heure."
+          conduite: "Retrouver les dossiers dans le journal (alerte numero-change) ; faire rappeler les patients par l’équipe assistance-patient à leur ancien numéro ; suspendre le changement de numéro si c’est une attaque."
       - alert: "EssaisBloquesEnRafale"
         expr: "sum (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"essais-bloques\" [15m])) > 20"
         labels:

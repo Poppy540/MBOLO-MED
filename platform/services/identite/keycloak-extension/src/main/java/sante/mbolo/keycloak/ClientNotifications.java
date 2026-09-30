@@ -52,6 +52,11 @@ public final class ClientNotifications {
     return poster("/codes-verification", Map.of("telephone", telephone, "code", code));
   }
 
+  /** Alerte à l'ancien numéro, lu dans le dossier avant la mise à jour (ADR-0023). */
+  public Envoi alerterNumeroChange(String patientId) {
+    return poster("/numero-change", Map.of("patientId", patientId));
+  }
+
   private Envoi poster(String chemin, Map<String, String> corps) {
     try {
       HttpRequest requete =

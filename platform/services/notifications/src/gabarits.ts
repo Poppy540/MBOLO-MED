@@ -74,6 +74,14 @@ export const CATALOGUE_ALERTE_COMPTE_RECUPERE: Readonly<Record<string, string>> 
 };
 
 /**
+ * Changement du numéro du dossier (ADR-0023), envoyé à l'**ancien** numéro, avant la mise à jour.
+ * Texte proposé dans l'ADR-0023 (acceptée le 2026-09-30), à faire relire par le juriste.
+ */
+export const CATALOGUE_ALERTE_NUMERO_CHANGE: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : le numéro de votre compte vient d’être changé. Si ce n’est pas vous, contactez l’équipe.',
+};
+
+/**
  * Code de double authentification du patient (ADR-0022), demandé par Keycloak avant une action
  * sensible. Envoyé au numéro du dossier, sans condition C-RAPPELS ; {code} (6 chiffres) est la seule
  * variable. Texte validé par le porteur de projet (2026-09-29), à faire relire par le juriste.
@@ -97,6 +105,7 @@ export const ALERTES_PATIENT = {
   'proche-inscrit': CATALOGUE_ALERTE_PROCHE,
   'proches-retires': CATALOGUE_ALERTE_RETRAIT_PROCHES,
   'compte-recupere': CATALOGUE_ALERTE_COMPTE_RECUPERE,
+  'numero-change': CATALOGUE_ALERTE_NUMERO_CHANGE,
 } as const;
 export type AlertePatient = keyof typeof ALERTES_PATIENT;
 

@@ -53,6 +53,12 @@ final class SaisieIdentite {
     return new SaisieIdentite(champ);
   }
 
+  /** Même contrôle du numéro qu'à l'inscription (changement de numéro, ADR-0023). */
+  static String telephoneValide(String saisie) {
+    String t = propre(saisie);
+    return TELEPHONE.matcher(t).matches() ? t : null;
+  }
+
   private static String propre(String s) {
     return s == null ? "" : s.strip().replaceAll("\\s+", " ");
   }

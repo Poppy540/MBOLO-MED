@@ -34,6 +34,11 @@ export const ALERTES = [
    * Quelqu'un connaît le mot de passe du patient, ou cherche à inonder son téléphone.
    */
   'code-connexion-bloque',
+  /**
+   * Numéro du dossier d'un patient changé (ADR-0023) : en série sur la plateforme, signe d'une prise
+   * de comptes (mots de passe et téléphones volés).
+   */
+  'numero-change',
   /** Paiement reçu pour un rendez-vous annulé : remboursement à valider par un humain (ADR-0017). */
   'remboursement-a-valider',
 ] as const;

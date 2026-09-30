@@ -75,4 +75,25 @@ class ClientDossierTest {
         new ClientDossier(URI.create("http://127.0.0.1:1/fhir/"), () -> "jeton-fictif");
     assertEquals(Optional.empty(), injoignable.creerPatient(Map.of()));
   }
+
+  @Test
+  void remplaceLeSeulNumeroDuDossier() {
+    statut = 200;
+    assertTrue(client().modifierTelephone("pat-fictif-123", "+241 00 00 00 09"));
+    String requete = requetes.get(0);
+    assertTrue(requete.startsWith("PUT /fhir/Patient/pat-fictif-123 Bearer jeton-fictif "));
+    assertTrue(requete.contains("\"telecom\""));
+    assertTrue(requete.contains("+241 00 00 00 09"));
+    // Rien d'autre que le numéro : ni nom, ni naissance, ni statut d'identité.
+    assertTrue(!requete.contains("\"name\"") && !requete.contains("\"birthDate\""));
+  }
+
+  @Test
+  void numeroNonChangeSiLeDossierRefuseOuIdentifiantDouteux() {
+    statut = 403;
+    assertTrue(!client().modifierTelephone("pat-fictif-123", "+241 00 00 00 09"));
+    statut = 200;
+    assertTrue(!client().modifierTelephone("../Practitioner/x", "+241 00 00 00 09"));
+    assertEquals(0, requetes.stream().filter(r -> r.contains("Practitioner")).count());
+  }
 }

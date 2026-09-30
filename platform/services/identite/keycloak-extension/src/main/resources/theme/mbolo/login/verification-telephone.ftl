@@ -18,6 +18,10 @@
                     class="${properties.kcButtonSecondaryClass!} ${properties.kcButtonBlockClass!}">${msg("mboloCodeSmsRenvoyer")}</button>
             <button id="kc-corriger" type="submit" name="corriger" value="1" formnovalidate="formnovalidate"
                     class="${properties.kcButtonSecondaryClass!} ${properties.kcButtonBlockClass!}">${msg("mboloTelephoneCorriger")}</button>
+            <#if isAppInitiatedAction??>
+            <button id="kc-annuler" type="submit" name="cancel-aia" value="true" formnovalidate="formnovalidate"
+                    class="${properties.kcButtonSecondaryClass!} ${properties.kcButtonBlockClass!}">${msg("mboloRetourApplication")}</button>
+            </#if>
         </form>
     </#if>
 </@layout.registrationLayout>

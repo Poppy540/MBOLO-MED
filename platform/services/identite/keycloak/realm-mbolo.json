@@ -1036,6 +1036,15 @@
       "config": {}
     },
     {
+      "alias": "mbolo-changer-telephone",
+      "name": "Changer de numéro de téléphone (Mbolo, ADR-0023)",
+      "providerId": "mbolo-changer-telephone",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 31,
+      "config": {}
+    },
+    {
       "alias": "UPDATE_PROFILE",
       "name": "Update Profile",
       "providerId": "UPDATE_PROFILE",

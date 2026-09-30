@@ -16,6 +16,10 @@
             <#-- Même formulaire : « renvoyer » est lu en premier par l'extension. -->
             <button id="kc-renvoyer" type="submit" name="renvoyer" value="1" formnovalidate="formnovalidate"
                     class="${properties.kcButtonSecondaryClass!} ${properties.kcButtonBlockClass!}">${msg("mboloCodeSmsRenvoyer")}</button>
+            <#if isAppInitiatedAction??>
+            <button id="kc-annuler" type="submit" name="cancel-aia" value="true" formnovalidate="formnovalidate"
+                    class="${properties.kcButtonSecondaryClass!} ${properties.kcButtonBlockClass!}">${msg("mboloRetourApplication")}</button>
+            </#if>
         </form>
     </#if>
 </@layout.registrationLayout>

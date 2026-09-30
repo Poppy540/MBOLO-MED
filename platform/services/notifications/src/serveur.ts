@@ -181,7 +181,13 @@ export async function creerServeur(o: {
           params: {
             type: 'object',
             required: ['alerte'],
-            properties: { alerte: { type: 'string', enum: Object.keys(ALERTES_PATIENT) } },
+            properties: {
+              // `numero-change` n'est envoyé que par l'extension Keycloak (route `/numero-change`).
+              alerte: {
+                type: 'string',
+                enum: Object.keys(ALERTES_PATIENT).filter((a) => a !== 'numero-change'),
+              },
+            },
           },
           body: {
             type: 'object',
@@ -245,6 +251,36 @@ export async function creerServeur(o: {
         o.journal.info('code de connexion traité', {
           appelant,
           patientId: req.body.patientId,
+          resultat,
+        });
+        return reply.code(202).send({ resultat });
+      },
+    );
+  }
+
+  if (codes) {
+    // Changement du numéro du dossier (ADR-0023) : alerte à l'ancien numéro, lu dans le dossier avant
+    // la mise à jour. Seule l'extension Keycloak l'envoie ; ni numéro ni texte libre.
+    app.post<{ Body: { patientId: string } }>(
+      '/numero-change',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId'],
+            properties: { patientId: { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } },
+          },
+        },
+      },
+      async (req, reply) => {
+        const appelant = await authentifier(req);
+        if (!codes.appelants.includes(appelant)) throw new ErreurInterdite();
+        const { patientId } = req.body;
+        const resultat = await o.service.alerterPatient(patientId, 'numero-change');
+        // En série sur la plateforme : prise de comptes possible (règle NumerosChangesEnSerie).
+        signalerAlerte(o.journal, 'numero-change', 'numéro du dossier changé', {
+          patientId,
           resultat,
         });
         return reply.code(202).send({ resultat });
