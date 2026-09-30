@@ -16,6 +16,7 @@ Fonctionnalité: Payer et rembourser depuis les applications
     Et que le patient réserve ce créneau dans l’application
     Et que le patient confirme avec le code reçu par SMS
     Alors l’application demande de payer 10000 "XAF"
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
     Quand le patient paie avec "Moov Money" depuis le numéro "+241 00 00 00 00" dans l’application
     Alors l’application demande de valider le paiement sur le téléphone avec "Moov Money"
     Quand le payeur valide sur son téléphone le paiement de ce créneau
@@ -44,3 +45,4 @@ Fonctionnalité: Payer et rembourser depuis les applications
     Quand "valideur-fictif-01" ouvre les remboursements à valider dans l’espace professionnel
     Et que le valideur valide le remboursement de ce rendez-vous
     Alors l’espace professionnel confirme que le remboursement est versé
+    Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité

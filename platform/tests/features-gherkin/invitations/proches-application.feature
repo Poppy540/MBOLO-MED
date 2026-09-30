@@ -16,6 +16,7 @@ Fonctionnalité: Le patient invite et retire ses proches depuis son application
     Et que le patient confirme avec le code reçu par SMS
     Et que le patient invite son proche "Serge [FICTIF]", son enfant, au numéro "+33 0 00 00 00 09" dans l’application
     Alors l’application confirme l’envoi du code par SMS et le montre en secours
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
     Et le numéro "+33000000009" reçoit ce code, sans le nom du patient ni aucune donnée de santé
     Et le partage avec ce proche est actif dans le dossier
     Et l’application liste "Serge [FICTIF]" avec une invitation en cours, et le partage à son nom
