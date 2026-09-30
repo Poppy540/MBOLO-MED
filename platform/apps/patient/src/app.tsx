@@ -67,16 +67,26 @@ async function confirmerParSms(reprise: EcranSensible) {
   location.assign(await demarrerConnexion(connexion(), sessionStorage, false, NIVEAU_SENSIBLE));
 }
 
-/** Action Keycloak « Changer mon numéro » (ADR-0023) : codes à l'ancien puis au nouveau numéro. */
-const ACTION_CHANGER_NUMERO = 'mbolo-changer-telephone';
-/** Téléphone perdu (ADR-0023) : code au nouveau numéro, puis photos et décision de l'équipe. */
-const ACTION_TELEPHONE_PERDU = 'mbolo-telephone-perdu';
-/** Action Keycloak en cours, le temps de l'aller-retour (pour lire son résultat au retour). */
-const CLE_ACTION = 'mbolo.action';
+/**
+ * Actions Keycloak lancées par l'application (ADR-0023) : « changer » (codes à l'ancien puis au
+ * nouveau numéro) et « perte » (code au nouveau numéro, puis photos et décision de l'équipe).
+ */
+type Parcours = 'changer' | 'perte';
+const ACTIONS: Record<Parcours, string> = {
+  changer: 'mbolo-changer-telephone',
+  perte: 'mbolo-telephone-perdu',
+};
+/**
+ * Parcours en cours, le temps de l'aller-retour (pour lire son résultat au retour) : un mot fixe
+ * de la liste, jamais une saisie ni un numéro.
+ */
+const CLE_PARCOURS = 'mbolo.parcours';
 
-async function lancerAction(action: string) {
-  sessionStorage.setItem(CLE_ACTION, action);
-  location.assign(await demarrerConnexion(connexion(), sessionStorage, false, undefined, action));
+async function lancerAction(parcours: Parcours) {
+  sessionStorage.setItem(CLE_PARCOURS, parcours === 'perte' ? 'perte' : 'changer');
+  location.assign(
+    await demarrerConnexion(connexion(), sessionStorage, false, undefined, ACTIONS[parcours]),
+  );
 }
 
 const MESSAGES_NUMERO = {
@@ -123,10 +133,10 @@ export function App() {
           jeton = j;
           // Retour d'une action Keycloak : résultat lu avant d'effacer l'adresse.
           const numero = statutAction(adresse);
-          const action = sessionStorage.getItem(CLE_ACTION);
-          sessionStorage.removeItem(CLE_ACTION);
+          const parcours = sessionStorage.getItem(CLE_PARCOURS);
+          sessionStorage.removeItem(CLE_PARCOURS);
           history.replaceState(null, '', '/');
-          if (numero === 'success' && action === ACTION_TELEPHONE_PERDU) {
+          if (numero === 'success' && parcours === 'perte') {
             // Demande enregistrée : le patient envoie tout de suite ses nouvelles photos.
             setMessage('Demande enregistrée. Envoyez maintenant deux nouvelles photos.');
             setEcran({ nom: 'perte' });
@@ -425,7 +435,7 @@ function ChangerNumero(p: { retour: () => void; photos: () => void }) {
         <li>un autre code arrive à ce nouveau numéro.</li>
       </ol>
       <p>Votre ancien numéro recevra un message pour vous prévenir du changement.</p>
-      <button class="principal" onClick={() => void lancerAction(ACTION_CHANGER_NUMERO)}>
+      <button class="principal" onClick={() => void lancerAction('changer')}>
         <span aria-hidden="true">📨</span> Recevoir le code
       </button>
       <h3>Vous avez perdu votre téléphone ?</h3>
@@ -433,7 +443,7 @@ function ChangerNumero(p: { retour: () => void; photos: () => void }) {
         Indiquez votre nouveau numéro, puis envoyez deux nouvelles photos. Une personne de l’équipe
         Mbolo Santé vérifiera que c’est bien vous avant de changer le numéro.
       </p>
-      <button onClick={() => void lancerAction(ACTION_TELEPHONE_PERDU)}>
+      <button onClick={() => void lancerAction('perte')}>
         <span aria-hidden="true">🆘</span> J’ai perdu mon téléphone
       </button>
       <button onClick={p.photos}>
