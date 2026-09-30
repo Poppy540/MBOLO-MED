@@ -29,3 +29,14 @@ Fonctionnalité: Le patient protège son compte avec une application d'authentif
   Scénario: Un code TOTP ajouté sans l'extension ne remplace pas le code SMS
     Quand "patient-fictif-07" ajoute un code TOTP par l’action standard de Keycloak, avec son seul mot de passe
     Alors Keycloak demande de nouveau un code par SMS à "patient-fictif-07"
+
+  # En dernier : le mot de passe du compte change. Application perdue (ADR-0024) : l'équipe remet un
+  # code de récupération (ADR-0021), qui retire l'application ; le vrai patient a 24 heures pour réagir.
+  Scénario: Application perdue : le code de récupération de l'équipe la retire, puis 24 heures sans code SMS
+    Étant donné que "assistant-fictif-01" est connecté
+    Et que la boîte des notifications simulées est relevée
+    Quand "patient-fictif-07" active une application d’authentification après un code SMS
+    Et que "assistant-fictif-01" remet par téléphone un code de récupération pour "patient-fictif-07"
+    Et que "patient-fictif-07" choisit un nouveau mot de passe avec ce code, depuis « Mot de passe oublié ? »
+    Alors le numéro "+241 00 00 00 07" reçoit le message "le mot de passe de votre compte vient d’être changé"
+    Et pendant 24 heures, Keycloak ne demande à "patient-fictif-07" ni code SMS ni code d’application

@@ -63,7 +63,13 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
       case ACTIVE ->
           context.challenge(pageApplication(context, "connexion").createForm(PAGE_APPLICATION));
       case INTROUVABLE -> refuserApplicationIntrouvable(context);
-      case AUCUNE -> envoyer(context, dossier);
+      case AUCUNE -> {
+        if (ApplicationAuthentification.enAttente(context.getUser(), System.currentTimeMillis())) {
+          refuserAttente(context);
+        } else {
+          envoyer(context, dossier);
+        }
+      }
     }
   }
 
@@ -85,7 +91,12 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
         refuserApplicationIntrouvable(context);
         return;
       }
-      case AUCUNE -> {}
+      case AUCUNE -> {
+        if (ApplicationAuthentification.enAttente(context.getUser(), System.currentTimeMillis())) {
+          refuserAttente(context);
+          return;
+        }
+      }
     }
     if (formulaire.containsKey(RENVOYER)) {
       envoyer(context, dossier);
@@ -134,6 +145,14 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
     context.challenge(
         pageApplication(context, "bloque")
             .setError("mboloApplicationIntrouvable")
+            .createForm(PAGE_APPLICATION));
+  }
+
+  /** Application retirée par un code de récupération il y a moins de 24 heures : aucun code SMS. */
+  private void refuserAttente(AuthenticationFlowContext context) {
+    context.challenge(
+        pageApplication(context, "bloque")
+            .setError("mboloApplicationAttenteRetrait")
             .createForm(PAGE_APPLICATION));
   }
 

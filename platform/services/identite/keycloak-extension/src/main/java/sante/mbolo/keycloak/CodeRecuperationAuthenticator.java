@@ -68,6 +68,11 @@ public final class CodeRecuperationAuthenticator implements Authenticator, Authe
                     context.getConnection().getRemoteAddr());
     if (r == ClientInvitations.Recuperation.UTILISE && utilisateur != null) {
       fermerSessions(context.getSession(), context.getRealm(), utilisateur);
+      // Application perdue (ADR-0024) : elle est retirée, puis 24 heures sans code SMS.
+      if (ApplicationAuthentification.retirerApresRecuperation(
+          utilisateur, System.currentTimeMillis())) {
+        JOURNAL.infof("application d'authentification retirée par récupération : compte %s", utilisateur.getId());
+      }
       JOURNAL.infof("compte récupéré avec un code de l'équipe : compte %s", utilisateur.getId());
       context.success();
       return;
