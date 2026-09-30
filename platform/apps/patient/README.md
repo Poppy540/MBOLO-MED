@@ -54,6 +54,12 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
     - au retour, l'application lit `kc_action_status` et affiche « Votre numéro est changé… », « Votre numéro n'a pas changé. » ou « …n'a pas pu être changé. Réessayez plus tard. » ;
     - pas de flag : c'est une fonction de sécurité ;
     - **« J'ai perdu mon téléphone »** (même écran) : action Keycloak `mbolo-telephone-perdu` (nouveau numéro et son code seulement). Au retour réussi, l'application ouvre « Vos deux nouvelles photos » (même écran que la vérification d'identité, chargé à la demande, charte déjà acceptée) ; une personne de l'équipe vérifie avant de changer le numéro, et l'ancien numéro est prévenu. « Envoyer mes photos (demande déjà faite) » rouvre cet écran plus tard.
+13. **Protéger mon compte** (ADR-0024), depuis « Mes rendez-vous » : en option, une application d'authentification gratuite (Google Authenticator, Microsoft Authenticator ou FreeOTP) remplace le code SMS des actions sensibles.
+    - « Activer une application » ouvre l'action Keycloak `mbolo-activer-application` avec `acr_values=2` : code SMS d'abord (sauf s'il a été donné il y a moins de 15 minutes), puis code à scanner et premier code de l'application ;
+    - « Retirer mon application » ouvre `mbolo-retirer-application` : un code de l'application, puis retour au SMS ;
+    - l'application ne sait pas si une application est active : Keycloak le dit lui-même (« déjà active », « aucune application ») ; au retour, message selon `kc_action_status` ;
+    - téléphone ou application perdus : l'équipe d'assistance (code de récupération, puis 24 heures sans code SMS) ;
+    - seul un mot fixe est gardé pendant l'aller-retour, jamais le nom de l'action ; pas de flag : c'est une fonction de sécurité.
 
 Les erreurs sont affichées en phrases simples, sans jargon.
 

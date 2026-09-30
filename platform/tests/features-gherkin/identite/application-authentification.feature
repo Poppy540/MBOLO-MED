@@ -30,6 +30,18 @@ Fonctionnalité: Le patient protège son compte avec une application d'authentif
     Quand "patient-fictif-07" ajoute un code TOTP par l’action standard de Keycloak, avec son seul mot de passe
     Alors Keycloak demande de nouveau un code par SMS à "patient-fictif-07"
 
+  Scénario: Depuis l'application : « Protéger mon compte », activer puis retirer l'application
+    Étant donné que "patient-fictif-07" est connecté
+    Quand "patient-fictif-07" ouvre l’application patient
+    Et que "patient-fictif-07" active une application depuis « Protéger mon compte »
+    Alors l’application patient affiche "Votre application protège maintenant votre compte. Les codes ne viendront plus par SMS."
+    Quand "patient-fictif-07" retire son application depuis « Protéger mon compte »
+    Alors l’application patient affiche "Votre application est retirée. Les codes reviennent par SMS."
+
+  Scénario: Déjà confirmé par SMS depuis moins de 15 minutes : l'activation ne redemande pas de code SMS
+    Quand "patient-fictif-07" confirme par SMS puis, dans la même session, active une application sans nouveau code SMS
+    Et "patient-fictif-07" retire son application avec un code de l’application
+
   # En dernier : le mot de passe du compte change. Application perdue (ADR-0024) : l'équipe remet un
   # code de récupération (ADR-0021), qui retire l'application ; le vrai patient a 24 heures pour réagir.
   Scénario: Application perdue : le code de récupération de l'équipe la retire, puis 24 heures sans code SMS

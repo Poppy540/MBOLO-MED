@@ -370,9 +370,12 @@ Then(
 
 When(
   "une personne s'inscrit avec ce code depuis l'application patient",
-  async ({ page, monde }) => {
+  async ({ context, monde }) => {
     const identifiant = `${PREFIXE_INSCRITS}${randomBytes(4).toString('hex')}`;
     const motDePasse = `Fictif-${randomBytes(12).toString('base64url')}`;
+    // Nouvelle page : sur celle de l'étape de connexion, le retour de Keycloak vers le faux port
+    // (jamais servi) finit en page d'erreur et pouvait interrompre cette navigation.
+    const page = await context.newPage();
     await page.goto(`${APP_PATIENT_URL}/`);
     await page.getByRole('button', { name: /J'ai un code d'invitation/ }).click();
     await page.locator('#code_invitation').fill(monde.invitation?.code ?? '');

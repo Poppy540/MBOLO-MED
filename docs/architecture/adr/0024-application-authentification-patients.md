@@ -1,7 +1,7 @@
 # ADR-0024 — Application d'authentification en option pour les patients
 
 - **Date :** 2026-09-30
-- **Statut :** acceptée (porteur de projet, 2026-09-30 : décision D4 de la revue ASVS n°2, réponses aux 4 questions ci-dessous)
+- **Statut :** acceptée (porteur de projet, 2026-09-30 : décision D4 de la revue ASVS n°2, réponses aux 4 questions ci-dessous), entièrement mise en œuvre (PR n°109, n°110 et PR CT)
 - **Décideurs :** porteur de projet ; responsable sécurité (à désigner)
 
 ## Contexte
@@ -78,6 +78,7 @@ Les professionnels et les proches utilisent déjà une application d'authentific
    - écran « Protéger mon compte » (explication simple, les trois applications citées, activer ou retirer), message au retour selon `kc_action_status` ;
    - ligne « faite » dans la matrice ASVS (V6.6.1).
    - E2E.
+   - **Faite (PR CT)** : écran « Protéger mon compte » (depuis « Mes rendez-vous ») ; un niveau 2 obtenu par SMS depuis moins de 15 minutes suffit, Keycloak ne redemande pas de code (scénario e2e). **ADR entièrement codée.**
 
 ## Réponses du porteur de projet (2026-09-30)
 

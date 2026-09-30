@@ -68,13 +68,17 @@ async function confirmerParSms(reprise: EcranSensible) {
 }
 
 /**
- * Actions Keycloak lancées par l'application (ADR-0023) : « changer » (codes à l'ancien puis au
- * nouveau numéro) et « perte » (code au nouveau numéro, puis photos et décision de l'équipe).
+ * Actions Keycloak lancées par l'application : « changer » (codes à l'ancien puis au nouveau
+ * numéro) et « perte » (code au nouveau numéro, puis photos et décision de l'équipe), ADR-0023 ;
+ * « activer » et « retirer » l'application d'authentification, ADR-0024 (activer exige d'abord le
+ * code SMS : niveau 2).
  */
-type Parcours = 'changer' | 'perte';
+type Parcours = 'changer' | 'perte' | 'activer' | 'retirer';
 const ACTIONS: Record<Parcours, string> = {
   changer: 'mbolo-changer-telephone',
   perte: 'mbolo-telephone-perdu',
+  activer: 'mbolo-activer-application',
+  retirer: 'mbolo-retirer-application',
 };
 /**
  * Parcours en cours, le temps de l'aller-retour (pour lire son résultat au retour) : un mot fixe
@@ -82,10 +86,25 @@ const ACTIONS: Record<Parcours, string> = {
  */
 const CLE_PARCOURS = 'mbolo.parcours';
 
+/** Mot fixe gardé pendant l'aller-retour : jamais le nom de l'action ni une saisie. */
+function motDuParcours(parcours: Parcours): string {
+  switch (parcours) {
+    case 'perte':
+      return 'perte';
+    case 'activer':
+      return 'activer';
+    case 'retirer':
+      return 'retirer';
+    default:
+      return 'changer';
+  }
+}
+
 async function lancerAction(parcours: Parcours) {
-  sessionStorage.setItem(CLE_PARCOURS, parcours === 'perte' ? 'perte' : 'changer');
+  sessionStorage.setItem(CLE_PARCOURS, motDuParcours(parcours));
+  const niveau = parcours === 'activer' ? NIVEAU_SENSIBLE : undefined;
   location.assign(
-    await demarrerConnexion(connexion(), sessionStorage, false, undefined, ACTIONS[parcours]),
+    await demarrerConnexion(connexion(), sessionStorage, false, niveau, ACTIONS[parcours]),
   );
 }
 
@@ -93,6 +112,21 @@ const MESSAGES_NUMERO = {
   success: 'Votre numéro est changé. Les prochains codes arriveront à ce numéro.',
   cancelled: 'Votre numéro n’a pas changé.',
   error: 'Votre numéro n’a pas pu être changé. Réessayez plus tard.',
+} as const;
+
+/** Résultat des actions sur l'application d'authentification (ADR-0024). */
+const MESSAGES_APPLICATION = {
+  activer: {
+    success:
+      'Votre application protège maintenant votre compte. Les codes ne viendront plus par SMS.',
+    cancelled: 'Rien n’a changé : vos codes arrivent toujours par SMS.',
+    error: 'L’application n’a pas pu être activée. Réessayez plus tard.',
+  },
+  retirer: {
+    success: 'Votre application est retirée. Les codes reviennent par SMS.',
+    cancelled: 'Rien n’a changé : votre application protège toujours votre compte.',
+    error: 'L’application n’a pas pu être retirée. Réessayez plus tard.',
+  },
 } as const;
 
 let jeton: string | undefined;
@@ -113,6 +147,7 @@ type Ecran =
   | { nom: 'partages' }
   | { nom: 'confirmation-sms'; reprise: EcranSensible }
   | { nom: 'changer-numero'; depuis: Ecran }
+  | { nom: 'proteger-compte' }
   | { nom: 'perte' }
   | { nom: 'recus' };
 
@@ -142,7 +177,11 @@ export function App() {
             setEcran({ nom: 'perte' });
             return;
           }
-          if (numero) setMessage(MESSAGES_NUMERO[numero]);
+          if (numero && (parcours === 'activer' || parcours === 'retirer')) {
+            setMessage(MESSAGES_APPLICATION[parcours][numero]);
+          } else if (numero) {
+            setMessage(MESSAGES_NUMERO[numero]);
+          }
           // Un proche désigné par un patient (C-PROCHE) ne voit que les documents partagés.
           const r = revendications(j);
           const roles = (r['realm_access'] as { roles?: string[] } | undefined)?.roles ?? [];
@@ -287,6 +326,8 @@ export function App() {
             setEcran({ nom: 'perte' });
           }}
         />
+      ) : ecran.nom === 'proteger-compte' ? (
+        <ProtegerCompte retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'perte' ? (
         <EcranVerification perte retour={() => setEcran({ nom: 'rendez-vous' })} />
       ) : ecran.nom === 'documents-proche' ? (
@@ -449,6 +490,53 @@ function ChangerNumero(p: { retour: () => void; photos: () => void }) {
       <button onClick={p.photos}>
         <span aria-hidden="true">📷</span> Envoyer mes photos (demande déjà faite)
       </button>
+      <button onClick={p.retour}>Retour</button>
+      <p>
+        <strong>En cas d'urgence, appelez les secours.</strong>
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Protéger son compte avec une application d'authentification (ADR-0024), en option : le SMS reste
+ * le choix par défaut. Tout se passe dans Keycloak ; Keycloak dit lui-même si une application est
+ * déjà active ou s'il n'y en a aucune.
+ */
+function ProtegerCompte(p: { retour: () => void }) {
+  return (
+    <section data-proteger-compte>
+      <h2>
+        <span aria-hidden="true">🔐</span> Protéger mon compte
+      </h2>
+      <p>
+        Pour payer ou partager votre dossier, vous recevez un code par SMS. Vous pouvez le remplacer
+        par le code d’une application gratuite sur votre téléphone : Google Authenticator, Microsoft
+        Authenticator ou FreeOTP.
+      </p>
+      <p>
+        C’est plus sûr : même si quelqu’un vole votre puce, il ne pourra pas recevoir vos codes.
+        Ensuite, les codes ne viendront plus par SMS.
+      </p>
+      <ol>
+        <li>un code arrive d’abord par SMS ;</li>
+        <li>vous ajoutez Mbolo Santé dans votre application (code à scanner) ;</li>
+        <li>vous tapez le code affiché par l’application.</li>
+      </ol>
+      <button class="principal" onClick={() => void lancerAction('activer')}>
+        <span aria-hidden="true">📲</span> Activer une application
+      </button>
+      <h3>Vous avez déjà une application ?</h3>
+      <p>
+        Avec un code de votre application, vous pouvez la retirer : les codes reviendront par SMS.
+      </p>
+      <button onClick={() => void lancerAction('retirer')}>
+        <span aria-hidden="true">↩️</span> Retirer mon application
+      </button>
+      <p>
+        Téléphone ou application perdus ? Appelez l’équipe Mbolo Santé : elle vérifiera que c’est
+        bien vous.
+      </p>
       <button onClick={p.retour}>Retour</button>
       <p>
         <strong>En cas d'urgence, appelez les secours.</strong>
@@ -687,6 +775,9 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
       </button>
       <button onClick={() => p.allerA({ nom: 'changer-numero', depuis: { nom: 'rendez-vous' } })}>
         <span aria-hidden="true">📱</span> Changer mon numéro
+      </button>
+      <button onClick={() => p.allerA({ nom: 'proteger-compte' })}>
+        <span aria-hidden="true">🔐</span> Protéger mon compte
       </button>
     </section>
   );

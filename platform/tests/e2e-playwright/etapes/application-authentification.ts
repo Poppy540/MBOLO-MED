@@ -193,3 +193,76 @@ Then(
     expect(codes).toEqual([]);
   },
 );
+
+// ── Depuis l'application patient (écran « Protéger mon compte ») ─────────────────────────────
+
+const pageApplication = (monde: Monde): Page => {
+  const p = monde.visio.get('application patient')?.page;
+  if (!p) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
+  return p;
+};
+
+When(
+  '{string} active une application depuis « Protéger mon compte »',
+  async ({ monde }, identifiant: string) => {
+    const p = pageApplication(monde);
+    await p.getByRole('button', { name: 'Protéger mon compte' }).click();
+    await expect(p.getByRole('heading', { name: 'Protéger mon compte' })).toBeVisible();
+    const depuis = new Date().toISOString();
+    await p.getByRole('button', { name: 'Activer une application' }).click();
+    // Keycloak, même session : seul le code SMS est demandé, puis la page d'activation.
+    await expect(p.locator('#code_sms')).toBeVisible();
+    await p.locator('#code_sms').fill(await codeSmsRecu(telephoneDu(identifiant), depuis));
+    await p.locator('#kc-submit').click();
+    await expect(p.locator('#kc-application-qr')).toBeVisible();
+    retenirSecret(identifiant, await p.locator('#totpSecret').inputValue());
+    await p.locator('#code_application').fill(await codeUnique(identifiant));
+    await p.locator('#kc-submit').click();
+  },
+);
+
+When(
+  '{string} retire son application depuis « Protéger mon compte »',
+  async ({ monde }, identifiant: string) => {
+    const p = pageApplication(monde);
+    await p.getByRole('button', { name: 'Protéger mon compte' }).click();
+    await p.getByRole('button', { name: 'Retirer mon application' }).click();
+    await expect(p.locator('#code_application')).toBeVisible();
+    await p.locator('#code_application').fill(await codeUnique(identifiant));
+    await p.locator('#kc-submit').click();
+  },
+);
+
+Then('l’application patient affiche {string}', async ({ monde }, texte: string) => {
+  await expect(pageApplication(monde).getByRole('alert')).toHaveText(texte);
+});
+
+When(
+  '{string} confirme par SMS puis, dans la même session, active une application sans nouveau code SMS',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    // Niveau 2 obtenu par SMS dans cette session (moins de 15 minutes)…
+    const p = await ouvrir(monde, browser, identifiant, '&acr_values=2');
+    await saisirCodeSms(p, identifiant, monde.depuis ?? '');
+    await expect.poll(() => p.retour.url, { timeout: 10_000 }).toBeDefined();
+    // … puis l'activation : Keycloak ne redemande pas de code SMS, l'action reconnaît le niveau 2.
+    delete p.retour.url;
+    const { url } = urlAutorisation('patient', true);
+    const depuis = new Date().toISOString();
+    await p.page
+      .goto(`${url}&acr_values=2&kc_action=mbolo-activer-application`)
+      .catch(() => undefined);
+    await expect(p.page.locator('#kc-application-qr')).toBeVisible();
+    retenirSecret(identifiant, await p.page.locator('#totpSecret').inputValue());
+    await p.page.locator('#code_application').fill(await codeUnique(identifiant));
+    await p.page.locator('#kc-submit').click();
+    await expect.poll(() => p.retour.url, { timeout: 10_000 }).toBeDefined();
+    expect((p.retour.url as URL | undefined)?.searchParams.get('kc_action_status')).toBe('success');
+    const codes = (await boite()).filter(
+      (m) =>
+        m.telephone === telephoneDu(identifiant) &&
+        m.date >= depuis &&
+        /votre code est/.test(m.texte),
+    );
+    expect(codes).toEqual([]);
+  },
+);
