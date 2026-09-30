@@ -47,6 +47,9 @@ export function creerApi(base: string, jeton: () => string | undefined, appeler?
         )
       ).creneaux,
     reserver: (creneauId: string) => requete<RendezVous>('POST', '/rendez-vous', { creneauId }),
+    /** Déplacer un rendez-vous confirmé vers un autre créneau libre du même médecin. */
+    reporter: (id: string, creneauId: string) =>
+      requete<RendezVous>('POST', `/rendez-vous/${encodeURIComponent(id)}/report`, { creneauId }),
     annuler: (id: string) =>
       requete<RendezVous>('POST', `/rendez-vous/${encodeURIComponent(id)}/annulation`),
     salle: (id: string) =>

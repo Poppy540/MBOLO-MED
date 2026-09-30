@@ -33,7 +33,8 @@ Given(
       ),
     });
     expect(r.status).toBe(201);
-    monde.creneaux = [((await r.json()) as { id: string }).id];
+    // Plusieurs créneaux dans un même scénario : le premier publié reste monde.creneaux[0].
+    monde.creneaux = [...(monde.creneaux ?? []), ((await r.json()) as { id: string }).id];
   },
 );
 
@@ -108,6 +109,41 @@ Then('le rendez-vous disparaît de l’application', async ({ monde }) => {
   await expect(page(monde).locator(`li[data-creneau="${monde.creneaux?.[0] ?? ''}"]`)).toHaveCount(
     0,
   );
+});
+
+When('le patient déplace ce rendez-vous vers le second créneau', async ({ monde }) => {
+  const p = page(monde);
+  await p
+    .locator(`li[data-creneau="${monde.creneaux?.[0] ?? ''}"]`)
+    .getByRole('button', { name: 'Déplacer' })
+    .click();
+  // L'ancien créneau n'est pas proposé : il est réservé.
+  await expect(p.locator(`[data-creneau="${monde.creneaux?.[0] ?? ''}"]`)).toHaveCount(0);
+  await p.locator(`[data-creneau="${monde.creneaux?.[1] ?? ''}"]`).click();
+  await p.getByRole('button', { name: 'Déplacer ici' }).click();
+});
+
+Then(
+  'l’application affiche le rendez-vous sur le second créneau et libère le premier',
+  async ({ monde }) => {
+    const p = page(monde);
+    await expect(p.getByRole('alert')).toHaveText('Rendez-vous déplacé.');
+    await expect(p.locator(`li[data-creneau="${monde.creneaux?.[1] ?? ''}"]`)).toBeVisible();
+    await expect(p.locator(`li[data-creneau="${monde.creneaux?.[0] ?? ''}"]`)).toHaveCount(0);
+    const r = await fetch(`${FHIR_URL}/Slot/${monde.creneaux?.[0] ?? ''}`, {
+      headers: { accept: 'application/fhir+json', 'cache-control': 'no-cache' },
+    });
+    expect(((await r.json()) as { status: string }).status).toBe('free');
+  },
+);
+
+When('le patient annule le rendez-vous déplacé', async ({ monde }) => {
+  const p = page(monde);
+  await p
+    .locator(`li[data-creneau="${monde.creneaux?.[1] ?? ''}"]`)
+    .getByRole('button', { name: 'Annuler' })
+    .click();
+  await expect(p.locator(`li[data-creneau="${monde.creneaux?.[1] ?? ''}"]`)).toHaveCount(0);
 });
 
 When('le patient rejoint ce rendez-vous dans l’application', async ({ monde }) => {

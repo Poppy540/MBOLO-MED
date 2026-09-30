@@ -14,6 +14,16 @@ Fonctionnalité: Application patient
     Quand le patient annule ce rendez-vous dans l’application
     Alors le rendez-vous disparaît de l’application
 
+  Scénario: Le patient déplace son rendez-vous vers un autre créneau du même médecin
+    Étant donné un créneau libre de "prac-fictif-001" est publié dans 12 jours
+    Et un créneau libre de "prac-fictif-001" est publié dans 13 jours
+    Quand "patient-fictif-01" ouvre l’application patient pour "prac-fictif-001"
+    Et que le patient réserve ce créneau dans l’application
+    Alors l’application confirme le rendez-vous
+    Quand le patient déplace ce rendez-vous vers le second créneau
+    Alors l’application affiche le rendez-vous sur le second créneau et libère le premier
+    Et le patient annule le rendez-vous déplacé
+
   Scénario: Le patient rejoint la consultation depuis l'application et passe en audio seulement
     Étant donné que "patient-fictif-01" est connecté
     Et que "medecin-fictif-01" est connecté
