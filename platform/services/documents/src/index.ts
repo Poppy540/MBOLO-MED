@@ -11,9 +11,17 @@ export { CleMaitreKms, ErreurKmsIndisponible, transportHttps } from './kms.js';
 export type { OptionsKms, TransportKms } from './kms.js';
 export { reenvelopper } from './rotation.js';
 export type { BilanRotation } from './rotation.js';
-export { DepotMemoire, DepotPostgres, MOTIFS_REFUS, RESULTATS, TYPES_DOCUMENT } from './depot.js';
+export {
+  DepotMemoire,
+  DepotPostgres,
+  MOTIFS_REFUS,
+  RESULTATS,
+  RESULTATS_PERTE,
+  TYPES_DOCUMENT,
+} from './depot.js';
 export type {
   Decision,
+  DemandePerte,
   DepotDocuments,
   EnAttente,
   Metadonnees,
@@ -42,3 +50,6 @@ export { DossierFhir, DossierMemoire } from './dossier.js';
 export type { DossierIdentite } from './dossier.js';
 export { ServiceVerificateur } from './verificateur.js';
 export type { DemandeDecision, FicheVerification, ParametresVerificateur } from './verificateur.js';
+export { AlerteNumeroHttp } from './alerte.js';
+export { ServicePerte } from './perte.js';
+export type { AlerteNumero, DecisionPerte, EtatPerte, FichePerte } from './perte.js';

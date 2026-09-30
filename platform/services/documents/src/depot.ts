@@ -37,6 +37,32 @@ export interface EnAttente {
 
 const DOCUMENT_IDENTITE: readonly TypeDocument[] = ['piece-identite', 'acte-naissance'];
 
+export const RESULTATS_PERTE = ['acceptee', 'refusee'] as const;
+export type ResultatPerte = (typeof RESULTATS_PERTE)[number];
+
+/**
+ * Demande de changement du numéro après une perte (ADR-0023). Le nouveau numéro est chiffré tant
+ * que la demande est ouverte ; il est effacé (numéro et clé) à la décision.
+ */
+export interface DemandePerte {
+  id: string;
+  patientId: string;
+  telephoneChiffre?: Buffer;
+  cleEnveloppee?: Buffer;
+  ouverteLe: Date;
+  resultat?: ResultatPerte;
+  verificateur?: string;
+  motif?: MotifRefus;
+  decideLe?: Date;
+}
+
+export interface ClotureDemandePerte {
+  resultat: ResultatPerte;
+  verificateur: string;
+  motif?: MotifRefus;
+  decideLe: Date;
+}
+
 export interface Metadonnees {
   id: string;
   patientId: string;
@@ -57,7 +83,7 @@ export interface DepotDocuments {
    * Insère si le patient a moins de `max` documents présents de ce type ; faux sinon. Compter puis
    * insérer se fait sous verrou : deux envois simultanés ne dépassent pas la limite.
    */
-  insererSiPlace(m: Metadonnees, max: number): Promise<boolean>;
+  insererSiPlace(m: Metadonnees, max: number, depuis?: Date): Promise<boolean>;
   lire(id: string): Promise<Metadonnees | undefined>;
   /** Documents encore présents d'un patient, les plus récents d'abord. */
   duPatient(patientId: string): Promise<Metadonnees[]>;
@@ -77,6 +103,13 @@ export interface DepotDocuments {
   remplacerCle(id: string, ancienne: Buffer, nouvelle: Buffer): Promise<boolean>;
   /** Dernière décision prise pour ce patient. */
   derniereDecision(patientId: string): Promise<Decision | undefined>;
+  /** Ouvre une demande « perte » ; faux si le patient en a déjà une ouverte. */
+  ouvrirDemandePerte(d: DemandePerte): Promise<boolean>;
+  demandePerteOuverte(patientId: string): Promise<DemandePerte | undefined>;
+  /** Demandes ouvertes, les plus anciennes d'abord. */
+  demandesPerteOuvertes(limite: number): Promise<DemandePerte[]>;
+  /** Clôt une demande encore ouverte et efface le numéro chiffré ; faux si elle ne l'était plus. */
+  cloreDemandePerte(id: string, c: ClotureDemandePerte): Promise<boolean>;
 }
 
 const present = (m: Metadonnees) => !m.supprimeLe;
@@ -84,6 +117,35 @@ const present = (m: Metadonnees) => !m.supprimeLe;
 export class DepotMemoire implements DepotDocuments {
   readonly lignes: Metadonnees[] = [];
   readonly decisions: Decision[] = [];
+  readonly pertes: DemandePerte[] = [];
+
+  async ouvrirDemandePerte(d: DemandePerte): Promise<boolean> {
+    if (await this.demandePerteOuverte(d.patientId)) return false;
+    this.pertes.push({ ...d });
+    return true;
+  }
+
+  async demandePerteOuverte(patientId: string): Promise<DemandePerte | undefined> {
+    const d = this.pertes.find((x) => x.patientId === patientId && !x.resultat);
+    return d ? { ...d } : undefined;
+  }
+
+  async demandesPerteOuvertes(limite: number): Promise<DemandePerte[]> {
+    return this.pertes
+      .filter((x) => !x.resultat)
+      .sort((a, b) => a.ouverteLe.getTime() - b.ouverteLe.getTime())
+      .slice(0, limite)
+      .map((x) => ({ ...x }));
+  }
+
+  async cloreDemandePerte(id: string, c: ClotureDemandePerte): Promise<boolean> {
+    const d = this.pertes.find((x) => x.id === id && !x.resultat);
+    if (!d) return false;
+    delete d.telephoneChiffre;
+    delete d.cleEnveloppee;
+    Object.assign(d, c);
+    return true;
+  }
 
   async enAttente(limite: number): Promise<EnAttente[]> {
     const patients = [...new Set(this.lignes.map((l) => l.patientId))];
@@ -135,9 +197,13 @@ export class DepotMemoire implements DepotDocuments {
     this.lignes.push({ ...m });
   }
 
-  async insererSiPlace(m: Metadonnees, max: number): Promise<boolean> {
+  async insererSiPlace(m: Metadonnees, max: number, depuis?: Date): Promise<boolean> {
     const n = this.lignes.filter(
-      (x) => x.patientId === m.patientId && x.type === m.type && present(x),
+      (x) =>
+        x.patientId === m.patientId &&
+        x.type === m.type &&
+        present(x) &&
+        (!depuis || x.deposeLe >= depuis),
     ).length;
     if (n >= max) return false;
     this.lignes.push({ ...m });
@@ -210,13 +276,14 @@ export class DepotPostgres implements DepotDocuments {
               ${m.cleEnveloppee ?? null}, ${m.deposeLe}, ${m.supprimerLe})`;
   }
 
-  async insererSiPlace(m: Metadonnees, max: number): Promise<boolean> {
+  async insererSiPlace(m: Metadonnees, max: number, depuis?: Date): Promise<boolean> {
     return this.sql.begin(async (tx) => {
       // Verrou par patient et par type, libéré à la fin de la transaction.
       await tx`select pg_advisory_xact_lock(hashtext(${`documents:${m.patientId}:${m.type}`}))`;
       const [compte] = await tx<{ n: number }[]>`
         select count(*)::int as n from documents.documents
-         where patient_id = ${m.patientId} and type = ${m.type} and supprime_le is null`;
+         where patient_id = ${m.patientId} and type = ${m.type} and supprime_le is null
+           and (${depuis ?? null}::timestamptz is null or depose_le >= ${depuis ?? null})`;
       if ((compte?.n ?? 0) >= max) return false;
       await tx`
         insert into documents.documents
@@ -316,4 +383,65 @@ export class DepotPostgres implements DepotDocuments {
        where id = ${id} and supprime_le is null`;
     return r.count === 1;
   }
+
+  async ouvrirDemandePerte(d: DemandePerte): Promise<boolean> {
+    try {
+      await this.sql`
+        insert into documents.demandes_perte
+          (id, patient_id, telephone_chiffre, cle_enveloppee, ouverte_le)
+        values (${d.id}, ${d.patientId}, ${d.telephoneChiffre ?? null},
+                ${d.cleEnveloppee ?? null}, ${d.ouverteLe})`;
+      return true;
+    } catch (e) {
+      // Index unique : une seule demande ouverte par patient, même pour deux envois simultanés.
+      if ((e as { code?: string }).code === '23505') return false;
+      throw e;
+    }
+  }
+
+  async demandePerteOuverte(patientId: string): Promise<DemandePerte | undefined> {
+    const [l] = await this.sql<LignePerte[]>`
+      select * from documents.demandes_perte where patient_id = ${patientId} and resultat is null`;
+    return l ? versDemandePerte(l) : undefined;
+  }
+
+  async demandesPerteOuvertes(limite: number): Promise<DemandePerte[]> {
+    const lignes = await this.sql<LignePerte[]>`
+      select * from documents.demandes_perte where resultat is null
+       order by ouverte_le limit ${limite}`;
+    return lignes.map(versDemandePerte);
+  }
+
+  async cloreDemandePerte(id: string, c: ClotureDemandePerte): Promise<boolean> {
+    const r = await this.sql`
+      update documents.demandes_perte
+         set telephone_chiffre = null, cle_enveloppee = null, resultat = ${c.resultat},
+             verificateur = ${c.verificateur}, motif = ${c.motif ?? null}, decide_le = ${c.decideLe}
+       where id = ${id} and resultat is null`;
+    return r.count === 1;
+  }
 }
+
+interface LignePerte {
+  id: string;
+  patient_id: string;
+  telephone_chiffre: Buffer | null;
+  cle_enveloppee: Buffer | null;
+  ouverte_le: Date;
+  resultat: ResultatPerte | null;
+  verificateur: string | null;
+  motif: MotifRefus | null;
+  decide_le: Date | null;
+}
+
+const versDemandePerte = (l: LignePerte): DemandePerte => ({
+  id: l.id,
+  patientId: l.patient_id,
+  ...(l.telephone_chiffre ? { telephoneChiffre: l.telephone_chiffre } : {}),
+  ...(l.cle_enveloppee ? { cleEnveloppee: l.cle_enveloppee } : {}),
+  ouverteLe: l.ouverte_le,
+  ...(l.resultat ? { resultat: l.resultat } : {}),
+  ...(l.verificateur ? { verificateur: l.verificateur } : {}),
+  ...(l.motif ? { motif: l.motif } : {}),
+  ...(l.decide_le ? { decideLe: l.decide_le } : {}),
+});

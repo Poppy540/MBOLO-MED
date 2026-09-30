@@ -51,3 +51,27 @@ export function creerVerificateur(o: OptionsJeton): VerifierJeton {
     };
   };
 }
+
+/** Client Keycloak appelant (revendication `azp`), pour les routes réservées à un service. */
+export type VerifierAppelant = (jeton: string) => Promise<string>;
+
+/**
+ * Jeton de service (flux « client credentials », ou jeton signé par le royaume pour l'extension
+ * Keycloak) : émetteur, audience, et client appelant dans la liste autorisée.
+ */
+export function creerVerificateurAppelant(
+  o: OptionsJeton & { clientsAutorises: readonly string[] },
+): VerifierAppelant {
+  const cles = o.cles ?? createRemoteJWKSet(new URL(`${o.emetteur}/protocol/openid-connect/certs`));
+  return async (jeton) => {
+    const { payload } = await jwtVerify<JWTPayload & { azp?: string }>(jeton, cles, {
+      issuer: o.emetteur,
+      audience: o.audience,
+      algorithms: ['RS256', 'ES256'],
+    });
+    if (!payload.azp || !o.clientsAutorises.includes(payload.azp)) {
+      throw new Error('Client non autorisé.');
+    }
+    return payload.azp;
+  };
+}

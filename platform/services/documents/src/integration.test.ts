@@ -184,6 +184,49 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION && S3 && CLE && SECRET)(
       expect((await depot.lire(r.id))?.cleEnveloppee).toEqual(nouvelle);
     });
 
+    it('demande « perte » : une seule ouverte par patient, numéro effacé à la clôture', async () => {
+      const depot = new DepotPostgres(execution);
+      const patient = `pat-fictif-perte-${randomBytes(4).toString('hex')}`;
+      const demande = (id: string) => ({
+        id,
+        patientId: patient,
+        telephoneChiffre: Buffer.from('chiffre-fictif'),
+        cleEnveloppee: Buffer.from('enveloppe-fictive'),
+        ouverteLe: horloge,
+      });
+      const premiere = randomUUID();
+      const [a, b] = await Promise.all([
+        depot.ouvrirDemandePerte(demande(premiere)),
+        depot.ouvrirDemandePerte(demande(randomUUID())),
+      ]);
+      expect([a, b].filter(Boolean)).toHaveLength(1);
+      const ouverte = await depot.demandePerteOuverte(patient);
+      expect(ouverte?.telephoneChiffre).toEqual(Buffer.from('chiffre-fictif'));
+      expect((await depot.demandesPerteOuvertes(500)).map((d) => d.patientId)).toContain(patient);
+      // Un refus sans motif est refusé par la base.
+      await expect(
+        depot.cloreDemandePerte(ouverte?.id ?? '', {
+          resultat: 'refusee',
+          verificateur: 'u-verif-fictif',
+          decideLe: horloge,
+        }),
+      ).rejects.toThrow();
+      expect(
+        await depot.cloreDemandePerte(ouverte?.id ?? '', {
+          resultat: 'acceptee',
+          verificateur: 'u-verif-fictif',
+          decideLe: horloge,
+        }),
+      ).toBe(true);
+      expect(await depot.demandePerteOuverte(patient)).toBeUndefined();
+      const [ligne] = await proprietaire<{ telephone_chiffre: Buffer | null; resultat: string }[]>`
+        select telephone_chiffre, resultat from documents.demandes_perte
+         where patient_id = ${patient}`;
+      expect(ligne).toEqual({ telephone_chiffre: null, resultat: 'acceptee' });
+      // Close : une nouvelle demande est de nouveau possible.
+      expect(await depot.ouvrirDemandePerte(demande(randomUUID()))).toBe(true);
+    });
+
     it('le service ne peut supprimer aucune ligne de la base', async () => {
       await expect(execution`delete from documents.documents`).rejects.toThrow(/permission/);
     });

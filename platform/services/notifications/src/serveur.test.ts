@@ -243,8 +243,10 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
       verifierAppelant: async (j) => {
         if (j === 'jeton-keycloak') return 'mbolo-keycloak-inscription';
         if (j === 'jeton-valide') return 'mbolo-teleconsultation-service';
+        if (j === 'jeton-documents') return 'mbolo-documents-service';
         throw new Error('refusé');
       },
+      numeroChange: { appelants: ['mbolo-documents-service'] },
       // Sans consentement aux rappels : le code part quand même, c'est le patient qui le demande.
       service: new ServiceNotifications(
         {
@@ -375,6 +377,28 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
     );
     expect(alertes).toContain('numero-change');
     expect((await alerter('jeton-valide')).statusCode).toBe(403);
+    // Après une perte, c'est le service documents qui prévient l'ancien numéro ; il n'envoie rien
+    // d'autre (ni code, ni autre alerte).
+    expect((await alerter('jeton-documents')).json()).toEqual({ resultat: 'envoyee' });
+    const documents = { authorization: 'Bearer jeton-documents' };
+    const code = await app.inject({
+      method: 'POST',
+      url: '/codes-connexion',
+      headers: documents,
+      payload: { patientId: 'pat-fictif-005', code: '482913' },
+    });
+    expect(code.statusCode).toBe(403);
+    const autre = await app.inject({
+      method: 'POST',
+      url: '/notifications',
+      headers: documents,
+      payload: {
+        destinataire: 'Patient/pat-fictif-005',
+        gabarit: 'rendez-vous-annule',
+        instant: '2026-10-01T08:00:00Z',
+      },
+    });
+    expect(autre.statusCode).toBe(403);
     expect(lignes.join('\n')).not.toContain('+241');
   });
 

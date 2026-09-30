@@ -49,6 +49,23 @@ Jeton de l'espace professionnel, **rôle `verification-identite`** (double authe
 - **Motifs de refus** (liste fermée) : `photo-illisible`, `document-non-conforme`, `visage-different`, `document-expire`, `autre-controle-en-personne`.
 - **Aucune reconnaissance faciale automatique** : la comparaison est faite à l'œil (ADR-0015, sous réserve de l'avis juridique).
 
+## Téléphone perdu (ADR-0023)
+
+Le patient n'a plus son ancien numéro : une personne habilitée vérifie son identité avant tout changement.
+
+| Route | Qui | Rôle |
+|---|---|---|
+| `POST /demandes-perte` | Extension Keycloak seule (jeton de service, clients `DOCUMENTS_APPELANTS_PERTE`) | Ouvre la demande après un code reçu au nouveau numéro (`patientId`, `telephone` au format international) ; une seule ouverte par patient (409) |
+| `GET /perte` | Le patient | Demande en cours ou non, photos envoyées depuis son ouverture (type et date) |
+| `GET /demandes-perte` | `verification-identite` | Demandes qui ont une photo du document **et** du visage envoyées depuis leur ouverture, les plus anciennes d'abord |
+| `GET /demandes-perte/:patientId` | `verification-identite` | Identité déclarée, photos de la demande (`nouvelles`) et photos de l'inscription encore conservées (`anciennes`), à comparer ; consultation tracée dans le dossier **avant** d'être montrée. Photos : `GET /verifications/:patientId/documents/:id` |
+| `POST /demandes-perte/:patientId/decision` | `verification-identite` | `acceptee`, ou `refusee` avec un motif de la liste ; jamais de texte libre |
+
+- **Nouveau numéro chiffré** : il n'est gardé que le temps de la demande (table `documents.demandes_perte`), chiffré par une clé propre enveloppée par la clé maître, puis **effacé avec sa clé à la décision**, acceptée ou refusée. Il n'est jamais renvoyé, affiché ni journalisé. La commande de rotation ne ré-enveloppe que les photos : garder l'ancienne clé maître tant qu'une demande ouverte a été chiffrée avec elle.
+- **Nouvelles photos** : acceptées même si l'identité est déjà vérifiée, tant que la demande est ouverte ; la limite par type ne compte que les photos de la demande (celles de l'inscription restent pour comparer).
+- **Acceptée** : SMS d'alerte à l'**ancien** numéro par le service notifications (`POST /numero-change`, lu dans le dossier avant la mise à jour) ; **sans alerte, rien ne change** (503, réessayer). Puis `Patient.telecom` seul est remplacé par la passerelle, avec le parcours `perte` et la date (`changement-telephone`) : **aucun code de connexion pendant 24 heures**.
+- **Pas de flag** : c'est une fonction de sécurité. Le dépôt des photos reste soumis à la charte `C-IDENTITE` (flag `identite.photos`).
+
 ## Configuration
 
 | Variable | Rôle |
@@ -64,6 +81,7 @@ Jeton de l'espace professionnel, **rôle `verification-identite`** (double authe
 | `DOCUMENTS_VERSION_CHARTE` (défaut `0.1`) | Version de la charte en vigueur : une nouvelle version exige une nouvelle acceptation |
 | `DOCUMENTS_CONSERVATION_JOURS` (défaut 90), `DOCUMENTS_MAX_PAR_TYPE` (défaut 2) | Durée de conservation (à fixer par pays avec l'avis juridique) et nombre de photos par type |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flag `identite.photos` (sans Unleash : désactivé) |
+| `NOTIFICATIONS_URL`, `DOCUMENTS_APPELANTS_PERTE` (défaut `mbolo-keycloak-inscription`) | Téléphone perdu (ADR-0023) : alerte à l'ancien numéro, et clients autorisés à ouvrir une demande ; sans `NOTIFICATIONS_URL`, les routes « perte » ne sont pas ouvertes |
 
 ## Chiffrement par enveloppe
 - **Une clé par document** : chaque document a sa propre clé AES-256-GCM, tirée au hasard.
@@ -99,8 +117,10 @@ Jeton de l'espace professionnel, **rôle `verification-identite`** (double authe
   - dépôt, relecture, suppression à échéance, trace sans clé ;
   - suppression refusée au rôle d'exécution ;
   - cinq envois simultanés : deux seulement acceptés.
+  - demande « perte » : une seule ouverte par patient même pour deux ouvertures simultanées, refus sans motif rejeté par la base, numéro effacé à la clôture.
 - **API** (`serveur.test.ts`) : dépôt tracé sans image, refus sans charte ou après un refus, identité déjà vérifiée, agent IA et professionnel refusés, flag, contenu qui n'est pas une photo, taille, limite par type, limite d'appels.
 - **API du vérificateur** : liste réservée au rôle, traces avant affichage, photo d'un autre patient refusée, pas d'auto-vérification, « vérifiée » avec numéro, motif obligatoire et sans texte libre, « à refaire ».
+- **Téléphone perdu** (`perte.test.ts`) : ouverture par l'extension Keycloak seule, une à la fois, numéro chiffré et jamais journalisé ; nouvelles photos malgré une identité vérifiée, limite comptée sur la demande ; fiche tracée ; alerte à l'ancien numéro avant la mise à jour ; nouveau numéro avec le parcours `perte` ; sans alerte, rien ne change ; refus avec motif ; numéro effacé ; pas d'auto-vérification ni d'agent IA. Le parcours de bout en bout (Keycloak, application, espace professionnel) arrive avec la PR suivante.
 - **E2E** (`features-gherkin/identite/verification-identite.feature`, `verification-par-un-humain.feature`) : parcours du patient, puis vérification dans l'espace professionnel (photos affichées, statut et numéro dans le dossier, consultations visibles par le patient), « à refaire », motif obligatoire, médecin refusé.
 
-En local, un SeaweedFS lancé avec `weed server -s3 -s3.config=<fichier d'identités> -volume.max=100 -master.volumeSizeLimitMB=64 -master.volumePreallocate=false` suffit (chaque compartiment de test crée 7 volumes : sans ces options, les places manquent dès la 2ᵉ exécution). Ses clés de test restent hors du dépôt.
+En local, un SeaweedFS lancé avec `weed server -volume.port=8090 -s3 -s3.config=<fichier d'identités> -volume.max=100 -master.volumeSizeLimitMB=64 -master.volumePreallocate=false` suffit (chaque compartiment de test crée 7 volumes : sans ces options, les places manquent dès la 2ᵉ exécution). Ses clés de test restent hors du dépôt.

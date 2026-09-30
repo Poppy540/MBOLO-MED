@@ -60,6 +60,8 @@ export class ServiceDocuments {
     type: string;
     octets: Buffer;
     versionCharte: string;
+    /** Seules les photos déposées depuis cette date comptent dans la limite (demande « perte »). */
+    depuis?: Date;
   }): Promise<DocumentDepose> {
     if (!PATIENT.test(o.patientId)) throw new ErreurDocument('type', 'Patient invalide.');
     if (!(TYPES_DOCUMENT as readonly string[]).includes(o.type)) {
@@ -87,12 +89,14 @@ export class ServiceDocuments {
       supprimerLe: new Date(maintenant.getTime() + this.parametres.conservationJours * 86_400_000),
     };
     // Contrôle rapide avant l'écriture ; la limite est garantie par l'insertion sous verrou.
-    const deja = (await this.depot.duPatient(o.patientId)).filter((d) => d.type === type);
+    const deja = (await this.depot.duPatient(o.patientId)).filter(
+      (d) => d.type === type && (!o.depuis || d.deposeLe >= o.depuis),
+    );
     if (deja.length >= this.parametres.maxParType) throw trop();
     await this.stockage.ecrire(id, donnees);
     let insere: boolean;
     try {
-      insere = await this.depot.insererSiPlace(m, this.parametres.maxParType);
+      insere = await this.depot.insererSiPlace(m, this.parametres.maxParType, o.depuis);
     } catch (e) {
       // Sans métadonnées, le contenu chiffré n'a plus de clé : on le retire.
       await this.stockage.supprimer(id).catch(() => undefined);

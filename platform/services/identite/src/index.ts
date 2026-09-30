@@ -28,7 +28,7 @@ export { JournalAccesFhir, JournalAccesMemoire } from './journal-acces.js';
 export type { JournalAcces } from './journal-acces.js';
 export { ErreurRevue, ServiceRevue } from './revue.js';
 export type { BrisDeGlaceARevoir } from './revue.js';
-export { creerVerificateur } from './jeton.js';
+export { creerVerificateur, creerVerificateurAppelant } from './jeton.js';
 export {
   ErreurNiveauInsuffisant,
   MOTIF_NIVEAU_INSUFFISANT,
@@ -37,7 +37,7 @@ export {
   niveauDe,
   reponseNiveauInsuffisant,
 } from './niveau.js';
-export type { OptionsJeton, VerifierJeton } from './jeton.js';
+export type { OptionsJeton, VerifierAppelant, VerifierJeton } from './jeton.js';
 export { creerServeur } from './serveur.js';
 export type { OptionsServeur } from './serveur.js';
 export { ErreurAdresseNonChiffree, entetesSecurite, exigerHttps } from './securite-http.js';

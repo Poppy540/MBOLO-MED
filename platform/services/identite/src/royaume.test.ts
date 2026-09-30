@@ -218,7 +218,8 @@ describe('royaume mbolo', () => {
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
     ).toBe('system/Patient.ru system/Consent.s system/AuditEvent.c');
     // Du patient, seuls l'identité déclarée et son statut sortent de la passerelle (pour la
-    // comparer aux photos) ; seuls le statut et le numéro peuvent être modifiés.
+    // comparer aux photos) ; seuls le statut, les identifiants et, après une perte du téléphone
+    // (ADR-0023), le numéro de téléphone peuvent être modifiés : jamais le nom ni la naissance.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
     ).toBe('Patient.extension Patient.identifier Patient.name Patient.birthDate');
@@ -226,7 +227,7 @@ describe('royaume mbolo', () => {
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements_modifiables')?.config[
         'claim.value'
       ],
-    ).toBe('Patient.extension Patient.identifier');
+    ).toBe('Patient.extension Patient.identifier Patient.telecom');
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
         .filter((m) => m.protocolMapper === 'oidc-audience-mapper')
@@ -234,6 +235,11 @@ describe('royaume mbolo', () => {
     expect(audiences('mbolo-app-patient')).toContain('mbolo-documents-api');
     // L'espace professionnel l'appelle aussi : écran du vérificateur (rôle verification-identite).
     expect(audiences('mbolo-app-pro')).toContain('mbolo-documents-api');
+    // Alerte à l'ancien numéro après une perte : le dossier et les notifications, rien d'autre.
+    expect(audiences('mbolo-documents-service').sort()).toEqual([
+      'mbolo-dossier-fhir',
+      'mbolo-notifications',
+    ]);
   });
 
   it('paiement (ADR-0017) : le patient et la téléconsultation seulement', () => {
