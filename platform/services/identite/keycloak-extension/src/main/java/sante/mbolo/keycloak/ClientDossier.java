@@ -55,4 +55,33 @@ public final class ClientDossier {
       return Optional.empty();
     }
   }
+
+  /**
+   * Remplace le numéro du dossier (ADR-0023) : seul {@code Patient.telecom} est envoyé ; la
+   * passerelle ne remplace que cet élément. Vrai seulement si le dossier confirme.
+   */
+  public boolean modifierTelephone(String patientId, String telephone) {
+    if (!IDENTIFIANT.matcher(patientId).matches()) return false;
+    try {
+      Map<String, Object> corps =
+          Map.of(
+              "resourceType", "Patient",
+              "id", patientId,
+              "telecom", java.util.List.of(Map.of("system", "phone", "value", telephone, "use", "mobile")));
+      HttpRequest requete =
+          HttpRequest.newBuilder(base.resolve("Patient/" + patientId))
+              .timeout(DELAI)
+              .header("content-type", "application/fhir+json")
+              .header("accept", "application/fhir+json")
+              .header("authorization", "Bearer " + jeton.get())
+              .PUT(HttpRequest.BodyPublishers.ofString(JsonSerialization.writeValueAsString(corps)))
+              .build();
+      return http.send(requete, HttpResponse.BodyHandlers.discarding()).statusCode() == 200;
+    } catch (IOException | RuntimeException e) {
+      return false;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
+    }
+  }
 }

@@ -39,7 +39,7 @@ export interface Monde {
   /** Invitation créée pendant le scénario (le code n'existe que dans cette mémoire de test). */
   invitation?: { id: string; code: string };
   /** Inscription pendant le scénario : identifiant fictif et jeton obtenu, ou page d'erreur. */
-  inscription?: { identifiant: string; jeton?: string; page?: Page };
+  inscription?: { identifiant: string; jeton?: string; page?: Page; motDePasse?: string };
   /** Compte connecté dans l'application patient du scénario (numéro du code SMS, ADR-0022). */
   patientApplication?: string;
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */

@@ -203,7 +203,7 @@ async function inscrire(
   }
   await page.waitForTimeout(500);
   page.off('request', surRequete);
-  monde.inscription = { identifiant, page };
+  monde.inscription = { identifiant, page, motDePasse };
   const autorisation = retour?.searchParams.get('code');
   if (!autorisation) return;
   const r = await fetch(`${EMETTEUR}/protocol/openid-connect/token`, {

@@ -33,6 +33,9 @@ services:
       # Identité saisie après l'inscription : dossier créé par la passerelle (ADR-0014).
       KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_DOSSIER_URL: ${PASSERELLE_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3002/fhir/}
       KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_ENVIRONNEMENT: dev
+      # Changement du numéro par le patient (ADR-0023) : dossier (numéro seul) et notifications (codes, alerte).
+      KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_DOSSIER_URL: ${PASSERELLE_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3002/fhir/}
+      KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_NOTIFICATIONS_URL: ${NOTIFICATIONS_URL_DEPUIS_KEYCLOAK:-http://host.docker.internal:3004/}
       # Système du numéro d'assurance maladie nationale du pays déployé (Gabon : CNAMGS) [FICTIF en dev].
       KC_SPI_REQUIRED_ACTION_MBOLO_IDENTITE_PATIENT_IDENTIFIANT_ASSURANCE_SYSTEME: ${IDENTIFIANT_ASSURANCE_SYSTEME:-https://mbolo-sante.example/fhir/identifiant/ga/assurance-maladie}
     extra_hosts:

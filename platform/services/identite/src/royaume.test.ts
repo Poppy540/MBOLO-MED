@@ -376,6 +376,9 @@ describe('royaume mbolo', () => {
     expect(
       royaume.requiredActions.find((a) => a.alias === 'TERMS_AND_CONDITIONS')?.defaultAction,
     ).toBe(false);
+    // Changement de numéro (ADR-0023) : lancé par l'application seulement, jamais par défaut.
+    const changer = royaume.requiredActions.find((a) => a.alias === 'mbolo-changer-telephone');
+    expect(changer).toMatchObject({ enabled: true, defaultAction: false });
   });
 
   it("ne demande ni nom ni e-mail à l'inscription : identité dans le dossier seulement", () => {

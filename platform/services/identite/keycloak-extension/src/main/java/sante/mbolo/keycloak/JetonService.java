@@ -24,6 +24,19 @@ final class JetonService {
    */
   static String emettre(
       KeycloakSession session, RealmModel realm, String audience, String permissions) {
+    return emettre(session, realm, audience, permissions, null);
+  }
+
+  /**
+   * @param elements éléments lisibles et modifiables par type (revendications {@code mbolo_elements}
+   *     et {@code mbolo_elements_modifiables}), ex. « Patient.telecom », ou {@code null}
+   */
+  static String emettre(
+      KeycloakSession session,
+      RealmModel realm,
+      String audience,
+      String permissions,
+      String elements) {
     long maintenant = Time.currentTime();
     AccessToken jeton = new AccessToken();
     jeton.id(KeycloakModelUtils.generateId());
@@ -34,6 +47,11 @@ final class JetonService {
     jeton.iat(maintenant);
     jeton.exp(maintenant + 60);
     if (permissions != null) jeton.getOtherClaims().put("mbolo_scopes", permissions);
+    if (elements != null) {
+      // La passerelle ne lit et ne remplace que ces éléments ; le reste du dossier est conservé.
+      jeton.getOtherClaims().put("mbolo_elements", elements);
+      jeton.getOtherClaims().put("mbolo_elements_modifiables", elements);
+    }
     return session.tokens().encode(jeton);
   }
 }

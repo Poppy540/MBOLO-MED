@@ -109,6 +109,17 @@ Le flux `navigateur-mbolo` a **deux niveaux** (authentification renforcée de Ke
 - **Services** : `acr` est lu dans le jeton (`Utilisateur.niveau`, seuls les entiers attendus). `exigerNiveau` refuse une action sensible avec `ErreurNiveauInsuffisant`, que chaque service rend en **401** `{ motif: "niveau-insuffisant" }` avec l'en-tête `WWW-Authenticate: Bearer error="insufficient_user_authentication", acr_values="2"` (RFC 9470). Ici : **accorder** un consentement `C-PARTAGE-PRO` ou `C-PROCHE` ; le refuser ou le retirer reste au niveau 1. Un agent IA n'a jamais de code SMS : il ne peut pas ouvrir le dossier à un tiers.
 - Le client `mbolo-app-patient` déclare la correspondance `acr.loa.map` `{"1":1,"2":2}`. Configuration : `KC_SPI_AUTHENTICATOR_MBOLO_CODE_SMS_NOTIFICATIONS_URL` (adresse du service des notifications, pas un secret).
 
+### Changement du numéro par le patient (ADR-0023)
+
+Action requise `mbolo-changer-telephone`, **lancée par l'application seulement** (`kc_action=mbolo-changer-telephone`, jamais par défaut) :
+
+1. **Code à l'ancien numéro** (celui du dossier, page `code-sms.ftl`) : un voleur de mot de passe s'arrête là.
+2. **Nouveau numéro** (page `changer-telephone.ftl`), puis **code au nouveau numéro** (`verification-telephone.ftl`, « Corriger mon numéro »). Les deux codes ont leurs propres compteurs dans la session (mêmes règles que le code de connexion).
+3. **Alerte à l'ancien numéro** (`POST /numero-change` du service `notifications`, avant la mise à jour : le numéro est encore dans le dossier), puis **mise à jour du seul `Patient.telecom`** par la passerelle, avec un jeton limité à cet élément (`mbolo_elements` et `mbolo_elements_modifiables` = `Patient.telecom`, `system/Patient.u`).
+4. **Au plus un changement par 24 heures** (attribut `mbolo_telephone_change_le` du compte, posé par l'extension). Le patient peut toujours revenir à l'application (`cancel-aia`) ; l'application reçoit `kc_action_status` (`success`, `cancelled`).
+
+Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_DOSSIER_URL` et `..._NOTIFICATIONS_URL`. Reste (ADR-0023) : l'écran de l'application (PR suivante) et le parcours « téléphone perdu ».
+
 ### Construction et configuration
 
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.

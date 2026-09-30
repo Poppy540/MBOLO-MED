@@ -338,6 +338,30 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
     expect(journal).not.toContain('00000009');
   });
 
+  it('numéro changé (ADR-0023) : alerte à l’ancien numéro, par l’extension Keycloak seule', async () => {
+    const { app, canal, lignes } = await monterCodes();
+    const alerter = (jeton: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/numero-change',
+        headers: { authorization: `Bearer ${jeton}` },
+        payload: { patientId: 'pat-fictif-005' },
+      });
+    const r = await alerter('jeton-keycloak');
+    expect(r.json()).toEqual({ resultat: 'envoyee' });
+    expect(canal.boite[0]).toMatchObject({
+      telephone: '+241 00 00 00 05',
+      texte:
+        'Mbolo Santé : le numéro de votre compte vient d’être changé. Si ce n’est pas vous, contactez l’équipe.',
+    });
+    const alertes = lignes.map(
+      (l) => (JSON.parse(l) as { contexte?: { alerte?: string } }).contexte?.alerte,
+    );
+    expect(alertes).toContain('numero-change');
+    expect((await alerter('jeton-valide')).statusCode).toBe(403);
+    expect(lignes.join('\n')).not.toContain('+241');
+  });
+
   it('seule l’extension Keycloak envoie un code, et elle n’envoie rien d’autre', async () => {
     const { app, canal, envoyer } = await monterCodes();
     const corps = { patientId: 'pat-fictif-005', code: '482913' };

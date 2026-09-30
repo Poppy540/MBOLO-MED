@@ -38,7 +38,7 @@ Dans l'application : « Changer mon numéro ».
 4. **SMS d'alerte à l'ancien numéro** : « Mbolo Santé : le numéro de votre compte vient d'être changé. Si ce n'est pas vous, contactez l'équipe. »
 5. **Aucun délai** : l'ancien numéro a confirmé ; le nouveau sert tout de suite.
 
-Réalisation : une **action requise Keycloak** `mbolo-changer-telephone`, lancée par l'application (action à l'initiative de l'application, `kc_action`) avec `acr_values=2`. Le mot de passe et les codes ne sortent jamais de Keycloak, comme pour l'inscription.
+Réalisation : une **action requise Keycloak** `mbolo-changer-telephone`, lancée par l'application (action à l'initiative de l'application, `kc_action`). Le mot de passe et les codes ne sortent jamais de Keycloak, comme pour l'inscription. **Précision de mise en œuvre (PR CL)** : l'action envoie elle-même le code à l'ancien numéro, même si la session est déjà au niveau 2. Le changement ne dépend donc pas d'un code saisi un peu plus tôt pour une autre action.
 
 ### 2. Le patient a perdu son téléphone : vérification d'identité par une personne habilitée
 
@@ -67,7 +67,7 @@ Dans l'application (connexion par mot de passe, niveau 1) : « J'ai perdu mon t�
 
 ## Mise en œuvre (petites PR)
 
-1. **Keycloak et dossier** : action requise `mbolo-changer-telephone` (niveau 2 exigé, code au nouveau numéro, mise à jour de `Patient.telecom` par la passerelle avec une permission limitée), SMS `numero-change` à l'ancien numéro, alerte `numero-change`. E2E.
+1. **Keycloak et dossier** (**faite, PR CL**) : action requise `mbolo-changer-telephone` (niveau 2 exigé, code au nouveau numéro, mise à jour de `Patient.telecom` par la passerelle avec une permission limitée), SMS `numero-change` à l'ancien numéro, alerte `numero-change`. E2E.
 2. **Application patient** : « Changer mon numéro » (`kc_action` + `acr_values=2`), retour à l'application.
 3. **Perte du téléphone** : demande dans l'application (code au nouveau numéro, photos), écran de décision dans l'espace professionnel (`verification-identite`), attente de 24 h appliquée par le service `notifications` avant tout code de connexion. E2E.
 
