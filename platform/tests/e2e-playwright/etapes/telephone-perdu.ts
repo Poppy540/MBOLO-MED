@@ -1,18 +1,25 @@
 // Étapes « téléphone perdu » (ADR-0023, parcours 2) : action Keycloak lancée depuis l'application,
-// code reçu au nouveau numéro, nouvelles photos, décision d'une personne habilitée (par l'API ; son
-// écran arrive avec la PR suivante). Données FICTIVES uniquement.
-import { expect, type Page } from '@playwright/test';
+// code reçu au nouveau numéro, nouvelles photos, décision d'une personne habilitée dans l'espace
+// professionnel. Données FICTIVES uniquement.
+import { expect, type Browser, type Page } from '@playwright/test';
 import { EXTENSION_CHANGEMENT_TELEPHONE } from '@mbolo/dossier-fhir';
-import { DOCUMENTS_URL, FHIR_URL, IDENTITE_URL, compte } from '../configuration.js';
+import { APP_PRO_URL, FHIR_URL, IDENTITE_URL, compte } from '../configuration.js';
 import { pngFictif } from './documents.js';
-import { Given, Then, When, type Monde } from './fixtures.js';
+import { Given, Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
 import { codeSmsRecu } from './niveau.js';
 
 const APP = 'application patient';
+const PRO = 'espace professionnel';
 
 const page = (monde: Monde): Page => {
   const p = monde.visio.get(APP)?.page;
   if (!p) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
+  return p;
+};
+
+const pagePro = (monde: Monde): Page => {
+  const p = monde.visio.get(PRO)?.page;
+  if (!p) throw new Error('L’espace professionnel n’est pas ouvert dans ce scénario.');
   return p;
 };
 
@@ -110,28 +117,57 @@ When('il envoie deux nouvelles photos depuis l’application', async ({ monde })
 });
 
 When(
-  '{string} décide {string} sur la demande de changement de numéro de {string}',
-  async ({ monde }, verificateur: string, decision: string, identifiant: string) => {
-    const entetes = { authorization: `Bearer ${jeton(monde, verificateur)}` };
-    // La fiche (tracée dans le dossier) montre les deux nouvelles photos.
-    const fiche = await fetch(`${DOCUMENTS_URL}/demandes-perte/${patientId(identifiant)}`, {
-      headers: entetes,
-    });
-    expect(fiche.status).toBe(200);
-    expect(((await fiche.json()) as { nouvelles: unknown[] }).nouvelles).toHaveLength(2);
-    monde.depuis = new Date().toISOString();
-    const r = await fetch(`${DOCUMENTS_URL}/demandes-perte/${patientId(identifiant)}/decision`, {
-      method: 'POST',
-      headers: { ...entetes, 'content-type': 'application/json' },
-      body: JSON.stringify(
-        decision === 'acceptee'
-          ? { resultat: 'acceptee' }
-          : { resultat: 'refusee', motif: 'visage-different' },
-      ),
-    });
-    expect(r.status).toBe(201);
+  '{string} ouvre les changements de numéro dans l’espace professionnel',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    const contexte = await browser.newContext();
+    const p = await contexte.newPage();
+    monde.visio.set(PRO, { contexte, page: p });
+    await p.goto(`${APP_PRO_URL}/`);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await saisirIdentifiants(p, identifiant, true);
+    await p.getByRole('button', { name: 'Numéros perdus' }).click();
+    await expect(p.getByRole('heading', { name: 'Changements de numéro' })).toBeVisible();
   },
 );
+
+When(
+  'la vérificatrice ouvre la demande de {string} et voit les deux nouvelles photos',
+  async ({ monde }, identifiant: string) => {
+    const p = pagePro(monde);
+    await p.locator(`button[data-patient="${patientId(identifiant)}"]`).click();
+    await expect(p.getByRole('heading', { name: 'Identité déclarée' })).toBeVisible();
+    // Les nouvelles photos sont réellement affichées (déchiffrées et décodées par le navigateur).
+    const nouvelles = p
+      .locator('h3', { hasText: 'Nouvelles photos' })
+      .locator('xpath=following-sibling::div[1]')
+      .getByRole('img', { name: /^Photo/ });
+    await expect(nouvelles).toHaveCount(2);
+    for (const img of await nouvelles.all()) {
+      await expect
+        .poll(() => img.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+    }
+  },
+);
+
+When('la vérificatrice refuse la demande : « Le visage ne correspond pas »', async ({ monde }) => {
+  const p = pagePro(monde);
+  await p.getByLabel('Refuser').check();
+  await p.getByLabel('Motif du refus').selectOption('visage-different');
+  await p.getByRole('button', { name: 'Enregistrer la décision' }).click();
+  await expect(p.getByRole('alert')).toHaveText('Demande refusée. Le numéro ne change pas.');
+  await expect(p.getByText('Aucune demande en attente.')).toBeVisible();
+});
+
+When('la vérificatrice accepte le nouveau numéro', async ({ monde }) => {
+  const p = pagePro(monde);
+  await p.getByLabel('Accepter le nouveau numéro').check();
+  monde.depuis = new Date().toISOString();
+  await p.getByRole('button', { name: 'Enregistrer la décision' }).click();
+  await expect(p.getByRole('alert')).toHaveText(
+    'Nouveau numéro enregistré. L’ancien numéro a été prévenu.',
+  );
+});
 
 Then(
   'le dossier de {string} porte encore le numéro {string}',

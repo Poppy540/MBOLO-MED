@@ -113,7 +113,7 @@ Aucune non-conformité ne touche le contrôle d'accès, les sorties d'argent ni 
 
 ### Décision demandée (revue n°2)
 
-- **D4 — Alternative au SMS pour les patients** : proposer, à ceux qui le veulent, une application d'authentification (code TOTP, déjà utilisé par les professionnels) à la place du SMS ? Plus sûre (vol de carte SIM) et gratuite, mais une étape de plus pour des patients peu familiers du numérique. Recommandation : la proposer en option, le SMS restant le choix par défaut.
+- **D4 — Alternative au SMS pour les patients** (**décidée le 2026-09-30 : [ADR-0024](../architecture/adr/0024-application-authentification-patients.md)**, application en option, le SMS n'est plus accepté une fois l'application activée) : proposer, à ceux qui le veulent, une application d'authentification (code TOTP, déjà utilisé par les professionnels) à la place du SMS ? Plus sûre (vol de carte SIM) et gratuite, mais une étape de plus pour des patients peu familiers du numérique. Recommandation : la proposer en option, le SMS restant le choix par défaut.
 
 ## Test d'intrusion externe (à prévoir avant la vague 1)
 
