@@ -63,6 +63,8 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
 
 Les erreurs sont affichées en phrases simples, sans jargon.
 
+**Urgence** (principe n°2) : un bandeau « 🚑 En cas d'urgence, appelez les secours » est affiché **sur tous les écrans**, avant la connexion et sans réseau. Il n'y a rien à ouvrir ni à charger. Les numéros du pays (`VITE_NUMEROS_SECOURS`) deviennent des liens d'appel direct. Aucun numéro n'est écrit dans le code : sans numéro configuré, seul le message s'affiche. Les numéros de chaque pays sont à valider par le comité médical avant l'ouverture.
+
 ## Hors ligne et économie de données
 
 - **Service worker** (`public/sw.js`, identique dans les deux applications, source dans `@mbolo/client-web`) :
@@ -86,12 +88,13 @@ Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur
 | `VITE_NOM_ASSURANCE`   | `CNAMGS`                              | Nom de l'assurance maladie nationale, affiché dans la vérification d'identité                                                          |
 | `VITE_OPERATEURS`      | `airtel:Airtel Money,moov:Moov Money` | Opérateurs de mobile money du pays (« code:Nom affiché ») ; les codes doivent être ceux du service de paiement (`PAIEMENT_OPERATEURS`) |
 | `VITE_INDICATIF`       | `241`                                 | Indicatif téléphonique du pays, montré dans le champ du numéro                                                                         |
+| `VITE_NUMEROS_SECOURS` | aucun | Numéros des secours du pays (« Nom:numéro », séparés par des virgules), validés par le comité médical ; une entrée mal formée est ignorée |
 
 Les API sont servies sous `/api/<service>` (même origine). L'application construite porte une politique de sécurité du contenu (balise `<meta>`, revue ASVS C6) : scripts de la même origine seulement, connexions limitées à la même origine, à Keycloak et à la visio ; les en-têtes `frame-ancestors`, HSTS et `Referrer-Policy` sont à poser par l'hébergement. En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`), `DOCUMENTS_URL` (`3007`) et `PAIEMENT_URL` (`3008`).
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **13,2 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **14,3 Ko**.
 
 ## Lancer
 
@@ -106,7 +109,7 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
 - **E2E** (`features-gherkin/teleconsultation/application-patient.feature`), vrai navigateur :
   - connexion par le formulaire Keycloak, réservation d'un créneau puis annulation ;
   - rejoindre la consultation, voir la vidéo du professionnel, passer en audio seulement ;
-  - sans réseau, l'application rouvre et affiche les rendez-vous connus (rien d'autre n'est gardé).
+  - sans réseau, l'application rouvre et affiche les rendez-vous connus (rien d'autre n'est gardé), avec le bandeau d'urgence.
 - **E2E** (`features-gherkin/identite/verification-identite.feature`) : charte acceptée, puis envoi des deux photos (images générées, jamais de vraie personne).
 
 ## Reste à faire
