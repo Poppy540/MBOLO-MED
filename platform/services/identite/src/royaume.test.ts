@@ -387,6 +387,20 @@ describe('royaume mbolo', () => {
     expect(changer).toMatchObject({ enabled: true, defaultAction: false });
     const perte = royaume.requiredActions.find((a) => a.alias === 'mbolo-telephone-perdu');
     expect(perte).toMatchObject({ enabled: true, defaultAction: false });
+    // Application d'authentification du patient (ADR-0024) : activer et retirer, à sa demande.
+    for (const alias of ['mbolo-activer-application', 'mbolo-retirer-application']) {
+      expect(royaume.requiredActions.find((a) => a.alias === alias)).toMatchObject({
+        enabled: true,
+        defaultAction: false,
+      });
+    }
+  });
+
+  it('garde invisibles pour le patient les attributs posés par l’extension (ADR-0024)', () => {
+    // `mbolo_application` désigne l'application qui remplace le SMS : si le patient pouvait le
+    // modifier, un voleur de mot de passe désignerait sa propre application.
+    const profil = lire('profil-utilisateur.json') as { unmanagedAttributePolicy?: string };
+    expect(profil.unmanagedAttributePolicy).toBeUndefined();
   });
 
   it("ne demande ni nom ni e-mail à l'inscription : identité dans le dossier seulement", () => {

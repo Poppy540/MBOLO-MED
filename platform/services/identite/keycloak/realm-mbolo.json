@@ -1064,6 +1064,24 @@
       "config": {}
     },
     {
+      "alias": "mbolo-activer-application",
+      "name": "Activer une application d'authentification (Mbolo, ADR-0024)",
+      "providerId": "mbolo-activer-application",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 33,
+      "config": {}
+    },
+    {
+      "alias": "mbolo-retirer-application",
+      "name": "Retirer l'application d'authentification (Mbolo, ADR-0024)",
+      "providerId": "mbolo-retirer-application",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 34,
+      "config": {}
+    },
+    {
       "alias": "UPDATE_PROFILE",
       "name": "Update Profile",
       "providerId": "UPDATE_PROFILE",

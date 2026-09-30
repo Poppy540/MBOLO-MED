@@ -54,6 +54,14 @@ public final class ClientNotifications {
     return poster("/codes-verification", Map.of("telephone", telephone, "code", code));
   }
 
+  /**
+   * Alerte au numéro du dossier : application d'authentification activée ou retirée (ADR-0024).
+   * {@code alerte} vaut {@code application-activee} ou {@code application-retiree}.
+   */
+  public Envoi alerterCompte(String patientId, String alerte) {
+    return poster("/alertes-compte/" + alerte, Map.of("patientId", patientId));
+  }
+
   /** Alerte à l'ancien numéro, lu dans le dossier avant la mise à jour (ADR-0023). */
   public Envoi alerterNumeroChange(String patientId) {
     return poster("/numero-change", Map.of("patientId", patientId));

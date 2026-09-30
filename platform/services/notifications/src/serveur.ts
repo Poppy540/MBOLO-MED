@@ -4,6 +4,7 @@ import { entetesSecurite } from '@mbolo/identite';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import {
+  ALERTES_KEYCLOAK,
   ALERTES_PATIENT,
   FORMAT_CODE,
   FORMAT_CODE_CONNEXION,
@@ -188,10 +189,14 @@ export async function creerServeur(o: {
             type: 'object',
             required: ['alerte'],
             properties: {
-              // `numero-change` n'est envoyé que par l'extension Keycloak (route `/numero-change`).
+              // `numero-change` et les alertes de l'application d'authentification ne sont envoyés
+              // que par l'extension Keycloak (routes `/numero-change` et `/alertes-compte/:alerte`).
               alerte: {
                 type: 'string',
-                enum: Object.keys(ALERTES_PATIENT).filter((a) => a !== 'numero-change'),
+                enum: Object.keys(ALERTES_PATIENT).filter(
+                  (a) =>
+                    a !== 'numero-change' && !(ALERTES_KEYCLOAK as readonly string[]).includes(a),
+                ),
               },
             },
           },
@@ -289,6 +294,45 @@ export async function creerServeur(o: {
         const resultat = await o.service.alerterPatient(patientId, 'numero-change');
         // En série sur la plateforme : prise de comptes possible (règle NumerosChangesEnSerie).
         signalerAlerte(o.journal, 'numero-change', 'numéro du dossier changé', {
+          patientId,
+          resultat,
+        });
+        return reply.code(202).send({ resultat });
+      },
+    );
+  }
+
+  if (codes) {
+    // Application d'authentification activée ou retirée par le patient (ADR-0024) : seule
+    // l'extension Keycloak l'annonce, au numéro du dossier ; ni numéro ni texte libre.
+    app.post<{
+      Params: { alerte: (typeof ALERTES_KEYCLOAK)[number] };
+      Body: { patientId: string };
+    }>(
+      '/alertes-compte/:alerte',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            required: ['alerte'],
+            properties: { alerte: { type: 'string', enum: [...ALERTES_KEYCLOAK] } },
+          },
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId'],
+            properties: { patientId: { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } },
+          },
+        },
+      },
+      async (req, reply) => {
+        const appelant = await authentifier(req);
+        if (!codes.appelants.includes(appelant)) throw new ErreurInterdite();
+        const { patientId } = req.body;
+        const resultat = await o.service.alerterPatient(patientId, req.params.alerte);
+        o.journal.info('alerte de compte traitée', {
+          appelant,
+          alerte: req.params.alerte,
           patientId,
           resultat,
         });

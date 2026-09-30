@@ -82,6 +82,19 @@ export const CATALOGUE_ALERTE_NUMERO_CHANGE: Readonly<Record<string, string>> = 
 };
 
 /**
+ * Application d'authentification (ADR-0024) activée ou retirée par le patient dans Keycloak. Envoyée
+ * au numéro du dossier, même sans C-RAPPELS : si ce n'est pas lui, il le sait aussitôt. Textes
+ * proposés dans l'ADR-0024, à faire relire par le juriste avec les autres gabarits.
+ */
+export const CATALOGUE_ALERTE_APPLICATION_ACTIVEE: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : une application d’authentification vient d’être ajoutée à votre compte. Vos codes n’arriveront plus par SMS. Si ce n’est pas vous, contactez l’équipe.',
+};
+
+export const CATALOGUE_ALERTE_APPLICATION_RETIREE: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : l’application d’authentification de votre compte vient d’être retirée. Vos codes reviennent par SMS. Si ce n’est pas vous, contactez l’équipe.',
+};
+
+/**
  * Code de double authentification du patient (ADR-0022), demandé par Keycloak avant une action
  * sensible. Envoyé au numéro du dossier, sans condition C-RAPPELS ; {code} (6 chiffres) est la seule
  * variable. Texte validé par le porteur de projet (2026-09-29), à faire relire par le juriste.
@@ -106,8 +119,13 @@ export const ALERTES_PATIENT = {
   'proches-retires': CATALOGUE_ALERTE_RETRAIT_PROCHES,
   'compte-recupere': CATALOGUE_ALERTE_COMPTE_RECUPERE,
   'numero-change': CATALOGUE_ALERTE_NUMERO_CHANGE,
+  'application-activee': CATALOGUE_ALERTE_APPLICATION_ACTIVEE,
+  'application-retiree': CATALOGUE_ALERTE_APPLICATION_RETIREE,
 } as const;
 export type AlertePatient = keyof typeof ALERTES_PATIENT;
+
+/** Alertes que seule l'extension Keycloak envoie (jamais par la route `/alertes/:alerte`). */
+export const ALERTES_KEYCLOAK = ['application-activee', 'application-retiree'] as const;
 
 /** Paramètres du pays déployé. */
 export interface Pays {

@@ -23,6 +23,9 @@ import org.keycloak.sessions.AuthenticationSessionModel;
  * connexion, demandé par l'application. Un code de 6 chiffres part par SMS au numéro du dossier du
  * patient ({@code patient_id}, lu dans Keycloak ; le service des notifications lit le numéro dans le
  * dossier). Règles : {@link CodeSms}. Le code n'est jamais journalisé.
+ *
+ * <p>Si le patient a activé une application d'authentification (ADR-0024), son code la remplace et
+ * <b>le SMS n'est plus accepté</b> : sinon le vol de la carte SIM ouvrirait encore le compte.
  */
 public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorFactory {
 
@@ -33,6 +36,8 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
   public static final String AUDIENCE = "mbolo-notifications";
 
   private static final String PAGE = "code-sms.ftl";
+  private static final String PAGE_APPLICATION = "application.ftl";
+  public static final String CHAMP_APPLICATION = "code_application";
   private static final Logger JOURNAL = Logger.getLogger(CodeSmsAuthenticator.class);
   private static final SecureRandom HASARD = new SecureRandom();
 
@@ -54,7 +59,12 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
           context.form().setError("mboloCodeSmsSansDossier").createForm(PAGE));
       return;
     }
-    envoyer(context, dossier);
+    switch (ApplicationAuthentification.etat(context.getUser())) {
+      case ACTIVE ->
+          context.challenge(pageApplication(context, "connexion").createForm(PAGE_APPLICATION));
+      case INTROUVABLE -> refuserApplicationIntrouvable(context);
+      case AUCUNE -> envoyer(context, dossier);
+    }
   }
 
   @Override
@@ -65,6 +75,17 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
     if (CodeRecuperationAuthenticator.AUCUN_DOSSIER.equals(dossier)) {
       context.failure(AuthenticationFlowError.INVALID_USER);
       return;
+    }
+    switch (ApplicationAuthentification.etat(context.getUser())) {
+      case ACTIVE -> {
+        verifierApplication(context, formulaire.getFirst(CHAMP_APPLICATION));
+        return;
+      }
+      case INTROUVABLE -> {
+        refuserApplicationIntrouvable(context);
+        return;
+      }
+      case AUCUNE -> {}
     }
     if (formulaire.containsKey(RENVOYER)) {
       envoyer(context, dossier);
@@ -89,6 +110,36 @@ public final class CodeSmsAuthenticator implements Authenticator, AuthenticatorF
     // Simple nouvelle demande, pas un échec de connexion : les 3 essais sont comptés par CodeSms, et
     // la protection contre la force brute de Keycloak ne doit pas bloquer le mot de passe du patient.
     context.challenge(context.form().setError(message).createForm(PAGE));
+  }
+
+  /**
+   * Code de l'application : comme le formulaire OTP de Keycloak, un code faux compte comme un échec
+   * de connexion (protection contre la force brute), car il n'y a pas d'autre limite d'essais.
+   */
+  private void verifierApplication(AuthenticationFlowContext context, String code) {
+    if (ApplicationAuthentification.codeValide(context.getUser(), code)) {
+      context.success();
+      return;
+    }
+    context.failureChallenge(
+        AuthenticationFlowError.INVALID_CREDENTIALS,
+        pageApplication(context, "connexion")
+            .setError("mboloApplicationCodeFaux")
+            .createForm(PAGE_APPLICATION));
+  }
+
+  /** Justificatif désigné disparu : pas de retour au SMS, seule l'équipe peut rétablir le compte. */
+  private void refuserApplicationIntrouvable(AuthenticationFlowContext context) {
+    JOURNAL.warnf("application d'authentification introuvable : compte %s", context.getUser().getId());
+    context.challenge(
+        pageApplication(context, "bloque")
+            .setError("mboloApplicationIntrouvable")
+            .createForm(PAGE_APPLICATION));
+  }
+
+  private static org.keycloak.forms.login.LoginFormsProvider pageApplication(
+      AuthenticationFlowContext context, String mode) {
+    return context.form().setAttribute("mode", mode);
   }
 
   private void envoyer(AuthenticationFlowContext context, String dossier) {
