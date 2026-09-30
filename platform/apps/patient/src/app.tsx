@@ -139,7 +139,7 @@ type Ecran =
   | { nom: 'verification' }
   | { nom: 'rendez-vous' }
   | { nom: 'praticiens' }
-  | { nom: 'creneaux'; praticienId: string }
+  | { nom: 'creneaux'; praticienId: string; deplacer?: RendezVous }
   | { nom: 'visio'; rendezVous: RendezVous }
   | { nom: 'paiement'; rendezVousId: string }
   | { nom: 'documents' }
@@ -292,6 +292,7 @@ export function App() {
       ) : ecran.nom === 'creneaux' ? (
         <Creneaux
           praticienId={ecran.praticienId}
+          deplacer={ecran.deplacer}
           retour={(m) => {
             setMessage(m);
             setEcran({ nom: 'rendez-vous' });
@@ -749,6 +750,16 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
                     <span aria-hidden="true">📹</span> Rejoindre
                   </button>
                 )}
+                {/* Même médecin, avant le début (règle du service) ; pas pendant le paiement. */}
+                {r.statut === 'prevu' && (
+                  <button
+                    onClick={() =>
+                      p.allerA({ nom: 'creneaux', praticienId: r.praticienId, deplacer: r })
+                    }
+                  >
+                    Déplacer
+                  </button>
+                )}
                 <button
                   onClick={() =>
                     api
@@ -794,6 +805,8 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
 
 function Creneaux(p: {
   praticienId: string;
+  /** Rendez-vous à déplacer : le créneau choisi le remplace, rien n'est payé de nouveau. */
+  deplacer?: RendezVous | undefined;
   retour: (message?: string) => void;
   /** Réservation payante (ADR-0017) : le créneau est retenu, le paiement s'ouvre. */
   payer: (rendezVousId: string) => void;
@@ -806,25 +819,38 @@ function Creneaux(p: {
   if (choisi) {
     return (
       <section>
-        <h2>Confirmer le rendez-vous</h2>
+        <h2>{p.deplacer ? 'Déplacer le rendez-vous' : 'Confirmer le rendez-vous'}</h2>
+        {p.deplacer && (
+          <p>
+            Au lieu de : <strong>{quand(p.deplacer.debut)}</strong>
+          </p>
+        )}
         <p>
           <strong>{quand(choisi.debut)}</strong> ({choisi.dureeMinutes} min)
         </p>
         <button
           class="principal"
-          onClick={() =>
+          onClick={() => {
+            const echec = (e: unknown) => {
+              setChoisi(undefined);
+              p.signaler(e);
+            };
+            if (p.deplacer) {
+              api
+                .reporter(p.deplacer.id, choisi.id)
+                .then(() => p.retour('Rendez-vous déplacé.'))
+                .catch(echec);
+              return;
+            }
             api
               .reserver(choisi.id)
               .then((r) =>
                 r.statut === 'a-payer' ? p.payer(r.id) : p.retour('Rendez-vous réservé.'),
               )
-              .catch((e: unknown) => {
-                setChoisi(undefined);
-                p.signaler(e);
-              })
-          }
+              .catch(echec);
+          }}
         >
-          <span aria-hidden="true">✅</span> Réserver
+          <span aria-hidden="true">✅</span> {p.deplacer ? 'Déplacer ici' : 'Réserver'}
         </button>
         <button onClick={() => setChoisi(undefined)}>Retour</button>
       </section>
