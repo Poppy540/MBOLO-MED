@@ -7,7 +7,7 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
 1. **Connexion** : Keycloak, client public `mbolo-app-patient`, flux « authorization code » avec **PKCE S256**, vérification de l'état (anti-CSRF). Le jeton reste **en mémoire**, jamais dans `localStorage`.
 2. **Mes rendez-vous** : liste des rendez-vous prévus, boutons « Rejoindre », « Déplacer » et « Annuler ». « Déplacer » propose les créneaux libres du même médecin (`POST /rendez-vous/:id/report`) : le rendez-vous change d'horaire sans nouveau paiement, l'ancien créneau redevient libre et le médecin est prévenu par le service. Il n'apparaît pas tant que le rendez-vous attend son paiement.
 3. **Prendre rendez-vous** :
-   - **sans lien**, l'**annuaire** liste les médecins (nom, spécialité, prochain créneau libre) ;
+   - **sans lien**, l'**annuaire** liste les médecins (nom, spécialité, prochain créneau libre) ; dès qu'il compte plusieurs spécialités, une liste « Spécialité » filtre les médecins sur le téléphone, sans appel de plus ;
    - avec le lien d'un point de consultation (`/?praticien=<id>`), les créneaux de ce médecin s'affichent directement ;
    - le patient choisit un créneau, puis confirme.
 4. **Téléconsultation** : LiveKit, chargé **seulement à ce moment** (141 Ko compressés) :
@@ -94,7 +94,7 @@ Les API sont servies sous `/api/<service>` (même origine). L'application constr
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **14,5 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **14,6 Ko**.
 
 ## Lancer
 
@@ -109,6 +109,7 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
 - **E2E** (`features-gherkin/teleconsultation/application-patient.feature`), vrai navigateur :
   - connexion par le formulaire Keycloak, réservation d'un créneau puis annulation ;
   - déplacement d'un rendez-vous vers un autre créneau du même médecin (l'ancien créneau redevient libre) ;
+  - filtre de l'annuaire par spécialité (spécialités fictives des médecins de test) ;
   - rejoindre la consultation, voir la vidéo du professionnel, passer en audio seulement ;
   - sans réseau, l'application rouvre et affiche les rendez-vous connus (rien d'autre n'est gardé), avec le bandeau d'urgence.
 - **E2E** (`features-gherkin/identite/verification-identite.feature`) : charte acceptée, puis envoi des deux photos (images générées, jamais de vraie personne).
@@ -116,5 +117,5 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
 ## Reste à faire
 
 - Traduction en langues locales, messages vocaux.
-- Recherche par spécialité ou par ville quand l'annuaire grandira.
+- Recherche par ville quand l'annuaire grandira.
 - Validation des écrans avec le pilote conception (skill `ux-contexte-gabonais`) et test terrain sur téléphone réel.

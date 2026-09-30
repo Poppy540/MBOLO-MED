@@ -78,6 +78,27 @@ When('le patient choisit {string} dans l’annuaire', async ({ monde }, praticie
   await fiche.click();
 });
 
+When(
+  'le patient ne garde que la spécialité {string} dans l’annuaire',
+  async ({ monde }, s: string) => {
+    const p = page(monde);
+    await p.getByRole('button', { name: 'Prendre rendez-vous' }).click();
+    await p.getByLabel('Spécialité').selectOption(s);
+  },
+);
+
+Then(
+  'l’annuaire montre {string} et plus {string}',
+  async ({ monde }, montre: string, cache: string) => {
+    const p = page(monde);
+    await expect(p.locator(`[data-praticien="${montre}"]`)).toBeVisible();
+    await expect(p.locator(`[data-praticien="${cache}"]`)).toHaveCount(0);
+    // « Toutes » : l'annuaire complet revient.
+    await p.getByLabel('Spécialité').selectOption('');
+    await expect(p.locator(`[data-praticien="${cache}"]`)).toBeVisible();
+  },
+);
+
 When('le patient réserve ce créneau', async ({ monde }) => {
   const p = page(monde);
   await p.locator(`[data-creneau="${monde.creneaux?.[0] ?? ''}"]`).click();

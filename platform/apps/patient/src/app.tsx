@@ -18,6 +18,7 @@ import {
   urlDeconnexion,
 } from '@mbolo/client-web';
 import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
+import { filtrer, specialites } from './annuaire.js';
 import { CONFIG } from './config.js';
 
 const connexion = () => ({
@@ -888,19 +889,37 @@ function Praticiens(p: {
   signaler: (e: unknown) => void;
 }) {
   const [liste, setListe] = useState<Praticien[]>();
+  const [specialite, setSpecialite] = useState<string>();
   useEffect(() => void api.praticiens().then(setListe).catch(p.signaler), []);
+  const choix = liste ? specialites(liste, CONFIG.langue) : [];
   return (
     <section>
       <h2>
         <span aria-hidden="true">🩺</span> Choisir un médecin
       </h2>
+      {/* Seulement s'il y a un vrai choix : une seule spécialité, rien à filtrer. */}
+      {choix.length > 1 && (
+        <label>
+          Spécialité{' '}
+          <select
+            onChange={(e) => setSpecialite((e.target as HTMLSelectElement).value || undefined)}
+          >
+            <option value="">Toutes</option>
+            {choix.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {liste === undefined ? (
         <p aria-live="polite">Chargement…</p>
       ) : liste.length === 0 ? (
         <p>Aucun médecin disponible pour le moment.</p>
       ) : (
         <ul class="liste" aria-label="Médecins">
-          {liste.map((x) => (
+          {filtrer(liste, specialite).map((x) => (
             <li key={x.id}>
               <button data-praticien={x.id} onClick={() => p.choisir(x.id)}>
                 <strong>{x.nom}</strong>

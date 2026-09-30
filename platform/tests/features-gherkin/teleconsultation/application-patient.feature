@@ -51,6 +51,11 @@ Fonctionnalité: Application patient
     Et que le patient réserve ce créneau
     Alors l’application confirme le rendez-vous
 
+  Scénario: Le patient filtre l'annuaire par spécialité
+    Quand "patient-fictif-01" ouvre l’application patient
+    Et que le patient ne garde que la spécialité "Pédiatrie" dans l’annuaire
+    Alors l’annuaire montre "prac-fictif-002" et plus "prac-fictif-001"
+
   Scénario: Une personne invitée crée son compte depuis l'application et attend la vérification de son identité
     Étant donné que "gestionnaire-fictif-01" est connecté
     Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
