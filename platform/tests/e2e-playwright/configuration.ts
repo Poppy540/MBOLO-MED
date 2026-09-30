@@ -130,6 +130,15 @@ export const COMPTES: CompteFictif[] = [
     attributs: { patient_id: 'pat-fictif-006' },
   },
   {
+    // Application d'authentification (ADR-0024) : active pendant les scénarios (compte recréé à la
+    // préparation, donc revenu au SMS).
+    identifiant: 'patient-fictif-07',
+    prenom: 'Aimée',
+    role: 'patient',
+    application: 'patient',
+    attributs: { patient_id: 'pat-fictif-007' },
+  },
+  {
     identifiant: 'medecin-fictif-01',
     prenom: 'Nadia',
     role: 'professionnel',
@@ -226,6 +235,7 @@ export const TELEPHONES_FICTIFS: Record<string, string> = {
   'pat-fictif-004': '+241 00 00 00 04',
   'pat-fictif-005': '+241 00 00 00 05',
   'pat-fictif-006': '+241 00 00 00 06',
+  'pat-fictif-007': '+241 00 00 00 07',
 };
 
 /** [FICTIF] Patients dont l'identité reste « à vérifier » après la préparation. */

@@ -130,6 +130,16 @@ Action requise `mbolo-telephone-perdu`, **lancée par l'application seulement** 
 
 Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_TELEPHONE_PERDU_NOTIFICATIONS_URL` et `..._DOCUMENTS_URL` (en CI, le service documents écoute sur `DOCUMENTS_HOST`).
 
+### Application d'authentification du patient (ADR-0024)
+
+Le SMS reste le choix par défaut. Le patient qui le veut le remplace par une application gratuite (Google Authenticator, Microsoft Authenticator, FreeOTP), avec un gabarit commun `application.ftl` :
+
+- **Activer** : action `mbolo-activer-application`, lancée par l'application avec `kc_action` **et** `acr_values=2`. L'action refuse si le niveau 2 (code SMS) n'a pas été atteint dans cette connexion (`AcrStore`) : un voleur de mot de passe ne peut pas installer sa propre application. QR code, clé lisible, premier code ; le justificatif TOTP créé est **désigné** par l'attribut `mbolo_application` (non géré, invisible et non modifiable par le patient, vérifié par `royaume.test.ts`). SMS `application-activee` au numéro du dossier.
+- **Niveau 2 ensuite** : `mbolo-code-sms` demande le code de l'application et **n'accepte plus le SMS**. Seul le justificatif désigné compte : un code TOTP ajouté par l'action standard `CONFIGURE_TOTP` (possible avec le seul mot de passe) ne remplace jamais le SMS. Un code faux compte comme un échec de connexion (protection contre la force brute, comme le formulaire OTP de Keycloak). Justificatif désigné disparu : niveau 2 refusé, sans retour au SMS ; seule l'équipe peut rétablir le compte.
+- **Retirer** : action `mbolo-retirer-application` (`kc_action`), un code de l'application exigé (5 essais), SMS `application-retiree`, puis justificatif et attribut retirés : retour au SMS.
+
+Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_ACTIVER_APPLICATION_NOTIFICATIONS_URL` et `KC_SPI_REQUIRED_ACTION_MBOLO_RETIRER_APPLICATION_NOTIFICATIONS_URL`. Application perdue : code de récupération de l'équipe (ADR-0021), étape suivante de l'ADR-0024.
+
 ### Construction et configuration
 
 - **Construction** : `mvn -f platform/services/identite/keycloak-extension/pom.xml package` (Java 21). Les tests JUnit couvrent le client HTTP. Le jar est monté dans `/opt/keycloak/providers/` par `docker-compose.yml`.

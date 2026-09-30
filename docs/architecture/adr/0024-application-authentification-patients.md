@@ -68,6 +68,7 @@ Les professionnels et les proches utilisent déjà une application d'authentific
    - action d'activation (niveau 2 exigé) et action de retrait (code de l'application exigé), lancées par l'application patient avec `kc_action` ;
    - SMS `application-activee` et `application-retiree` dans `notifications`.
    - E2E.
+   - **Faite (PR CR)** : le justificatif retenu est désigné par l'attribut `mbolo_application` (non modifiable par le patient) ; un code TOTP ajouté par l'action standard de Keycloak ne remplace pas le SMS (scénario e2e) ; justificatif disparu → niveau 2 refusé sans retour au SMS.
 2. **Récupération** :
    - le code de l'équipe (flux `identifiants-oublies-mbolo`) retire aussi l'application ;
    - 24 heures sans code SMS ensuite, avec un message Keycloak clair.

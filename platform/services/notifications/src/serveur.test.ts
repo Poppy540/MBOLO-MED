@@ -356,6 +356,32 @@ describe('API notifications — code de double authentification (ADR-0022)', () 
     expect(journal).not.toContain('00000009');
   });
 
+  it('application d’authentification (ADR-0024) : alertes par l’extension Keycloak seule', async () => {
+    const { app, canal } = await monterCodes();
+    const alerter = (jeton: string, alerte: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/alertes-compte/${alerte}`,
+        headers: { authorization: `Bearer ${jeton}` },
+        payload: { patientId: 'pat-fictif-005' },
+      });
+    expect((await alerter('jeton-keycloak', 'application-activee')).json()).toEqual({
+      resultat: 'envoyee',
+    });
+    expect((await alerter('jeton-keycloak', 'application-retiree')).json()).toEqual({
+      resultat: 'envoyee',
+    });
+    expect(canal.boite.map((m) => m.texte)).toEqual([
+      'Mbolo Santé : une application d’authentification vient d’être ajoutée à votre compte. Vos codes n’arriveront plus par SMS. Si ce n’est pas vous, contactez l’équipe.',
+      'Mbolo Santé : l’application d’authentification de votre compte vient d’être retirée. Vos codes reviennent par SMS. Si ce n’est pas vous, contactez l’équipe.',
+    ]);
+    expect(canal.boite[0]?.telephone).toBe('+241 00 00 00 05');
+    // Ni un autre service, ni une autre alerte par cette route.
+    expect((await alerter('jeton-valide', 'application-activee')).statusCode).toBe(403);
+    expect((await alerter('jeton-documents', 'application-retiree')).statusCode).toBe(403);
+    expect((await alerter('jeton-keycloak', 'compte-recupere')).statusCode).toBe(400);
+  });
+
   it('numéro changé (ADR-0023) : alerte à l’ancien numéro, par l’extension Keycloak seule', async () => {
     const { app, canal, lignes } = await monterCodes();
     const alerter = (jeton: string) =>

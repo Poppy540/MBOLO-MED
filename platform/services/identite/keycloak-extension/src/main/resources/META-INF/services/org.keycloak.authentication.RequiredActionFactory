@@ -1,3 +1,5 @@
 sante.mbolo.keycloak.IdentitePatientRequiredAction
 sante.mbolo.keycloak.ChangerTelephoneRequiredAction
 sante.mbolo.keycloak.TelephonePerduRequiredAction
+sante.mbolo.keycloak.ActiverApplicationRequiredAction
+sante.mbolo.keycloak.RetirerApplicationRequiredAction
