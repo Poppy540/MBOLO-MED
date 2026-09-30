@@ -48,6 +48,12 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
 
 11. **Confirmer par SMS** (ADR-0022) : avant de **payer** (avant la saisie du numéro qui paie), ou quand le patient choisit de **partager son dossier** ou d'**inviter un proche**, un écran explique qu'un code part au numéro du dossier. « Recevoir le code » ouvre la page de Keycloak (`acr_values=2`, même session : le code seul, pas le mot de passe), puis l'application rouvre l'écran de l'action. Pendant l'aller-retour, seul l'écran à rouvrir est gardé (`sessionStorage`, nom et identifiant du rendez-vous), jamais ce qui a été saisi. Le code vaut 15 minutes ; après, un refus `niveau-insuffisant` d'un service ramène au même écran. Retirer un partage ou un proche ne demande jamais de code.
 
+12. **Changer mon numéro** (ADR-0023), depuis « Mes rendez-vous », ou depuis l'écran « Votre compte est créé » tant que l'identité n'est pas vérifiée (l'équipe appelle au numéro du dossier) :
+    - un écran explique qu'il faut les deux téléphones : un code à l'ancien numéro, le nouveau numéro, puis un code au nouveau numéro ; l'ancien numéro est prévenu ;
+    - « Recevoir le code » ouvre l'action Keycloak `mbolo-changer-telephone` (`kc_action`) : **le numéro et les codes ne passent jamais par l'application** ;
+    - au retour, l'application lit `kc_action_status` et affiche « Votre numéro est changé… », « Votre numéro n'a pas changé. » ou « …n'a pas pu être changé. Réessayez plus tard. » ;
+    - pas de flag : c'est une fonction de sécurité. Téléphone perdu : « Appelez l'équipe Mbolo Santé » en attendant le parcours « perte » (ADR-0023, étape 3).
+
 Les erreurs sont affichées en phrases simples, sans jargon.
 
 ## Hors ligne et économie de données
@@ -78,7 +84,7 @@ Les API sont servies sous `/api/<service>` (même origine). L'application constr
 
 ## Budget de poids
 
-`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **12,9 Ko**.
+`pnpm build` échoue si ce qui est téléchargé **à l'ouverture** dépasse **30 Ko** compressés (`scripts/budget.mjs`). Aujourd'hui : **13,2 Ko**.
 
 ## Lancer
 

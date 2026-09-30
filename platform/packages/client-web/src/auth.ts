@@ -23,7 +23,8 @@ export interface ParametresConnexion {
 
 /**
  * Adresse de la page de connexion Keycloak, ou de son formulaire d'inscription (code d'invitation,
- * ADR-0014) : même PKCE, même retour.
+ * ADR-0014) : même PKCE, même retour. `action` : action Keycloak lancée par l'application
+ * (`kc_action`, ex. changer son numéro, ADR-0023) ; son résultat revient dans `kc_action_status`.
  */
 export async function urlAutorisation(
   p: ParametresConnexion,
@@ -31,6 +32,7 @@ export async function urlAutorisation(
   etat: string,
   inscription = false,
   niveau?: number,
+  action?: string,
 ): Promise<string> {
   const q = new URLSearchParams({
     client_id: p.client,
@@ -42,6 +44,7 @@ export async function urlAutorisation(
     code_challenge_method: 'S256',
     // Double authentification (ADR-0022) : niveau 2 demandé juste avant une action sensible.
     ...(niveau ? { acr_values: String(niveau) } : {}),
+    ...(action ? { kc_action: action } : {}),
   });
   const point = inscription ? 'registrations' : 'auth';
   return `${p.emetteur}/protocol/openid-connect/${point}?${q.toString()}`;
@@ -61,11 +64,20 @@ export async function demarrerConnexion(
   m: Memoire,
   inscription = false,
   niveau?: number,
+  action?: string,
 ): Promise<string> {
   const verificateur = aleatoire();
   const etat = aleatoire(16);
   m.setItem(CLE, JSON.stringify({ verificateur, etat }));
-  return urlAutorisation(p, verificateur, etat, inscription, niveau);
+  return urlAutorisation(p, verificateur, etat, inscription, niveau, action);
+}
+
+/** Résultat d'une action lancée par l'application, lu au retour de Keycloak (`kc_action_status`). */
+export type StatutAction = 'success' | 'cancelled' | 'error';
+
+export function statutAction(adresse: URL): StatutAction | undefined {
+  const s = adresse.searchParams.get('kc_action_status');
+  return s === 'success' || s === 'cancelled' || s === 'error' ? s : undefined;
 }
 
 /**
