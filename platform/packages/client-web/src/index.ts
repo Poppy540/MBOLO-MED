@@ -7,11 +7,12 @@ export {
   MOTIF_NIVEAU_INSUFFISANT,
   niveauDuJeton,
   revendications,
+  statutAction,
   terminerConnexion,
   urlAutorisation,
   urlDeconnexion,
 } from './auth.js';
-export type { Memoire, ParametresConnexion } from './auth.js';
+export type { Memoire, ParametresConnexion, StatutAction } from './auth.js';
 export { Consultation } from './consultation.js';
 export { quand, versInstant } from './format.js';
 export { DecisionRepli } from './repli.js';

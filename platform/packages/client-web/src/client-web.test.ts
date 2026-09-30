@@ -6,6 +6,7 @@ import {
   demarrerConnexion,
   niveauDuJeton,
   revendications,
+  statutAction,
   terminerConnexion,
   type Memoire,
 } from './auth.js';
@@ -102,6 +103,25 @@ describe('inscription avec un code (ADR-0014)', () => {
     for (const j of [jeton(undefined), jeton(2), jeton('2 '), 'pas-un-jeton', undefined]) {
       expect(niveauDuJeton(j)).toBe(1);
     }
+  });
+
+  it('lance une action Keycloak et lit son résultat au retour (ADR-0023)', async () => {
+    const url = new URL(
+      await demarrerConnexion(p, memoire(), false, undefined, 'mbolo-changer-telephone'),
+    );
+    expect(url.pathname).toBe('/realms/mbolo/protocol/openid-connect/auth');
+    expect(url.searchParams.get('kc_action')).toBe('mbolo-changer-telephone');
+    expect(url.searchParams.has('acr_values')).toBe(false);
+    expect(new URL(await demarrerConnexion(p, memoire())).searchParams.has('kc_action')).toBe(
+      false,
+    );
+    const retour = (s: string) => new URL(`http://127.0.0.1/?code=c&state=e&kc_action_status=${s}`);
+    expect(statutAction(retour('success'))).toBe('success');
+    expect(statutAction(retour('cancelled'))).toBe('cancelled');
+    expect(statutAction(retour('error'))).toBe('error');
+    // Absent ou inattendu : aucun message.
+    expect(statutAction(retour('autre'))).toBeUndefined();
+    expect(statutAction(new URL('http://127.0.0.1/?code=c'))).toBeUndefined();
   });
 
   it('lit les revendications d’un jeton pour l’affichage, sans planter sur un jeton illisible', () => {

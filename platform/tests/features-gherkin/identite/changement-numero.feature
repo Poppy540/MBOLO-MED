@@ -30,3 +30,14 @@ Fonctionnalité: Le patient change le numéro de son dossier
     Et qu'elle renonce au changement de numéro
     Alors l’application apprend que le numéro est "inchangé"
     Et son dossier porte le numéro "+241 00 00 00 04"
+
+  Scénario: Depuis l'application patient, le patient voit le résultat du changement
+    Étant donné que "gestionnaire-fictif-01" est connecté
+    Et que "gestionnaire-fictif-01" crée une invitation pour la cohorte de test
+    Et qu'une personne s'inscrit avec ce code
+    Et que la boîte des notifications simulées est relevée
+    Quand la personne inscrite choisit « Changer mon numéro » dans l’application
+    Et qu'elle confirme avec le code reçu à son ancien numéro, puis indique le nouveau numéro "+241 00 00 00 08"
+    Et qu'elle confirme avec le code reçu au nouveau numéro "+241 00 00 00 08"
+    Alors l’application patient affiche le message "Votre numéro est changé. Les prochains codes arriveront à ce numéro."
+    Et son dossier porte le numéro "+241 00 00 00 08"

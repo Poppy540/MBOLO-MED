@@ -68,7 +68,7 @@ Dans l'application (connexion par mot de passe, niveau 1) : « J'ai perdu mon t�
 ## Mise en œuvre (petites PR)
 
 1. **Keycloak et dossier** (**faite, PR CL**) : action requise `mbolo-changer-telephone` (niveau 2 exigé, code au nouveau numéro, mise à jour de `Patient.telecom` par la passerelle avec une permission limitée), SMS `numero-change` à l'ancien numéro, alerte `numero-change`. E2E.
-2. **Application patient** : « Changer mon numéro » (`kc_action` + `acr_values=2`), retour à l'application.
+2. **Application patient** (**faite, PR CM**) : « Changer mon numéro » (`kc_action` seul : l'action envoie elle-même le code à l'ancien numéro, `acr_values=2` en aurait envoyé un second), depuis « Mes rendez-vous » ou l'écran « compte créé », résultat lu dans `kc_action_status` au retour. E2E.
 3. **Perte du téléphone** : demande dans l'application (code au nouveau numéro, photos), écran de décision dans l'espace professionnel (`verification-identite`), attente de 24 h appliquée par le service `notifications` avant tout code de connexion. E2E.
 
 ## Sources

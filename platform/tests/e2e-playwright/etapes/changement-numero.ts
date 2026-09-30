@@ -1,7 +1,7 @@
 // Étapes « changement du numéro du dossier » (ADR-0023) : action Keycloak lancée par l'application
 // (`kc_action`), codes lus dans la boîte SMS simulée. Données FICTIVES uniquement.
 import { expect, type Page, type Request } from '@playwright/test';
-import { APPLICATIONS } from '../configuration.js';
+import { APP_PATIENT_URL, APPLICATIONS } from '../configuration.js';
 import { Then, When, urlAutorisation, type Monde } from './fixtures.js';
 import { codeSmsRecu } from './niveau.js';
 
@@ -32,6 +32,28 @@ When('la personne inscrite demande à changer son numéro', async ({ monde }) =>
     await p.locator('#kc-login').click();
     await p.waitForLoadState();
   }
+});
+
+When(
+  'la personne inscrite choisit « Changer mon numéro » dans l’application',
+  async ({ monde }) => {
+    const p = page(monde);
+    await p.goto(`${APP_PATIENT_URL}/`);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await p.locator('#username').fill(monde.inscription?.identifiant ?? '');
+    await p.locator('#password').fill(monde.inscription?.motDePasse ?? '');
+    await p.locator('#kc-login').click();
+    // Identité pas encore vérifiée : l'écran « compte créé » propose aussi de changer de numéro.
+    await p.getByRole('button', { name: 'Changer mon numéro' }).click();
+    await expect(p.locator('[data-changer-numero]')).toContainText(
+      'Il vous faut vos deux téléphones',
+    );
+    await p.getByRole('button', { name: 'Recevoir le code' }).click();
+  },
+);
+
+Then('l’application patient affiche le message {string}', async ({ monde }, texte: string) => {
+  await expect(page(monde).getByRole('alert')).toHaveText(texte);
 });
 
 When(

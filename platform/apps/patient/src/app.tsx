@@ -13,6 +13,7 @@ import {
   retenirRendezVous,
   revendications,
   quand as formater,
+  statutAction,
   terminerConnexion,
   urlDeconnexion,
 } from '@mbolo/client-web';
@@ -66,6 +67,15 @@ async function confirmerParSms(reprise: EcranSensible) {
   location.assign(await demarrerConnexion(connexion(), sessionStorage, false, NIVEAU_SENSIBLE));
 }
 
+/** Action Keycloak « Changer mon numéro » (ADR-0023) : codes à l'ancien puis au nouveau numéro. */
+const ACTION_CHANGER_NUMERO = 'mbolo-changer-telephone';
+
+const MESSAGES_NUMERO = {
+  success: 'Votre numéro est changé. Les prochains codes arriveront à ce numéro.',
+  cancelled: 'Votre numéro n’a pas changé.',
+  error: 'Votre numéro n’a pas pu être changé. Réessayez plus tard.',
+} as const;
+
 let jeton: string | undefined;
 const api = creerApi(CONFIG.api, () => jeton);
 const quand = (iso: string) => formater(iso, CONFIG.fuseau, CONFIG.langue);
@@ -83,6 +93,7 @@ type Ecran =
   | { nom: 'documents-proche' }
   | { nom: 'partages' }
   | { nom: 'confirmation-sms'; reprise: EcranSensible }
+  | { nom: 'changer-numero'; depuis: Ecran }
   | { nom: 'recus' };
 
 export function App() {
@@ -100,6 +111,9 @@ export function App() {
       .then((j) => {
         if (j) {
           jeton = j;
+          // Retour de « Changer mon numéro » : résultat de l'action, lu avant d'effacer l'adresse.
+          const numero = statutAction(adresse);
+          if (numero) setMessage(MESSAGES_NUMERO[numero]);
           history.replaceState(null, '', '/');
           // Un proche désigné par un patient (C-PROCHE) ne voit que les documents partagés.
           const r = revendications(j);
@@ -186,6 +200,10 @@ export function App() {
             setMessage(undefined);
             setEcran({ nom: 'verification' });
           }}
+          changerNumero={() => {
+            setMessage(undefined);
+            setEcran({ nom: 'changer-numero', depuis: ecran });
+          }}
         />
       ) : ecran.nom === 'verification' ? (
         <EcranVerification retour={() => setEcran({ nom: 'dossier-a-completer' })} />
@@ -233,6 +251,8 @@ export function App() {
             setEcran(ecran.reprise.nom === 'partages' ? ecran.reprise : { nom: 'rendez-vous' })
           }
         />
+      ) : ecran.nom === 'changer-numero' ? (
+        <ChangerNumero retour={() => setEcran(ecran.depuis)} />
       ) : ecran.nom === 'documents-proche' ? (
         <EcranDocuments proche />
       ) : ecran.nom === 'paiement' ? (
@@ -283,7 +303,11 @@ function Accueil() {
   );
 }
 
-function DossierACompleter(p: { refusee: boolean; verifier: () => void }) {
+function DossierACompleter(p: {
+  refusee: boolean;
+  verifier: () => void;
+  changerNumero: () => void;
+}) {
   // Photos possibles une fois le dossier créé (identité saisie), tant que l'identité n'est pas vérifiée.
   const dossier = jeton !== undefined && Boolean(revendications(jeton)['patient_id']);
   return (
@@ -307,6 +331,12 @@ function DossierACompleter(p: { refusee: boolean; verifier: () => void }) {
       {dossier && (
         <button class="principal" onClick={p.verifier}>
           <span aria-hidden="true">📷</span> Vérifier mon identité
+        </button>
+      )}
+      {/* L'équipe appelle au numéro du dossier : il doit rester juste (ADR-0023). */}
+      {dossier && (
+        <button onClick={p.changerNumero}>
+          <span aria-hidden="true">📱</span> Changer mon numéro
         </button>
       )}
       <p>
@@ -341,6 +371,49 @@ function ConfirmationSms(p: {
       <p>Ne donnez ce code à personne, même pas à l’équipe.</p>
       <button class="principal" onClick={p.confirmer}>
         <span aria-hidden="true">📱</span> Recevoir le code
+      </button>
+      <button onClick={p.retour}>Retour</button>
+      <p>
+        Plus de téléphone ou plus de numéro ? Appelez l’équipe Mbolo Santé.{' '}
+        <strong>En cas d'urgence, appelez les secours.</strong>
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Changer le numéro du dossier (ADR-0023) : tout se passe dans Keycloak (code à l'ancien numéro,
+ * nouveau numéro, code au nouveau numéro), puis l'application affiche le résultat. Le numéro ne
+ * passe jamais par l'application.
+ */
+function ChangerNumero(p: { retour: () => void }) {
+  return (
+    <section data-changer-numero>
+      <h2>
+        <span aria-hidden="true">📱</span> Changer mon numéro
+      </h2>
+      <p>Vous avez une nouvelle puce ? Il vous faut vos deux téléphones :</p>
+      <ol>
+        <li>un code arrive par SMS à votre numéro actuel ;</li>
+        <li>vous écrivez votre nouveau numéro ;</li>
+        <li>un autre code arrive à ce nouveau numéro.</li>
+      </ol>
+      <p>Votre ancien numéro recevra un message pour vous prévenir du changement.</p>
+      <button
+        class="principal"
+        onClick={async () =>
+          location.assign(
+            await demarrerConnexion(
+              connexion(),
+              sessionStorage,
+              false,
+              undefined,
+              ACTION_CHANGER_NUMERO,
+            ),
+          )
+        }
+      >
+        <span aria-hidden="true">📨</span> Recevoir le code
       </button>
       <button onClick={p.retour}>Retour</button>
       <p>
@@ -577,6 +650,9 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
       </button>
       <button onClick={() => p.allerA({ nom: 'recus' })}>
         <span aria-hidden="true">🧾</span> Mes reçus
+      </button>
+      <button onClick={() => p.allerA({ nom: 'changer-numero', depuis: { nom: 'rendez-vous' } })}>
+        <span aria-hidden="true">📱</span> Changer mon numéro
       </button>
     </section>
   );
