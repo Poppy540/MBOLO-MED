@@ -2,6 +2,8 @@
 // refuse), puis envoie deux photos, son document et son visage. Chargé seulement à la demande
 // (budget de l'ouverture). Les photos sont réduites et recompressées sur le téléphone avant l'envoi
 // (faible débit) ; elles ne sont jamais gardées dans le navigateur.
+// Mode « perte » (ADR-0023) : téléphone perdu, la charte est déjà acceptée ; le patient envoie deux
+// nouvelles photos pour sa demande de changement de numéro.
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
 
@@ -56,7 +58,7 @@ async function compresser(fichier: File): Promise<Blob> {
   throw new ErreurEnvoi('Photo trop lourde. Prenez une nouvelle photo.');
 }
 
-export function Verification(p: { jeton: string; retour: () => void }) {
+export function Verification(p: { jeton: string; retour: () => void; perte?: boolean }) {
   const [etat, setEtat] = useState<Etat>();
   const [message, setMessage] = useState<string>();
   const [refus, setRefus] = useState(false);
@@ -66,7 +68,21 @@ export function Verification(p: { jeton: string; retour: () => void }) {
   );
 
   const charger = () =>
-    appeler<Etat>(p.jeton, `${CONFIG.apiDocuments}/verification`)
+    (p.perte
+      ? appeler<{ ouverte: boolean; photos: Etat['documents'] }>(
+          p.jeton,
+          `${CONFIG.apiDocuments}/perte`,
+        ).then((d): Etat => {
+          if (!d.ouverte) throw new ErreurEnvoi('Aucune demande de changement de numéro en cours.');
+          return {
+            patientId: '',
+            statut: 'verifiee',
+            charte: { version: '', acceptee: true },
+            documents: d.photos,
+          };
+        })
+      : appeler<Etat>(p.jeton, `${CONFIG.apiDocuments}/verification`)
+    )
       .then(setEtat)
       .catch((e: unknown) => setMessage((e as Error).message));
   useEffect(() => void charger(), []);
@@ -155,8 +171,15 @@ export function Verification(p: { jeton: string; retour: () => void }) {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📷</span> Vos deux photos
+        <span aria-hidden="true">📷</span>{' '}
+        {p.perte ? 'Vos deux nouvelles photos' : 'Vos deux photos'}
       </h2>
+      {p.perte && (
+        <p>
+          Pour changer votre numéro sans votre ancien téléphone, une personne de l'équipe Mbolo
+          Santé doit vérifier que c'est bien vous.
+        </p>
+      )}
       {alerte}
       <ul class="liste" aria-label="Photos envoyées">
         <li>
@@ -169,8 +192,9 @@ export function Verification(p: { jeton: string; retour: () => void }) {
       </ul>
       {documentEnvoye && envoyees.has('visage') ? (
         <p>
-          Merci. Une personne de l'équipe Mbolo Santé va vérifier vos photos, puis vous pourrez
-          consulter.
+          {p.perte
+            ? 'Merci. Une personne de l’équipe Mbolo Santé va vérifier vos photos avant de changer votre numéro. Votre ancien numéro recevra un message.'
+            : "Merci. Une personne de l'équipe Mbolo Santé va vérifier vos photos, puis vous pourrez consulter."}
         </p>
       ) : (
         <>

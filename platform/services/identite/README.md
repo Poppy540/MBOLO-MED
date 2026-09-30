@@ -118,7 +118,17 @@ Action requise `mbolo-changer-telephone`, **lancée par l'application seulement*
 3. **Alerte à l'ancien numéro** (`POST /numero-change` du service `notifications`, avant la mise à jour : le numéro est encore dans le dossier), puis **mise à jour du seul `Patient.telecom`** par la passerelle, avec un jeton limité à cet élément (`mbolo_elements` et `mbolo_elements_modifiables` = `Patient.telecom`, `system/Patient.u`).
 4. **Au plus un changement par 24 heures** (attribut `mbolo_telephone_change_le` du compte, posé par l'extension). Le patient peut toujours revenir à l'application (`cancel-aia`) ; l'application reçoit `kc_action_status` (`success`, `cancelled`).
 
-Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_DOSSIER_URL` et `..._NOTIFICATIONS_URL`. Reste (ADR-0023) : l'écran de l'application (PR suivante) et le parcours « téléphone perdu ».
+Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_CHANGER_TELEPHONE_DOSSIER_URL` et `..._NOTIFICATIONS_URL`.
+
+### Téléphone perdu (ADR-0023)
+
+Action requise `mbolo-telephone-perdu`, **lancée par l'application seulement** (`kc_action=mbolo-telephone-perdu`, jamais par défaut ; niveau 1, puisque l'ancien numéro ne reçoit plus rien) :
+
+1. **Nouveau numéro** (même page `changer-telephone.ftl`, textes « J'ai perdu mon téléphone »), puis **code au nouveau numéro** (`verification-telephone.ftl`, « Corriger mon numéro »).
+2. **Demande ouverte auprès du service `documents`** (`POST /demandes-perte`, jeton de service d'audience `mbolo-documents-api`) : le numéro y est gardé chiffré. Demande déjà en cours : message, rien d'autre ; service injoignable : « réessayez ».
+3. **Rien ne change dans le dossier ici** : le patient envoie ensuite de nouvelles photos depuis l'application, et une personne du rôle `verification-identite` décide (alerte à l'ancien numéro, puis numéro marqué « perte » : 24 heures sans code de connexion).
+
+Configuration : `KC_SPI_REQUIRED_ACTION_MBOLO_TELEPHONE_PERDU_NOTIFICATIONS_URL` et `..._DOCUMENTS_URL` (en CI, le service documents écoute sur `DOCUMENTS_HOST`).
 
 ### Construction et configuration
 

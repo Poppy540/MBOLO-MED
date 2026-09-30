@@ -232,7 +232,7 @@ public final class ChangerTelephoneRequiredAction
             .createForm(GABARIT_CODE_NOUVEAU));
   }
 
-  private static String erreurEnvoi(ClientNotifications.Envoi envoi) {
+  static String erreurEnvoi(ClientNotifications.Envoi envoi) {
     return switch (envoi) {
       case ENVOYE -> null;
       case TROP_DE_CODES -> "mboloCodeSmsTropDeCodes";
@@ -241,7 +241,7 @@ public final class ChangerTelephoneRequiredAction
     };
   }
 
-  private static String messageCode(CodeSms.Verification v) {
+  static String messageCode(CodeSms.Verification v) {
     return switch (v) {
       case EXPIRE -> "mboloCodeSmsExpire";
       case TROP_D_ESSAIS -> "mboloCodeSmsTropDEssais";
@@ -250,30 +250,35 @@ public final class ChangerTelephoneRequiredAction
     };
   }
 
-  private static LoginFormsProvider page(RequiredActionContext context, String etape) {
+  static LoginFormsProvider page(RequiredActionContext context, String etape) {
     return context.form().setAttribute("etape", etape);
   }
 
-  private static LoginFormsProvider pageCodeNouveau(RequiredActionContext context, String telephone) {
+  static LoginFormsProvider pageCodeNouveau(RequiredActionContext context, String telephone) {
     return context.form().setAttribute("telephoneSaisi", telephone);
   }
 
   /** Notes de la session, séparées pour chacun des deux codes (limites d'envoi indépendantes). */
   private static CodeSms.Notes notes(AuthenticationSessionModel session, String prefixe) {
+    return notesPrefixees(session, NOTE + prefixe);
+  }
+
+  /** Notes de la session sous un préfixe donné (un code par préfixe, limites indépendantes). */
+  static CodeSms.Notes notesPrefixees(AuthenticationSessionModel session, String prefixe) {
     return new CodeSms.Notes() {
       @Override
       public String lire(String cle) {
-        return session.getAuthNote(NOTE + prefixe + cle);
+        return session.getAuthNote(prefixe + cle);
       }
 
       @Override
       public void ecrire(String cle, String valeur) {
-        session.setAuthNote(NOTE + prefixe + cle, valeur);
+        session.setAuthNote(prefixe + cle, valeur);
       }
 
       @Override
       public void retirer(String cle) {
-        session.removeAuthNote(NOTE + prefixe + cle);
+        session.removeAuthNote(prefixe + cle);
       }
     };
   }

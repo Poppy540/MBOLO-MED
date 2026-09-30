@@ -2,15 +2,13 @@
 // (payer, partager son dossier, inviter un proche) : vrai parcours Keycloak, mot de passe puis code
 // reçu dans la boîte SMS simulée. Données FICTIVES uniquement.
 import { expect, type Browser, type Page, type Request } from '@playwright/test';
-import { APPLICATIONS, EMETTEUR, compte } from '../configuration.js';
+import { APPLICATIONS, EMETTEUR, TELEPHONES_FICTIFS, compte } from '../configuration.js';
 import { saisirIdentifiants, urlAutorisation, type Monde } from './fixtures.js';
 import { boite } from './teleconsultation.js';
 
 /** Numéro du dossier de chaque patient fictif (le même que dans la préparation des e2e). */
 export const telephoneDu = (identifiant: string): string =>
-  ({ 'pat-fictif-004': '+241 00 00 00 04', 'pat-fictif-005': '+241 00 00 00 05' })[
-    compte(identifiant).attributs['patient_id'] ?? ''
-  ] ?? '+241 00 00 00 01';
+  TELEPHONES_FICTIFS[compte(identifiant).attributs['patient_id'] ?? ''] ?? '+241 00 00 00 01';
 
 /** Dernier code de connexion reçu à ce numéro depuis `depuis`. */
 export async function codeSmsRecu(telephone: string, depuis: string): Promise<string> {

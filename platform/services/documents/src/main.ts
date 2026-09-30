@@ -224,5 +224,7 @@ await purger();
 setInterval(() => void purger(), 3_600_000).unref();
 
 const port = Number(env['PORT'] ?? '3007');
-await app.listen({ host: '127.0.0.1', port });
+// Par défaut, seulement la machine locale ; `DOCUMENTS_HOST` permet à un Keycloak en conteneur de
+// joindre le service (CI : demande « téléphone perdu », ADR-0023).
+await app.listen({ host: env['DOCUMENTS_HOST'] ?? '127.0.0.1', port });
 journal.info('service documents démarré', { port });

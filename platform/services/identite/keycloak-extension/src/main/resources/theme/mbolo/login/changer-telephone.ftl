@@ -1,15 +1,16 @@
 <#-- Mbolo Santé (ADR-0023) : changement du numéro du dossier, à la demande du patient. L'ancien
-     numéro a déjà confirmé par un code ; le nouveau le confirmera à son tour. -->
+     numéro a déjà confirmé par un code ; le nouveau le confirmera à son tour. Avec `perte` :
+     téléphone perdu, seul le nouveau numéro confirme, puis une personne habilitée décide. -->
 <#import "template.ftl" as layout>
 <#import "field.ftl" as field>
 <#import "buttons.ftl" as buttons>
 <@layout.registrationLayout displayMessage=true; section>
     <#if section = "header">
-        ${msg("mboloChangerTelephoneTitre")}
+        <#if perte??>${msg("mboloPerteTitre")}<#else>${msg("mboloChangerTelephoneTitre")}</#if>
     <#elseif section = "form">
         <form id="kc-changer-telephone-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post" novalidate="novalidate">
             <#if (etape!'') == "nouveau">
-                <p class="${properties.kcFormHelperTextClass!}">${msg("mboloChangerTelephoneIntro")}</p>
+                <p class="${properties.kcFormHelperTextClass!}"><#if perte??>${msg("mboloPerteIntro")}<#else>${msg("mboloChangerTelephoneIntro")}</#if></p>
                 <@field.input name="telephone" label=msg("mboloTelephoneNouveau") value=(telephone!'') autofocus=true autocomplete="tel" />
                 <@buttons.actionGroup>
                     <@buttons.button id="kc-submit" name="continuer" label="mboloContinuer"/>

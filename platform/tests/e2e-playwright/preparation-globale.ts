@@ -17,6 +17,7 @@ import {
   PREFIXE_INSCRITS,
   RESSOURCES_FHIR,
   ROYAUME,
+  TELEPHONES_FICTIFS,
   UNLEASH_URL,
   VARIABLE_MOTS_DE_PASSE,
 } from './configuration.js';
@@ -61,15 +62,7 @@ async function preparerDossier(): Promise<void> {
           ? {
               // Le patient de la cohorte payante et celui de la récupération du compte ont leur
               // propre numéro : leurs SMS ne se mêlent pas à ceux des autres scénarios.
-              telecom: [
-                {
-                  system: 'phone',
-                  value:
-                    { 'pat-fictif-004': '+241 00 00 00 04', 'pat-fictif-005': '+241 00 00 00 05' }[
-                      id
-                    ] ?? '+241 00 00 00 01',
-                },
-              ],
+              telecom: [{ system: 'phone', value: TELEPHONES_FICTIFS[id] ?? '+241 00 00 00 01' }],
               birthDate: '1990-01-01',
               extension: [
                 {
@@ -167,6 +160,19 @@ async function retirerPhotos(): Promise<void> {
       await sql`
         update documents.documents set cle_enveloppee = null, supprime_le = now()
          where patient_id like 'pat-fictif-%' and supprime_le is null`;
+    }
+    // Demandes « téléphone perdu » laissées ouvertes par une exécution interrompue : closes (numéro
+    // effacé), jamais supprimées.
+    const [pertes] = await sql<
+      { t: string | null }[]
+    >`select to_regclass('documents.demandes_perte') as t`;
+    if (pertes?.t) {
+      await sql`
+        update documents.demandes_perte
+           set telephone_chiffre = null, cle_enveloppee = null, resultat = 'refusee',
+               motif = 'autre-controle-en-personne', verificateur = 'e2e-preparation',
+               decide_le = now()
+         where patient_id like 'pat-fictif-%' and resultat is null`;
     }
   } finally {
     await sql.end();
