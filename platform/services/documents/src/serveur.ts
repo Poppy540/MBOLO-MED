@@ -6,13 +6,15 @@ import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   ErreurDepot,
   type Utilisateur,
+  type VerifierAppelant,
   type VerifierJeton,
   entetesSecurite,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
-import { MOTIFS_REFUS, RESULTATS, TYPES_DOCUMENT } from './depot.js';
+import { MOTIFS_REFUS, RESULTATS, RESULTATS_PERTE, TYPES_DOCUMENT } from './depot.js';
 import { TAILLE_MAX } from './format.js';
 import { ErreurKmsIndisponible } from './kms.js';
+import type { DecisionPerte, ServicePerte } from './perte.js';
 import { ErreurDocument } from './service.js';
 import { ErreurVerification, type ServiceVerification } from './verification.js';
 import type { DemandeDecision, ServiceVerificateur } from './verificateur.js';
@@ -43,6 +45,11 @@ export async function creerServeur(o: {
   verification: ServiceVerification;
   verificateur: ServiceVerificateur;
   journal: Journal;
+  /**
+   * Téléphone perdu (ADR-0023) : service des demandes, et seuls clients autorisés à les ouvrir
+   * (l'extension Keycloak, après un code reçu au nouveau numéro).
+   */
+  perte?: { service: ServicePerte; verifierAppelant: VerifierAppelant };
   limites?: Limites;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
@@ -249,6 +256,106 @@ export async function creerServeur(o: {
       return reply.code(201).send({ resultat: req.body.resultat });
     },
   );
+
+  // ── Téléphone perdu (ADR-0023) ────────────────────────────────────────────────
+  const perte = o.perte;
+  if (perte) {
+    // Ouverte par l'extension Keycloak seule ; le numéro n'est ni renvoyé ni journalisé.
+    app.post<{ Body: { patientId: string; telephone: string } }>(
+      '/demandes-perte',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['patientId', 'telephone'],
+            properties: {
+              patientId: ID,
+              telephone: { type: 'string', pattern: '^\\+[1-9][0-9 ]{7,19}$' },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const entete = req.headers.authorization;
+        if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+        let appelant: string;
+        try {
+          appelant = await perte.verifierAppelant(entete.slice('Bearer '.length));
+        } catch {
+          throw new ErreurAuthentification();
+        }
+        const { id } = await perte.service.ouvrir(req.body.patientId, req.body.telephone);
+        o.journal.info('demande de changement de numéro après perte ouverte', {
+          appelant,
+          patientId: req.body.patientId,
+          demande: id,
+        });
+        return reply.code(201).send({ id });
+      },
+    );
+
+    // Le patient : sa demande est-elle en cours, quelles photos a-t-il envoyées ?
+    app.get('/perte', async (req) => perte.service.etat(await authentifier(req)));
+
+    app.get('/demandes-perte', async (req) => {
+      const u = await authentifier(req);
+      const liste = await perte.service.aDecider(u);
+      o.journal.info('demandes perte à décider consultées', {
+        sujet: u.sujet,
+        nombre: liste.length,
+      });
+      return { demandes: liste };
+    });
+
+    app.get<{ Params: { patientId: string } }>(
+      '/demandes-perte/:patientId',
+      {
+        schema: {
+          params: { type: 'object', properties: { patientId: ID }, required: ['patientId'] },
+        },
+      },
+      async (req) => {
+        const u = await authentifier(req);
+        const fiche = await perte.service.fiche(u, req.params.patientId);
+        o.journal.info('demande perte consultée', {
+          sujet: u.sujet,
+          patientId: req.params.patientId,
+        });
+        return fiche;
+      },
+    );
+
+    app.post<{ Params: { patientId: string }; Body: DecisionPerte }>(
+      '/demandes-perte/:patientId/decision',
+      {
+        schema: {
+          params: { type: 'object', properties: { patientId: ID }, required: ['patientId'] },
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['resultat'],
+            properties: {
+              resultat: { type: 'string', enum: [...RESULTATS_PERTE] },
+              motif: { type: 'string', enum: [...MOTIFS_REFUS] },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        await perte.service.decider(u, req.params.patientId, req.body);
+        // Qui, quand, quel résultat ; jamais le numéro.
+        o.journal.info('décision sur une demande perte', {
+          sujet: u.sujet,
+          patientId: req.params.patientId,
+          resultat: req.body.resultat,
+          motif: req.body.motif,
+        });
+        return reply.code(201).send({ resultat: req.body.resultat });
+      },
+    );
+  }
 
   return app;
 }

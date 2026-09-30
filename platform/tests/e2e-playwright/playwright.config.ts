@@ -196,6 +196,8 @@ export default defineConfig({
         STORAGE_BUCKET: 'mbolo-e2e-documents',
         // Tous les envois viennent de la même adresse en e2e ; la limite est testée à part (unitaire).
         DOCUMENTS_LIMITE_DEPOT_PAR_MINUTE: '100',
+        // Téléphone perdu (ADR-0023) : alerte à l'ancien numéro avant tout changement.
+        NOTIFICATIONS_URL,
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
         UNLEASH_REFRESH_MS: '500',

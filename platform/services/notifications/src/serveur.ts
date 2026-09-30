@@ -49,6 +49,11 @@ export async function creerServeur(o: {
    * Codes de double authentification (ADR-0022) : appelants autorisés (l'extension Keycloak) et
    * limite par dossier (10 par heure par défaut).
    */
+  /**
+   * Alerte « numéro changé » après une perte du téléphone (ADR-0023) : le service documents, après
+   * la décision d'une personne habilitée. Ces clients n'envoient rien d'autre.
+   */
+  numeroChange?: { appelants: readonly string[] };
   codesConnexion?: {
     appelants: readonly string[];
     limite?: LimiteCodes;
@@ -119,7 +124,8 @@ export async function creerServeur(o: {
       const appelant = await authentifier(req);
       if (
         o.invitations?.appelants.includes(appelant) ||
-        o.codesConnexion?.appelants.includes(appelant)
+        o.codesConnexion?.appelants.includes(appelant) ||
+        o.numeroChange?.appelants.includes(appelant)
       ) {
         throw new ErreurInterdite();
       }
@@ -260,7 +266,8 @@ export async function creerServeur(o: {
 
   if (codes) {
     // Changement du numéro du dossier (ADR-0023) : alerte à l'ancien numéro, lu dans le dossier avant
-    // la mise à jour. Seule l'extension Keycloak l'envoie ; ni numéro ni texte libre.
+    // la mise à jour. Seuls l'extension Keycloak (changement par le patient) et le service documents
+    // (après une perte) l'envoient ; ni numéro ni texte libre.
     app.post<{ Body: { patientId: string } }>(
       '/numero-change',
       {
@@ -275,7 +282,9 @@ export async function creerServeur(o: {
       },
       async (req, reply) => {
         const appelant = await authentifier(req);
-        if (!codes.appelants.includes(appelant)) throw new ErreurInterdite();
+        if (!codes.appelants.includes(appelant) && !o.numeroChange?.appelants.includes(appelant)) {
+          throw new ErreurInterdite();
+        }
         const { patientId } = req.body;
         const resultat = await o.service.alerterPatient(patientId, 'numero-change');
         // En série sur la plateforme : prise de comptes possible (règle NumerosChangesEnSerie).

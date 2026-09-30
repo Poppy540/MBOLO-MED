@@ -2,19 +2,20 @@
 // service identite), puis envoie ses photos ici. Un dépôt n'est accepté que si :
 // - le compte est celui d'un patient, pour son propre dossier (jamais un agent IA ni un proche) ;
 // - la fonction est ouverte pour lui (flag identite.photos, désactivé tant que la charte n'est pas validée) ;
-// - son identité n'est pas encore vérifiée ;
+// - son identité n'est pas encore vérifiée, ou il a perdu son téléphone et une demande de
+//   changement de numéro est en cours (ADR-0023 : nouvelles photos) ;
 // - la dernière décision sur la charte est un accord, dans la version en vigueur.
 import type { StatutIdentite } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
 import type { Utilisateur } from '@mbolo/identite';
 import { charteAcceptee, type Conditions } from './conditions.js';
-import type { TypeDocument } from './depot.js';
+import type { DepotDocuments, TypeDocument } from './depot.js';
 import type { DocumentDepose, ServiceDocuments } from './service.js';
 
 export class ErreurVerification extends Error {
   constructor(
     message: string,
-    readonly statut: 403 | 409 | 422,
+    readonly statut: 403 | 404 | 409 | 422 | 503,
   ) {
     super(message);
   }
@@ -35,6 +36,8 @@ export class ServiceVerification {
     private readonly drapeaux: Pick<Drapeaux, 'estActif'>,
     /** Version de la charte en vigueur (texte validé par le juriste, docs/securite/). */
     private readonly versionCharte: string,
+    /** Demandes « perte » (ADR-0023) : de nouvelles photos sont attendues. */
+    private readonly pertes?: Pick<DepotDocuments, 'demandePerteOuverte'>,
   ) {}
 
   private async patient(u: Utilisateur): Promise<string> {
@@ -71,13 +74,21 @@ export class ServiceVerification {
     const patientId = await this.patient(u);
     const statut = await this.conditions.statutIdentite(patientId);
     if (!statut) throw new ErreurVerification("Renseignez d'abord votre identité.", 409);
-    if (statut === 'verifiee') {
+    const perte = await this.pertes?.demandePerteOuverte(patientId);
+    if (statut === 'verifiee' && !perte) {
       throw new ErreurVerification('Votre identité est déjà vérifiée.', 409);
     }
     const chartes = await this.conditions.chartes(patientId);
     if (!charteAcceptee(chartes, patientId, this.versionCharte)) {
       throw new ErreurVerification("Acceptez d'abord la charte de vérification d'identité.", 403);
     }
-    return this.documents.deposer({ patientId, type, octets, versionCharte: this.versionCharte });
+    return this.documents.deposer({
+      patientId,
+      type,
+      octets,
+      versionCharte: this.versionCharte,
+      // Seules les photos de la demande comptent : celles de l'inscription restent pour comparer.
+      ...(perte ? { depuis: perte.ouverteLe } : {}),
+    });
   }
 }

@@ -60,13 +60,7 @@ export class ServiceVerificateur {
   ) {}
 
   private exigerRole(u: Utilisateur, patientId?: string): void {
-    if (!u.roles.includes(ROLE) || u.roles.includes('agent-ia')) {
-      throw new ErreurVerification('Accès refusé.', 403);
-    }
-    // Personne ne vérifie sa propre identité.
-    if (patientId && u.patientId === patientId) {
-      throw new ErreurVerification('Accès refusé.', 403);
-    }
+    exigerVerificateur(u, patientId);
   }
 
   /** Trace dans le dossier, avant de montrer quoi que ce soit (échec : rien n'est montré). */
@@ -209,6 +203,16 @@ export class ServiceVerificateur {
         value: saisi.valeur,
       },
     ];
+  }
+}
+
+/** Rôle verification-identite, jamais un agent IA ; personne ne vérifie sa propre identité. */
+export function exigerVerificateur(u: Utilisateur, patientId?: string): void {
+  if (!u.roles.includes(ROLE) || u.roles.includes('agent-ia')) {
+    throw new ErreurVerification('Accès refusé.', 403);
+  }
+  if (patientId && u.patientId === patientId) {
+    throw new ErreurVerification('Accès refusé.', 403);
   }
 }
 

@@ -1,9 +1,10 @@
 // Accès au dossier pour la vérification d'identité (ADR-0015), par la passerelle et le compte de
 // service mbolo-documents-service :
 // - lecture de l'identité déclarée (nom, prénom, naissance), du statut et du numéro ;
-// - modification du statut et du numéro SEULEMENT (la passerelle conserve le reste du Patient) ;
+// - modification du statut, des identifiants et, après une perte du téléphone (ADR-0023), du
+//   numéro de téléphone SEULEMENT (la passerelle conserve le reste du Patient) ;
 // - trace de chaque consultation (AuditEvent, immuable, visible par le patient).
-import type { AuditEvent, Identifier, Patient } from 'fhir/r4.js';
+import type { AuditEvent, ContactPoint, Identifier, Patient } from 'fhir/r4.js';
 import { ClientFhir } from '@mbolo/identite';
 
 export interface DossierIdentite {
@@ -14,6 +15,8 @@ export interface DossierIdentite {
     extension: NonNullable<Patient['extension']>,
     identifier?: Identifier[],
   ): Promise<void>;
+  /** Remplace le numéro de téléphone (`telecom`) ; rien d'autre (ADR-0023). */
+  modifierTelephone(patientId: string, telecom: ContactPoint[]): Promise<void>;
   tracer(trace: AuditEvent): Promise<void>;
 }
 
@@ -35,6 +38,12 @@ export class DossierMemoire implements DossierIdentite {
     const p = this.patients.get(patientId);
     if (!p) throw new Error('Patient inconnu.');
     this.patients.set(patientId, { ...p, extension, ...(identifier ? { identifier } : {}) });
+  }
+
+  async modifierTelephone(patientId: string, telecom: ContactPoint[]): Promise<void> {
+    const p = this.patients.get(patientId);
+    if (!p) throw new Error('Patient inconnu.');
+    this.patients.set(patientId, { ...p, telecom });
   }
 
   async tracer(trace: AuditEvent): Promise<void> {
@@ -67,6 +76,15 @@ export class DossierFhir extends ClientFhir implements DossierIdentite {
         extension,
         ...(identifier ? { identifier } : {}),
       }),
+    });
+    if (!r.ok) throw ClientFhir.echec(r, 'Patient');
+  }
+
+  async modifierTelephone(patientId: string, telecom: ContactPoint[]): Promise<void> {
+    const r = await this.appeler(`${this.base}/Patient/${encodeURIComponent(patientId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/fhir+json' },
+      body: JSON.stringify({ resourceType: 'Patient', id: patientId, telecom }),
     });
     if (!r.ok) throw ClientFhir.echec(r, 'Patient');
   }

@@ -75,7 +75,7 @@ const app = await creerServeur({
     audience: env['NOTIFICATIONS_AUDIENCE'] ?? 'mbolo-notifications',
     clientsAutorises: (
       env['NOTIFICATIONS_CLIENTS_AUTORISES'] ??
-      'mbolo-teleconsultation-service,mbolo-invitations-service,mbolo-keycloak-inscription'
+      'mbolo-teleconsultation-service,mbolo-invitations-service,mbolo-keycloak-inscription,mbolo-documents-service'
     )
       .split(',')
       .map((x) => x.trim())
@@ -89,6 +89,13 @@ const app = await creerServeur({
     canal,
     pays,
     appelants: (env['NOTIFICATIONS_APPELANTS_INVITATION'] ?? 'mbolo-invitations-service')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean),
+  },
+  // Alerte « numéro changé » après une perte (ADR-0023) : seul le service documents.
+  numeroChange: {
+    appelants: (env['NOTIFICATIONS_APPELANTS_NUMERO_CHANGE'] ?? 'mbolo-documents-service')
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean),

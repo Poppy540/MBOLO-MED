@@ -577,7 +577,7 @@
     },
     {
       "clientId": "mbolo-documents-service",
-      "name": "Compte de service du service documents (dossier : identité déclarée et statut du patient, charte C-IDENTITE ; modification du statut et du numéro seulement ; traces des photos consultées)",
+      "name": "Compte de service du service documents (dossier : identité déclarée et statut du patient, charte C-IDENTITE ; modification du statut, des identifiants et, après une perte, du téléphone seulement ; traces des photos consultées ; alerte à l'ancien numéro)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-jwt",
@@ -595,6 +595,16 @@
         "token.endpoint.auth.signing.alg": "RS256"
       },
       "protocolMappers": [
+        {
+          "name": "audience-notifications",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-notifications",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
         {
           "name": "audience-dossier-fhir",
           "protocol": "openid-connect",
@@ -639,7 +649,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements_modifiables",
-            "claim.value": "Patient.extension Patient.identifier",
+            "claim.value": "Patient.extension Patient.identifier Patient.telecom",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

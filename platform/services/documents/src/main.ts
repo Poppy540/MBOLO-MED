@@ -8,13 +8,16 @@ import {
   authentificationDepuis,
   creerFournisseurJeton,
   creerVerificateur,
+  creerVerificateurAppelant,
   exigerHttps,
 } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
+import { AlerteNumeroHttp } from './alerte.js';
 import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
 import { DossierFhir } from './dossier.js';
+import { ServicePerte } from './perte.js';
 import { creerServeur, LIMITES_PAR_DEFAUT } from './serveur.js';
 import { ServiceDocuments } from './service.js';
 import { StockageS3 } from './stockage.js';
@@ -96,19 +99,15 @@ try {
 }
 
 const depot = new DepotPostgres(connecter({ url: urlBase, application: 'documents', production }));
+// KMS de l'hébergeur si configuré, sinon clé locale du coffre-fort (ADR-0016).
+const maitre = trousseauDepuis(env);
 let documents: ServiceDocuments;
 try {
-  documents = new ServiceDocuments(
-    depot,
-    stockage,
-    // KMS de l'hébergeur si configuré, sinon clé locale du coffre-fort (ADR-0016).
-    trousseauDepuis(env),
-    {
-      // Durée à fixer par pays avec l'avis juridique (ADR-0015).
-      conservationJours: Number(env['DOCUMENTS_CONSERVATION_JOURS'] ?? '90'),
-      maxParType: Number(env['DOCUMENTS_MAX_PAR_TYPE'] ?? '2'),
-    },
-  );
+  documents = new ServiceDocuments(depot, stockage, maitre, {
+    // Durée à fixer par pays avec l'avis juridique (ADR-0015).
+    conservationJours: Number(env['DOCUMENTS_CONSERVATION_JOURS'] ?? '90'),
+    maxParType: Number(env['DOCUMENTS_MAX_PAR_TYPE'] ?? '2'),
+  });
 } catch (e) {
   journal.erreur('paramètres des documents invalides', { err: e });
   process.exit(1);
@@ -152,6 +151,7 @@ try {
       FHIR_BASE_URL: env['FHIR_BASE_URL'],
       STORAGE_ENDPOINT: env['STORAGE_ENDPOINT'],
       UNLEASH_API_URL: env['UNLEASH_API_URL'],
+      NOTIFICATIONS_URL: env['NOTIFICATIONS_URL'],
     },
     env['MBOLO_ENV'] === 'prod',
   );
@@ -159,6 +159,33 @@ try {
   journal.erreur('adresses non chiffrées refusées en production', { err: e });
   process.exit(1);
 }
+
+const dossier = new DossierFhir(acces);
+const verificateur = new ServiceVerificateur(documents, depot, dossier, { systemes, env: 'dev' });
+// Téléphone perdu (ADR-0023) : seulement si le service notifications est joignable (alerte à
+// l'ancien numéro avant tout changement).
+const notifications = env['NOTIFICATIONS_URL'];
+const perte = notifications
+  ? {
+      service: new ServicePerte(
+        documents,
+        depot,
+        dossier,
+        verificateur,
+        new AlerteNumeroHttp(notifications, acces.entetes),
+        maitre,
+      ),
+      verifierAppelant: creerVerificateurAppelant({
+        emetteur,
+        audience: env['DOCUMENTS_AUDIENCE'] ?? 'mbolo-documents-api',
+        clientsAutorises: (env['DOCUMENTS_APPELANTS_PERTE'] ?? 'mbolo-keycloak-inscription')
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean),
+      }),
+    }
+  : undefined;
+if (!perte) journal.avertissement('NOTIFICATIONS_URL absente : demandes « perte » désactivées');
 
 const app = await creerServeur({
   verifierJeton: creerVerificateur({
@@ -170,11 +197,10 @@ const app = await creerServeur({
     conditions,
     drapeaux,
     env['DOCUMENTS_VERSION_CHARTE'] ?? '0.1',
+    depot,
   ),
-  verificateur: new ServiceVerificateur(documents, depot, new DossierFhir(acces), {
-    systemes,
-    env: 'dev',
-  }),
+  verificateur,
+  ...(perte ? { perte } : {}),
   journal,
   limites: {
     parMinute: Number(env['DOCUMENTS_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),
