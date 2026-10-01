@@ -64,6 +64,8 @@ Le profil utilisateur qui l'impose (droits `edit: ["admin"]`) est **intégré au
 
 L'inscription passe par le **formulaire natif de Keycloak**, complété par l'extension `keycloak-extension/` (Java, SPI `form-action`, thème de connexion `mbolo`) :
 
+> **Thème `mbolo` et accessibilité** : `theme/mbolo/login/template.ftl` est une copie du gabarit `keycloak.v2` de Keycloak 26.7.4, avec une seule ligne modifiée : le champ qui rappelle l'identifiant (`kc-attempted-username`) reçoit un libellé (`aria-label`), absent de l'original (règle WCAG « label », relevée par le contrôle d'accessibilité des e2e). **À chaque mise à jour de Keycloak, reprendre le gabarit d'origine et remettre cette ligne.**
+
 - **Champs demandés** : code d'invitation, identifiant et mot de passe. Ni nom ni e-mail : `email`, `firstName` et `lastName` sont réservés à l'administrateur dans le profil utilisateur. L'identité ira dans le dossier FHIR.
 - **Contrôle du code** : il est vérifié **après** les autres champs, par le service `invitations` (`POST /inscription/controle`). Les essais sont limités selon l'adresse du navigateur.
 - **Utilisation du code** : il est utilisé **à la création du compte** (`POST /inscription/utilisation`, atomique). Si le service refuse, la transaction est annulée et aucun compte n'est créé.
