@@ -1,6 +1,7 @@
 // Accessibilité des applications (WCAG 2.2 niveau AA) : contrôle automatique par axe-core sur
-// l'écran affiché. Il ne remplace pas un test avec des utilisateurs (lecteur d'écran, faible
-// littératie), mais bloque les erreurs détectables : libellés, contrastes, rôles, langue.
+// l'écran affiché, puis redistribution à 320 px. Il ne remplace pas un test avec des utilisateurs
+// (lecteur d'écran, faible littératie), mais bloque les erreurs détectables : libellés, contrastes,
+// rôles, langue, défilement horizontal.
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 import { Then } from './fixtures.js';
@@ -28,6 +29,37 @@ export async function verifierAccessibilite(page: Page, ecran: string): Promise<
     ),
     `accessibilité de l'écran « ${ecran} »`,
   ).toEqual([]);
+  await verifierRedistribution(page, ecran);
+}
+
+/**
+ * WCAG 1.4.10 (redistribution), qu'axe ne contrôle pas : à 320 px de large (petit téléphone, ou
+ * zoom à 400 %), l'écran se lit sans défilement horizontal. La taille de la fenêtre est rendue
+ * ensuite.
+ */
+async function verifierRedistribution(page: Page, ecran: string): Promise<void> {
+  const taille = page.viewportSize();
+  await page.setViewportSize({ width: 320, height: 640 });
+  try {
+    const debords = await page.evaluate(() => {
+      const largeur = document.documentElement.clientWidth;
+      if (document.documentElement.scrollWidth <= largeur) return [];
+      // Éléments visibles qui dépassent à droite, pour un message d'échec utile.
+      const fautifs = Array.from(document.body.querySelectorAll('*'))
+        .filter((e) => {
+          const r = e.getBoundingClientRect();
+          return r.width > 0 && r.right > largeur + 1;
+        })
+        .slice(0, 5)
+        .map((e) =>
+          [e.tagName.toLowerCase(), e.id, e.getAttribute('class')].filter(Boolean).join(' '),
+        );
+      return fautifs.length > 0 ? fautifs : ['page'];
+    });
+    expect(debords, `défilement horizontal à 320 px sur l'écran « ${ecran} »`).toEqual([]);
+  } finally {
+    if (taille) await page.setViewportSize(taille);
+  }
 }
 
 Then(
