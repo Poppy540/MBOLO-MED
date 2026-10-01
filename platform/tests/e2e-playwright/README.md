@@ -33,6 +33,8 @@ Scénarios **Gherkin en français** (`platform/tests/features-gherkin/`) exécut
 | `identite/double-authentification.feature` | Code à usage unique exigé pour infirmier, médecin, pharmacien et proche (configuration imposée à la première connexion) ; aucun code pour un patient. Les codes TOTP sont calculés par `etapes/totp.ts`, avec un secret gardé en mémoire                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `identite/acces-dossier.feature`           | Refus par défaut ; partage avec un proche refusé hors de la cohorte activée (flag `consentement.proche`) ; consentement enregistré puis révoqué **dans le dossier FHIR** (statut `active` puis `inactive`) ; partage avec un professionnel inconnu du dossier refusé ; accès du patient à son dossier ; partage avec un médecin puis révocation ; proche (diaspora) ; bris de glace motivé (revue humaine demandée) ou non motivé ; pharmacien sans accès clinique ; 403 et 401 (sans jeton, jeton altéré)                                                                                                                                                            |
 
+**Accessibilité** : l'étape « l'écran de l'"application patient" (ou "espace professionnel") respecte les règles d'accessibilité » contrôle l'écran affiché avec axe-core (`@axe-core/playwright`), selon les règles WCAG 2.0 et 2.1, niveaux A et AA. Toute violation fait échouer le scénario, avec la règle et les éléments en cause. Écrans contrôlés : accueil sans réseau, « Mes rendez-vous », annuaire filtré, paiement, reçu, partages et historique, invitation d'un proche, « Protéger mon compte », créneaux du médecin, remboursements à valider. Ce contrôle automatique ne remplace pas un test avec des patients (lecteur d'écran, faible littératie, téléphone réel).
+
 ## Lancer en local
 
 ```bash
@@ -61,5 +63,6 @@ En CI, le job **E2E** démarre Keycloak et HAPI FHIR par `docker compose`. Le mo
 1. Écrire le scénario dans `platform/tests/features-gherkin/<domaine>/*.feature` (`# language: fr`). Couvrir le cas nominal, un cas dégradé et un cas de refus ou d'escalade.
 2. Réutiliser les étapes de `etapes/`, ou en ajouter (une phrase = une étape, sans logique cachée).
 3. Données fictives uniquement (skill `e2e-playwright-gherkin`).
+4. Pour un nouvel écran, ajouter l'étape d'accessibilité une fois l'écran affiché.
 
 **Applications** : servies par `vite preview`, patient sur `http://localhost:5180` (`APP_PATIENT_URL`) et professionnel sur `http://localhost:5181` (`APP_PRO_URL`). Les ports 5173 et 5174 restent les adresses de retour factices des étapes de connexion (clients patient et professionnel) : une vraie application sur ces ports consommerait les codes d'autorisation des tests.

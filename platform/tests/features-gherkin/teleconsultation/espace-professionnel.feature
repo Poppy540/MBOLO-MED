@@ -12,6 +12,7 @@ Fonctionnalité: Espace professionnel
     Et que le professionnel publie 2 créneaux de 20 minutes dans 7 jours à "10:00"
     Alors l’espace professionnel affiche un créneau libre dans 7 jours à "10:00"
     Et l’espace professionnel affiche un créneau libre dans 7 jours à "10:20"
+    Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité
     Quand le professionnel retire le créneau libre dans 7 jours à "10:20"
     Alors l’espace professionnel n’affiche plus de créneau dans 7 jours à "10:20"
 

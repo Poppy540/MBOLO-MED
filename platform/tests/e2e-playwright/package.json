@@ -9,6 +9,7 @@
     "e2e": "bddgen && playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@mbolo/base-donnees": "workspace:*",
     "@mbolo/dossier-fhir": "workspace:*",
     "@mbolo/identite": "workspace:*",

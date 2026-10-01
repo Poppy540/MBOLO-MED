@@ -37,6 +37,7 @@ Fonctionnalité: Le patient protège son compte avec une application d'authentif
     Alors l’application patient affiche "Votre application protège maintenant votre compte. Les codes ne viendront plus par SMS."
     Quand "patient-fictif-07" retire son application depuis « Protéger mon compte »
     Alors l’application patient affiche "Votre application est retirée. Les codes reviennent par SMS."
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
 
   Scénario: Déjà confirmé par SMS depuis moins de 15 minutes : l'activation ne redemande pas de code SMS
     Quand "patient-fictif-07" confirme par SMS puis, dans la même session, active une application sans nouveau code SMS

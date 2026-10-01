@@ -24,6 +24,7 @@ Fonctionnalité: Le patient décide qui lit son dossier, depuis son application
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
     Quand le patient ouvre ses partages et accès
     Alors l’application montre qu’un professionnel de santé a lu le dossier, puis s’est vu refuser l’accès
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
 
   Scénario: Sans accord explicite du patient, rien n'est partagé
     Étant donné que "patient-fictif-01" est connecté

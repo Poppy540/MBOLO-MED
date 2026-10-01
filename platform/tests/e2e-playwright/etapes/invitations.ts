@@ -175,12 +175,15 @@ async function saisirIdentite(
 }
 
 async function inscrire(
-  page: Page,
+  pageDuScenario: Page,
   monde: Monde,
   code: string,
   naissance?: string,
   corrigerEn?: string,
 ): Promise<void> {
+  // Page neuve : la page du scénario peut encore finir sur l'erreur Chrome d'un retour de connexion
+  // précédent (faux port 5173), qui interromprait la navigation vers Keycloak.
+  const page = await pageDuScenario.context().newPage();
   const identifiant = `${PREFIXE_INSCRITS}${randomBytes(4).toString('hex')}`;
   const { clientId, redirection } = APPLICATIONS.patient;
   const verificateur = await ouvrirInscription(page);
@@ -233,7 +236,8 @@ When("une autre personne s'inscrit avec le même code", async ({ page, monde }) 
   await inscrire(page, monde, monde.invitation?.code ?? '');
 });
 
-When("une personne ouvre le formulaire d'inscription", async ({ page, monde }) => {
+When("une personne ouvre le formulaire d'inscription", async ({ context, monde }) => {
+  const page = await context.newPage();
   await ouvrirInscription(page);
   monde.inscription = { identifiant: '', page };
 });
