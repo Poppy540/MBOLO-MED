@@ -16,6 +16,7 @@ Fonctionnalité: L'équipe d'assistance retire les proches d'un patient, à sa d
     Quand "assistant-fictif-01" ouvre l’espace d’assistance
     Et il retrouve le dossier du numéro d’assurance "FICTIF-pat-fictif-001"
     Alors l’espace d’assistance affiche le numéro de rappel "+241 00 00 00 01" et au moins 1 proche
+    Et l’écran de l’"espace d’assistance" respecte les règles d’accessibilité
     Quand il confirme avoir rappelé le patient et saisit la date de naissance "1991-01-01"
     Alors l’espace d’assistance indique "La date de naissance ne correspond pas"
     Et l'invitation du proche est "valide"
