@@ -14,6 +14,7 @@ Fonctionnalité: Vérification d'identité par photos
     Et que le patient accepte la charte de vérification d'identité
     Et que le patient envoie la photo de sa pièce d'identité puis celle de son visage
     Alors l'application indique que ses deux photos sont envoyées
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
     Et le dossier médical contient l'accord de "patient-fictif-03" à la charte "0.1"
 
   Scénario: Sans charte acceptée, aucune photo n'est reçue

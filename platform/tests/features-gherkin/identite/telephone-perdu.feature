@@ -17,6 +17,7 @@ Fonctionnalité: Le patient qui a perdu son téléphone change de numéro
     Et qu'il envoie deux nouvelles photos depuis l’application
     Et que "verificateur-fictif-01" ouvre les changements de numéro dans l’espace professionnel
     Et que la vérificatrice ouvre la demande de "patient-fictif-06" et voit les deux nouvelles photos
+    Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité
     Et que la vérificatrice refuse la demande : « Le visage ne correspond pas »
     Alors le dossier de "patient-fictif-06" porte encore le numéro "+241 00 00 00 06"
 

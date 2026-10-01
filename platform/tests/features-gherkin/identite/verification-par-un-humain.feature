@@ -13,6 +13,7 @@ Fonctionnalité: Vérification d'identité par une personne habilitée
     Et que "patient-fictif-03" a envoyé ses deux photos d'identité
     Quand "verificateur-fictif-01" ouvre les vérifications à faire dans l’espace professionnel
     Et que la vérificatrice ouvre le dossier de "patient-fictif-03" et voit ses deux photos
+    Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité
     Et que la vérificatrice confirme l'identité avec le numéro provisoire "FICTIF-PROV-0003"
     Alors le dossier de "patient-fictif-03" indique une identité vérifiée avec le numéro "FICTIF-PROV-0003"
     Et l'historique des accès de "patient-fictif-03" montre la consultation de ses photos

@@ -5,7 +5,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 import { Then } from './fixtures.js';
 
-const NORMES = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+const NORMES = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 /**
  * Contrôle l'écran affiché ; `ecran` nomme l'écran dans le message d'échec. Aussi appelé, de façon

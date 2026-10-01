@@ -19,6 +19,7 @@ Fonctionnalité: Le proche désigné par le patient suit son traitement
     Et que "patient-fictif-01" donne son consentement "C-PROCHE" à "RelatedPerson/rp-fictif-001"
     Quand "proche-fictif-01" ouvre l’application patient en tant que proche
     Alors l’application du proche affiche cette ordonnance et la consigne du médecin
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
     Et l’application du proche n’affiche ni le motif ni la conclusion
     Quand "patient-fictif-01" retire ce consentement
     Et que "proche-fictif-01" demande les documents partagés par son proche
