@@ -70,3 +70,14 @@ Then(
     await verifierAccessibilite(page, application);
   },
 );
+
+// Au changement d'écran, le focus va au titre du nouvel écran (WCAG 2.4.3) : un utilisateur au
+// clavier ou avec un lecteur d'écran repart du nouvel écran, pas du haut de la page.
+Then(
+  'dans l’{string}, le focus est sur le titre {string}',
+  async ({ monde }, application: string, titre: string) => {
+    const page = monde.visio.get(application)?.page;
+    if (!page) throw new Error(`${application} non ouverte`);
+    await expect(page.locator('h2:focus')).toContainText(titre);
+  },
+);

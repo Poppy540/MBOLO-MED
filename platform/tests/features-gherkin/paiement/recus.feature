@@ -28,6 +28,7 @@ Fonctionnalité: Reçus et avoirs du patient
     Quand "patient-fictif-04" ouvre l’application patient
     Et que le patient ouvre ses reçus dans l’application
     Alors l’application affiche ce reçu de 10000 "XAF", sans valeur fiscale ni numéro de téléphone
+    Et dans l’"application patient", le focus est sur le titre "Mes reçus"
     Et l’écran de l’"application patient" respecte les règles d’accessibilité
 
   Scénario: Les reçus ne sont montrés qu'aux patients de la cohorte ouverte, jamais à un professionnel

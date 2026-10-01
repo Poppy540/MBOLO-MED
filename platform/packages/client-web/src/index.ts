@@ -14,6 +14,7 @@ export {
 } from './auth.js';
 export type { Memoire, ParametresConnexion, StatutAction } from './auth.js';
 export { Consultation } from './consultation.js';
+export { titreAuFocus, useTitreAuFocus } from './focus.js';
 export { quand, versInstant } from './format.js';
 export { DecisionRepli } from './repli.js';
 export type { Qualite } from './repli.js';

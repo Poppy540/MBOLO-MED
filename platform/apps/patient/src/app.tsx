@@ -16,6 +16,7 @@ import {
   statutAction,
   terminerConnexion,
   urlDeconnexion,
+  useTitreAuFocus,
 } from '@mbolo/client-web';
 import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
 import { filtrer, specialites } from './annuaire.js';
@@ -154,6 +155,8 @@ type Ecran =
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
+  // Au changement d'écran, le focus va au titre du nouvel écran (clavier, lecteur d'écran).
+  useTitreAuFocus(ecran.nom);
   const [message, setMessage] = useState<string>();
   const [attente, setAttente] = useState(true);
 

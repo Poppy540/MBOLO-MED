@@ -16,6 +16,7 @@ Fonctionnalité: Le patient lit ses comptes-rendus et ses ordonnances
     Quand "patient-fictif-01" ouvre l’application patient
     Et que le patient ouvre ses comptes-rendus et ordonnances
     Alors l’application affiche ce compte-rendu, tel que le médecin l’a écrit
+    Et dans l’"application patient", le focus est sur le titre "Mes comptes-rendus et ordonnances"
     Et l’écran de l’"application patient" respecte les règles d’accessibilité
     Et l’application affiche cette ordonnance, valable
     Quand "medecin-fictif-01" révoque cette ordonnance
