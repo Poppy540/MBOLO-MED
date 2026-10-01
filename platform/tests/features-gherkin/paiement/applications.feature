@@ -43,6 +43,7 @@ Fonctionnalité: Payer et rembourser depuis les applications
     Alors le rendez-vous est annulé
     Et que "valideur-fictif-01" est connecté
     Quand "valideur-fictif-01" ouvre les remboursements à valider dans l’espace professionnel
-    Et que le valideur valide le remboursement de ce rendez-vous
+    Alors dans l’"espace professionnel", le focus est sur le titre "Remboursements à valider"
+    Quand le valideur valide le remboursement de ce rendez-vous
     Alors l’espace professionnel confirme que le remboursement est versé
     Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité

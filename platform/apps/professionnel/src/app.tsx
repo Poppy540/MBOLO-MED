@@ -15,6 +15,7 @@ import {
   quand as formater,
   terminerConnexion,
   urlDeconnexion,
+  useTitreAuFocus,
   versInstant,
 } from '@mbolo/client-web';
 import {
@@ -61,6 +62,8 @@ const estSoignant = () => roles().some((r) => r === 'professionnel' || r === 'in
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
+  // Au changement d'écran, le focus va au titre du nouvel écran (clavier, lecteur d'écran).
+  useTitreAuFocus(ecran.nom);
   const [message, setMessage] = useState<string>();
   const [attente, setAttente] = useState(true);
 
