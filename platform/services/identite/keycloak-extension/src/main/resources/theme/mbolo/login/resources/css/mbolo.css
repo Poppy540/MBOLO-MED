@@ -1,0 +1,21 @@
+/*
+ * Corrections d'accessibilité du thème keycloak.v2 (Keycloak 26.7.4), chargées après son styles.css.
+ * À revoir à chaque mise à jour de Keycloak.
+ */
+
+/*
+ * Infobulle « Recommencer la connexion » : le thème d'origine la place à droite du bouton
+ * (left: 160 %). Même cachée, elle élargit la page : à 320 px de large, l'écran défile
+ * horizontalement (WCAG 1.4.10) et l'infobulle affichée est coupée. On la place à gauche du
+ * bouton, qui est au bord droit du champ.
+ */
+.kc-login-tooltip .kc-tooltip-text {
+  left: auto;
+  right: 160%;
+}
+
+.kc-login-tooltip .kc-tooltip-text::after {
+  right: auto;
+  left: 100%;
+  border-color: transparent transparent transparent black;
+}
