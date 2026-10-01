@@ -12,6 +12,7 @@ import {
 } from '../configuration.js';
 import { Then, When, revendications, urlAutorisation, type Monde } from './fixtures.js';
 import { codeSmsRecu, telephoneDu } from './niveau.js';
+import { verifierAccessibilite } from './accessibilite.js';
 
 interface Parcours {
   page: Page;
@@ -59,6 +60,7 @@ Then('Keycloak demande le code reçu par SMS', async ({ monde }) => {
   const { page } = courant(monde);
   await expect(page.locator('#code_sms')).toBeVisible();
   await expect(page.locator('body')).toContainText("Un code vient d'être envoyé par SMS");
+  await verifierAccessibilite(page, 'Keycloak : code SMS');
 });
 
 /** Dernier code reçu par le patient depuis la relève de la boîte. */

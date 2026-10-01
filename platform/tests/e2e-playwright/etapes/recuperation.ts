@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { expect, type Browser, type Page, type Request } from '@playwright/test';
 import { APPLICATIONS, EMETTEUR, INVITATIONS_URL, compte, motDePasse } from '../configuration.js';
 import { Given, Then, When, revendications, urlAutorisation, type Monde } from './fixtures.js';
+import { verifierAccessibilite } from './accessibilite.js';
 
 /** Code remis pendant le scénario (il n'existe que dans cette mémoire de test). */
 const codes = new WeakMap<Monde, string>();
@@ -113,6 +114,8 @@ async function saisirCode(browser: Browser, identifiant: string, code: string) {
   await page.getByRole('link', { name: /oublié/i }).click();
   await page.locator('#username').fill(identifiant);
   await page.locator('[type=submit]').first().click();
+  await expect(page.locator('#code_recuperation')).toBeVisible();
+  await verifierAccessibilite(page, 'Keycloak : code de récupération');
   await page.locator('#code_recuperation').fill(code);
   await page.locator('#kc-submit').click();
   return { contexte, page, retour, verificateur };

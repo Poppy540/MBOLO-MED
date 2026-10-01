@@ -17,6 +17,7 @@ import {
 } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
 import { codeSmsRecu } from './niveau.js';
+import { verifierAccessibilite } from './accessibilite.js';
 
 async function appeler(
   monde: Monde,
@@ -138,6 +139,7 @@ async function saisirIdentite(
   corrigerEn?: string,
 ): Promise<void> {
   await expect(page.locator('#kc-identite-form')).toBeVisible();
+  await verifierAccessibilite(page, 'Keycloak : Mon identité');
   for (const [champ, valeur] of Object.entries({ ...IDENTITE_FICTIVE, naissance })) {
     await page.locator(`#${champ}`).fill(valeur);
   }
@@ -150,6 +152,7 @@ async function saisirIdentite(
   let telephone = IDENTITE_FICTIVE.telephone;
   // Le numéro saisi est rappelé, pour repérer une faute de frappe.
   await expect(page.locator('body')).toContainText(`envoyé par SMS au ${telephone}`);
+  await verifierAccessibilite(page, 'Keycloak : code de vérification du numéro');
   if (corrigerEn) {
     await page.locator('#kc-corriger').click();
     await expect(page.locator('#kc-identite-form')).toBeVisible();
