@@ -7,6 +7,7 @@ import { codeSmsRecu, telephoneDu } from './niveau.js';
 import { nouveauMotDePasse } from './recuperation.js';
 import { boite } from './teleconsultation.js';
 import { codeUnique, retenirSecret } from './totp.js';
+import { verifierAccessibilite } from './accessibilite.js';
 
 const CLE = 'application-authentification';
 
@@ -89,6 +90,7 @@ When(
     // Plus de code SMS : Keycloak demande celui de l'application.
     await expect(p.page.locator('#code_application')).toBeVisible();
     await expect(p.page.locator('#code_sms')).toHaveCount(0);
+    await verifierAccessibilite(p.page, 'Keycloak : code de l’application');
     await p.page.locator('#code_application').fill(await codeUnique(identifiant));
     await p.page.locator('#kc-submit').click();
     await expect.poll(() => p.retour.url, { timeout: 10_000 }).toBeDefined();

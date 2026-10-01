@@ -5,6 +5,7 @@ import { EXTENSION_CHANGEMENT_TELEPHONE } from '@mbolo/dossier-fhir';
 import { APP_PATIENT_URL, APPLICATIONS, FHIR_URL } from '../configuration.js';
 import { Given, Then, When, revendications, urlAutorisation, type Monde } from './fixtures.js';
 import { codeSmsRecu } from './niveau.js';
+import { verifierAccessibilite } from './accessibilite.js';
 
 /** Numéro saisi par la personne inscrite dans les scénarios (`IDENTITE_FICTIVE`, invitations.ts). */
 const ANCIEN = '+241 00 00 00 04';
@@ -65,6 +66,7 @@ When(
     await p.locator('#code_sms').fill(await codeSmsRecu(ANCIEN, monde.depuis ?? ''));
     await p.locator('#kc-submit').click();
     await expect(p.locator('#kc-changer-telephone-form #telephone')).toBeVisible();
+    await verifierAccessibilite(p, 'Keycloak : nouveau numéro');
     await p.locator('#telephone').fill(nouveau);
     monde.depuis = new Date().toISOString();
     await p.locator('#kc-submit').click();
