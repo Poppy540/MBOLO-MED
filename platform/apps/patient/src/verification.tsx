@@ -4,6 +4,7 @@
 // (faible débit) ; elles ne sont jamais gardées dans le navigateur.
 // Mode « perte » (ADR-0023) : téléphone perdu, la charte est déjà acceptée ; le patient envoie deux
 // nouvelles photos pour sa demande de changement de numéro.
+import { useTitreAuFocus } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
 
@@ -66,6 +67,7 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
   const [typeDocument, setTypeDocument] = useState<'piece-identite' | 'acte-naissance'>(
     'piece-identite',
   );
+  useTitreAuFocus(refus ? 'refus' : etat?.charte.acceptee ? 'photos' : 'charte');
 
   const charger = () =>
     (p.perte
@@ -146,6 +148,7 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
   if (refus) {
     return (
       <section>
+        <h2>Charte refusée</h2>
         <p>
           Vous avez refusé la charte. Vous gardez votre compte, mais vous ne pourrez pas consulter.
           Un professionnel de santé peut vous proposer une vérification en personne.

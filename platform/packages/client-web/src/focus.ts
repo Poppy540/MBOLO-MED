@@ -12,17 +12,21 @@ const ATTENTE_MAX_MS = 5000;
  * l'attente (nouvel écran entre-temps).
  */
 export function titreAuFocus(racine: ParentNode): () => void {
-  const essayer = (): boolean => {
+  const auDepart = document.activeElement;
+  const essayer = (attente: boolean): boolean => {
     const titre = racine.querySelector<HTMLElement>('h2');
     if (!titre) return false;
+    // Pendant l'attente, la personne a pu déplacer le focus elle-même (« Retour ») : on le lui laisse.
+    const actif = document.activeElement;
+    if (attente && actif && actif !== auDepart && actif !== document.body) return true;
     // Un titre n'est pas atteignable au clavier : -1 le rend focalisable par programme seulement.
     if (!titre.hasAttribute('tabindex')) titre.setAttribute('tabindex', '-1');
     titre.focus();
     return true;
   };
-  if (essayer()) return () => {};
+  if (essayer(false)) return () => {};
   const observateur = new MutationObserver(() => {
-    if (essayer()) arreter();
+    if (essayer(true)) arreter();
   });
   const minuterie = setTimeout(arreter, ATTENTE_MAX_MS);
   function arreter(): void {
@@ -34,8 +38,9 @@ export function titreAuFocus(racine: ParentNode): () => void {
 }
 
 /**
- * À chaque changement de `ecran` (sauf au premier affichage, pour ne pas déplacer le focus à
- * l'ouverture de l'application), place le focus sur le titre du nouvel écran dans `<main>`.
+ * À chaque changement de `ecran` (écran de l'application, ou sous-écran d'un écran), sauf au premier
+ * affichage pour ne pas déplacer le focus à l'ouverture, place le focus sur le titre du nouvel écran
+ * dans `<main>`.
  */
 export function useTitreAuFocus(ecran: string): void {
   const premier = useRef(true);

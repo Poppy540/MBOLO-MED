@@ -12,6 +12,7 @@ Fonctionnalité: Vérification d'identité par photos
     Quand "patient-fictif-03" ouvre l’application patient avant la vérification de son identité
     Et que le patient ouvre « Vérifier mon identité »
     Et que le patient accepte la charte de vérification d'identité
+    Et dans l’"application patient", le focus est sur le titre "Vos deux photos"
     Et que le patient envoie la photo de sa pièce d'identité puis celle de son visage
     Alors l'application indique que ses deux photos sont envoyées
     Et l’écran de l’"application patient" respecte les règles d’accessibilité
