@@ -2,6 +2,7 @@
 // la personne habilitée compare les photos à l'identité déclarée, à l'œil (aucune reconnaissance
 // automatique), puis décide. Chaque ouverture est tracée dans le dossier du patient, qui peut la
 // voir. Les photos restent en mémoire le temps de l'écran, jamais sur le téléphone. Chargé à la demande.
+import { useTitreAuFocus } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
 
@@ -66,6 +67,7 @@ export function Verifications(p: {
 }) {
   const [liste, setListe] = useState<EnAttente[]>();
   const [choisi, setChoisi] = useState<string>();
+  useTitreAuFocus(choisi ?? 'liste');
   const charger = () =>
     appeler(p.jeton, '/verifications')
       .then(async (r) =>

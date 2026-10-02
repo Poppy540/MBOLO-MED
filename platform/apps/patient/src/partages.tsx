@@ -4,7 +4,7 @@
 // seulement à la demande (budget de l'ouverture).
 // Le consentement est donné par le patient lui-même, jamais pré-coché ni groupé.
 import { useEffect, useState } from 'preact/hooks';
-import { MOTIF_NIVEAU_INSUFFISANT, niveauDuJeton } from '@mbolo/client-web';
+import { MOTIF_NIVEAU_INSUFFISANT, niveauDuJeton, useTitreAuFocus } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { MesProches, type Proche } from './proches.js';
 
@@ -103,6 +103,7 @@ export function Partages(p: {
   /** `null` : invitation des proches non ouverte pour ce patient (ou service indisponible). */
   const [proches, setProches] = useState<Proche[] | null>(null);
   const [message, setMessage] = useState<string>();
+  useTitreAuFocus(propose ? 'partager' : 'liste');
   const patient = encodeURIComponent(p.patientId);
 
   const charger = async () => {

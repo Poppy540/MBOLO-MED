@@ -4,6 +4,7 @@
 // aux photos de l'inscription encore conservées, puis accepte ou refuse (motif de la liste, jamais
 // de texte libre). Le nouveau numéro n'est pas affiché : il reste chiffré jusqu'à la décision.
 // Chaque consultation est tracée dans le dossier du patient. Chargé à la demande.
+import { useTitreAuFocus } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { IdentiteDeclaree, MOTIFS, Photos, appeler, type Fiche } from './verifications.js';
 
@@ -25,6 +26,7 @@ export function Pertes(p: {
 }) {
   const [liste, setListe] = useState<Demande[]>();
   const [choisi, setChoisi] = useState<string>();
+  useTitreAuFocus(choisi ?? 'liste');
   const charger = () =>
     appeler(p.jeton, '/demandes-perte')
       .then(async (r) => setListe(((await r.json()) as { demandes: Demande[] }).demandes))
