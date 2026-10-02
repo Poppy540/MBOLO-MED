@@ -42,6 +42,8 @@ export interface Monde {
   inscription?: { identifiant: string; jeton?: string; page?: Page; motDePasse?: string };
   /** Compte connecté dans l'application patient du scénario (numéro du code SMS, ADR-0022). */
   patientApplication?: string;
+  /** Première ouverture d'une application sur réseau lent : durée et octets transférés. */
+  ouverture?: { ms: number; ko: number };
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }
