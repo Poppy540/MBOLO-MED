@@ -4,7 +4,7 @@
 // rôles, langue, défilement horizontal.
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
-import { Then } from './fixtures.js';
+import { Then, When } from './fixtures.js';
 
 const NORMES = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -79,5 +79,34 @@ Then(
     const page = monde.visio.get(application)?.page;
     if (!page) throw new Error(`${application} non ouverte`);
     await expect(page.locator('h2:focus')).toContainText(titre);
+  },
+);
+
+// Au clavier seul (WCAG 2.1.1) : Tab jusqu'au bouton, puis Entrée. À chaque arrêt, l'élément qui a
+// le focus doit être visiblement marqué (WCAG 2.4.7) : un contour que le style n'a pas retiré.
+When(
+  'dans l’{string}, la personne active {string} au clavier',
+  async ({ monde }, application: string, nom: string) => {
+    const page = monde.visio.get(application)?.page;
+    if (!page) throw new Error(`${application} non ouverte`);
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab');
+      const actif = await page.evaluate(() => {
+        const e = document.activeElement;
+        if (!(e instanceof HTMLElement) || e === document.body) return undefined;
+        const style = getComputedStyle(e);
+        return {
+          nom: (e.getAttribute('aria-label') ?? e.textContent ?? '').replace(/\s+/g, ' ').trim(),
+          visible: e.matches(':focus-visible') && style.outlineStyle !== 'none',
+        };
+      });
+      if (!actif) continue;
+      expect(actif.visible, `focus visible sur « ${actif.nom} »`).toBe(true);
+      if (actif.nom.endsWith(nom)) {
+        await page.keyboard.press('Enter');
+        return;
+      }
+    }
+    throw new Error(`« ${nom} » introuvable au clavier dans l’${application}`);
   },
 );
