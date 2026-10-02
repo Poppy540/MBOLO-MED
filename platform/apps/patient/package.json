@@ -5,7 +5,7 @@
   "description": "Application patient de Mbolo Santé (PWA, faible débit) : connexion, créneaux, rendez-vous et téléconsultation vidéo avec repli audio.",
   "type": "module",
   "scripts": {
-    "build": "vite build && node scripts/budget.mjs",
+    "build": "vite build && node ../../packages/client-web/scripts/budget.mjs dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "dev": "vite",

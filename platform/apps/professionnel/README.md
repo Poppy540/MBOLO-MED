@@ -1,6 +1,6 @@
 # Espace professionnel (prototype)
 
-PWA légère (Preact + Vite, **13,0 Ko** compressés à l'ouverture) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
+PWA légère (Preact + Vite, **13,4 Ko** compressés à l'ouverture ; même budget de poids que l'application patient, contrôlé par `pnpm build`) pour les professionnels de santé, sur le même modèle que l'application patient. Briques communes dans `@mbolo/client-web`.
 
 ## Parcours
 

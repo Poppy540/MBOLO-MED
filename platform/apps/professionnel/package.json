@@ -5,7 +5,7 @@
   "description": "Espace des professionnels de santé de Mbolo Santé (PWA, faible débit) : créneaux, rendez-vous, report, annulation et téléconsultation vidéo avec repli audio.",
   "type": "module",
   "scripts": {
-    "build": "vite build && node scripts/budget.mjs",
+    "build": "vite build && node ../../packages/client-web/scripts/budget.mjs dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "dev": "vite",

@@ -49,6 +49,6 @@ export default defineConfig({
   server: { host: 'localhost', port: 5181, strictPort: true, proxy },
   preview: { host: 'localhost', port: 5181, strictPort: true, proxy },
   // La bibliothèque vidéo (LiveKit) est volumineuse mais chargée à part, seulement pour rejoindre
-  // une consultation ; le budget de l'ouverture est contrôlé par scripts/budget.mjs.
+  // une consultation ; le budget de poids est contrôlé par `@mbolo/client-web` (scripts/budget.mjs).
   build: { sourcemap: false, assetsInlineLimit: 0, chunkSizeWarningLimit: 700 },
 });
