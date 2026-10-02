@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { creerRequete, ErreurApi } from './api.js';
+import { creerRequete, ErreurApi, STATUT_RESEAU } from './api.js';
 import {
   defiPkce,
   demarrerConnexion,
@@ -11,7 +11,12 @@ import {
   type Memoire,
 } from './auth.js';
 import { quand, versInstant } from './format.js';
-import { oublierRendezVous, rendezVousRetenus, retenirRendezVous } from './hors-ligne.js';
+import {
+  estHorsLigne,
+  oublierRendezVous,
+  rendezVousRetenus,
+  retenirRendezVous,
+} from './hors-ligne.js';
 import { DecisionRepli } from './repli.js';
 
 // Données FICTIVES.
@@ -145,6 +150,47 @@ describe('API', () => {
     expect(e).toBeInstanceOf(ErreurApi);
     expect((e as ErreurApi).message).toContain('pas encore ouverte');
     expect(entetes[0]).toMatchObject({ authorization: 'Bearer jeton-fictif' });
+  });
+
+  it('dit « pas de réseau » quand aucune réponse n’arrive, au lieu de « service indisponible »', async () => {
+    const appeler = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
+    const e = await creerRequete(
+      '/api',
+      () => undefined,
+      appeler,
+    )('GET', '/rendez-vous').catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ErreurApi);
+    expect((e as ErreurApi).statut).toBe(STATUT_RESEAU);
+    expect((e as ErreurApi).message).toBe(
+      'Pas de réseau. Vérifiez votre connexion, puis réessayez.',
+    );
+    expect(estHorsLigne(e)).toBe(true);
+  });
+
+  it('abandonne une requête sans réponse après le délai, avec un avertissement pour un envoi', async () => {
+    // Réponse qui n'arrive jamais, sauf abandon par le signal.
+    const appeler = ((_u: string, init: RequestInit) =>
+      new Promise((_ok, ko) => {
+        init.signal?.addEventListener('abort', () => ko(new DOMException('abandon', 'AbortError')));
+      })) as typeof fetch;
+    const requete = creerRequete('/api', () => undefined, appeler, 20);
+    const lecture = (await requete('GET', '/rendez-vous').catch((x: unknown) => x)) as ErreurApi;
+    expect(lecture.statut).toBe(STATUT_RESEAU);
+    expect(lecture.message).toBe('Le réseau est trop lent. Réessayez dans un moment.');
+    expect(estHorsLigne(lecture)).toBe(true);
+    const envoi = (await requete('POST', '/rendez-vous', {}).catch((x: unknown) => x)) as ErreurApi;
+    expect(envoi.message).toContain('a peut-être été prise en compte');
+  });
+
+  it('un refus du serveur n’est pas une erreur de réseau', async () => {
+    const appeler = (async () => new Response('{}', { status: 503 })) as typeof fetch;
+    const e = await creerRequete(
+      '/api',
+      () => undefined,
+      appeler,
+    )('GET', '/x').catch((x: unknown) => x);
+    expect((e as ErreurApi).message).toBe('Service indisponible. Réessayez plus tard.');
+    expect(estHorsLigne(e)).toBe(false);
   });
 });
 

@@ -1,3 +1,5 @@
+import { ErreurApi, STATUT_RESEAU } from './api.js';
+
 // Mode hors ligne (réseau absent ou coûteux) :
 // - service worker : l'application s'ouvre sans réseau (voir public/sw.js des applications) ;
 // - dernière liste de rendez-vous connue, réduite à l'identifiant, à l'horaire et à la durée :
@@ -50,8 +52,12 @@ export function oublierRendezVous(s: Stockage): void {
   }
 }
 
-/** Erreur réseau (hors ligne) plutôt que refus du serveur. */
-export const estHorsLigne = (e: unknown): boolean => e instanceof TypeError;
+/**
+ * Erreur réseau (hors ligne, ou réseau trop lent pour répondre à temps) plutôt que refus du
+ * serveur : l'application montre alors ce qu'elle connaît déjà.
+ */
+export const estHorsLigne = (e: unknown): boolean =>
+  e instanceof TypeError || (e instanceof ErreurApi && e.statut === STATUT_RESEAU);
 
 /** Enregistre le service worker de l'application (ignoré si le navigateur ne le permet pas). */
 export function activerHorsLigne(): void {

@@ -59,6 +59,40 @@ Then('moins de {int} Ko ont été téléchargés', async ({ monde }, ko: number)
   expect(monde.ouverture.ko, `${monde.ouverture.ko.toFixed(1)} Ko transférés`).toBeLessThan(ko);
 });
 
+// ── Réseau qui ne répond plus, ou coupé ─────────────────────────────────────
+
+const pagePatient = (monde: Monde): Page => {
+  const page = monde.visio.get('application patient')?.page;
+  if (!page) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
+  return page;
+};
+
+// Réseau saturé : les appels d'API partent mais aucune réponse n'arrive jamais (ni erreur, ni
+// coupure franche). Sans délai, l'application attendrait indéfiniment ; avec celui de
+// `creerRequete` (20 s), elle le dit à la personne.
+When('le réseau du patient ne répond plus', async ({ monde }) => {
+  await pagePatient(monde).route('**/api/**', () => new Promise<void>(() => undefined));
+});
+
+When('le réseau du patient est coupé', async ({ monde }) => {
+  await pagePatient(monde).route('**/api/**', (route) => route.abort('internetdisconnected'));
+});
+
+When('le patient appuie sur {string}', async ({ monde }, bouton: string) => {
+  const page = pagePatient(monde);
+  monde.attenteDebut = Date.now();
+  await page.getByRole('button', { name: bouton }).click();
+});
+
+Then(
+  'l’application affiche {string} en moins de {int} secondes',
+  async ({ monde }, texte: string, s: number) => {
+    await expect(pagePatient(monde).getByRole('alert')).toHaveText(texte, { timeout: s * 1000 });
+    const ms = Date.now() - (monde.attenteDebut ?? 0);
+    expect(ms, `message affiché après ${ms} ms`).toBeLessThan(s * 1000);
+  },
+);
+
 // ── Consommation de données d'une téléconsultation ──────────────────────────
 
 /**

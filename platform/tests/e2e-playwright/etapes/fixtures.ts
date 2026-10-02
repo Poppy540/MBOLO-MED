@@ -44,6 +44,8 @@ export interface Monde {
   patientApplication?: string;
   /** Première ouverture d'une application sur réseau lent : durée et octets transférés. */
   ouverture?: { ms: number; ko: number };
+  /** Moment d'une action dont on mesure l'attente (réseau lent). */
+  attenteDebut?: number;
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }
