@@ -89,7 +89,8 @@ When(
   async ({ monde }, application: string, nom: string) => {
     const page = monde.visio.get(application)?.page;
     if (!page) throw new Error(`${application} non ouverte`);
-    for (let i = 0; i < 40; i++) {
+    // Assez pour faire le tour de la page : un menu placé avant le titre est atteint après retour au début.
+    for (let i = 0; i < 100; i++) {
       await page.keyboard.press('Tab');
       const actif = await page.evaluate(() => {
         const e = document.activeElement;
