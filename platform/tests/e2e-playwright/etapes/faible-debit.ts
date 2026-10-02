@@ -4,7 +4,7 @@
 // l'écran d'accueil et les octets réellement transférés (compressés, en-têtes compris).
 // Limite : seule la première ouverture est mesurée ; ensuite, le service worker sert l'application
 // depuis le téléphone, mais ses propres requêtes échappent au réseau simulé de la page.
-import { expect, type Browser } from '@playwright/test';
+import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { APP_PATIENT_URL, APP_PRO_URL } from '../configuration.js';
 import { Then, When, type Monde } from './fixtures.js';
 
@@ -58,3 +58,58 @@ Then('moins de {int} Ko ont été téléchargés', async ({ monde }, ko: number)
   if (!monde.ouverture) throw new Error('Aucune ouverture mesurée dans ce scénario.');
   expect(monde.ouverture.ko, `${monde.ouverture.ko.toFixed(1)} Ko transférés`).toBeLessThan(ko);
 });
+
+// ── Consommation de données d'une téléconsultation ──────────────────────────
+
+/**
+ * Instrumentation de test : garde chaque connexion WebRTC de la page dans `window.__mboloPairs`
+ * pour en lire les statistiques (octets envoyés et reçus). Posée avant le chargement de la page.
+ */
+export async function suivreConnexionsWebRtc(contexte: BrowserContext): Promise<void> {
+  await contexte.addInitScript(() => {
+    const Origine = window.RTCPeerConnection;
+    const pairs: RTCPeerConnection[] = [];
+    (window as unknown as { __mboloPairs: RTCPeerConnection[] }).__mboloPairs = pairs;
+    window.RTCPeerConnection = class extends Origine {
+      constructor(...args: ConstructorParameters<typeof RTCPeerConnection>) {
+        super(...args);
+        pairs.push(this);
+      }
+    };
+  });
+}
+
+/** Octets envoyés et reçus jusqu'ici par toutes les connexions WebRTC de la page. */
+async function octetsWebRtc(page: Page): Promise<number> {
+  return page.evaluate(async () => {
+    const pairs = (window as unknown as { __mboloPairs?: RTCPeerConnection[] }).__mboloPairs ?? [];
+    let total = 0;
+    for (const pc of pairs) {
+      const stats = await pc.getStats();
+      stats.forEach((r: { type: string; bytesSent?: number; bytesReceived?: number }) => {
+        if (r.type === 'transport') total += (r.bytesSent ?? 0) + (r.bytesReceived ?? 0);
+      });
+    }
+    return total;
+  });
+}
+
+/** Consommation mesurée sur 15 s (après 5 s de stabilisation), ramenée à la minute. */
+async function koParMinute(page: Page): Promise<number> {
+  await page.waitForTimeout(5_000);
+  const avant = await octetsWebRtc(page);
+  await page.waitForTimeout(15_000);
+  return ((await octetsWebRtc(page)) - avant) / 1024 / 0.25;
+}
+
+Then(
+  'en {string}, l’application patient consomme moins de {int} Ko par minute',
+  async ({ monde }, mode: string, plafond: number) => {
+    const page = monde.visio.get('application patient')?.page;
+    if (!page) throw new Error('L’application patient n’est pas ouverte dans ce scénario.');
+    const ko = await koParMinute(page);
+    expect(ko, `${mode} : ${ko.toFixed(0)} Ko par minute (envoi et réception)`).toBeLessThan(
+      plafond,
+    );
+  },
+);

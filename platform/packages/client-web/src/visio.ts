@@ -28,6 +28,9 @@ export async function rejoindre(
     adaptiveStream: true,
     dynacast: true,
     videoCaptureDefaults: { resolution: lk.VideoPresets.h216.resolution },
+    // Voix : préréglage « parole » (24 kbit/s) au lieu de « musique » (48 kbit/s) par défaut. Le
+    // silence n'est pas transmis (DTX) et la redondance contre les pertes (RED) reste active.
+    publishDefaults: { audioPreset: lk.AudioPresets.speech, dtx: true, red: true },
   });
   const etat: EtatVisio = {
     connecte: false,

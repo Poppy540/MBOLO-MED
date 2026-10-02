@@ -14,6 +14,7 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
    - le micro et la caméra sont demandés **avant** la connexion (message clair en cas de refus) ;
    - vidéo en basse définition (216p), flux adaptatif ;
    - **repli audio automatique** si la qualité reste mauvaise 5 secondes ou si la connexion est perdue ; bouton « Audio seulement » / « Réactiver la vidéo ».
+   - **consommation mesurée** (e2e `faible-debit/reseau-lent.feature`, envoi et réception, caméra simulée) : environ 1,9 Mo par minute en vidéo (plafond 2,5 Mo), environ 300 Ko par minute en audio seulement (plafond 350 Ko), soit environ 4,5 Mo pour 15 minutes en audio seulement.
 
 5. **Payer la consultation** (ADR-0017), quand le paiement est ouvert pour le patient (flag `paiement.mobile-money`) ; écran chargé **seulement à la demande** :
    - après « Réserver », le créneau est retenu : le montant (au format du pays) et le temps restant s'affichent ;
