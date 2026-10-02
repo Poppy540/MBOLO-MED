@@ -6,6 +6,7 @@ import { APP_PATIENT_URL, FHIR_URL } from '../configuration.js';
 import { Given, Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
 import { codeSmsRecu, telephoneDu } from './niveau.js';
 import { boite } from './teleconsultation.js';
+import { suivreConnexionsWebRtc } from './faible-debit.js';
 
 const APP = 'application patient';
 
@@ -41,6 +42,7 @@ Given(
 async function ouvrir(monde: Monde, browser: Browser, identifiant: string, adresse: string) {
   // Le patient autorise le micro et la caméra (comme à la demande du navigateur).
   const contexte = await browser.newContext({ permissions: ['microphone', 'camera'] });
+  await suivreConnexionsWebRtc(contexte);
   const p = await contexte.newPage();
   monde.visio.set(APP, { contexte, page: p });
   monde.patientApplication = identifiant;
