@@ -12,6 +12,7 @@ Briques communes des applications web (patient, professionnel) :
 | `consultation.tsx` | Écran de téléconsultation commun |
 | `focus.ts` | Au changement d'écran, focus sur le titre (`h2`) du nouvel écran, même chargé à la demande (WCAG 2.4.3), sans reprendre le focus si la personne l'a déplacé pendant le chargement : `useTitreAuFocus(ecran.nom)`, aussi pour les sous-écrans (`useTitreAuFocus(choisi ?? 'liste')`) |
 | `hors-ligne.ts`, `hors-ligne-vue.tsx` | Dernière liste de rendez-vous connue (identifiant, horaire, durée seulement), vue sans réseau, enregistrement du service worker |
+| `scripts/budget.mjs` | Budget de poids des deux applications, après `vite build` (gzip) : 30 Ko à l'ouverture, 8 Ko par écran chargé à la demande, 160 Ko pour la vidéo ; `pnpm build` échoue au-delà |
 | `sw.js` | Source unique du service worker, copiée dans `public/` de chaque application (un test vérifie l'identité) |
 
 Paquet source (TypeScript servi tel quel aux applications par Vite) : pas d'étape de construction.
