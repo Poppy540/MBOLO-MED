@@ -20,6 +20,18 @@ Fonctionnalité: Les applications restent légères sur un réseau mobile lent
     Alors l’écran d’accueil s’affiche en moins de 8 secondes
     Et moins de 30 Ko ont été téléchargés
 
+  Scénario: Quand le réseau ne répond plus, l'application le dit au lieu d'attendre sans fin
+    Quand "patient-fictif-01" ouvre l’application patient
+    Et que le réseau du patient ne répond plus
+    Et que le patient appuie sur "Prendre rendez-vous"
+    Alors l’application affiche "Le réseau est trop lent. Réessayez dans un moment." en moins de 30 secondes
+
+  Scénario: Quand le réseau est coupé, l'application dit qu'il n'y a pas de réseau
+    Quand "patient-fictif-01" ouvre l’application patient
+    Et que le réseau du patient est coupé
+    Et que le patient appuie sur "Prendre rendez-vous"
+    Alors l’application affiche "Pas de réseau. Vérifiez votre connexion, puis réessayez." en moins de 5 secondes
+
   Scénario: Une consultation vidéo consomme peu de données, et encore moins en audio seulement
     Étant donné que "patient-fictif-01" est connecté
     Et que "medecin-fictif-01" est connecté

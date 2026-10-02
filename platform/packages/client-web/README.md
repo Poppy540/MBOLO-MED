@@ -5,7 +5,7 @@ Briques communes des applications web (patient, professionnel) :
 | Module | Rôle |
 |---|---|
 | `auth.ts` | Connexion OpenID Connect avec PKCE S256, état anti-CSRF, jeton en mémoire |
-| `api.ts` | Appels avec le jeton, erreurs en phrases simples |
+| `api.ts` | Appels avec le jeton, erreurs en phrases simples ; abandon après 20 s sans réponse (`DELAI_REQUETE_MS`), « Pas de réseau » ou « réseau trop lent » au lieu de « service indisponible » ; après un envoi sans réponse, l'action a peut-être été faite : « Vérifiez avant de réessayer » |
 | `format.ts` | Dates au fuseau et dans la langue du pays ; saisie locale → instant (heure d'été comprise) |
 | `repli.ts` | Décision de repli audio (qualité mauvaise 5 s ou connexion perdue) |
 | `visio.ts` | LiveKit chargé à la demande, micro et caméra demandés avant la connexion, basse définition (384 × 216), voix au préréglage « parole » (24 kbit/s, silence non transmis, redondance contre les pertes) |

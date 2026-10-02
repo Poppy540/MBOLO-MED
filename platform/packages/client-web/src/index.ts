@@ -1,4 +1,4 @@
-export { creerRequete, ErreurApi } from './api.js';
+export { creerRequete, DELAI_REQUETE_MS, ErreurApi, STATUT_RESEAU } from './api.js';
 export type { AccesSalle, Requete } from './api.js';
 export {
   aleatoire,
