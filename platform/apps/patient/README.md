@@ -96,6 +96,8 @@ Les API sont servies sous `/api/<service>` (même origine). L'application constr
 
 `pnpm build` échoue si le poids compressé (gzip) dépasse un plafond (script commun `packages/client-web/scripts/budget.mjs`) : **30 Ko à l'ouverture** (aujourd'hui 14,9 Ko), **8 Ko par écran chargé à la demande** (le plus lourd : « Mes partages et accès », 3,7 Ko), **160 Ko pour la bibliothèque vidéo**, chargée seulement pour une consultation (140 Ko).
 
+Sur un réseau « 3G lente » simulé, l'écran d'accueil s'affiche en moins de 8 secondes avec moins de 30 Ko transférés (e2e `faible-debit/reseau-lent.feature`).
+
 ## Lancer
 
 ```bash
