@@ -1,4 +1,11 @@
-export { creerRequete, DELAI_REQUETE_MS, ErreurApi, STATUT_RESEAU } from './api.js';
+export {
+  appelReseau,
+  creerRequete,
+  DELAI_ENVOI_FICHIER_MS,
+  DELAI_REQUETE_MS,
+  ErreurApi,
+  STATUT_RESEAU,
+} from './api.js';
 export type { AccesSalle, Requete } from './api.js';
 export {
   aleatoire,

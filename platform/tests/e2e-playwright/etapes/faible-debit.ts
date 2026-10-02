@@ -87,7 +87,10 @@ When('le patient appuie sur {string}', async ({ monde }, bouton: string) => {
 Then(
   'l’application affiche {string} en moins de {int} secondes',
   async ({ monde }, texte: string, s: number) => {
-    await expect(pagePatient(monde).getByRole('alert')).toHaveText(texte, { timeout: s * 1000 });
+    // Alerte de l'application ou message d'un écran (rôle « status ») : on cherche le texte lui-même.
+    await expect(pagePatient(monde).getByText(texte, { exact: true })).toBeVisible({
+      timeout: s * 1000,
+    });
     const ms = Date.now() - (monde.attenteDebut ?? 0);
     expect(ms, `message affiché après ${ms} ms`).toBeLessThan(s * 1000);
   },

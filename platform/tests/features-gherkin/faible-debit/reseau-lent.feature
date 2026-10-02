@@ -26,6 +26,12 @@ Fonctionnalité: Les applications restent légères sur un réseau mobile lent
     Et que le patient appuie sur "Prendre rendez-vous"
     Alors l’application affiche "Le réseau est trop lent. Réessayez dans un moment." en moins de 30 secondes
 
+  Scénario: Un écran chargé à la demande ne reste pas bloqué non plus quand le réseau ne répond plus
+    Quand "patient-fictif-01" ouvre l’application patient
+    Et que le réseau du patient ne répond plus
+    Et que le patient appuie sur "Mes partages et accès"
+    Alors l’application affiche "Le réseau est trop lent. Réessayez dans un moment." en moins de 30 secondes
+
   Scénario: Quand le réseau est coupé, l'application dit qu'il n'y a pas de réseau
     Quand "patient-fictif-01" ouvre l’application patient
     Et que le réseau du patient est coupé

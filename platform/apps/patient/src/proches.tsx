@@ -3,7 +3,7 @@
 // par SMS et s'affiche aussi, en secours. Le patient retire un proche à tout moment.
 // Le numéro n'est jamais gardé, ni ici ni sur le serveur.
 import { useState } from 'preact/hooks';
-import { MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
+import { appelReseau, MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { numeroInternational } from './telephone.js';
 
@@ -73,7 +73,7 @@ export function MesProches(p: {
     }
     setErreur(undefined);
     try {
-      const r = await fetch(`${CONFIG.apiInvitations}/proches`, {
+      const r = await appelReseau(`${CONFIG.apiInvitations}/proches`, {
         method: 'POST',
         headers: { authorization: `Bearer ${p.jeton}`, 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -102,8 +102,9 @@ export function MesProches(p: {
         prenom: nom,
       });
       await p.recharger();
-    } catch {
-      setErreur('Pas de réseau. Réessayez plus tard.');
+    } catch (e) {
+      // Réseau coupé ou trop lent : message simple d'`appelReseau`.
+      setErreur((e as Error).message);
     }
   };
 
@@ -111,7 +112,7 @@ export function MesProches(p: {
     setErreur(undefined);
     setInvite(undefined);
     try {
-      const r = await fetch(
+      const r = await appelReseau(
         `${CONFIG.apiInvitations}/proches/${encodeURIComponent(x.id)}/revocation`,
         {
           method: 'POST',
@@ -123,8 +124,9 @@ export function MesProches(p: {
         return setErreur(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
       }
       await p.recharger();
-    } catch {
-      setErreur('Pas de réseau. Réessayez plus tard.');
+    } catch (e) {
+      // Réseau coupé ou trop lent : message simple d'`appelReseau`.
+      setErreur((e as Error).message);
     }
   };
 

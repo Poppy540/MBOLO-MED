@@ -4,7 +4,12 @@
 // seulement à la demande (budget de l'ouverture).
 // Le consentement est donné par le patient lui-même, jamais pré-coché ni groupé.
 import { useEffect, useState } from 'preact/hooks';
-import { MOTIF_NIVEAU_INSUFFISANT, niveauDuJeton, useTitreAuFocus } from '@mbolo/client-web';
+import {
+  appelReseau,
+  MOTIF_NIVEAU_INSUFFISANT,
+  niveauDuJeton,
+  useTitreAuFocus,
+} from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { MesProches, type Proche } from './proches.js';
 
@@ -43,12 +48,13 @@ class ErreurPartage extends Error {
 async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(url, {
+    r = await appelReseau(url, {
       ...init,
       headers: { authorization: `Bearer ${jeton}`, ...init.headers },
     });
-  } catch {
-    throw new ErreurPartage('Pas de réseau. Réessayez plus tard.');
+  } catch (e) {
+    // Réseau coupé ou trop lent (délai dépassé) : message simple d'`appelReseau`.
+    throw new ErreurPartage((e as Error).message);
   }
   if (!r.ok) {
     const corps = (await r.json().catch(() => ({}))) as { erreur?: string; motif?: string };

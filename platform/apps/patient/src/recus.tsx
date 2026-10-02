@@ -4,6 +4,7 @@
 // imprimer ; tant que les mentions ne sont pas validées par le juriste et le comptable, il porte
 // « sans valeur fiscale ». Aucune donnée de santé : libellé neutre, pas de professionnel.
 import { useEffect, useState } from 'preact/hooks';
+import { appelReseau, ErreurApi, STATUT_RESEAU } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 interface Recu {
@@ -39,7 +40,7 @@ export function Recus(p: { jeton: string; retour: () => void }) {
   const [erreur, setErreur] = useState<string>();
 
   useEffect(() => {
-    fetch(`${CONFIG.apiPaiement}/recus`, { headers: { authorization: `Bearer ${p.jeton}` } })
+    appelReseau(`${CONFIG.apiPaiement}/recus`, { headers: { authorization: `Bearer ${p.jeton}` } })
       .then(async (r) => {
         if (!r.ok) {
           const e = (await r.json().catch(() => ({}))) as { erreur?: string };
@@ -49,8 +50,9 @@ export function Recus(p: { jeton: string; retour: () => void }) {
       })
       .catch((e: unknown) =>
         setErreur(
-          e instanceof TypeError
-            ? 'Pas de réseau. Vos reçus s’affichent seulement avec une connexion.'
+          // Rien n'est gardé sur le téléphone : sans réseau, rien à montrer.
+          e instanceof ErreurApi && e.statut === STATUT_RESEAU
+            ? `${e.message} Vos reçus s’affichent seulement avec une connexion.`
             : e instanceof Error
               ? e.message
               : 'Service indisponible. Réessayez plus tard.',

@@ -4,7 +4,12 @@
 // (faible débit) ; elles ne sont jamais gardées dans le navigateur.
 // Mode « perte » (ADR-0023) : téléphone perdu, la charte est déjà acceptée ; le patient envoie deux
 // nouvelles photos pour sa demande de changement de numéro.
-import { useTitreAuFocus } from '@mbolo/client-web';
+import {
+  appelReseau,
+  DELAI_ENVOI_FICHIER_MS,
+  DELAI_REQUETE_MS,
+  useTitreAuFocus,
+} from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
 
@@ -26,12 +31,16 @@ const TAILLE_MAX = 2 * 1024 * 1024;
 async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(url, {
-      ...init,
-      headers: { authorization: `Bearer ${jeton}`, ...init.headers },
-    });
-  } catch {
-    throw new ErreurEnvoi('Pas de réseau. Réessayez plus tard.');
+    // Une photo (jusqu'à 2 Mo) met longtemps à partir sur un réseau lent : délai plus long.
+    const delai = init.body instanceof Blob ? DELAI_ENVOI_FICHIER_MS : DELAI_REQUETE_MS;
+    r = await appelReseau(
+      url,
+      { ...init, headers: { authorization: `Bearer ${jeton}`, ...init.headers } },
+      delai,
+    );
+  } catch (e) {
+    // Réseau coupé ou trop lent (délai dépassé) : message simple d'`appelReseau`.
+    throw new ErreurEnvoi((e as Error).message);
   }
   if (!r.ok) {
     // Messages du service, déjà en phrases simples ; sinon un message général.
