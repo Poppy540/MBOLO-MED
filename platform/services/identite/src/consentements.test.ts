@@ -6,6 +6,7 @@ import {
   ErreurValidation,
   ServiceConsentements,
 } from './consentements.js';
+import { consentementActif } from './acces.js';
 import { ErreurNiveauInsuffisant } from './niveau.js';
 import type { Utilisateur } from './roles.js';
 
@@ -96,6 +97,58 @@ describe('ServiceConsentements', () => {
     const liste = await s.lister(patient1, P1);
     expect(liste).toHaveLength(1);
     expect(liste[0]?.status).toBe('inactive');
+  });
+
+  it('un même consentement envoyé deux fois n’est gardé qu’une fois (ASVS n°3, C10)', async () => {
+    const s = service();
+    const partage = {
+      ...soins,
+      categorie: 'C-PARTAGE-PRO',
+      mode: 'texte',
+      beneficiaire: 'Practitioner/fictif-medecin-0001',
+    } as const;
+    const a = await s.enregistrer(patient1, P1, partage);
+    const b = await s.enregistrer(patient1, P1, partage);
+    expect(b.id).toBe(a.id);
+    // Autre médecin, autre version du texte ou refus : un nouveau consentement.
+    await s.enregistrer(patient1, P1, {
+      ...partage,
+      beneficiaire: 'Practitioner/fictif-medecin-0002',
+    });
+    await s.enregistrer(patient1, P1, { ...partage, versionTexte: 'C-PARTAGE-PRO v0.2 (fr)' });
+    await s.enregistrer(patient1, P1, { ...partage, accepte: false });
+    expect(await s.lister(patient1, P1)).toHaveLength(4);
+  });
+
+  it('un retrait ferme l’accès, même avec un doublon ou une ancienne version active (C10)', async () => {
+    const depot = new DepotMemoire();
+    const s = new ServiceConsentements(depot, 'dev', { estActif: async () => true });
+    const partage = {
+      ...soins,
+      categorie: 'C-PARTAGE-PRO',
+      mode: 'texte',
+      beneficiaire: 'Practitioner/fictif-medecin-0001',
+    } as const;
+    const a = await s.enregistrer(patient1, P1, partage);
+    // Doublon écrit avant la correction (ou par deux envois simultanés), et version plus récente.
+    await depot.ajouter({ ...a, id: undefined });
+    await s.enregistrer(patient1, P1, { ...partage, versionTexte: 'C-PARTAGE-PRO v0.2 (fr)' });
+    // Partage avec un autre médecin et consentement aux soins : non concernés.
+    await s.enregistrer(patient1, P1, {
+      ...partage,
+      beneficiaire: 'Practitioner/fictif-medecin-0002',
+    });
+    await s.enregistrer(patient1, P1, soins);
+
+    await s.revoquer(patient1, a.id ?? '');
+    const actifs = (await s.lister(patient1, P1)).filter((c) => c.status === 'active');
+    expect(consentementActif(actifs, P1, 'C-PARTAGE-PRO', 'Practitioner/fictif-medecin-0001')).toBe(
+      false,
+    );
+    expect(consentementActif(actifs, P1, 'C-PARTAGE-PRO', 'Practitioner/fictif-medecin-0002')).toBe(
+      true,
+    );
+    expect(consentementActif(actifs, P1, 'C-SOINS')).toBe(true);
   });
 
   it('ne permet pas de révoquer le consentement d’un autre, sans révéler s’il existe', async () => {

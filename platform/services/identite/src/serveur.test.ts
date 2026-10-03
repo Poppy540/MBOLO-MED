@@ -1,3 +1,4 @@
+import type { Consent } from 'fhir/r4.js';
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DepotMemoire, ServiceConsentements } from './consentements.js';
@@ -313,11 +314,13 @@ describe('API identité', () => {
 
   it('dossier médical : refus du serveur en 422, indisponibilité en 503 journalisée', async () => {
     class DepotEnPanne extends DepotMemoire {
+      indisponible = false;
       override async ajouter(): Promise<never> {
         throw new ErreurDepot('Consentement refusé par le dossier médical.', 422);
       }
-      override async parPatient(): Promise<never> {
-        throw new ErreurDepot('Dossier médical indisponible.', 503);
+      override async parPatient(patientId: string): Promise<Consent[]> {
+        if (this.indisponible) throw new ErreurDepot('Dossier médical indisponible.', 503);
+        return super.parPatient(patientId);
       }
     }
     const depot = new DepotEnPanne();
@@ -343,6 +346,7 @@ describe('API identité', () => {
       payload: { categorie: 'C-SOINS', mode: 'texte', versionTexte: 'v0 [FICTIF]', accepte: true },
     });
     expect(cree.statusCode).toBe(422);
+    depot.indisponible = true;
     const acces = await serveur.inject({
       method: 'POST',
       url: '/acces/dossier',

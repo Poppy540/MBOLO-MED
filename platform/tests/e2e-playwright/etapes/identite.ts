@@ -269,6 +269,28 @@ When(
   },
 );
 
+// Réseau lent : l'application renvoie la même demande ; le dossier n'en garde qu'une (C10).
+When(
+  '{string} renvoie le même consentement {string} à {string}',
+  async ({ monde, browser }, identifiant: string, categorie: string, beneficiaire: string) => {
+    await appeler(monde, 'POST', `/patients/${patientId(identifiant)}/consentements`, {
+      jeton: await jetonConsentement(monde, browser, identifiant, categorie),
+      corps: {
+        categorie,
+        mode: 'texte',
+        versionTexte: 'consentement-v0-FICTIF',
+        accepte: true,
+        beneficiaire,
+      },
+    });
+    expect(monde.reponse?.statut).toBe(201);
+  },
+);
+
+Then('le dossier rend le même consentement, sans en créer un second', ({ monde }) => {
+  expect(String(monde.reponse?.corps['id'])).toBe(monde.consentementId);
+});
+
 When('{string} accepte de recevoir les rappels', async ({ monde }, identifiant: string) => {
   await appeler(monde, 'POST', `/patients/${patientId(identifiant)}/consentements`, {
     jeton: jeton(monde, identifiant),

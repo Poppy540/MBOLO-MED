@@ -4,6 +4,7 @@
 import type { Consent } from 'fhir/r4.js';
 import {
   CATEGORIES_PATIENT_SEUL,
+  EXTENSION_MODE_RECUEIL,
   consentement,
   revoquer,
   valider,
@@ -46,6 +47,27 @@ export class DepotMemoire implements DepotConsentements {
     );
   }
 }
+
+const categorieDe = (c: Consent): string | undefined => c.category?.[0]?.coding?.[0]?.code;
+const beneficiairesDe = (c: Consent): string =>
+  (c.provision?.actor ?? [])
+    .map((a) => a.reference.reference ?? '')
+    .sort()
+    .join(' ');
+
+/** Même accès : même patient, même catégorie, mêmes bénéficiaires (quelle que soit la version). */
+const memeAcces = (a: Consent, b: Consent): boolean =>
+  a.patient?.reference === b.patient?.reference &&
+  categorieDe(a) === categorieDe(b) &&
+  beneficiairesDe(a) === beneficiairesDe(b);
+
+/** Consentement identique : même accès, même réponse, même texte et même mode de recueil. */
+const identique = (a: Consent, b: Consent): boolean =>
+  memeAcces(a, b) &&
+  a.provision?.type === b.provision?.type &&
+  a.policyRule?.text === b.policyRule?.text &&
+  a.extension?.find((e) => e.url === EXTENSION_MODE_RECUEIL)?.valueCode ===
+    b.extension?.find((e) => e.url === EXTENSION_MODE_RECUEIL)?.valueCode;
 
 /** Consentements qui ouvrent le dossier à un tiers : niveau 2 exigé pour les accorder (ADR-0022). */
 export const CATEGORIES_NIVEAU_2: readonly CategorieConsentement[] = ['C-PARTAGE-PRO', 'C-PROCHE'];
@@ -131,7 +153,12 @@ export class ServiceConsentements {
         violations.map((v) => v.regle),
       );
     }
-    return this.depot.ajouter(ressource);
+    // Idempotence (ASVS n°3, C10) : sur un réseau lent, l'application peut renvoyer la même
+    // demande ; le consentement actif identique est rendu au lieu d'en créer un second.
+    const existant = (await this.depot.parPatient(patientId)).find(
+      (c) => c.status === 'active' && identique(c, ressource),
+    );
+    return existant ?? this.depot.ajouter(ressource);
   }
 
   /**
@@ -158,7 +185,11 @@ export class ServiceConsentements {
     return n;
   }
 
-  /** Révocation : effet immédiat, la ressource est conservée (statut inactive) pour la traçabilité. */
+  /**
+   * Révocation : effet immédiat, la ressource est conservée (statut inactive) pour la traçabilité.
+   * Les autres consentements actifs qui ouvrent le même accès (doublon créé par deux envois
+   * simultanés, ancienne version du texte) sont révoqués aussi : un retrait ferme l'accès (C10).
+   */
   async revoquer(u: Utilisateur, consentementId: string): Promise<Consent> {
     const c = await this.depot.lire(consentementId);
     const patientId = c?.patient?.reference?.replace('Patient/', '');
@@ -169,6 +200,11 @@ export class ServiceConsentements {
     }
     const revoque = revoquer(c);
     await this.depot.remplacer(revoque);
+    for (const autre of await this.depot.parPatient(patientId)) {
+      if (autre.id !== c.id && autre.status === 'active' && memeAcces(autre, c)) {
+        await this.depot.remplacer(revoquer(autre));
+      }
+    }
     return revoque;
   }
 }
