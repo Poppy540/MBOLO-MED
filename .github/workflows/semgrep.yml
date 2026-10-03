@@ -32,5 +32,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: pip install semgrep==1.179.0
+      # Semgrep et ses dépendances avec empreintes vérifiées (C11) : un paquet modifié sur PyPI est refusé.
+      - run: pip install --require-hashes -r scripts/semgrep-requirements.txt
       - run: scripts/semgrep.sh .semgrep-regles
