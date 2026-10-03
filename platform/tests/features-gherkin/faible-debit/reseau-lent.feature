@@ -1,6 +1,7 @@
 # language: fr
 # Données FICTIVES uniquement. Réseau simulé par Chrome (profil « 3G lente » : 2 s de latence par
 # requête, 50 000 octets par seconde), pas un vrai réseau mobile : les tests terrain le complètent.
+# Page de connexion : Keycloak avec le thème `mbolo` (feuille légère, sans PatternFly).
 # Consultation : octets envoyés et reçus par l'application patient (statistiques WebRTC), médecin
 # dans le vrai espace professionnel ; caméra simulée par Chrome (image animée, cas défavorable).
 @faible-debit @vague1
@@ -17,6 +18,11 @@ Fonctionnalité: Les applications restent légères sur un réseau mobile lent
 
   Scénario: Sur une 3G lente, l'espace professionnel s'ouvre vite et avec peu de données
     Quand l’"espace professionnel" s’ouvre pour la première fois sur un réseau 3G lent
+    Alors l’écran d’accueil s’affiche en moins de 8 secondes
+    Et moins de 30 Ko ont été téléchargés
+
+  Scénario: Sur une 3G lente, la page de connexion s'ouvre vite et avec peu de données
+    Quand la "page de connexion" s’ouvre pour la première fois sur un réseau 3G lent
     Alors l’écran d’accueil s’affiche en moins de 8 secondes
     Et moins de 30 Ko ont été téléchargés
 

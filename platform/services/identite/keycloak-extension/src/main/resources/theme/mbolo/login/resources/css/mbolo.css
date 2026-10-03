@@ -1,21 +1,571 @@
 /*
- * Corrections d'accessibilité du thème keycloak.v2 (Keycloak 26.7.4), chargées après son styles.css.
- * À revoir à chaque mise à jour de Keycloak.
+ * Feuille unique des pages de connexion Mbolo Santé (Keycloak 26.7.4, gabarits keycloak.v2).
+ *
+ * Faible débit : le thème keycloak.v2 charge PatternFly 5 (patternfly.min.css 1,5 Mo,
+ * patternfly-addons.css 200 Ko), une image de fond (65 Ko) et des polices (78 Ko) : 1,9 Mo et
+ * 46 s sur une 3G lente pour la page de connexion. Cette feuille remplace le tout (`stylesCommon`
+ * vide dans theme.properties) et ne met en forme que les classes PatternFly produites par les
+ * gabarits : polices du téléphone, aucune image, icônes remplacées par des caractères.
+ *
+ * Accessibilité (contrôlée par les e2e : axe WCAG 2.2 AA, 320 px, clavier) : contrastes ≥ 4,5:1,
+ * contour de focus visible, zones à toucher ≥ 24 px, aucun défilement horizontal à 320 px.
+ * À revoir à chaque mise à jour de Keycloak (nouvelles classes dans les gabarits).
  */
 
+:root {
+  --mbolo-texte: #151515;
+  --mbolo-texte-secondaire: #4f5255;
+  --mbolo-fond: #1f3a4d;
+  --mbolo-carte: #ffffff;
+  --mbolo-bordure: #6a6e73;
+  --mbolo-principal: #0b4f8a;
+  --mbolo-principal-survol: #083a66;
+  --mbolo-erreur: #a30000;
+  --mbolo-avertissement: #795600;
+  --mbolo-succes: #1e4f18;
+  --mbolo-info: #1f3a4d;
+  --mbolo-focus: #ffbf47;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Arial,
+    sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--mbolo-texte);
+  background: var(--mbolo-fond);
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--mbolo-principal);
+}
+
+a:hover {
+  color: var(--mbolo-principal-survol);
+}
+
+:focus-visible {
+  outline: 3px solid var(--mbolo-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--mbolo-texte);
+}
+
+/* Texte réservé aux lecteurs d'écran. */
+.pf-screen-reader,
+.pf-v5-screen-reader {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Mise en page ────────────────────────────────────────────────────────── */
+
+.pf-v5-c-login {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pf-v5-c-login__container {
+  width: 100%;
+  max-width: 34rem;
+}
+
+.pf-v5-c-login__header {
+  padding: 0.5rem 0 1rem;
+}
+
+#kc-header-wrapper,
+.pf-v5-c-brand {
+  color: #ffffff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.pf-v5-c-login__main {
+  background: var(--mbolo-carte);
+  border-top: 4px solid var(--mbolo-principal);
+  border-radius: 4px;
+}
+
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer {
+  padding: 1rem 1.25rem;
+}
+
+.pf-v5-c-login__main-header {
+  padding-bottom: 0;
+}
+
+.pf-v5-c-login__main-header-utilities {
+  margin-top: 0.5rem;
+}
+
+.pf-v5-c-login__main-footer:empty {
+  display: none;
+}
+
+.pf-v5-c-login__main-footer-band {
+  border-top: 1px solid #d2d2d2;
+  padding-top: 1rem;
+  text-align: center;
+}
+
+.pf-v5-c-title,
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 600;
+}
+
+.pf-v5-c-panel,
+.card-pf {
+  border: 1px solid #d2d2d2;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #d2d2d2;
+  margin: 0.5rem 0 1rem;
+}
+
+/* ── Formulaires ─────────────────────────────────────────────────────────── */
+
+.pf-v5-c-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.pf-v5-c-form__group-label {
+  padding-bottom: 0.25rem;
+}
+
+.pf-v5-c-form__label {
+  font-weight: 600;
+}
+
+.pf-v5-c-form__label-required,
+.pf-v5-c-check__label-required {
+  color: var(--mbolo-erreur);
+  margin-left: 0.25rem;
+}
+
+.pf-v5-c-form-control {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select,
+.pf-v5-c-form-control > textarea,
+input[type='text'],
+input[type='password'],
+input[type='email'],
+input[type='tel'],
+input[type='date'],
+input[type='number'],
+select,
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: var(--mbolo-texte);
+  background: #ffffff;
+  border: 1px solid var(--mbolo-bordure);
+  border-radius: 4px;
+}
+
+.pf-v5-c-form-control.pf-m-error > input,
+input[aria-invalid='true'] {
+  border: 2px solid var(--mbolo-erreur);
+}
+
+.pf-v5-c-form-control.pf-m-readonly > input,
+input[readonly] {
+  background: #f0f0f0;
+}
+
+.pf-v5-c-form-control__utilities,
+.pf-v5-c-form-control__icon {
+  display: none;
+}
+
+.pf-v5-c-input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.pf-v5-c-input-group__item.pf-m-fill {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pf-v5-c-input-group__item .pf-v5-c-form-control > input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.pf-v5-c-form__helper-text,
+.pf-v5-c-helper-text {
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+}
+
+.pf-v5-c-helper-text__item-text.pf-m-error,
+.kc-feedback-text,
+.pf-m-error > .pf-v5-c-helper-text__item-text {
+  color: var(--mbolo-erreur);
+}
+
+.pf-v5-c-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.pf-v5-c-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.pf-v5-c-check__input {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* ── Boutons ─────────────────────────────────────────────────────────────── */
+
+.pf-v5-c-button,
+button,
+input[type='submit'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--mbolo-principal);
+  background: #ffffff;
+  border: 1px solid var(--mbolo-principal);
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.pf-v5-c-button.pf-m-primary,
+input[type='submit'] {
+  color: #ffffff;
+  background: var(--mbolo-principal);
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+input[type='submit']:hover {
+  background: var(--mbolo-principal-survol);
+}
+
+.pf-v5-c-button.pf-m-link {
+  border-color: transparent;
+  background: transparent;
+  text-decoration: underline;
+}
+
+.pf-v5-c-button.pf-m-block {
+  width: 100%;
+}
+
+.pf-v5-c-button.pf-m-control {
+  color: var(--mbolo-texte);
+  border-color: var(--mbolo-bordure);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.pf-v5-c-button[aria-disabled='true'],
+.pf-v5-c-button.pf-m-aria-disabled,
+.pf-v5-c-button:disabled {
+  color: #4f5255;
+  background: #e0e0e0;
+  border-color: #b8bbbe;
+  cursor: not-allowed;
+}
+
+/* ── Messages ────────────────────────────────────────────────────────────── */
+
+.pf-v5-c-alert {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid currentColor;
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--mbolo-info);
+}
+
+.pf-v5-c-alert.pf-m-danger {
+  color: var(--mbolo-erreur);
+  background: #fff4f4;
+}
+
+.pf-v5-c-alert.pf-m-warning {
+  color: var(--mbolo-avertissement);
+  background: #fffbea;
+}
+
+.pf-v5-c-alert.pf-m-success {
+  color: var(--mbolo-succes);
+  background: #f3faf2;
+}
+
+.pf-v5-c-alert__title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.pf-v5-c-alert__description {
+  grid-column: 2;
+  color: var(--mbolo-texte);
+}
+
+/* ── Listes (codes, choix d'une méthode, application d'authentification) ─── */
+
+.pf-v5-c-list {
+  padding-left: 1.5rem;
+  margin: 0 0 1rem;
+}
+
+.pf-v5-c-list > li + li {
+  margin-top: 0.5rem;
+}
+
+.pf-v5-c-data-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pf-v5-c-data-list__item {
+  border: 1px solid #d2d2d2;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.pf-v5-c-data-list__item-row,
+.pf-v5-c-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.pf-v5-c-tile {
+  border: 1px solid var(--mbolo-bordure);
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.pf-v5-c-tile.pf-m-selected {
+  border: 2px solid var(--mbolo-principal);
+}
+
+.pf-v5-c-clipboard-copy__group {
+  display: flex;
+}
+
+.pf-v5-l-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (min-width: 576px) {
+  .pf-v5-l-grid.pf-m-all-6-col-on-sm {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pf-v5-svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* ── Icônes : caractères au lieu de la police Font Awesome de PatternFly ── */
+
+.fa,
+.fas,
+.pf-icon {
+  font-style: normal;
+  line-height: 1;
+}
+
+.fa-eye::before {
+  content: '👁';
+}
+
+.fa-eye-slash::before {
+  content: '🙈';
+}
+
+.fa-exclamation-circle::before,
+.fa-exclamation-triangle::before {
+  content: '⚠';
+}
+
+.fa-check-circle::before,
+.fa-check::before {
+  content: '✓';
+}
+
+.fa-info-circle::before,
+.fa-bell::before {
+  content: 'ℹ';
+}
+
+.fa-sync-alt::before {
+  content: '↻';
+}
+
+.fa-angle-right::before {
+  content: '›';
+}
+
+.fa-angle-down::before {
+  content: '⌄';
+}
+
+.fa-copy::before {
+  content: '⧉';
+}
+
+.fa-print::before {
+  content: '⎙';
+}
+
+.fa-download::before {
+  content: '⤓';
+}
+
+.fa-mobile::before {
+  content: '📱';
+}
+
+.fa-key::before,
+.fa-unlock::before {
+  content: '🔑';
+}
+
+.fa-list::before {
+  content: '☰';
+}
+
+.fa-share-square::before {
+  content: '↗';
+}
+
+/* ── Infobulle « Recommencer la connexion » ─────────────────────────────── */
+
+#kc-username,
+.kc-login-tooltip {
+  position: relative;
+}
+
+#kc-username {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.kc-login-tooltip {
+  display: inline-block;
+}
+
 /*
- * Infobulle « Recommencer la connexion » : le thème d'origine la place à droite du bouton
- * (left: 160 %). Même cachée, elle élargit la page : à 320 px de large, l'écran défile
- * horizontalement (WCAG 1.4.10) et l'infobulle affichée est coupée. On la place à gauche du
- * bouton, qui est au bord droit du champ.
+ * Le thème d'origine place l'infobulle à droite du bouton (left: 160 %) : même cachée, elle
+ * élargit la page à 320 px (WCAG 1.4.10). On la place à gauche du bouton, au bord droit du champ.
  */
 .kc-login-tooltip .kc-tooltip-text {
-  left: auto;
+  position: absolute;
+  top: -3px;
   right: 160%;
+  min-width: 130px;
+  padding: 5px;
+  text-align: center;
+  color: #ffffff;
+  background: #000000;
+  border-radius: 2px;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.kc-login-tooltip:hover .kc-tooltip-text,
+.kc-login-tooltip:focus-within .kc-tooltip-text {
+  visibility: visible;
+  opacity: 0.85;
 }
 
 .kc-login-tooltip .kc-tooltip-text::after {
-  right: auto;
+  content: ' ';
+  position: absolute;
+  top: 15px;
   left: 100%;
-  border-color: transparent transparent transparent black;
+  margin-top: -5px;
+  border: 5px solid transparent;
+  border-left-color: #000000;
+}
+
+/* Écrans propres à Keycloak repris tels quels. */
+#kc-recovery-codes-list {
+  columns: 2;
+}
+
+#kc-code pre code,
+#certificate_subjectDN {
+  word-break: break-all;
 }
