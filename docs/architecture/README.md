@@ -28,6 +28,7 @@
 | [0022](adr/0022-double-authentification-patients.md)         | Double authentification des patients : code SMS pour les actions sensibles (payer, partager le dossier, inviter un proche), niveau 2 Keycloak exigé par les services           | Acceptée                                                   |
 | [0023](adr/0023-changement-numero-patient.md)                | Changement du numéro d'un patient : code à l'ancien et au nouveau numéro ; en cas de perte, vérification d'identité et 24 h d'attente ; SMS d'alerte à l'ancien numéro       | Acceptée                                                   |
 | [0024](adr/0024-application-authentification-patients.md) | Application d'authentification en option pour les patients : SMS par défaut ; une fois activée, le SMS n'est plus accepté ; perte → équipe `assistance-patient` puis 24 h | Acceptée |
+| [0025](adr/0025-langues-et-pictogrammes.md) | Langues, pictogrammes et vocal : catalogues de textes sans bibliothèque, langue choisie par le patient (téléphone puis Keycloak), pictogrammes SVG avec texte, traductions humaines validées, vocal enregistré par des locuteurs | Proposée |
 
 ## Vue d'ensemble (cible, à détailler)
 
