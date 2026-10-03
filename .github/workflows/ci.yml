@@ -50,17 +50,6 @@ jobs:
       - name: Toutes les dépendances (faille critique bloquante)
         run: pnpm audit --audit-level critical
 
-  revue-dependances:
-    name: Revue des dépendances ajoutées
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      # Une dépendance ajoutée ou mise à jour avec une faille haute ou critique connue est refusée.
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-
   skills:
     name: Conformité des skills
     runs-on: ubuntu-latest

@@ -58,6 +58,7 @@ export function blocsStyle(html: string): string[] {
 
 /** Insère la balise <meta> de la politique juste après la balise <meta charset>. */
 export function avecCsp(html: string, o: Omit<OptionsCsp, 'styles'>): string {
+  // nosemgrep -- politique construite par notre code à partir de valeurs fixes, aucune saisie.
   const meta = `<meta http-equiv="Content-Security-Policy" content="${politiqueSecurite({
     ...o,
     styles: blocsStyle(html),
