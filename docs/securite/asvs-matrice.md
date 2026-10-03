@@ -1,4 +1,4 @@
-# Matrice OWASP ASVS 5.0 — revue n°1 (paiement, reçus, relevés, proches) et revue n°2 (connexion avec code SMS, récupération du compte)
+# Matrice OWASP ASVS 5.0 — revue n°1 (paiement, reçus, relevés, proches), revue n°2 (connexion avec code SMS, récupération du compte) et revue n°3 (faible débit, dépôt privé)
 
 > Revue documentaire et de code, **sans test intrusif** (aucun test sur une production ni sur des données réelles). Données fictives uniquement. Skill `verification-owasp-asvs`, sous-agent `pilote-securite`.
 > Date : 2026-09-28. Version du code : `main` après la PR n°82.
@@ -114,6 +114,39 @@ Aucune non-conformité ne touche le contrôle d'accès, les sorties d'argent ni 
 ### Décision demandée (revue n°2)
 
 - **D4 — Alternative au SMS pour les patients** (**décidée le 2026-09-30 : [ADR-0024](../architecture/adr/0024-application-authentification-patients.md)**, application en option, le SMS n'est plus accepté une fois l'application activée) : proposer, à ceux qui le veulent, une application d'authentification (code TOTP, déjà utilisé par les professionnels) à la place du SMS ? Plus sûre (vol de carte SIM) et gratuite, mais une étape de plus pour des patients peu familiers du numérique. Recommandation : la proposer en option, le SMS restant le choix par défaut.
+
+## Revue n°3 — faible débit et dépôt privé (2026-10-03)
+
+> Même méthode, sans test intrusif. Périmètre : ce qui a changé depuis la revue n°2 (PR n°126 à n°132) : délais et messages réseau (`creerRequete`, `appelReseau`), suivi du paiement (`suivre`), page de connexion Keycloak allégée (thème `mbolo` sans PatternFly, `darkMode=false`), consultation en audio seulement en économie de données, Semgrep à la place de CodeQL, exception GHSA-ch52-4w7c-c8xp ; et deux points revus à cette occasion : limites d'appels des services et répétition d'un envoi après un délai dépassé. Version du code : `main` après la PR n°132.
+
+| Domaine ASVS (5.0) | Exigence (résumé) | Statut | Preuve ou écart |
+| --- | --- | --- | --- |
+| Encodage des sorties | Gabarits Keycloak sans sortie non échappée | Conforme | Seule sortie brute : `kcSanitize(…)?no_esc` du titre, identique au gabarit d'origine ; nos gabarits (`code-sms.ftl`, `identite-patient.ftl`…) passent par l'échappement automatique |
+| En-têtes de sécurité (V3.4) | Pages de connexion : HSTS, `nosniff`, `frame-ancestors`, `Referrer-Policy`, anti-cache | Conforme | Relevé sur Keycloak 26.7.4 (local) : `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` |
+| En-têtes de sécurité (V3.4) | Politique de contenu restreignant les scripts | **Partiel** (accepté) | La politique de Keycloak ne limite que les cadres et `object-src` ; les gabarits contiennent des scripts en ligne, une politique `script-src` stricte demanderait de les réécrire. Atténué : aucune saisie réaffichée sans échappement, thème sans ressource tierce |
+| Erreurs (V16) | Messages d'erreur sans détail technique ni donnée | Conforme | « Pas de réseau… », « Le réseau est trop lent… » : textes fixes (`api.ts`), tests de `client-web` |
+| Protection des données | Le suivi du paiement n'expose rien de plus | Conforme | Une requête à la fois sur `GET /paiements/:id` (identifiant opaque), contrôle par patient (`duPatient` : un paiement d'autrui est « introuvable »), rien en arrière-plan |
+| Protection des données | Moins de capture par défaut | Conforme (amélioration) | En économie de données, la caméra n'est ni demandée ni allumée (PR n°131) |
+| Logique métier (V2.3) | Un envoi répété (délai dépassé puis « réessayer ») ne crée pas de double effet | **Partiel** | Collecte du paiement protégée (mise à jour conditionnelle, `deja-en-cours`) ; **acceptation d'un consentement non protégée** : chaque envoi crée un nouveau `Consent` actif ; retirer une ligne laisse l'accès ouvert par l'autre (l'accès est accordé dès qu'un consentement actif existe) → **C10** |
+| Anti-automatisation (V2.4) | Limites d'appels qui ne bloquent pas les utilisateurs légitimes | **Non conforme** | Toutes les limites se comptent **par adresse IP** (`@fastify/rate-limit`, clé par défaut). Les opérateurs mobiles partagent une adresse publique entre de nombreux abonnés (NAT d'opérateur) : 6 patients qui paient dans la même minute derrière la même adresse bloquent le 6ᵉ (collecte : 5 par minute) ; dépôt de photos : 10 par minute → **C9** |
+| Chaîne d'approvisionnement (V15) | Dépendances avec failles connues bloquées en CI | Conforme (exception tracée) | `pnpm audit` (haute ou critique) ; exception GHSA-ch52-4w7c-c8xp décidée (FP-2026-001), test `unleash-sans-cache.test.ts` |
+| Chaîne d'approvisionnement (V15) | Dépendances Java (extension Keycloak) contrôlées | **Partiel** | Depuis le passage en privé, plus de revue des dépendances en CI : Maven n'est suivi que par Dependabot → **D6** |
+| Chaîne d'approvisionnement (V15) | Outils de CI installés à une version vérifiée | **Partiel** | Règles Semgrep épinglées à un commit ; **Semgrep installé par `pip` sans empreintes** (dépendances transitives non figées ; le job n'a aucun secret et seulement `contents: read`) → **C11** |
+| Analyse statique | Analyse de sécurité du code à chaque PR | Conforme | Semgrep (TypeScript, JavaScript, Java), ERROR et WARNING bloquants ; contre-épreuve faite (déchiffrement GCM sans `authTagLength` → échec) |
+| Développement sûr (V15) | Toute modification de `main` passe par une revue et une CI verte | **Non conforme** | Protection de `main` inactive depuis le passage en privé (plan gratuit) → **D5** (question ouverte n°17) |
+
+### Corrections proposées (revue n°3)
+
+| N° | Gravité | Correction | Où |
+| --- | --- | --- | --- |
+| **C9** | Moyenne — avant la vague 1 | Compter les limites des actions sensibles **par compte** (sujet du jeton vérifié) et non par adresse : collecte d'un paiement, dépôt de photos, invitations ; garder une limite par adresse **plus large** contre les rafales anonymes. Test : 10 comptes derrière la même adresse paient dans la même minute | `paiement`, `documents`, `invitations` (puis les autres services) |
+| **C10** | Moyenne — avant la vague 1 | Acceptation d'un consentement **idempotente** : si un consentement actif identique existe (même patient, catégorie, bénéficiaire et version du texte), le rendre au lieu d'en créer un autre. Test : deux envois → un seul `Consent` ; un retrait ferme l'accès | `identite` (`ServiceConsentements.enregistrer`) |
+| **C11** | Faible | Installer Semgrep à une version vérifiée : image officielle épinglée par empreinte, ou `pip install --require-hashes` avec un fichier d'empreintes | `.github/workflows/semgrep.yml` |
+
+### Décisions demandées (revue n°3)
+
+- **D5 — Protection de `main`** : passer à GitHub Pro (environ 4 $ par mois) pour rétablir la PR obligatoire, l'interdiction du force-push et les contrôles exigés (dont « Analyse du code (Semgrep) ») ; question ouverte n°17.
+- **D6 — Failles des dépendances Java en CI** : ajouter OSV-Scanner (Google, libre, lit `pom.xml` et `pnpm-lock.yaml`) en CI, ou se contenter des alertes Dependabot (à activer dans les réglages du dépôt, question ouverte n°11). Recommandation : activer les alertes Dependabot maintenant ; OSV-Scanner seulement si elles restent indisponibles.
 
 ## Test d'intrusion externe (à prévoir avant la vague 1)
 
