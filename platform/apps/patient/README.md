@@ -95,6 +95,10 @@ Le Gabon est le premier pays ; rien de ce qui dépend du pays n'est codé en dur
 
 Les API sont servies sous `/api/<service>` (même origine). L'application construite porte une politique de sécurité du contenu (balise `<meta>`, revue ASVS C6) : scripts de la même origine seulement, connexions limitées à la même origine, à Keycloak et à la visio ; les en-têtes `frame-ancestors`, HSTS et `Referrer-Policy` sont à poser par l'hébergement. En local, `vite preview` relaie vers `TELECONSULTATION_URL` (défaut `http://127.0.0.1:3003`), `IDENTITE_URL` (`3001`), `DOCUMENTS_URL` (`3007`) et `PAIEMENT_URL` (`3008`).
 
+## Textes et langues (ADR-0025)
+
+Les textes affichés sont rangés dans un catalogue par langue, avec la fonction `t(cle, valeurs)` de `@mbolo/client-web` (sans bibliothèque, pluriels par `Intl.PluralRules`). `src/textes-fr.ts` est la référence : ses clés sont typées, une clé inconnue ne compile pas, et un test vérifie que chaque clé est encore utilisée par un écran. Pour l'instant, le catalogue couvre les écrans de `app.tsx` ; les écrans chargés à la demande (paiement, partages, proches, documents, reçus, vérification) suivront par lots. Aucune autre langue n'est encore proposée : chaque langue ajoutée doit être traduite par des humains et validée.
+
 ## Budget de poids
 
 `pnpm build` échoue si le poids compressé (gzip) dépasse un plafond (script commun `packages/client-web/scripts/budget.mjs`) : **30 Ko à l'ouverture** (aujourd'hui 14,9 Ko), **8 Ko par écran chargé à la demande** (le plus lourd : « Mes partages et accès », 3,7 Ko), **160 Ko pour la bibliothèque vidéo**, chargée seulement pour une consultation (140 Ko).
@@ -121,6 +125,6 @@ pnpm --filter @mbolo/app-patient preview   # http://localhost:5180 (les ports 51
 
 ## Reste à faire
 
-- Traduction en langues locales, messages vocaux.
+- Textes des écrans chargés à la demande dans le catalogue ; choix de la langue par le patient ; langues locales et messages vocaux (ADR-0025).
 - Recherche par ville quand l'annuaire grandira.
 - Validation des écrans avec le pilote conception (skill `ux-contexte-gabonais`) et test terrain sur téléphone réel.

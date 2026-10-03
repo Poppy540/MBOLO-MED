@@ -21,6 +21,7 @@ import {
 import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
 import { filtrer, specialites } from './annuaire.js';
 import { CONFIG } from './config.js';
+import { t, type CleTexte } from './textes.js';
 
 const connexion = () => ({
   emetteur: CONFIG.emetteur,
@@ -111,25 +112,24 @@ async function lancerAction(parcours: Parcours) {
 }
 
 const MESSAGES_NUMERO = {
-  success: 'Votre numéro est changé. Les prochains codes arriveront à ce numéro.',
-  cancelled: 'Votre numéro n’a pas changé.',
-  error: 'Votre numéro n’a pas pu être changé. Réessayez plus tard.',
-} as const;
+  success: 'numero.change',
+  cancelled: 'numero.inchange',
+  error: 'numero.echec',
+} as const satisfies Record<string, CleTexte>;
 
 /** Résultat des actions sur l'application d'authentification (ADR-0024). */
 const MESSAGES_APPLICATION = {
   activer: {
-    success:
-      'Votre application protège maintenant votre compte. Les codes ne viendront plus par SMS.',
-    cancelled: 'Rien n’a changé : vos codes arrivent toujours par SMS.',
-    error: 'L’application n’a pas pu être activée. Réessayez plus tard.',
+    success: 'proteger.activee',
+    cancelled: 'proteger.activationAnnulee',
+    error: 'proteger.activationEchec',
   },
   retirer: {
-    success: 'Votre application est retirée. Les codes reviennent par SMS.',
-    cancelled: 'Rien n’a changé : votre application protège toujours votre compte.',
-    error: 'L’application n’a pas pu être retirée. Réessayez plus tard.',
+    success: 'proteger.retiree',
+    cancelled: 'proteger.retraitAnnule',
+    error: 'proteger.retraitEchec',
   },
-} as const;
+} as const satisfies Record<string, Record<string, CleTexte>>;
 
 let jeton: string | undefined;
 const api = creerApi(CONFIG.api, () => jeton);
@@ -177,14 +177,14 @@ export function App() {
           history.replaceState(null, '', '/');
           if (numero === 'success' && parcours === 'perte') {
             // Demande enregistrée : le patient envoie tout de suite ses nouvelles photos.
-            setMessage('Demande enregistrée. Envoyez maintenant deux nouvelles photos.');
+            setMessage(t('numero.perteEnregistree'));
             setEcran({ nom: 'perte' });
             return;
           }
           if (numero && (parcours === 'activer' || parcours === 'retirer')) {
-            setMessage(MESSAGES_APPLICATION[parcours][numero]);
+            setMessage(t(MESSAGES_APPLICATION[parcours][numero]));
           } else if (numero) {
-            setMessage(MESSAGES_NUMERO[numero]);
+            setMessage(t(MESSAGES_NUMERO[numero]));
           }
           // Un proche désigné par un patient (C-PROCHE) ne voit que les documents partagés.
           const r = revendications(j);
@@ -215,7 +215,7 @@ export function App() {
             );
         }
       })
-      .catch(() => setMessage('La connexion a échoué. Réessayez.'))
+      .catch(() => setMessage(t('connexion.echec')))
       .finally(() => setAttente(false));
   }, []);
 
@@ -230,7 +230,7 @@ export function App() {
   };
 
   const signaler = (e: unknown) => {
-    setMessage(e instanceof ErreurApi ? e.message : 'Service indisponible. Réessayez plus tard.');
+    setMessage(e instanceof ErreurApi ? e.message : t('commun.serviceIndisponible'));
     if (e instanceof ErreurApi && e.statut === 401) {
       jeton = undefined;
       setEcran({ nom: 'accueil' });
@@ -241,7 +241,7 @@ export function App() {
     <main>
       <header>
         <h1>
-          <span aria-hidden="true">🩺</span> Mbolo Santé
+          <span aria-hidden="true">🩺</span> {t('appli.nom')}
         </h1>
         {jeton && (
           <button
@@ -251,7 +251,7 @@ export function App() {
               location.assign(urlDeconnexion(connexion()));
             }}
           >
-            Se déconnecter
+            {t('commun.seDeconnecter')}
           </button>
         )}
       </header>
@@ -262,7 +262,7 @@ export function App() {
         </p>
       )}
       {attente ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : ecran.nom === 'accueil' ? (
         <Accueil />
       ) : ecran.nom === 'dossier-a-completer' ? (
@@ -350,7 +350,7 @@ export function App() {
       ) : (
         <Consultation
           salle={() => api.salle(ecran.rendezVous.id)}
-          autre="Professionnel de santé"
+          autre={t('consultation.autre')}
           retour={() => setEcran({ nom: 'rendez-vous' })}
           signaler={signaler}
         />
@@ -367,12 +367,12 @@ function Secours() {
   return (
     <p class="secours" role="note">
       <strong>
-        <span aria-hidden="true">🚑</span> En cas d'urgence, appelez les secours
-        {CONFIG.secours.length > 0 ? ' :' : '.'}
+        <span aria-hidden="true">🚑</span>{' '}
+        {t(CONFIG.secours.length > 0 ? 'secours.appelezNumeros' : 'secours.appelez')}
       </strong>{' '}
       {CONFIG.secours.map((s) => (
         <a key={s.numero} href={`tel:${s.numero}`}>
-          {s.nom} ({s.numero})
+          {t('secours.numero', { nom: s.nom, numero: s.numero })}
         </a>
       ))}
     </p>
@@ -388,19 +388,19 @@ function Accueil() {
   }
   return (
     <section>
-      <p>Consultez un médecin depuis votre téléphone.</p>
+      <p>{t('accueil.presentation')}</p>
       <button
         class="principal"
         onClick={async () => location.assign(await demarrerConnexion(connexion(), sessionStorage))}
       >
-        <span aria-hidden="true">🔑</span> Se connecter
+        <span aria-hidden="true">🔑</span> {t('accueil.seConnecter')}
       </button>
       <button
         onClick={async () =>
           location.assign(await demarrerConnexion(connexion(), sessionStorage, true))
         }
       >
-        <span aria-hidden="true">✉️</span> J'ai un code d'invitation
+        <span aria-hidden="true">✉️</span> {t('accueil.codeInvitation')}
       </button>
     </section>
   );
@@ -417,29 +417,25 @@ function DossierACompleter(p: {
     <section>
       {p.refusee ? (
         <p>
-          <span aria-hidden="true">⚠️</span> Votre identité n'a pas pu être confirmée. L'équipe
-          Mbolo Santé va vous recontacter.
+          <span aria-hidden="true">⚠️</span> {t('dossier.identiteRefusee')}
         </p>
       ) : (
         <>
           <p>
-            <span aria-hidden="true">✅</span> Votre compte est créé.
+            <span aria-hidden="true">✅</span> {t('dossier.compteCree')}
           </p>
-          <p>
-            Avant votre première consultation, votre identité doit être vérifiée. L'équipe Mbolo
-            Santé vous contactera.
-          </p>
+          <p>{t('dossier.verificationAttendue')}</p>
         </>
       )}
       {dossier && (
         <button class="principal" onClick={p.verifier}>
-          <span aria-hidden="true">📷</span> Vérifier mon identité
+          <span aria-hidden="true">📷</span> {t('dossier.verifierIdentite')}
         </button>
       )}
       {/* L'équipe appelle au numéro du dossier : il doit rester juste (ADR-0023). */}
       {dossier && (
         <button onClick={p.changerNumero}>
-          <span aria-hidden="true">📱</span> Changer mon numéro
+          <span aria-hidden="true">📱</span> {t('numero.titre')}
         </button>
       )}
     </section>
@@ -459,21 +455,15 @@ function ConfirmationSms(p: {
   return (
     <section data-confirmation-sms>
       <h2>
-        <span aria-hidden="true">🔐</span> Confirmer par SMS
+        <span aria-hidden="true">🔐</span> {t('sms.titre')}
       </h2>
-      <p>
-        {p.action === 'payer'
-          ? 'Avant de payer, '
-          : 'Avant de partager votre dossier ou d’inviter un proche, '}
-        nous envoyons un code par SMS au numéro de votre dossier. Il protège votre compte si
-        quelqu’un d’autre connaît votre mot de passe.
-      </p>
-      <p>Ne donnez ce code à personne, même pas à l’équipe.</p>
+      <p>{t(p.action === 'payer' ? 'sms.explicationPayer' : 'sms.explicationPartager')}</p>
+      <p>{t('sms.neDonnezPas')}</p>
       <button class="principal" onClick={p.confirmer}>
-        <span aria-hidden="true">📱</span> Recevoir le code
+        <span aria-hidden="true">📱</span> {t('sms.recevoirCode')}
       </button>
-      <button onClick={p.retour}>Retour</button>
-      <p>Plus de téléphone ou plus de numéro ? Appelez l’équipe Mbolo Santé.</p>
+      <button onClick={p.retour}>{t('commun.retour')}</button>
+      <p>{t('sms.plusDeTelephone')}</p>
     </section>
   );
 }
@@ -487,30 +477,27 @@ function ChangerNumero(p: { retour: () => void; photos: () => void }) {
   return (
     <section data-changer-numero>
       <h2>
-        <span aria-hidden="true">📱</span> Changer mon numéro
+        <span aria-hidden="true">📱</span> {t('numero.titre')}
       </h2>
-      <p>Vous avez une nouvelle puce ? Il vous faut vos deux téléphones :</p>
+      <p>{t('numero.nouvellePuce')}</p>
       <ol>
-        <li>un code arrive par SMS à votre numéro actuel ;</li>
-        <li>vous écrivez votre nouveau numéro ;</li>
-        <li>un autre code arrive à ce nouveau numéro.</li>
+        <li>{t('numero.etape1')}</li>
+        <li>{t('numero.etape2')}</li>
+        <li>{t('numero.etape3')}</li>
       </ol>
-      <p>Votre ancien numéro recevra un message pour vous prévenir du changement.</p>
+      <p>{t('numero.ancienPrevenu')}</p>
       <button class="principal" onClick={() => void lancerAction('changer')}>
-        <span aria-hidden="true">📨</span> Recevoir le code
+        <span aria-hidden="true">📨</span> {t('sms.recevoirCode')}
       </button>
-      <h3>Vous avez perdu votre téléphone ?</h3>
-      <p>
-        Indiquez votre nouveau numéro, puis envoyez deux nouvelles photos. Une personne de l’équipe
-        Mbolo Santé vérifiera que c’est bien vous avant de changer le numéro.
-      </p>
+      <h3>{t('numero.perduTitre')}</h3>
+      <p>{t('numero.perduExplication')}</p>
       <button onClick={() => void lancerAction('perte')}>
-        <span aria-hidden="true">🆘</span> J’ai perdu mon téléphone
+        <span aria-hidden="true">🆘</span> {t('numero.perdu')}
       </button>
       <button onClick={p.photos}>
-        <span aria-hidden="true">📷</span> Envoyer mes photos (demande déjà faite)
+        <span aria-hidden="true">📷</span> {t('numero.envoyerPhotos')}
       </button>
-      <button onClick={p.retour}>Retour</button>
+      <button onClick={p.retour}>{t('commun.retour')}</button>
     </section>
   );
 }
@@ -524,37 +511,25 @@ function ProtegerCompte(p: { retour: () => void }) {
   return (
     <section data-proteger-compte>
       <h2>
-        <span aria-hidden="true">🔐</span> Protéger mon compte
+        <span aria-hidden="true">🔐</span> {t('proteger.titre')}
       </h2>
-      <p>
-        Pour payer ou partager votre dossier, vous recevez un code par SMS. Vous pouvez le remplacer
-        par le code d’une application gratuite sur votre téléphone : Google Authenticator, Microsoft
-        Authenticator ou FreeOTP.
-      </p>
-      <p>
-        C’est plus sûr : même si quelqu’un vole votre puce, il ne pourra pas recevoir vos codes.
-        Ensuite, les codes ne viendront plus par SMS.
-      </p>
+      <p>{t('proteger.explication')}</p>
+      <p>{t('proteger.plusSur')}</p>
       <ol>
-        <li>un code arrive d’abord par SMS ;</li>
-        <li>vous ajoutez Mbolo Santé dans votre application (code à scanner) ;</li>
-        <li>vous tapez le code affiché par l’application.</li>
+        <li>{t('proteger.etape1')}</li>
+        <li>{t('proteger.etape2')}</li>
+        <li>{t('proteger.etape3')}</li>
       </ol>
       <button class="principal" onClick={() => void lancerAction('activer')}>
-        <span aria-hidden="true">📲</span> Activer une application
+        <span aria-hidden="true">📲</span> {t('proteger.activer')}
       </button>
-      <h3>Vous avez déjà une application ?</h3>
-      <p>
-        Avec un code de votre application, vous pouvez la retirer : les codes reviendront par SMS.
-      </p>
+      <h3>{t('proteger.dejaTitre')}</h3>
+      <p>{t('proteger.dejaExplication')}</p>
       <button onClick={() => void lancerAction('retirer')}>
-        <span aria-hidden="true">↩️</span> Retirer mon application
+        <span aria-hidden="true">↩️</span> {t('proteger.retirer')}
       </button>
-      <p>
-        Téléphone ou application perdus ? Appelez l’équipe Mbolo Santé : elle vérifiera que c’est
-        bien vous.
-      </p>
-      <button onClick={p.retour}>Retour</button>
+      <p>{t('proteger.perdu')}</p>
+      <button onClick={p.retour}>{t('commun.retour')}</button>
     </section>
   );
 }
@@ -572,15 +547,15 @@ function EcranVerification(p: { retour: () => void; perte?: boolean }) {
   if (echec) {
     return (
       <section>
-        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
-        <button onClick={p.retour}>Retour</button>
+        <p role="alert">{t('commun.pasDeReseau')}</p>
+        <button onClick={p.retour}>{t('commun.retour')}</button>
       </section>
     );
   }
   return Ecran && jeton ? (
     <Ecran jeton={jeton} retour={p.retour} perte={p.perte === true} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -605,15 +580,15 @@ function EcranPaiement(p: {
   if (echec) {
     return (
       <section>
-        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
-        <button onClick={() => p.retour()}>Retour</button>
+        <p role="alert">{t('commun.pasDeReseau')}</p>
+        <button onClick={() => p.retour()}>{t('commun.retour')}</button>
       </section>
     );
   }
   return Ecran && jeton ? (
     <Ecran jeton={jeton} rendezVousId={p.rendezVousId} retour={p.retour} confirmer={p.confirmer} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -628,15 +603,15 @@ function EcranDocuments(p: { retour?: () => void; proche?: boolean }) {
   if (echec) {
     return (
       <section>
-        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
-        {p.retour && <button onClick={p.retour}>Retour</button>}
+        <p role="alert">{t('commun.pasDeReseau')}</p>
+        {p.retour && <button onClick={p.retour}>{t('commun.retour')}</button>}
       </section>
     );
   }
   return Ecran && jeton ? (
     <Ecran jeton={jeton} {...(p.retour ? { retour: p.retour } : {})} proche={p.proche === true} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -650,15 +625,15 @@ function EcranRecus(p: { retour: () => void }) {
   if (echec) {
     return (
       <section>
-        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
-        <button onClick={p.retour}>Retour</button>
+        <p role="alert">{t('commun.pasDeReseau')}</p>
+        <button onClick={p.retour}>{t('commun.retour')}</button>
       </section>
     );
   }
   return Ecran && jeton ? (
     <Ecran jeton={jeton} retour={p.retour} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -680,15 +655,15 @@ function EcranPartages(p: { retour: () => void; confirmer: () => void }) {
   if (echec || !patientId) {
     return (
       <section>
-        <p role="alert">Pas de réseau. Réessayez plus tard.</p>
-        <button onClick={p.retour}>Retour</button>
+        <p role="alert">{t('commun.pasDeReseau')}</p>
+        <button onClick={p.retour}>{t('commun.retour')}</button>
       </section>
     );
   }
   return Ecran && jeton ? (
     <Ecran jeton={jeton} patientId={patientId} retour={p.retour} confirmer={p.confirmer} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -722,20 +697,21 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📅</span> Mes rendez-vous
+        <span aria-hidden="true">📅</span> {t('rendezVous.titre')}
       </h2>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucun rendez-vous prévu.</p>
+        <p>{t('rendezVous.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Rendez-vous prévus">
+        <ul class="liste" aria-label={t('rendezVous.liste')}>
           {liste.map((r) => (
             <li key={r.id} data-rendez-vous={r.id} data-creneau={r.creneauId}>
-              <strong>{quand(r.debut)}</strong> <span>({r.dureeMinutes} min)</span>
+              <strong>{quand(r.debut)}</strong>{' '}
+              <span>{t('commun.duree', { minutes: r.dureeMinutes })}</span>
               {r.statut === 'a-payer' && (
                 <p>
-                  <span aria-hidden="true">⏳</span> En attente de paiement
+                  <span aria-hidden="true">⏳</span> {t('rendezVous.attentePaiement')}
                 </p>
               )}
               <div class="actions">
@@ -744,14 +720,14 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
                     class="principal"
                     onClick={() => p.allerA({ nom: 'paiement', rendezVousId: r.id })}
                   >
-                    <span aria-hidden="true">💳</span> Payer
+                    <span aria-hidden="true">💳</span> {t('rendezVous.payer')}
                   </button>
                 ) : (
                   <button
                     class="principal"
                     onClick={() => p.allerA({ nom: 'visio', rendezVous: r })}
                   >
-                    <span aria-hidden="true">📹</span> Rejoindre
+                    <span aria-hidden="true">📹</span> {t('rendezVous.rejoindre')}
                   </button>
                 )}
                 {/* Même médecin, avant le début (règle du service) ; pas pendant le paiement. */}
@@ -761,7 +737,7 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
                       p.allerA({ nom: 'creneaux', praticienId: r.praticienId, deplacer: r })
                     }
                   >
-                    Déplacer
+                    {t('rendezVous.deplacer')}
                   </button>
                 )}
                 <button
@@ -772,7 +748,7 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
                       .catch(p.signaler)
                   }
                 >
-                  Annuler
+                  {t('rendezVous.annuler')}
                 </button>
               </div>
             </li>
@@ -786,22 +762,22 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
           p.allerA(praticien ? { nom: 'creneaux', praticienId: praticien } : { nom: 'praticiens' })
         }
       >
-        <span aria-hidden="true">➕</span> Prendre rendez-vous
+        <span aria-hidden="true">➕</span> {t('rendezVous.prendre')}
       </button>
       <button onClick={() => p.allerA({ nom: 'documents' })}>
-        <span aria-hidden="true">📄</span> Mes comptes-rendus et ordonnances
+        <span aria-hidden="true">📄</span> {t('rendezVous.documents')}
       </button>
       <button onClick={() => p.allerA({ nom: 'partages' })}>
-        <span aria-hidden="true">🔒</span> Mes partages et accès
+        <span aria-hidden="true">🔒</span> {t('rendezVous.partages')}
       </button>
       <button onClick={() => p.allerA({ nom: 'recus' })}>
-        <span aria-hidden="true">🧾</span> Mes reçus
+        <span aria-hidden="true">🧾</span> {t('rendezVous.recus')}
       </button>
       <button onClick={() => p.allerA({ nom: 'changer-numero', depuis: { nom: 'rendez-vous' } })}>
-        <span aria-hidden="true">📱</span> Changer mon numéro
+        <span aria-hidden="true">📱</span> {t('numero.titre')}
       </button>
       <button onClick={() => p.allerA({ nom: 'proteger-compte' })}>
-        <span aria-hidden="true">🔐</span> Protéger mon compte
+        <span aria-hidden="true">🔐</span> {t('proteger.titre')}
       </button>
     </section>
   );
@@ -823,14 +799,15 @@ function Creneaux(p: {
   if (choisi) {
     return (
       <section>
-        <h2>{p.deplacer ? 'Déplacer le rendez-vous' : 'Confirmer le rendez-vous'}</h2>
+        <h2>{t(p.deplacer ? 'creneaux.deplacerTitre' : 'creneaux.confirmerTitre')}</h2>
         {p.deplacer && (
           <p>
-            Au lieu de : <strong>{quand(p.deplacer.debut)}</strong>
+            {t('creneaux.auLieuDe')} <strong>{quand(p.deplacer.debut)}</strong>
           </p>
         )}
         <p>
-          <strong>{quand(choisi.debut)}</strong> ({choisi.dureeMinutes} min)
+          <strong>{quand(choisi.debut)}</strong>{' '}
+          {t('commun.duree', { minutes: choisi.dureeMinutes })}
         </p>
         <button
           class="principal"
@@ -842,45 +819,46 @@ function Creneaux(p: {
             if (p.deplacer) {
               api
                 .reporter(p.deplacer.id, choisi.id)
-                .then(() => p.retour('Rendez-vous déplacé.'))
+                .then(() => p.retour(t('creneaux.deplace')))
                 .catch(echec);
               return;
             }
             api
               .reserver(choisi.id)
               .then((r) =>
-                r.statut === 'a-payer' ? p.payer(r.id) : p.retour('Rendez-vous réservé.'),
+                r.statut === 'a-payer' ? p.payer(r.id) : p.retour(t('creneaux.reserve')),
               )
               .catch(echec);
           }}
         >
-          <span aria-hidden="true">✅</span> {p.deplacer ? 'Déplacer ici' : 'Réserver'}
+          <span aria-hidden="true">✅</span>{' '}
+          {t(p.deplacer ? 'creneaux.deplacerIci' : 'creneaux.reserver')}
         </button>
-        <button onClick={() => setChoisi(undefined)}>Retour</button>
+        <button onClick={() => setChoisi(undefined)}>{t('commun.retour')}</button>
       </section>
     );
   }
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🕒</span> Créneaux libres
+        <span aria-hidden="true">🕒</span> {t('creneaux.titre')}
       </h2>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucun créneau libre pour le moment.</p>
+        <p>{t('creneaux.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Créneaux libres">
+        <ul class="liste" aria-label={t('creneaux.titre')}>
           {liste.map((c) => (
             <li key={c.id}>
               <button data-creneau={c.id} onClick={() => setChoisi(c)}>
-                {quand(c.debut)} ({c.dureeMinutes} min)
+                {quand(c.debut)} {t('commun.duree', { minutes: c.dureeMinutes })}
               </button>
             </li>
           ))}
         </ul>
       )}
-      <button onClick={() => p.retour()}>Retour</button>
+      <button onClick={() => p.retour()}>{t('commun.retour')}</button>
     </section>
   );
 }
@@ -898,16 +876,16 @@ function Praticiens(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🩺</span> Choisir un médecin
+        <span aria-hidden="true">🩺</span> {t('annuaire.titre')}
       </h2>
       {/* Seulement s'il y a un vrai choix : une seule spécialité, rien à filtrer. */}
       {choix.length > 1 && (
         <label>
-          Spécialité{' '}
+          {t('annuaire.specialite')}{' '}
           <select
             onChange={(e) => setSpecialite((e.target as HTMLSelectElement).value || undefined)}
           >
-            <option value="">Toutes</option>
+            <option value="">{t('annuaire.toutes')}</option>
             {choix.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -917,11 +895,11 @@ function Praticiens(p: {
         </label>
       )}
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucun médecin disponible pour le moment.</p>
+        <p>{t('annuaire.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Médecins">
+        <ul class="liste" aria-label={t('annuaire.liste')}>
           {filtrer(liste, specialite).map((x) => (
             <li key={x.id}>
               <button data-praticien={x.id} onClick={() => p.choisir(x.id)}>
@@ -930,15 +908,15 @@ function Praticiens(p: {
                 <br />
                 <small>
                   {x.prochainCreneau
-                    ? `Prochain créneau : ${quand(x.prochainCreneau)}`
-                    : 'Pas de créneau libre pour le moment'}
+                    ? t('annuaire.prochainCreneau', { date: quand(x.prochainCreneau) })
+                    : t('annuaire.pasDeCreneau')}
                 </small>
               </button>
             </li>
           ))}
         </ul>
       )}
-      <button onClick={p.retour}>Retour</button>
+      <button onClick={p.retour}>{t('commun.retour')}</button>
     </section>
   );
 }
