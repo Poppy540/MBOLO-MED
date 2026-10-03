@@ -1,0 +1,36 @@
+# Analyse statique du code (SAST) par Semgrep — skill scans-securite.
+# Remplace CodeQL depuis que le dépôt est privé (décision du porteur de projet du 2026-10-03) :
+# CodeQL n'y est disponible qu'avec GitHub Code Security (payant). Voir docs/securite/scans.md.
+# Cherche les failles connues (injections, chiffrement, jetons…) dans le TypeScript, le JavaScript
+# et le Java de l'extension Keycloak. Aucun secret utilisé, aucun envoi à semgrep.dev.
+name: Semgrep
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Chaque lundi : le scan reste au vert ou non sur du code inchangé (mise à jour des règles par PR).
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyse:
+    name: Analyse du code (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Règles épinglées à un commit du dépôt public semgrep/semgrep-rules (changement par PR).
+      - uses: actions/checkout@v7
+        with:
+          repository: semgrep/semgrep-rules
+          ref: a84ff9cc2453ca91d581380de4b8b3f272f6f4be
+          path: .semgrep-regles
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install semgrep==1.179.0
+      - run: scripts/semgrep.sh .semgrep-regles

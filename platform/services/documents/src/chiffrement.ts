@@ -27,7 +27,9 @@ function dechiffrerGcm(cle: Buffer, paquet: Buffer, contexte: Buffer): Buffer {
   if (paquet.length < 1 + IV + TAG || paquet[0] !== VERSION) {
     throw new ErreurChiffrement('Format chiffré inconnu.');
   }
-  const d = createDecipheriv('aes-256-gcm', cle, paquet.subarray(1, 1 + IV));
+  const d = createDecipheriv('aes-256-gcm', cle, paquet.subarray(1, 1 + IV), {
+    authTagLength: TAG,
+  });
   d.setAAD(contexte);
   d.setAuthTag(paquet.subarray(1 + IV, 1 + IV + TAG));
   try {

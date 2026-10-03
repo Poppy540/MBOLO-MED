@@ -402,6 +402,7 @@ export function compteRendu(o: OptionsCompteRendu): Composition {
     code: { coding: [{ system: SYSTEMES.sectionCompteRendu, code: s }] },
     text: {
       status: 'generated' as const,
+      // nosemgrep -- texte du professionnel échappé par `echapper` avant insertion.
       div: `<div xmlns="http://www.w3.org/1999/xhtml">${echapper(o.sections[s]?.trim() ?? '')}</div>`,
     },
   }));

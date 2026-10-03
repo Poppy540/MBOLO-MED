@@ -34,6 +34,7 @@ const invitations = process.env['INVITATIONS_URL'] ?? 'http://127.0.0.1:3006';
 const relais = (prefixe: string, cible: string) => ({
   target: cible,
   changeOrigin: true,
+  // nosemgrep -- préfixe constant écrit dans ce fichier, jamais une saisie.
   rewrite: (chemin: string) => chemin.replace(new RegExp(`^${prefixe}`), ''),
 });
 const proxy = {

@@ -7,14 +7,20 @@
 | Contrôle | Outil | Quand | Bloquant |
 |---|---|---|---|
 | Secrets dans les fichiers et tout l'historique | gitleaks (règles `.gitleaks.toml`) + pre-commit | Chaque commit et chaque PR | Toute fuite |
-| Analyse statique du code (SAST) | GitHub CodeQL, règles `security-extended` (`.github/workflows/codeql.yml`) | Chaque PR, chaque fusion, chaque lundi | Alertes visibles dans l'onglet *Security* ; à rendre bloquant par la protection de `main` (porteur de projet) |
+| Analyse statique du code (SAST) | Semgrep 1.179.0, dossiers `security` des règles `semgrep/semgrep-rules` épinglées à un commit, pour TypeScript, JavaScript et Java (`scripts/semgrep.sh`, `.github/workflows/semgrep.yml`) ; fichiers de test exclus ; faux positif marqué `nosemgrep -- <justification>` et relu en PR | Chaque PR, chaque fusion, chaque lundi | Gravité **ERROR ou WARNING** |
 | Failles connues des dépendances livrées | `pnpm audit --prod --audit-level high` (job « Dépendances ») | Chaque PR et chaque fusion | Faille **haute ou critique** |
 | Failles connues de toutes les dépendances (outils compris) | `pnpm audit --audit-level critical` | Chaque PR et chaque fusion | Faille **critique** |
-| Dépendance ajoutée ou mise à jour dans une PR | `actions/dependency-review-action` | Chaque PR | Faille **haute ou critique** |
 | Mises à jour disponibles (dont correctifs de sécurité) | Dependabot (`.github/dependabot.yml`) : npm, Maven (extension Keycloak), images docker-compose, actions GitHub | Chaque lundi, et dès qu'une faille est publiée si les alertes sont activées | Non bloquant : une PR par mise à jour, fusionnée après CI verte et revue humaine |
 | Garde-fous du dossier médical | Validateur officiel HL7 sur des ressources volontairement invalides (principe n°1, minimisation…) | Chaque PR | Toute régression |
 
 Ces outils interrogent des bases de failles publiques (GitHub Advisory Database, registre npm) ; aucun secret ni donnée n'est envoyé.
+
+### Dépôt privé : CodeQL et revue des dépendances retirés (2026-10-03)
+
+Le dépôt est passé en privé le 2026-10-03. Sur un dépôt privé, GitHub CodeQL et `actions/dependency-review-action` exigent GitHub Code Security (payant) : ils échouaient sur chaque PR. Décision du porteur de projet du 2026-10-03 : garder le dépôt privé et remplacer CodeQL par Semgrep.
+
+- **CodeQL → Semgrep** : même périmètre (failles de sécurité du code), plus le Java de l'extension Keycloak. À la mise en place, Semgrep a trouvé un point réel, corrigé : le déchiffrement AES-GCM des documents fixe désormais la longueur du tag (`authTagLength`, déjà contrôlée avant).
+- **Revue des dépendances → `pnpm audit`** : une dépendance npm ajoutée avec une faille connue est déjà refusée par le job « Dépendances » (haute ou critique pour ce qui est livré, critique pour les outils). Les dépendances Maven de l'extension Keycloak ne sont plus contrôlées en CI : elles restent suivies par Dependabot.
 
 ## Délais de correction
 
