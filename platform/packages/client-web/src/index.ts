@@ -37,3 +37,5 @@ export {
 } from './hors-ligne.js';
 export type { RendezVousHorsLigne as RendezVousRetenu, Stockage } from './hors-ligne.js';
 export { RendezVousHorsLigne } from './hors-ligne-vue.js';
+export { clesManquantes, creerTraducteur } from './textes.js';
+export type { Catalogue, Message, Pluriel, Traduction, Valeurs } from './textes.js';
