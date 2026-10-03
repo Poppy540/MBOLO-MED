@@ -30,6 +30,16 @@ Fonctionnalité: Accès au dossier d'un patient selon ses consentements
     Quand "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
     Alors l'accès est refusé avec le motif "refus-sans-consentement"
 
+  Scénario: Un partage envoyé deux fois (réseau lent) n'est gardé qu'une fois, et son retrait ferme l'accès
+    Étant donné que "patient-fictif-02" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Quand "patient-fictif-02" donne son consentement "C-PARTAGE-PRO" à "Practitioner/prac-fictif-001"
+    Et que "patient-fictif-02" renvoie le même consentement "C-PARTAGE-PRO" à "Practitioner/prac-fictif-001"
+    Alors le dossier rend le même consentement, sans en créer un second
+    Quand "patient-fictif-02" retire ce consentement
+    Et que "medecin-fictif-01" demande l'accès au dossier "pat-fictif-002"
+    Alors l'accès est refusé avec le motif "refus-sans-consentement"
+
   Scénario: Un proche de la diaspora accède au dossier seulement avec un consentement qui le désigne
     Étant donné que "patient-fictif-01" est connecté
     Et que "proche-fictif-01" est connecté
