@@ -4,9 +4,17 @@
 // l'écran d'accueil et les octets réellement transférés (compressés, en-têtes compris).
 // Limite : seule la première ouverture est mesurée ; ensuite, le service worker sert l'application
 // depuis le téléphone, mais ses propres requêtes échappent au réseau simulé de la page.
-import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+// La page de connexion (Keycloak, thème `mbolo`) est mesurée de la même façon : tout patient la
+// charge à chaque connexion.
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { APP_PATIENT_URL, APP_PRO_URL } from '../configuration.js';
-import { Then, When, type Monde } from './fixtures.js';
+import { Then, When, urlAutorisation, type Monde } from './fixtures.js';
 
 /**
  * Profil « 3G lente » des outils de développement de Chrome (valeurs appliquées par Chrome :
@@ -19,34 +27,54 @@ const RESEAU_3G_LENT = {
   uploadThroughput: 50_000,
 };
 
-const ADRESSES: Record<string, string> = {
-  'application patient': APP_PATIENT_URL,
-  'espace professionnel': APP_PRO_URL,
+/** Adresse de chaque écran mesuré, et ce qui montre qu'il est utilisable. */
+const ECRANS: Record<string, { adresse: () => string; pret: (page: Page) => Locator }> = {
+  'application patient': {
+    adresse: () => APP_PATIENT_URL,
+    pret: (page) => page.getByRole('button', { name: 'Se connecter' }),
+  },
+  'espace professionnel': {
+    adresse: () => APP_PRO_URL,
+    pret: (page) => page.getByRole('button', { name: 'Se connecter' }),
+  },
+  'page de connexion': {
+    adresse: () => urlAutorisation('patient', true).url,
+    pret: (page) => page.getByRole('button', { name: 'Connexion' }),
+  },
 };
+
+async function ouvrirSur3gLente(monde: Monde, browser: Browser, application: string) {
+  const ecran = ECRANS[application];
+  if (!ecran) throw new Error(`Écran inconnu : ${application}`);
+  const contexte = await browser.newContext();
+  const page = await contexte.newPage();
+  monde.visio.set(application, { contexte, page });
+  const cdp = await contexte.newCDPSession(page);
+  await cdp.send('Network.enable');
+  let octets = 0;
+  cdp.on('Network.loadingFinished', (e) => {
+    octets += e.encodedDataLength;
+  });
+  await cdp.send('Network.emulateNetworkConditions', RESEAU_3G_LENT);
+  const debut = Date.now();
+  await page.goto(ecran.adresse(), { waitUntil: 'commit' });
+  // Écran utilisable : le bouton de connexion est affiché, et la page entière est chargée
+  // (feuilles de style, polices et images comprises).
+  await expect(ecran.pret(page)).toBeVisible({ timeout: 60_000 });
+  await page.waitForLoadState('load', { timeout: 60_000 });
+  monde.ouverture = { ms: Date.now() - debut, ko: octets / 1024 };
+}
 
 When(
   'l’{string} s’ouvre pour la première fois sur un réseau 3G lent',
-  async ({ monde, browser }: { monde: Monde; browser: Browser }, application: string) => {
-    const adresse = ADRESSES[application];
-    if (!adresse) throw new Error(`Application inconnue : ${application}`);
-    const contexte = await browser.newContext();
-    const page = await contexte.newPage();
-    monde.visio.set(application, { contexte, page });
-    const cdp = await contexte.newCDPSession(page);
-    await cdp.send('Network.enable');
-    let octets = 0;
-    cdp.on('Network.loadingFinished', (e) => {
-      octets += e.encodedDataLength;
-    });
-    await cdp.send('Network.emulateNetworkConditions', RESEAU_3G_LENT);
-    const debut = Date.now();
-    await page.goto(adresse, { waitUntil: 'commit' });
-    // Écran d'accueil utilisable : le bouton de connexion est affiché.
-    await expect(page.getByRole('button', { name: 'Se connecter' })).toBeVisible({
-      timeout: 30_000,
-    });
-    monde.ouverture = { ms: Date.now() - debut, ko: octets / 1024 };
-  },
+  ({ monde, browser }: { monde: Monde; browser: Browser }, ecran: string) =>
+    ouvrirSur3gLente(monde, browser, ecran),
+);
+
+When(
+  'la {string} s’ouvre pour la première fois sur un réseau 3G lent',
+  ({ monde, browser }: { monde: Monde; browser: Browser }, ecran: string) =>
+    ouvrirSur3gLente(monde, browser, ecran),
 );
 
 Then('l’écran d’accueil s’affiche en moins de {int} secondes', async ({ monde }, s: number) => {
