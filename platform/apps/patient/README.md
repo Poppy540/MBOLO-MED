@@ -19,7 +19,7 @@ PWA légère pour **réseaux lents et téléphones d'entrée de gamme** : Preact
 5. **Payer la consultation** (ADR-0017), quand le paiement est ouvert pour le patient (flag `paiement.mobile-money`) ; écran chargé **seulement à la demande** :
    - après « Réserver », le créneau est retenu : le montant (au format du pays) et le temps restant s'affichent ;
    - le patient choisit l'opérateur (liste du pays) et saisit le numéro qui paie, le sien ou celui d'un proche ; le numéro n'est **jamais gardé** (champ vidé dès l'envoi) ;
-   - « Validez le paiement sur le téléphone avec votre code secret… », puis l'application vérifie toutes les 3 secondes : « Paiement reçu. Votre rendez-vous est confirmé. », ou « Le paiement n'a pas abouti. Vous pouvez réessayer. », ou « Le délai de paiement est dépassé. Le créneau est libéré. » ;
+   - « Validez le paiement sur le téléphone avec votre code secret… », puis l’application vérifie le paiement (toutes les 3 secondes pendant la première minute, puis toutes les 10 secondes ; une seule requête à la fois ; rien en arrière-plan, vérification dès le retour dans l’application) : « Paiement reçu. Votre rendez-vous est confirmé. », ou « Le paiement n'a pas abouti. Vous pouvez réessayer. », ou « Le délai de paiement est dépassé. Le créneau est libéré. » ;
    - « Plus tard » : le rendez-vous reste dans la liste, « En attente de paiement », avec un bouton « Payer ». Il n'est gardé hors ligne qu'une fois confirmé.
 
 6. **Vérifier mon identité** (ADR-0014, ADR-0015), tant que l'identité est « à vérifier » ou « refusée » ; écran chargé **seulement à la demande** (2,3 Ko compressés) :

@@ -3,7 +3,7 @@
 // qui paie (le sien ou celui d'un proche), puis valide sur son téléphone. Le numéro n'est jamais
 // gardé dans le navigateur ; le rendez-vous n'est confirmé que par le serveur.
 import { useEffect, useState } from 'preact/hooks';
-import { appelReseau, MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
+import { appelReseau, MOTIF_NIVEAU_INSUFFISANT, suivre } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 interface Reservation {
@@ -23,9 +23,6 @@ class ErreurPaiement extends Error {
   /** Refus parce que le code SMS manque ou a plus de 15 minutes (ADR-0022). */
   niveauInsuffisant = false;
 }
-
-/** Vérification du paiement, puis du rendez-vous, toutes les 3 secondes pendant l'attente. */
-const INTERVALLE_MS = 3_000;
 
 async function appeler<T>(
   jeton: string,
@@ -107,22 +104,25 @@ export function Paiement(p: {
   }, []);
 
   // Pendant l'attente : le paiement est relu, puis le rendez-vous dès qu'il est payé ou refusé.
+  // `suivre` : une requête à la fois, 3 s puis 10 s après la première minute, rien en arrière-plan
+  // (le patient valide sur l'écran de son opérateur), vérification dès son retour.
   useEffect(() => {
     if (etape.nom !== 'attente' || !reservation?.paiement) return;
     const id = reservation.paiement.id;
-    const minuterie = setInterval(() => {
-      appeler<{ statut: string }>(p.jeton, 'GET', `${CONFIG.apiPaiement}/paiements/${id}`)
-        .then(async (paiement) => {
-          if (paiement.statut === 'echoue') {
-            setErreur('Le paiement n’a pas abouti. Vous pouvez réessayer.');
-            setEtape({ nom: 'saisie' });
-          } else if (paiement.statut === 'paye') {
-            await verifier();
-          }
-        })
-        .catch(() => undefined);
-    }, INTERVALLE_MS);
-    return () => clearInterval(minuterie);
+    return suivre(async () => {
+      const paiement = await appeler<{ statut: string }>(
+        p.jeton,
+        'GET',
+        `${CONFIG.apiPaiement}/paiements/${id}`,
+      );
+      if (paiement.statut === 'echoue') {
+        setErreur('Le paiement n’a pas abouti. Vous pouvez réessayer.');
+        setEtape({ nom: 'saisie' });
+        return true;
+      }
+      if (paiement.statut !== 'paye') return false;
+      return (await verifier()).statut !== 'a-payer';
+    });
   }, [etape.nom, reservation?.paiement?.id]);
 
   const payer = async (e: Event) => {
