@@ -33,6 +33,7 @@ Toute exception est décidée par le porteur de projet et inscrite dans le table
 
 | Date | Composant | Gravité | Portée | Décision |
 |---|---|---|---|---|
+| 2026-10-03 | `http-cache-semantics` ≤ 4.2.0 (GHSA-ch52-4w7c-c8xp, réponse d'un autre utilisateur lue dans un cache HTTP partagé), arrivé par `unleash-client` → `make-fetch-happen` | Haute | Non exploitable ici : `unleash-client` n'active aucun cache HTTP (pas de `cachePath`) et ne sert qu'à lire l'état des flags auprès de notre Unleash, avec un jeton de service ; aucun tiers ne fait passer de requête par ce client. Aucun correctif publié | Exception décidée par le porteur de projet le 2026-10-03 ([FP-2026-001](../../control-room/fiches/FP-2026-001.md)) : faille ignorée par `pnpm audit` (`pnpm.auditConfig.ignoreGhsas` du `package.json` racine) ; test `unleash-sans-cache.test.ts` de `@mbolo/drapeaux` qui échoue si un cache est activé ; réexamen chaque semaine et dès qu'un correctif paraît (retirer alors l'exception) |
 | 2026-09-27 | `vitest` et `@vitest/mocker` < 4.1.11 (GHSA-82fw-gwwq-j7x9, lecture de fichiers par traversée de chemin) | Modérée | Outil de test uniquement, jamais livré ni exposé | Passage à Vitest 4 (version majeure) à valider par le porteur de projet |
 
 ## À venir (avant la vague 1)
