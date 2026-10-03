@@ -1,7 +1,9 @@
 // Écran de téléconsultation commun : connexion à la salle, présence de l'autre participant,
-// repli audio automatique ou choisi, raccrocher.
+// repli audio automatique ou choisi, raccrocher. Téléphone en économie de données ou réseau 2G :
+// la consultation commence en audio seulement, la vidéo reste activable.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { ErreurApi, type AccesSalle } from './api.js';
+import { economiserDonnees } from './repli.js';
 import type { EtatVisio, Visio } from './visio.js';
 
 export function Consultation(p: {
@@ -23,7 +25,9 @@ export function Consultation(p: {
         const acces = await p.salle();
         const { rejoindre } = await import('./visio.js');
         if (fini || !conteneur.current) return;
-        visio.current = await rejoindre(acces, conteneur.current, setEtat);
+        visio.current = await rejoindre(acces, conteneur.current, setEtat, {
+          audioSeulement: economiserDonnees(),
+        });
       } catch (e) {
         p.signaler(
           e instanceof DOMException && e.name === 'NotAllowedError'
@@ -55,7 +59,9 @@ export function Consultation(p: {
         <p class="message" role="status" data-audio-seulement="">
           {etat.repliAutomatique
             ? 'Réseau faible : audio seulement pour garder la communication.'
-            : 'Audio seulement.'}
+            : etat.economieDonnees
+              ? 'Économie de données : audio seulement. Vous pouvez réactiver la vidéo.'
+              : 'Audio seulement.'}
         </p>
       )}
       <div ref={conteneur} class="medias" />

@@ -136,6 +136,18 @@ Then('l’espace professionnel indique que le patient est connecté', async ({ m
   await expect(page(monde).locator('[data-piste="video"]')).toHaveCount(1, { timeout: 20_000 });
 });
 
+Then('l’espace professionnel entend le patient, sans sa vidéo', async ({ monde }) => {
+  await expect(page(monde).locator('[data-etat-visio]')).toHaveText('Patient connecté.', {
+    timeout: 20_000,
+  });
+  await expect(page(monde).locator('[data-piste="audio"]')).toHaveCount(1, { timeout: 20_000 });
+  await expect(page(monde).locator('[data-piste="video"]')).toHaveCount(0);
+});
+
+Then('l’espace professionnel reçoit la vidéo du patient', async ({ monde }) => {
+  await expect(page(monde).locator('[data-piste="video"]')).toHaveCount(1, { timeout: 20_000 });
+});
+
 When('le professionnel ouvre le dossier de ce rendez-vous', async ({ monde }) => {
   await page(monde)
     .locator(`li[data-rendez-vous="${monde.rendezVousId ?? ''}"]`)
