@@ -7,7 +7,7 @@
 | Contrôle | Outil | Quand | Bloquant |
 |---|---|---|---|
 | Secrets dans les fichiers et tout l'historique | gitleaks (règles `.gitleaks.toml`) + pre-commit | Chaque commit et chaque PR | Toute fuite |
-| Analyse statique du code (SAST) | Semgrep 1.179.0, dossiers `security` des règles `semgrep/semgrep-rules` épinglées à un commit, pour TypeScript, JavaScript et Java (`scripts/semgrep.sh`, `.github/workflows/semgrep.yml`) ; fichiers de test exclus ; faux positif marqué `nosemgrep -- <justification>` et relu en PR | Chaque PR, chaque fusion, chaque lundi | Gravité **ERROR ou WARNING** |
+| Analyse statique du code (SAST) | Semgrep 1.179.0 installé avec empreintes vérifiées (`scripts/semgrep-requirements.txt`, `pip --require-hashes`), dossiers `security` des règles `semgrep/semgrep-rules` épinglées à un commit, pour TypeScript, JavaScript et Java (`scripts/semgrep.sh`, `.github/workflows/semgrep.yml`) ; fichiers de test exclus ; faux positif marqué `nosemgrep -- <justification>` et relu en PR | Chaque PR, chaque fusion, chaque lundi | Gravité **ERROR ou WARNING** |
 | Failles connues des dépendances livrées | `pnpm audit --prod --audit-level high` (job « Dépendances ») | Chaque PR et chaque fusion | Faille **haute ou critique** |
 | Failles connues de toutes les dépendances (outils compris) | `pnpm audit --audit-level critical` | Chaque PR et chaque fusion | Faille **critique** |
 | Mises à jour disponibles (dont correctifs de sécurité) | Dependabot (`.github/dependabot.yml`) : npm, Maven (extension Keycloak), images docker-compose, actions GitHub | Chaque lundi, et dès qu'une faille est publiée si les alertes sont activées | Non bloquant : une PR par mise à jour, fusionnée après CI verte et revue humaine |
