@@ -24,6 +24,8 @@ export { Consultation } from './consultation.js';
 export { titreAuFocus, useTitreAuFocus } from './focus.js';
 export { quand, versInstant } from './format.js';
 export { DecisionRepli } from './repli.js';
+export { RYTHME_SUIVI, suivre } from './suivi.js';
+export type { EtapeSuivi, OptionsSuivi, PageVisible } from './suivi.js';
 export type { Qualite } from './repli.js';
 export type { EtatVisio, Visio } from './visio.js';
 export {
