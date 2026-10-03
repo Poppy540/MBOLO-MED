@@ -35,6 +35,45 @@ const TROP_LENT = 'Le réseau est trop lent. Réessayez dans un moment.';
 const TROP_LENT_ENVOI =
   'Le réseau est trop lent : votre demande a peut-être été prise en compte. Vérifiez avant de réessayer.';
 
+/**
+ * Envoi d'une photo (jusqu'à 2 Mo) : à 50 Ko/s (3G lente), il faut déjà 40 s ; on laisse 2 min
+ * avant de conclure que le réseau ne répond pas.
+ */
+export const DELAI_ENVOI_FICHIER_MS = 120_000;
+
+/** Erreur à montrer quand aucune réponse n'est arrivée (réseau coupé ou trop lent). */
+function erreurReseau(methode: string, delaiDepasse: boolean): ErreurApi {
+  if (!delaiDepasse) return new ErreurApi(STATUT_RESEAU, SANS_RESEAU);
+  return new ErreurApi(STATUT_RESEAU, methode === 'GET' ? TROP_LENT : TROP_LENT_ENVOI);
+}
+
+/**
+ * `fetch` avec délai, pour les écrans qui lisent eux-mêmes la réponse (messages propres au
+ * service, statut 401 « niveau insuffisant »…). Sans réponse avant `delaiMs`, ou sans réseau,
+ * lève une `ErreurApi` de statut `STATUT_RESEAU` et au message simple. Le délai porte sur l'arrivée
+ * de la réponse ; son corps (court, JSON) est ensuite lu par l'appelant.
+ */
+export async function appelReseau(
+  url: string,
+  init: RequestInit = {},
+  delaiMs: number = DELAI_REQUETE_MS,
+  appeler: typeof fetch = fetch,
+): Promise<Response> {
+  const arret = new AbortController();
+  const minuterie = setTimeout(() => arret.abort(), delaiMs);
+  try {
+    return await appeler(url, { ...init, signal: arret.signal });
+  } catch (e) {
+    // fetch rejette par une TypeError quand aucune réponse n'arrive (réseau coupé).
+    if (arret.signal.aborted || e instanceof TypeError) {
+      throw erreurReseau(init.method ?? 'GET', arret.signal.aborted);
+    }
+    throw e;
+  } finally {
+    clearTimeout(minuterie);
+  }
+}
+
 export function creerRequete(
   base: string,
   jeton: () => string | undefined,
@@ -61,14 +100,13 @@ export function creerRequete(
           MESSAGES[r.status] ?? 'Service indisponible. Réessayez plus tard.',
         );
       }
+      // Le délai couvre aussi la lecture du corps : une réponse qui s'arrête en chemin est abandonnée.
       return (await r.json()) as T;
     } catch (e) {
       if (e instanceof ErreurApi) throw e;
-      if (arret.signal.aborted) {
-        throw new ErreurApi(STATUT_RESEAU, methode === 'GET' ? TROP_LENT : TROP_LENT_ENVOI);
+      if (arret.signal.aborted || e instanceof TypeError) {
+        throw erreurReseau(methode, arret.signal.aborted);
       }
-      // fetch rejette par une TypeError quand aucune réponse n'arrive (réseau coupé).
-      if (e instanceof TypeError) throw new ErreurApi(STATUT_RESEAU, SANS_RESEAU);
       throw e;
     } finally {
       clearTimeout(minuterie);

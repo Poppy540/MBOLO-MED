@@ -10,6 +10,7 @@
 //   service compare ; le code est affiché une seule fois, pour être dicté pendant l'appel.
 // Rien d'autre du dossier n'est affiché. Chargé à la demande.
 import { useState } from 'preact/hooks';
+import { appelReseau } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 interface Fiche {
@@ -27,13 +28,14 @@ class ErreurAssistance extends Error {}
 async function appeler<T>(jeton: string, chemin: string, corps: unknown): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(`${CONFIG.apiInvitations}${chemin}`, {
+    r = await appelReseau(`${CONFIG.apiInvitations}${chemin}`, {
       method: 'POST',
       headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json' },
       body: JSON.stringify(corps),
     });
-  } catch {
-    throw new ErreurAssistance('Pas de réseau. Réessayez plus tard.');
+  } catch (e) {
+    // Réseau coupé ou trop lent (délai dépassé) : message simple d'`appelReseau`.
+    throw new ErreurAssistance((e as Error).message);
   }
   if (!r.ok) {
     const e = (await r.json().catch(() => ({}))) as { erreur?: string };

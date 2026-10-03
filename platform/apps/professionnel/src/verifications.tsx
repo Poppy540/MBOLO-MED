@@ -2,7 +2,7 @@
 // la personne habilitée compare les photos à l'identité déclarée, à l'œil (aucune reconnaissance
 // automatique), puis décide. Chaque ouverture est tracée dans le dossier du patient, qui peut la
 // voir. Les photos restent en mémoire le temps de l'écran, jamais sur le téléphone. Chargé à la demande.
-import { useTitreAuFocus } from '@mbolo/client-web';
+import { appelReseau, useTitreAuFocus } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
 
@@ -45,13 +45,14 @@ export async function appeler(
 ): Promise<Response> {
   let r: Response;
   try {
-    r = await fetch(`${CONFIG.apiDocuments}${chemin}`, {
+    r = await appelReseau(`${CONFIG.apiDocuments}${chemin}`, {
       ...init,
       headers: { authorization: `Bearer ${jeton}`, ...init.headers },
       cache: 'no-store',
     });
-  } catch {
-    throw new ErreurVerif('Pas de réseau. Réessayez plus tard.');
+  } catch (e) {
+    // Réseau coupé ou trop lent (délai dépassé) : message simple d'`appelReseau`.
+    throw new ErreurVerif((e as Error).message);
   }
   if (!r.ok) {
     const corps = (await r.json().catch(() => ({}))) as { erreur?: string };

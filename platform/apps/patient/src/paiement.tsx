@@ -3,7 +3,7 @@
 // qui paie (le sien ou celui d'un proche), puis valide sur son téléphone. Le numéro n'est jamais
 // gardé dans le navigateur ; le rendez-vous n'est confirmé que par le serveur.
 import { useEffect, useState } from 'preact/hooks';
-import { MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
+import { appelReseau, MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 interface Reservation {
@@ -35,7 +35,7 @@ async function appeler<T>(
 ): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(url, {
+    r = await appelReseau(url, {
       method: methode,
       headers: {
         authorization: `Bearer ${jeton}`,
@@ -43,8 +43,9 @@ async function appeler<T>(
       },
       ...(corps !== undefined ? { body: JSON.stringify(corps) } : {}),
     });
-  } catch {
-    throw new ErreurPaiement('Pas de réseau. Réessayez.');
+  } catch (e) {
+    // Réseau coupé ou trop lent (délai dépassé) : message simple d'`appelReseau`.
+    throw new ErreurPaiement((e as Error).message);
   }
   if (!r.ok) {
     // Messages des services, déjà en phrases simples ; sinon un message général.

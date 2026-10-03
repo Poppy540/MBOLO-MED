@@ -3,6 +3,7 @@
 // personne habilitée valide ou refuse, selon les règles du porteur de projet. Aucun texte libre ;
 // ni le patient ni le numéro ne sont affichés. Chargé à la demande.
 import { useEffect, useState } from 'preact/hooks';
+import { appelReseau } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 interface Remboursement {
@@ -24,7 +25,7 @@ async function appeler<T>(
 ): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(`${CONFIG.apiPaiement}${chemin}`, {
+    r = await appelReseau(`${CONFIG.apiPaiement}${chemin}`, {
       method: methode,
       headers: {
         authorization: `Bearer ${jeton}`,
@@ -32,8 +33,9 @@ async function appeler<T>(
       },
       ...(corps !== undefined ? { body: JSON.stringify(corps) } : {}),
     });
-  } catch {
-    throw new ErreurRemboursement('Pas de réseau. Réessayez plus tard.');
+  } catch (e) {
+    // Réseau coupé ou trop lent (délai dépassé) : message simple d'`appelReseau`.
+    throw new ErreurRemboursement((e as Error).message);
   }
   if (!r.ok) {
     const e = (await r.json().catch(() => ({}))) as { erreur?: string };

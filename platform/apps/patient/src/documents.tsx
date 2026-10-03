@@ -5,7 +5,7 @@
 // Un proche désigné par le patient (C-PROCHE, flag documents.proche) voit le même écran, réduit aux
 // ordonnances et à la rubrique « Ce qu'il faut faire » (filtré par le service, pas par l'écran).
 import { useEffect, useState } from 'preact/hooks';
-import { quand } from '@mbolo/client-web';
+import { appelReseau, ErreurApi, quand, STATUT_RESEAU } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 
 type Section = 'motif' | 'observations' | 'conclusion' | 'conduite-a-tenir';
@@ -62,7 +62,7 @@ export function Documents(p: { jeton: string; retour?: () => void; proche?: bool
   const [erreur, setErreur] = useState<string>();
 
   useEffect(() => {
-    fetch(`${CONFIG.apiConsultation}${p.proche ? '/proche/documents' : '/mes-documents'}`, {
+    appelReseau(`${CONFIG.apiConsultation}${p.proche ? '/proche/documents' : '/mes-documents'}`, {
       headers: { authorization: `Bearer ${p.jeton}` },
     })
       .then(async (r) => {
@@ -74,8 +74,9 @@ export function Documents(p: { jeton: string; retour?: () => void; proche?: bool
       })
       .catch((e: unknown) =>
         setErreur(
-          e instanceof TypeError
-            ? 'Pas de réseau. Vos documents s’affichent seulement avec une connexion.'
+          // Rien n'est gardé sur le téléphone : sans réseau, rien à montrer.
+          e instanceof ErreurApi && e.statut === STATUT_RESEAU
+            ? `${e.message} Vos documents s’affichent seulement avec une connexion.`
             : e instanceof Error
               ? e.message
               : 'Service indisponible. Réessayez plus tard.',

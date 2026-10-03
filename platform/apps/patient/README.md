@@ -72,7 +72,7 @@ Les erreurs sont affichées en phrases simples, sans jargon.
   - les fichiers de l'application (noms uniques par version) sont servis **depuis le téléphone** après la première visite : moins de données consommées ;
   - la page est demandée au réseau d'abord, puis servie depuis le téléphone s'il n'y en a pas ;
   - **l'API et la connexion (Keycloak) ne sont jamais mises en cache** (données personnelles, jetons).
-- **Réseau absent ou saturé** : chaque appel est abandonné après 20 s sans réponse, avec un message clair (« Pas de réseau », « Le réseau est trop lent ») au lieu d'une attente sans fin ou d'un « service indisponible » trompeur ; après un envoi resté sans réponse (réservation, annulation…), le message invite à vérifier avant de réessayer, car l'action a pu être faite. La liste des rendez-vous passe alors en vue sans réseau.
+- **Réseau absent ou saturé** : chaque appel est abandonné après 20 s sans réponse, avec un message clair (« Pas de réseau », « Le réseau est trop lent ») au lieu d'une attente sans fin ou d'un « service indisponible » trompeur ; après un envoi resté sans réponse (réservation, annulation…), le message invite à vérifier avant de réessayer, car l'action a pu être faite. La liste des rendez-vous passe alors en vue sans réseau. Même règle sur tous les écrans (paiement, partages, proches, documents, reçus) ; l'envoi d'une photo d'identité (jusqu'à 2 Mo) a 2 min.
 - **Dernière liste de rendez-vous connue** : gardée sur le téléphone réduite à l'identifiant, l'horaire et la durée (ni professionnel, ni patient, ni motif), affichée sans réseau avec sa date de mise à jour, **effacée à la déconnexion**.
 - Service worker actif seulement dans l'application construite (`pnpm build`), pas en développement.
 

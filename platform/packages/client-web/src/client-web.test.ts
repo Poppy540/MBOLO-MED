@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { creerRequete, ErreurApi, STATUT_RESEAU } from './api.js';
+import { appelReseau, creerRequete, ErreurApi, STATUT_RESEAU } from './api.js';
 import {
   defiPkce,
   demarrerConnexion,
@@ -180,6 +180,25 @@ describe('API', () => {
     expect(estHorsLigne(lecture)).toBe(true);
     const envoi = (await requete('POST', '/rendez-vous', {}).catch((x: unknown) => x)) as ErreurApi;
     expect(envoi.message).toContain('a peut-être été prise en compte');
+  });
+
+  it('appelReseau (écrans qui lisent eux-mêmes la réponse) : mêmes messages, même délai', async () => {
+    const coupe = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
+    const e = (await appelReseau('/api/x', {}, 1000, coupe).catch((x: unknown) => x)) as ErreurApi;
+    expect(e.statut).toBe(STATUT_RESEAU);
+    expect(e.message).toBe('Pas de réseau. Vérifiez votre connexion, puis réessayez.');
+    const muet = ((_u: string, init: RequestInit) =>
+      new Promise((_ok, ko) => {
+        init.signal?.addEventListener('abort', () => ko(new DOMException('abandon', 'AbortError')));
+      })) as typeof fetch;
+    const envoi = (await appelReseau('/api/x', { method: 'POST' }, 20, muet).catch(
+      (x: unknown) => x,
+    )) as ErreurApi;
+    expect(envoi.message).toContain('a peut-être été prise en compte');
+    // Une réponse du serveur, même un refus, est rendue telle quelle : l'écran lit son message.
+    const refus = (async () =>
+      new Response('{"erreur":"Refusé."}', { status: 409 })) as typeof fetch;
+    expect((await appelReseau('/api/x', {}, 1000, refus)).status).toBe(409);
   });
 
   it('un refus du serveur n’est pas une erreur de réseau', async () => {
