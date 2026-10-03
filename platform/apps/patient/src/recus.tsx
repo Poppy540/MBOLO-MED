@@ -4,8 +4,11 @@
 // imprimer ; tant que les mentions ne sont pas validées par le juriste et le comptable, il porte
 // « sans valeur fiscale ». Aucune donnée de santé : libellé neutre, pas de professionnel.
 import { useEffect, useState } from 'preact/hooks';
-import { appelReseau, ErreurApi, STATUT_RESEAU } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur, ErreurApi, STATUT_RESEAU } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
+import { frRecus } from './textes-fr-recus.js';
+
+const t = creerTraducteur(frRecus, CONFIG.langue);
 
 interface Recu {
   numero: string;
@@ -44,7 +47,7 @@ export function Recus(p: { jeton: string; retour: () => void }) {
       .then(async (r) => {
         if (!r.ok) {
           const e = (await r.json().catch(() => ({}))) as { erreur?: string };
-          throw new Error(e.erreur ?? 'Service indisponible. Réessayez plus tard.');
+          throw new Error(e.erreur ?? t('recus.indisponible'));
         }
         setRecus(((await r.json()) as { recus: Recu[] }).recus);
       })
@@ -52,10 +55,10 @@ export function Recus(p: { jeton: string; retour: () => void }) {
         setErreur(
           // Rien n'est gardé sur le téléphone : sans réseau, rien à montrer.
           e instanceof ErreurApi && e.statut === STATUT_RESEAU
-            ? `${e.message} Vos reçus s’affichent seulement avec une connexion.`
+            ? t('recus.sansConnexion', { erreur: e.message })
             : e instanceof Error
               ? e.message
-              : 'Service indisponible. Réessayez plus tard.',
+              : t('recus.indisponible'),
         ),
       );
   }, []);
@@ -63,26 +66,26 @@ export function Recus(p: { jeton: string; retour: () => void }) {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🧾</span> Mes reçus
+        <span aria-hidden="true">🧾</span> {t('recus.titre')}
       </h2>
       {erreur ? (
         <p role="alert">{erreur}</p>
       ) : recus === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('recus.chargement')}</p>
       ) : recus.length === 0 ? (
-        <p>Aucun reçu pour le moment. Vous en recevez un à chaque paiement.</p>
+        <p>{t('recus.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Reçus">
+        <ul class="liste" aria-label={t('recus.liste')}>
           {recus.map((r) => (
             <li key={r.numero} data-recu={r.numero} data-type={r.type}>
               <strong>
                 {r.type === 'avoir' ? (
                   <>
-                    <span aria-hidden="true">↩️</span> Remboursement
+                    <span aria-hidden="true">↩️</span> {t('recus.remboursement')}
                   </>
                 ) : (
                   <>
-                    <span aria-hidden="true">✅</span> Paiement reçu
+                    <span aria-hidden="true">✅</span> {t('recus.paiementRecu')}
                   </>
                 )}{' '}
                 — {montant(r.montant, r.devise)}
@@ -90,26 +93,26 @@ export function Recus(p: { jeton: string; retour: () => void }) {
               <p>
                 {r.libelle}
                 <br />
-                Le {date(r.emisLe)}
+                {t('recus.le', { date: date(r.emisLe) })}
                 {r.operateur && <> · {operateur(r.operateur)}</>}
                 <br />
                 <small>
-                  N° {r.numero}
-                  {r.recuAnnule && <> · annule le reçu n° {r.recuAnnule}</>}
+                  {t('recus.numero', { numero: r.numero })}
+                  {r.recuAnnule && <> · {t('recus.annule', { numero: r.recuAnnule })}</>}
                 </small>
               </p>
               <p>
                 <small>
                   {r.emetteur.nom}
                   {r.emetteur.mentions && <> — {r.emetteur.mentions}</>}
-                  {!r.valeurFiscale && <> — Reçu sans valeur fiscale.</>}
+                  {!r.valeurFiscale && <> — {t('recus.sansValeurFiscale')}</>}
                 </small>
               </p>
             </li>
           ))}
         </ul>
       )}
-      <button onClick={p.retour}>Retour</button>
+      <button onClick={p.retour}>{t('recus.retour')}</button>
     </section>
   );
 }
