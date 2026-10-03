@@ -41,3 +41,4 @@ export type { OptionsJeton, VerifierAppelant, VerifierJeton } from './jeton.js';
 export { creerServeur } from './serveur.js';
 export type { OptionsServeur } from './serveur.js';
 export { ErreurAdresseNonChiffree, entetesSecurite, exigerHttps } from './securite-http.js';
+export { cleLimite, limiterAppels, type OptionsLimites } from './limites-appels.js';

@@ -3,7 +3,6 @@
 // Inscription (ADR-0014) : contrôle et utilisation d'un code par l'extension Keycloak seulement.
 // Proches (ADR-0019) : le patient invite, liste et révoque ses propres invitations ; à sa demande,
 // l'équipe d'assistance (rôle assistance-patient) retire tous ses proches.
-import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   ErreurDepot,
@@ -12,6 +11,7 @@ import {
   type VerifierJeton,
   entetesSecurite,
   reponseNiveauInsuffisant,
+  limiterAppels,
 } from '@mbolo/identite';
 import {
   LIENS_PROCHE,
@@ -59,7 +59,7 @@ export async function creerServeur(o: {
   // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
   entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
-  await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
+  await limiterAppels(app, { parMinute: o.limiteParMinute ?? 300 });
 
   const gestionnaire = async (req: FastifyRequest): Promise<Utilisateur> => {
     const entete = req.headers.authorization;

@@ -4,7 +4,6 @@
 // - Patient (jeton Keycloak, rôle patient, jamais un agent IA) : voir son paiement, lancer la collecte.
 // - Prestataire : notifications signées, relues chez lui avant tout changement.
 // Le journal ne contient jamais le numéro du payeur.
-import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Utilisateur, VerifierJeton } from '@mbolo/identite';
 import {
@@ -12,6 +11,7 @@ import {
   entetesSecurite,
   exigerNiveau,
   reponseNiveauInsuffisant,
+  limiterAppels,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurFournisseur, type FournisseurSimule } from './fournisseur.js';
@@ -76,7 +76,7 @@ export async function creerServeur(o: {
   entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;
   // Toutes les routes sont limitées ; enregistré avant elles.
-  await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });
+  await limiterAppels(app, { parMinute: limites.parMinute });
 
   const jeton = (req: FastifyRequest): string => {
     const entete = req.headers.authorization;

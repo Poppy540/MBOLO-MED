@@ -1,6 +1,5 @@
 // API du service de notifications : réservée aux services autorisés (jeton de service).
-import rateLimit from '@fastify/rate-limit';
-import { entetesSecurite } from '@mbolo/identite';
+import { entetesSecurite, limiterAppels } from '@mbolo/identite';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import {
@@ -72,7 +71,7 @@ export async function creerServeur(o: {
   // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
   entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
-  await app.register(rateLimit, { max: o.limiteParMinute ?? 600, timeWindow: '1 minute' });
+  await limiterAppels(app, { parMinute: o.limiteParMinute ?? 600 });
 
   const authentifier = async (req: FastifyRequest): Promise<string> => {
     const entete = req.headers.authorization;

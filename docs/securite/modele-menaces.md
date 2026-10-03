@@ -41,7 +41,7 @@
 | T      | Suppression ou modification de traces et de consentements | Suppression jamais relayée ; `AuditEvent` et `Provenance` non modifiables                                                          | tests de la passerelle + e2e                                 |
 | E      | Fonction activée trop tôt                                 | Feature flags désactivés par défaut, refus si Unleash est injoignable, aucun flag sur la sécurité                                  | tests `@mbolo/drapeaux` + e2e                                |
 | I      | Fuite de secrets                                          | Aucun secret dans le dépôt (gitleaks, modèles `CHANGEME`, secrets injectés à l'import) ; secrets de CI générés et masqués          | CI « Sécurité »                                              |
-| D      | Saturation d'un service ou du dossier                     | Limites d'appels par adresse sur tous les services (`@fastify/rate-limit`), limite plus stricte sur les envois de photos           | tests unitaires de chaque service                            |
+| D      | Saturation d'un service ou du dossier                     | Limites d'appels par session sur tous les services (`limiterAppels`), plafond par adresse plus large, limite plus stricte sur les photos | tests unitaires de chaque service                            |
 
 ## Vérification d'identité par photos (ADR-0015)
 

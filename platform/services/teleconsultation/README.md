@@ -68,12 +68,12 @@ Quand le flag **`paiement.mobile-money`** est actif pour le patient :
 
 ## Limites d'appels
 
-Toutes les routes sont limitées par adresse (`@fastify/rate-limit`, module officiel de Fastify), pour protéger le service et le dossier médical contre la saturation.
+Toutes les routes sont limitées (`limiterAppels` de `@mbolo/identite`, sur `@fastify/rate-limit`), pour protéger le service et le dossier médical contre la saturation. Les limites se comptent **par session** (empreinte du jeton présenté) et par adresse seulement sans jeton : derrière le NAT d'un opérateur mobile, des patients qui partagent une adresse ne se bloquent pas entre eux (revue ASVS n°3, C9). Un **plafond par adresse**, 20 fois la limite générale, arrête une rafale de jetons inventés.
 - **Limite générale** : `TELECONSULTATION_LIMITE_PAR_MINUTE`, par défaut 300 appels par minute.
 - **Route `/identite`**, plus stricte car elle interroge le dossier à chaque appel : `TELECONSULTATION_LIMITE_IDENTITE_PAR_MINUTE`, par défaut 30.
 - **Au-delà** : réponse 429, « Trop de requêtes. Réessayez dans une minute. »
 - **Derrière un proxy de confiance** : `TELECONSULTATION_TRUST_PROXY=true`, pour limiter selon l'adresse réelle du client.
-- **À faire** : étendre ces limites aux autres services.
+- Même règle dans les services `identite`, `paiement`, `notifications`, `consultation`, `invitations` et `documents`.
 
 ## Configuration
 
