@@ -11,6 +11,16 @@ export interface EtatVisio {
   audioSeulement: boolean;
   /** Le repli audio a été décidé automatiquement (réseau faible). */
   repliAutomatique: boolean;
+  /** Consultation commencée en audio seulement pour économiser les données. */
+  economieDonnees: boolean;
+}
+
+export interface OptionsVisio {
+  /**
+   * Commencer en audio seulement (téléphone en économie de données, réseau 2G) : ni caméra ni
+   * vidéo reçue tant que la personne ne réactive pas la vidéo.
+   */
+  audioSeulement?: boolean;
 }
 
 export interface Visio {
@@ -22,6 +32,7 @@ export async function rejoindre(
   acces: AccesSalle,
   conteneur: HTMLElement,
   surEtat: (e: EtatVisio) => void,
+  options: OptionsVisio = {},
 ): Promise<Visio> {
   const lk = await import('livekit-client');
   const room = new lk.Room({
@@ -35,8 +46,9 @@ export async function rejoindre(
   const etat: EtatVisio = {
     connecte: false,
     autrePresent: false,
-    audioSeulement: false,
+    audioSeulement: options.audioSeulement === true,
     repliAutomatique: false,
+    economieDonnees: options.audioSeulement === true,
   };
   const publier = () => surEtat({ ...etat });
   const decision = new DecisionRepli();
@@ -44,6 +56,7 @@ export async function rejoindre(
 
   const appliquerAudioSeulement = async (actif: boolean) => {
     etat.audioSeulement = actif;
+    if (!actif) etat.economieDonnees = false;
     await room.localParticipant.setCameraEnabled(!actif).catch(() => undefined);
     for (const p of room.remoteParticipants.values()) {
       for (const pub of p.videoTrackPublications.values()) {
@@ -63,7 +76,12 @@ export async function rejoindre(
   };
 
   room
-    .on(lk.RoomEvent.TrackSubscribed, (piste) => {
+    .on(lk.RoomEvent.TrackSubscribed, (piste, publication) => {
+      // Vidéo arrivée alors que l'audio seulement est choisi (abonnement lancé à la connexion).
+      if (etat.audioSeulement && piste.kind === lk.Track.Kind.Video) {
+        publication.setSubscribed(false);
+        return;
+      }
       const el = piste.attach();
       el.dataset['piste'] = piste.kind;
       conteneur.appendChild(el);
@@ -98,14 +116,24 @@ export async function rejoindre(
 
   // Micro et caméra d'abord : l'autorisation est demandée avant la connexion (message clair en cas
   // de refus), et le navigateur peut alors proposer ses vraies adresses réseau pour l'appel.
-  const pistes = await lk
-    .createLocalTracks({
-      audio: true,
-      video: { resolution: lk.VideoPresets.h216.resolution },
-    })
-    .catch(() => lk.createLocalTracks({ audio: true }));
+  // En audio seulement dès le départ, la caméra n'est ni demandée ni allumée.
+  const pistes = await (etat.audioSeulement
+    ? lk.createLocalTracks({ audio: true })
+    : lk
+        .createLocalTracks({
+          audio: true,
+          video: { resolution: lk.VideoPresets.h216.resolution },
+        })
+        .catch(() => lk.createLocalTracks({ audio: true })));
   await room.connect(acces.url, acces.jeton);
   for (const piste of pistes) await room.localParticipant.publishTrack(piste);
+  // Vidéos déjà présentes à l'arrivée : le serveur cesse de les envoyer (les suivantes sont
+  // refusées à leur publication, voir TrackPublished).
+  if (etat.audioSeulement) {
+    for (const p of room.remoteParticipants.values()) {
+      for (const pub of p.videoTrackPublications.values()) pub.setSubscribed(false);
+    }
+  }
   etat.connecte = true;
   etat.autrePresent = room.remoteParticipants.size > 0;
   publier();

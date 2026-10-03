@@ -17,7 +17,7 @@ import {
   rendezVousRetenus,
   retenirRendezVous,
 } from './hors-ligne.js';
-import { DecisionRepli } from './repli.js';
+import { DecisionRepli, economiserDonnees } from './repli.js';
 
 // Données FICTIVES.
 const P = {
@@ -297,5 +297,20 @@ describe('hors ligne', () => {
     expect(lire('../../../apps/professionnel/public/sw.js')).toBe(source);
     expect(source).toContain("url.pathname.startsWith('/api/')) return;");
     expect(source).toContain('url.origin !== self.location.origin) return;');
+  });
+});
+
+describe('économie de données (consultation en audio seulement au départ)', () => {
+  it('commence en audio seulement si le téléphone économise les données ou si le réseau est en 2G', () => {
+    expect(economiserDonnees({ saveData: true, effectiveType: '4g' })).toBe(true);
+    expect(economiserDonnees({ effectiveType: '2g' })).toBe(true);
+    expect(economiserDonnees({ effectiveType: 'slow-2g' })).toBe(true);
+  });
+
+  it('commence en vidéo sinon, et quand le navigateur ne dit rien du réseau', () => {
+    expect(economiserDonnees({ saveData: false, effectiveType: '3g' })).toBe(false);
+    expect(economiserDonnees({ effectiveType: '4g' })).toBe(false);
+    expect(economiserDonnees({})).toBe(false);
+    expect(economiserDonnees(undefined)).toBe(false);
   });
 });

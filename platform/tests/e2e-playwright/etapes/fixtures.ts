@@ -46,6 +46,8 @@ export interface Monde {
   ouverture?: { ms: number; ko: number };
   /** Moment d'une action dont on mesure l'attente (réseau lent). */
   attenteDebut?: number;
+  /** Le téléphone du patient est en mode « économie de données » (ouverture de l'application). */
+  economieDonnees?: boolean;
   /** Navigateurs ouverts pour la visioconsultation, par compte (fermés en fin de scénario). */
   visio: Map<string, { contexte: BrowserContext; page: Page }>;
 }

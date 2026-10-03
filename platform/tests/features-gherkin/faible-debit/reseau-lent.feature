@@ -1,6 +1,7 @@
 # language: fr
 # Données FICTIVES uniquement. Réseau simulé par Chrome (profil « 3G lente » : 2 s de latence par
 # requête, 50 000 octets par seconde), pas un vrai réseau mobile : les tests terrain le complètent.
+# Économie de données : Chrome sur Android l'indique par `navigator.connection.saveData`, simulé ici.
 # Page de connexion : Keycloak avec le thème `mbolo` (feuille légère, sans PatternFly).
 # Consultation : octets envoyés et reçus par l'application patient (statistiques WebRTC), médecin
 # dans le vrai espace professionnel ; caméra simulée par Chrome (image animée, cas défavorable).
@@ -58,3 +59,19 @@ Fonctionnalité: Les applications restent légères sur un réseau mobile lent
     Quand le patient passe en audio seulement
     Alors l’application ne reçoit plus que le son
     Et en "audio seulement", l’application patient consomme moins de 350 Ko par minute
+
+  Scénario: En mode économie de données, la consultation commence en audio seulement
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Et que le téléphone du patient est en mode économie de données
+    Quand "patient-fictif-01" ouvre l’application patient pour "prac-fictif-001"
+    Et que le patient rejoint ce rendez-vous dans l’application
+    Et que "medecin-fictif-01" ouvre l’espace professionnel
+    Et que le professionnel rejoint ce rendez-vous dans l’espace professionnel
+    Alors l’espace professionnel entend le patient, sans sa vidéo
+    Et l’application commence en audio seulement pour économiser les données
+    Et en "audio seulement", l’application patient consomme moins de 350 Ko par minute
+    Quand le patient réactive la vidéo
+    Alors l’application reçoit la vidéo du professionnel
+    Et l’espace professionnel reçoit la vidéo du patient

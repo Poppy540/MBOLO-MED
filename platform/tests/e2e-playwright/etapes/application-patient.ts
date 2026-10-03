@@ -43,6 +43,15 @@ async function ouvrir(monde: Monde, browser: Browser, identifiant: string, adres
   // Le patient autorise le micro et la caméra (comme à la demande du navigateur).
   const contexte = await browser.newContext({ permissions: ['microphone', 'camera'] });
   await suivreConnexionsWebRtc(contexte);
+  if (monde.economieDonnees) {
+    // Ce que Chrome sur Android indique quand la personne a activé l'économie de données.
+    await contexte.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'connection', {
+        configurable: true,
+        get: () => ({ saveData: true, effectiveType: '4g' }),
+      });
+    });
+  }
   const p = await contexte.newPage();
   monde.visio.set(APP, { contexte, page: p });
   monde.patientApplication = identifiant;
@@ -184,6 +193,34 @@ Then('l’application indique que le professionnel de santé est connecté', asy
   );
   // La vidéo du professionnel est affichée.
   await expect(page(monde).locator('[data-piste="video"]')).toHaveCount(1, { timeout: 20_000 });
+});
+
+Given('le téléphone du patient est en mode économie de données', ({ monde }) => {
+  monde.economieDonnees = true;
+});
+
+Then('l’application commence en audio seulement pour économiser les données', async ({ monde }) => {
+  const p = page(monde);
+  await expect(p.locator('[data-etat-visio]')).toHaveText('Professionnel de santé connecté.', {
+    timeout: 20_000,
+  });
+  await expect(p.locator('[data-audio-seulement]')).toHaveText(
+    'Économie de données : audio seulement. Vous pouvez réactiver la vidéo.',
+  );
+  await expect(p.locator('[data-piste="audio"]')).toHaveCount(1, { timeout: 20_000 });
+  await expect(p.locator('[data-piste="video"]')).toHaveCount(0);
+});
+
+When('le patient réactive la vidéo', async ({ monde }) => {
+  await page(monde)
+    .getByRole('button', { name: /Réactiver la vidéo/ })
+    .click();
+});
+
+Then('l’application reçoit la vidéo du professionnel', async ({ monde }) => {
+  const p = page(monde);
+  await expect(p.locator('[data-piste="video"]')).toHaveCount(1, { timeout: 20_000 });
+  await expect(p.locator('[data-audio-seulement]')).toHaveCount(0);
 });
 
 When('le patient passe en audio seulement', async ({ monde }) => {
