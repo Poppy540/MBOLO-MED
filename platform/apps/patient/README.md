@@ -97,7 +97,7 @@ Les API sont servies sous `/api/<service>` (même origine). L'application constr
 
 ## Textes et langues (ADR-0025)
 
-Les textes affichés sont rangés dans un catalogue par langue, avec la fonction `t(cle, valeurs)` de `@mbolo/client-web` (sans bibliothèque, pluriels par `Intl.PluralRules`). `src/textes-fr.ts` est la référence : ses clés sont typées, une clé inconnue ne compile pas, et un test vérifie que chaque clé est encore utilisée par un écran. Pour l'instant, le catalogue couvre les écrans de `app.tsx` ; les écrans chargés à la demande (paiement, partages, proches, documents, reçus, vérification) suivront par lots. Aucune autre langue n'est encore proposée : chaque langue ajoutée doit être traduite par des humains et validée.
+Les textes affichés sont rangés dans un catalogue par langue, avec la fonction `t(cle, valeurs)` de `@mbolo/client-web` (sans bibliothèque, pluriels par `Intl.PluralRules`). `src/textes-fr.ts` est la référence : ses clés sont typées, une clé inconnue ne compile pas, et un test vérifie que chaque clé est encore utilisée par un écran. Chaque écran chargé à la demande a son propre catalogue (`textes-fr-<écran>.ts`), chargé avec lui : l'ouverture ne s'alourdit pas. Sont déjà passés au catalogue : les écrans de `app.tsx`, « Mes reçus » et « Mes comptes-rendus et ordonnances » (les textes écrits par le médecin restent affichés tels quels) ; suivront le paiement, les partages, les proches et la vérification d'identité. Les tests vérifient que chaque clé est utilisée et qu'une clé n'appartient qu'à un seul catalogue. Aucune autre langue n'est encore proposée : chaque langue ajoutée doit être traduite par des humains et validée.
 
 ## Budget de poids
 
