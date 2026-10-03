@@ -35,7 +35,7 @@
 **Critères de passage vers la vague 2 (exemples, seuils à fixer) :**
 - [ ] Zéro incident grave de sécurité patient non maîtrisé ; tout signal d'urgence orienté vers les secours en moins de X secondes dans 100 % des cas audités.
 - [ ] Taux d'erreur de triage mesuré par l'Agent 4 sous le seuil fixé par le comité médical.
-- [ ] Taux de réussite des consultations (connexion établie, consultation menée à terme) ≥ seuil, y compris en 3G.
+- [ ] Taux de réussite des consultations (connexion établie, consultation menée à terme) ≥ seuil, y compris en 3G (mesuré par le [protocole de test terrain](test-terrain-faible-debit.md)).
 - [ ] Satisfaction patients et professionnels ≥ seuil.
 - [ ] Coûts réels dans la tolérance du business plan.
 - [ ] Skills de la vague 2 en version complète avec 3 cas de test au vert.
