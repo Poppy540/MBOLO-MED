@@ -1,6 +1,5 @@
 // API HTTP du service identité. Toute requête (hors /sante) exige un jeton Keycloak valide.
 // Chaque décision d'accès est journalisée (journal sécurisé : aucune donnée de santé en clair).
-import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   CATEGORIES_CONSENTEMENT,
@@ -24,6 +23,7 @@ import type { JournalAcces } from './journal-acces.js';
 import { ErreurNiveauInsuffisant, reponseNiveauInsuffisant } from './niveau.js';
 import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
+import { limiterAppels } from './limites-appels.js';
 import { entetesSecurite } from './securite-http.js';
 
 export interface OptionsServeur {
@@ -61,7 +61,7 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
   // Revue ASVS n°1 (C1) : ni cache ni devinette de type sur les réponses.
   entetesSecurite(app);
   // Toutes les routes sont limitées ; enregistré avant elles.
-  await app.register(rateLimit, { max: o.limiteParMinute ?? 300, timeWindow: '1 minute' });
+  await limiterAppels(app, { parMinute: o.limiteParMinute ?? 300 });
 
   const authentifier = async (req: FastifyRequest): Promise<Utilisateur> => {
     const entete = req.headers.authorization;

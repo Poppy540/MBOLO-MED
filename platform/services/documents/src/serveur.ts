@@ -1,7 +1,6 @@
 // API du service documents (ADR-0015). Toute requête (hors /sante) exige un jeton Keycloak valide.
 // Les photos arrivent en octets bruts (image/jpeg ou image/png, 2 Mo au plus) ; leur format est
 // vérifié sur le contenu. Le journal ne contient jamais d'image, de nom ni de numéro.
-import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   ErreurDepot,
@@ -9,6 +8,7 @@ import {
   type VerifierAppelant,
   type VerifierJeton,
   entetesSecurite,
+  limiterAppels,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { MOTIFS_REFUS, RESULTATS, RESULTATS_PERTE, TYPES_DOCUMENT } from './depot.js';
@@ -65,7 +65,7 @@ export async function creerServeur(o: {
   entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;
   // Toutes les routes sont limitées ; enregistré avant elles.
-  await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });
+  await limiterAppels(app, { parMinute: limites.parMinute });
   // Photos en octets bruts ; tout autre type de contenu est refusé (415) par Fastify.
   app.addContentTypeParser(
     ['image/jpeg', 'image/png'],

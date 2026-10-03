@@ -186,5 +186,6 @@ Le royaume, le profil utilisateur et l'API sont vérifiés avec un vrai Keycloak
 
 - Toutes les réponses portent `Cache-Control: no-store` et `X-Content-Type-Options: nosniff` (`entetesSecurite`).
 - En production, les adresses des autres services, de Keycloak et du dossier doivent être en `https://` : sinon le service ne démarre pas (`exigerHttps`).
-- Derrière le proxy de confiance de l'hébergeur : `IDENTITE_TRUST_PROXY=true`, pour que la limite d'appels vaille par adresse réelle (désactivé par défaut).
+- Limites d'appels (`limiterAppels`, exporté pour tous les services, C9) : comptées par session (empreinte du jeton présenté, jamais le jeton ni son `sub` non vérifié), par adresse sans jeton, avec un plafond par adresse 20 fois plus large ; les patients derrière le NAT d'un opérateur mobile ne se bloquent pas entre eux.
+- Derrière le proxy de confiance de l'hébergeur : `IDENTITE_TRUST_PROXY=true`, pour que le plafond par adresse vaille par adresse réelle (désactivé par défaut).
 - Royaume Keycloak (C5) : les jetons de rafraîchissement tournent et ne servent qu'une fois (`revokeRefreshToken`, `refreshTokenMaxReuse: 0`). TLS : `MBOLO_KEYCLOAK_SSL_REQUIRED` (lu à l'import du royaume), `external` par défaut (local et CI en HTTP), **`all` en production**. Ce n'est pas un secret.

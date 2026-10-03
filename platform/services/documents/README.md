@@ -27,7 +27,7 @@ La charte est acceptée **par le patient lui-même** auprès du service `identit
 
 Autres garanties :
 - **Traçabilité** : chaque dépôt et chaque refus sont tracés dans le journal sécurisé (compte, dossier, type, taille, motif), sans image ni nom.
-- **Limites** : 120 appels par minute et par adresse, dont 10 envois de photos.
+- **Limites** : 120 appels par minute et par session (jeton présenté), dont 10 envois de photos ; plafond par adresse 20 fois plus large (C9).
 - **Compte de service** `mbolo-documents-service` : `system/Patient.ru system/Consent.s system/AuditEvent.c` ; seuls le nom, les prénoms, la naissance, le statut et les numéros sortent de la passerelle, et seuls le statut et les numéros peuvent être modifiés (`mbolo_elements_modifiables`).
 - **Suppression à échéance** : lancée au démarrage puis toutes les heures.
 - **Prototype** : le service refuse de démarrer en production.

@@ -1,11 +1,11 @@
 // API du service de téléconsultation. Toute requête (hors /sante) exige un jeton Keycloak valide.
-import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   ErreurDepot,
   type VerifierJeton,
   type Utilisateur,
   entetesSecurite,
+  limiterAppels,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
 import { ErreurCreneau } from './creneaux.js';
@@ -47,7 +47,7 @@ export async function creerServeur(o: {
   entetesSecurite(app);
   const limites = o.limites ?? LIMITES_PAR_DEFAUT;
   // Toutes les routes sont limitées ; enregistré avant elles.
-  await app.register(rateLimit, { max: limites.parMinute, timeWindow: '1 minute' });
+  await limiterAppels(app, { parMinute: limites.parMinute });
 
   const authentifier = async (req: FastifyRequest): Promise<Utilisateur> => {
     const entete = req.headers.authorization;
