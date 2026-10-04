@@ -64,6 +64,7 @@ Quand le flag **`paiement.mobile-money`** est actif pour le patient :
 - **Réservation** : `POST /rendez-vous` est refusée (403) tant que l'identité du patient n'est pas `verifiee`. Le statut est lu dans le dossier, sans cache.
 - **Minimisation** : le compte de service ne reçoit, du `Patient`, que l'extension de statut (`system/Patient.r` limité à `Patient.extension`). Jamais le nom, la date de naissance, le téléphone ni le numéro.
 - **Consultation par l'application** : `GET /identite` renvoie `{ statut }` (`a-verifier`, `verifiee`, `refusee` ou `inconnu`), pour le patient connecté seulement.
+- **Langue préférée** (ADR-0025) : `PUT /langue` `{ langue }` (code BCP 47 simple, au plus 35 caractères), pour le patient connecté seulement, réponse 204. Le service écrit `Patient.communication` (langue préférée) par la passerelle, seul élément de la fiche qu'il peut modifier (`mbolo_elements_modifiables`) : un envoi qui touche un autre élément est refusé. Le service des notifications s'en sert pour écrire les SMS du patient dans sa langue. Même limite d'appels que `/identite`.
 - **Sans dossier FHIR** (mode mémoire), aucune identité n'est connue : aucune réservation.
 
 ## Limites d'appels

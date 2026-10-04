@@ -22,6 +22,7 @@ import {
 import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
 import { filtrer, specialites } from './annuaire.js';
 import { CONFIG } from './config.js';
+import { langueAEnvoyer, marquerEnvoyee } from './langues.js';
 import { choisirLangue, LANGUES, langueChoisie, t, type CleTexte } from './textes.js';
 
 const connexion = () => ({
@@ -154,6 +155,37 @@ type Ecran =
   | { nom: 'perte' }
   | { nom: 'recus' };
 
+/**
+ * Langue choisie par le patient, enregistrée dans son dossier pour ses SMS (ADR-0025). Une seule
+ * petite requête par session, sans attendre la réponse : un échec ne gêne pas l'application et la
+ * langue sera renvoyée à la prochaine ouverture.
+ */
+function envoyerLangue(): void {
+  const code = langueAEnvoyer(
+    stockageSur(() => localStorage),
+    stockageSur(() => sessionStorage),
+    LANGUES,
+  );
+  if (!code) return;
+  api
+    .choisirLangue(code)
+    .then(() =>
+      marquerEnvoyee(
+        stockageSur(() => sessionStorage),
+        code,
+      ),
+    )
+    .catch(() => undefined);
+}
+
+const stockageSur = (lire: () => Storage): Storage | undefined => {
+  try {
+    return lire();
+  } catch {
+    return undefined;
+  }
+};
+
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
   // Changer de langue redessine toute l'application avec les textes de la nouvelle langue.
@@ -207,6 +239,7 @@ export function App() {
             setEcran({ nom: 'dossier-a-completer' });
             return;
           }
+          envoyerLangue();
           return api
             .identite()
             .then((statut) =>

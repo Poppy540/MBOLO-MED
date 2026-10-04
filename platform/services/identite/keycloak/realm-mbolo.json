@@ -456,7 +456,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.r",
+            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",
@@ -470,7 +470,21 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements",
-            "claim.value": "Practitioner.name Practitioner.qualification Patient.extension",
+            "claim.value": "Practitioner.name Practitioner.qualification Patient.extension Patient.communication",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "elements-modifiables",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements_modifiables",
+            "claim.value": "Patient.communication",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

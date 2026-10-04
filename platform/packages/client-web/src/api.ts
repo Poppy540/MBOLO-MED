@@ -17,7 +17,11 @@ const MESSAGES: Record<number, string> = {
   409: 'Ce n’est plus possible. Vérifiez et réessayez.',
 };
 
-export type Requete = <T>(methode: 'GET' | 'POST', chemin: string, corps?: unknown) => Promise<T>;
+export type Requete = <T>(
+  methode: 'GET' | 'POST' | 'PUT',
+  chemin: string,
+  corps?: unknown,
+) => Promise<T>;
 
 /**
  * Statut des erreurs de réseau (aucune réponse du serveur) : réseau absent ou trop lent. Le
@@ -80,7 +84,11 @@ export function creerRequete(
   appeler: typeof fetch = fetch,
   delaiMs: number = DELAI_REQUETE_MS,
 ): Requete {
-  return async <T>(methode: 'GET' | 'POST', chemin: string, corps?: unknown): Promise<T> => {
+  return async <T>(
+    methode: 'GET' | 'POST' | 'PUT',
+    chemin: string,
+    corps?: unknown,
+  ): Promise<T> => {
     const j = jeton();
     const arret = new AbortController();
     const minuterie = setTimeout(() => arret.abort(), delaiMs);
@@ -100,6 +108,8 @@ export function creerRequete(
           MESSAGES[r.status] ?? 'Service indisponible. Réessayez plus tard.',
         );
       }
+      // Réponse sans corps (enregistrement fait, rien à rendre).
+      if (r.status === 204) return undefined as T;
       // Le délai couvre aussi la lecture du corps : une réponse qui s'arrête en chemin est abandonnée.
       return (await r.json()) as T;
     } catch (e) {

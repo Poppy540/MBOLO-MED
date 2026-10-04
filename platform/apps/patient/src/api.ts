@@ -35,6 +35,8 @@ export function creerApi(base: string, jeton: () => string | undefined, appeler?
           '/identite',
         )
       ).statut,
+    /** Langue préférée enregistrée dans le dossier (ADR-0025), pour les SMS. */
+    choisirLangue: (langue: string) => requete<undefined>('PUT', '/langue', { langue }),
     mesRendezVous: async () =>
       (await requete<{ rendezVous: RendezVous[] }>('GET', '/rendez-vous')).rendezVous,
     praticiens: async () =>

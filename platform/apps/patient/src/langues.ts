@@ -12,6 +12,7 @@ export interface Langue {
 
 export const LANGUE_DE_REFERENCE: Langue = { code: 'fr', nom: 'Français' };
 const CLE_STOCKAGE = 'mbolo.langue';
+const CLE_ENVOYEE = 'mbolo.langue.envoyee';
 
 /**
  * « code:Nom » séparés par des virgules → langues proposées, dans l'ordre donné, limitées à celles
@@ -66,5 +67,33 @@ export function garderLangue(stockage: Storage | undefined, code: string): void 
     stockage?.setItem(CLE_STOCKAGE, code);
   } catch {
     // Sans stockage, le choix vaut pour cette visite seulement.
+  }
+}
+
+/**
+ * Langue à enregistrer dans le dossier du patient connecté (ADR-0025), pour que ses SMS soient
+ * écrits dans cette langue : seulement une langue choisie par le patient (gardée sur le téléphone)
+ * et encore proposée, et une seule fois par session (`session` : sessionStorage). Sans choix, rien
+ * n'est envoyé et les SMS suivent la langue du pays.
+ */
+export function langueAEnvoyer(
+  local: Storage | undefined,
+  session: Storage | undefined,
+  langues: readonly Langue[],
+): string | undefined {
+  try {
+    const choisie = local?.getItem(CLE_STOCKAGE);
+    if (!choisie || !langues.some((l) => l.code === choisie)) return undefined;
+    return session?.getItem(CLE_ENVOYEE) === choisie ? undefined : choisie;
+  } catch {
+    return undefined;
+  }
+}
+
+export function marquerEnvoyee(session: Storage | undefined, code: string): void {
+  try {
+    session?.setItem(CLE_ENVOYEE, code);
+  } catch {
+    // Sans stockage de session, la langue sera renvoyée à la prochaine ouverture.
   }
 }

@@ -152,6 +152,19 @@ describe('API', () => {
     expect(entetes[0]).toMatchObject({ authorization: 'Bearer jeton-fictif' });
   });
 
+  it('envoie un PUT et accepte une réponse sans corps (204)', async () => {
+    const appels: RequestInit[] = [];
+    const appeler = (async (_url: string, init: RequestInit) => {
+      appels.push(init);
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    const r = await creerRequete('/api', () => 'jeton-fictif', appeler)('PUT', '/langue', {
+      langue: 'fr',
+    });
+    expect(r).toBeUndefined();
+    expect(appels[0]).toMatchObject({ method: 'PUT', body: '{"langue":"fr"}' });
+  });
+
   it('dit « pas de réseau » quand aucune réponse n’arrive, au lieu de « service indisponible »', async () => {
     const appeler = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
     const e = await creerRequete(

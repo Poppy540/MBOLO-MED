@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { garderLangue, langueGardee, languesProposees } from './langues.js';
+import {
+  garderLangue,
+  langueAEnvoyer,
+  langueGardee,
+  languesProposees,
+  marquerEnvoyee,
+} from './langues.js';
 import { fictif } from './textes-fictif.js';
 import { fr } from './textes-fr.js';
 
@@ -61,6 +67,33 @@ describe('langue gardée sur le téléphone', () => {
     } as unknown as Storage;
     expect(langueGardee(refuse, langues)).toBe('fr');
     expect(() => garderLangue(refuse, 'fr')).not.toThrow();
+  });
+});
+
+describe('langue enregistrée dans le dossier (ADR-0025)', () => {
+  const langues = languesProposees('fr:Français,fr-x-fictif:[FICTIF] Démo', CATALOGUES);
+
+  it('envoie la langue choisie par le patient une seule fois par session', () => {
+    const local = stockage({ 'mbolo.langue': 'fr-x-fictif' });
+    const session = stockage();
+    expect(langueAEnvoyer(local, session, langues)).toBe('fr-x-fictif');
+    marquerEnvoyee(session, 'fr-x-fictif');
+    expect(langueAEnvoyer(local, session, langues)).toBeUndefined();
+    // Nouveau choix dans la même session : envoyé à nouveau.
+    garderLangue(local, 'fr');
+    expect(langueAEnvoyer(local, session, langues)).toBe('fr');
+  });
+
+  it('n’envoie rien sans choix du patient, pour une langue retirée, ou sans stockage', () => {
+    expect(langueAEnvoyer(stockage(), stockage(), langues)).toBeUndefined();
+    expect(langueAEnvoyer(stockage({ 'mbolo.langue': 'en' }), stockage(), langues)).toBeUndefined();
+    expect(langueAEnvoyer(undefined, undefined, langues)).toBeUndefined();
+    const refuse = {
+      getItem: () => {
+        throw new Error('stockage refusé');
+      },
+    } as unknown as Storage;
+    expect(langueAEnvoyer(refuse, refuse, langues)).toBeUndefined();
   });
 });
 

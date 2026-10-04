@@ -60,3 +60,9 @@ export {
   telephoneChange,
   verifierTelephones,
 } from './telephone.js';
+export {
+  SYSTEME_LANGUE,
+  codeLangueValide,
+  communicationPreferee,
+  languePreferee,
+} from './langue.js';

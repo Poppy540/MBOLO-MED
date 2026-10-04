@@ -8,8 +8,16 @@ import { creerServeur } from './serveur.js';
 
 // Jetons factices : la vérification réelle (signature Keycloak) est testée dans @mbolo/identite.
 const PATIENT: Utilisateur = { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001' };
+const MEDECIN: Utilisateur = {
+  sujet: 'u-m1',
+  roles: ['professionnel'],
+  practitionerId: 'prac-fictif-001',
+};
 
-async function serveur(limites = { parMinute: 50, identiteParMinute: 3 }) {
+async function serveur(
+  limites = { parMinute: 50, identiteParMinute: 3 },
+  identites = new IdentitesMemoire(new Map([['pat-fictif-001', 'a-verifier']])),
+) {
   const service = new ServiceTeleconsultation(
     new DepotRendezVousMemoire(),
     new DepotCreneauxMemoire(),
@@ -18,10 +26,11 @@ async function serveur(limites = { parMinute: 50, identiteParMinute: 3 }) {
     () => new Date('2026-09-27T09:00:00Z'),
     undefined,
     undefined,
-    new IdentitesMemoire(new Map([['pat-fictif-001', 'a-verifier']])),
+    identites,
   );
   return creerServeur({
     verifierJeton: async (j) => {
+      if (j === 'medecin') return MEDECIN;
       if (j !== 'patient') throw new Error('jeton invalide');
       return PATIENT;
     },
@@ -76,5 +85,33 @@ describe('API de téléconsultation : champs inconnus (revue ASVS n°1, C4)', ()
     });
     expect(r.statusCode).toBe(400);
     expect(r.json()).toEqual({ erreur: 'Requête invalide.' });
+  });
+});
+
+describe('langue préférée du patient (ADR-0025)', () => {
+  const choisir = (app: Awaited<ReturnType<typeof serveur>>, jeton: string, corps: unknown) =>
+    app.inject({
+      method: 'PUT',
+      url: '/langue',
+      headers: { authorization: `Bearer ${jeton}` },
+      payload: corps as object,
+    });
+
+  it('le patient enregistre sa langue dans son propre dossier', async () => {
+    const identites = new IdentitesMemoire();
+    const app = await serveur(undefined, identites);
+    expect((await choisir(app, 'patient', { langue: 'fr-x-fictif' })).statusCode).toBe(204);
+    expect(identites.langues.get('pat-fictif-001')).toBe('fr-x-fictif');
+  });
+
+  it('refuse un code invalide, un champ en trop, un professionnel ou un appel anonyme', async () => {
+    const identites = new IdentitesMemoire();
+    const app = await serveur(undefined, identites);
+    expect((await choisir(app, 'patient', { langue: 'fr_GA' })).statusCode).toBe(400);
+    expect((await choisir(app, 'patient', { langue: 'fr', patientId: 'x' })).statusCode).toBe(400);
+    expect((await choisir(app, 'patient', { langue: 'x'.repeat(36) })).statusCode).toBe(400);
+    expect((await choisir(app, 'medecin', { langue: 'fr' })).statusCode).toBe(403);
+    expect((await choisir(app, 'anonyme', { langue: 'fr' })).statusCode).toBe(401);
+    expect(identites.langues.size).toBe(0);
   });
 });

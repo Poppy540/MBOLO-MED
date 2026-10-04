@@ -4,6 +4,7 @@
 // Aucune donnée de santé ici : un rendez-vous ne contient ni motif ni symptôme.
 import { randomUUID } from 'node:crypto';
 import type { AuteurAnnulation, StatutIdentite } from '@mbolo/dossier-fhir';
+import { codeLangueValide } from '@mbolo/dossier-fhir';
 import type { Drapeaux } from '@mbolo/drapeaux';
 import { ErreurDepot, type Utilisateur } from '@mbolo/identite';
 import { IdentitesMemoire, type Identites } from './identites.js';
@@ -112,7 +113,7 @@ export interface FournisseurSalle {
 export class ErreurTeleconsultation extends Error {
   constructor(
     message: string,
-    readonly statut: 403 | 404 | 409 | 503,
+    readonly statut: 400 | 403 | 404 | 409 | 503,
   ) {
     super(message);
     this.name = 'ErreurTeleconsultation';
@@ -173,6 +174,18 @@ export class ServiceTeleconsultation {
       throw new ErreurTeleconsultation('Accès refusé.', 403);
     }
     return (await this.identites.statut(u.patientId)) ?? 'inconnu';
+  }
+
+  /**
+   * Langue choisie par le patient dans l'application (ADR-0025), gardée dans son dossier pour que
+   * ses SMS soient écrits dans cette langue. Le patient lui-même seulement ; niveau 1 suffit.
+   */
+  async choisirLangue(u: Utilisateur, code: string): Promise<void> {
+    if (!u.roles.includes('patient') || !u.patientId) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    if (!codeLangueValide(code)) throw new ErreurTeleconsultation('Langue invalide.', 400);
+    await this.identites.enregistrerLangue(u.patientId, code);
   }
 
   /** ADR-0014 : pas de consultation tant que l'identité du patient n'est pas vérifiée. */
