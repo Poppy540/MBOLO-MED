@@ -52,7 +52,10 @@ When(
     await p.getByLabel('Durée').selectOption(String(duree));
     await p.getByLabel('Nombre de créneaux').fill(String(nombre));
     await p.getByRole('button', { name: /Publier/ }).click();
-    await expect(p.getByRole('status')).toHaveText(`${nombre} créneau(x) publié(s).`);
+    // Pluriel selon le nombre (ADR-0025) : « 1 créneau publié. », « 2 créneaux publiés. ».
+    await expect(p.getByRole('status')).toHaveText(
+      nombre === 1 ? '1 créneau publié.' : `${nombre} créneaux publiés.`,
+    );
   },
 );
 
