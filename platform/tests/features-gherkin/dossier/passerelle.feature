@@ -54,13 +54,13 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Quand le service téléconsultation demande "Patient/pat-fictif-001?_elements=name,birthDate" au dossier
     Alors le dossier ne renvoie que le statut de vérification d'identité
 
-  Scénario: Le service notifications ne lit que le numéro de téléphone
+  Scénario: Le service notifications ne lit que le numéro de téléphone et la langue
     Étant donné que le service notifications a obtenu son jeton de service
     Quand le service notifications demande "Patient/pat-fictif-001" au dossier
     Alors le dossier répond avec le statut 200
-    Et le dossier ne renvoie que le numéro de téléphone
+    Et le dossier ne renvoie que le numéro de téléphone et la langue
     Quand le service notifications demande "Patient/pat-fictif-001?_elements=name" au dossier
-    Alors le dossier ne renvoie que le numéro de téléphone
+    Alors le dossier ne renvoie que le numéro de téléphone et la langue
     Quand le service notifications demande "Consent?patient=Patient/pat-fictif-001" au dossier
     Alors le dossier répond avec le statut 200
     Quand le service notifications demande "Condition?patient=Patient/pat-fictif-001" au dossier
