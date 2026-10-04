@@ -157,6 +157,28 @@ export async function creerServeur(o: {
     async (req) => ({ statut: await o.service.statutIdentite(await authentifier(req)) }),
   );
 
+  // Langue préférée du patient (ADR-0025), gardée dans son dossier pour ses SMS.
+  app.put<{ Body: { langue: string } }>(
+    '/langue',
+    {
+      config: { rateLimit: { max: limites.identiteParMinute, timeWindow: '1 minute' } },
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['langue'],
+          properties: { langue: { type: 'string', minLength: 2, maxLength: 35 } },
+        },
+      },
+    },
+    async (req, reply) => {
+      const u = await authentifier(req);
+      await o.service.choisirLangue(u, req.body.langue);
+      o.journal.info('langue préférée enregistrée', { sujet: u.sujet });
+      return reply.code(204).send();
+    },
+  );
+
   app.get('/rendez-vous', async (req) => {
     const u = await authentifier(req);
     return { rendezVous: await o.service.mesRendezVous(u) };

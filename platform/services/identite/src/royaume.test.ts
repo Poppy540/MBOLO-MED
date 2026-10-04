@@ -195,13 +195,20 @@ describe('royaume mbolo', () => {
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
     ).toBe(
-      'system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.r',
+      'system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru',
     );
     // Annuaire : du professionnel, seuls le nom et la qualification sortent de la passerelle ;
-    // du patient, seulement le statut de vérification d'identité (extension, ADR-0014).
+    // du patient, seulement le statut de vérification d'identité (extension, ADR-0014) et la
+    // langue préférée (ADR-0025).
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
-    ).toBe('Practitioner.name Practitioner.qualification Patient.extension');
+    ).toBe('Practitioner.name Practitioner.qualification Patient.extension Patient.communication');
+    // Seule la langue préférée peut être modifiée sur la fiche du patient (ADR-0025).
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements_modifiables')?.config[
+        'claim.value'
+      ],
+    ).toBe('Patient.communication');
   });
 
   it('compte de service documents : identité déclarée, charte, statut et numéro seulement (ADR-0015)', () => {

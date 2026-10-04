@@ -42,7 +42,7 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Quand le service identité tente de modifier la trace d'accès "1"
     Alors le dossier répond avec le statut 403
 
-  Scénario: Le service téléconsultation ne lit que les rendez-vous, les agendas et le statut d'identité
+  Scénario: Le service téléconsultation ne lit que les rendez-vous, les agendas, le statut d'identité et la langue
     Étant donné que le service téléconsultation a obtenu son jeton de service
     Quand le service téléconsultation demande "Appointment?patient=Patient/pat-fictif-001" au dossier
     Alors le dossier répond avec le statut 200
@@ -50,9 +50,15 @@ Fonctionnalité: Accès au dossier médical par la passerelle
     Alors le dossier répond avec le statut 403
     Quand le service téléconsultation demande "Patient/pat-fictif-001" au dossier
     Alors le dossier répond avec le statut 200
-    Et le dossier ne renvoie que le statut de vérification d'identité
+    Et le dossier ne renvoie que le statut de vérification d'identité et la langue
     Quand le service téléconsultation demande "Patient/pat-fictif-001?_elements=name,birthDate" au dossier
-    Alors le dossier ne renvoie que le statut de vérification d'identité
+    Alors le dossier ne renvoie que le statut de vérification d'identité et la langue
+    # Seule la langue préférée peut être modifiée (ADR-0025), le reste de la fiche est gardé.
+    Quand le service téléconsultation tente de modifier le nom de "pat-fictif-007"
+    Alors le dossier répond avec le statut 403
+    Quand le service téléconsultation enregistre la langue "fr-GA" de "pat-fictif-007"
+    Alors le dossier répond avec le statut 200
+    Et la fiche de "pat-fictif-007" garde son nom et prend la langue "fr-GA"
 
   Scénario: Le service notifications ne lit que le numéro de téléphone et la langue
     Étant donné que le service notifications a obtenu son jeton de service

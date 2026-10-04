@@ -1,12 +1,14 @@
 // Étapes « passerelle du dossier » : seul un jeton de service avec la bonne permission ouvre le dossier.
 // Données FICTIVES uniquement.
 import { expect } from '@playwright/test';
+import { communicationPreferee, languePreferee } from '@mbolo/dossier-fhir';
 import { creerFournisseurJeton } from '@mbolo/identite';
 import {
   CLIENT_SERVICE_IDENTITE,
   CLIENT_SERVICE_NOTIFICATIONS,
   CLIENT_SERVICE_TELECONSULTATION,
   EMETTEUR,
+  FHIR_URL,
   PASSERELLE_URL,
 } from '../configuration.js';
 import { Given, Then, When, type Monde } from './fixtures.js';
@@ -107,14 +109,57 @@ Then('le dossier ne renvoie que le numéro de téléphone et la langue', ({ mond
   expect(corps['name']).toBeUndefined();
 });
 
-Then("le dossier ne renvoie que le statut de vérification d'identité", ({ monde }) => {
+Then("le dossier ne renvoie que le statut de vérification d'identité et la langue", ({ monde }) => {
   const corps = monde.reponse?.corps ?? {};
   expect(JSON.stringify(corps['extension'])).toContain('statut-identite');
-  // Ni nom, ni naissance, ni téléphone, ni numéro d'assurance (ADR-0014, minimisation).
+  // Ni nom, ni naissance, ni téléphone, ni numéro d'assurance (ADR-0014, minimisation) ; la langue
+  // préférée (ADR-0025) peut s'y ajouter.
   expect(Object.keys(corps).sort()).toEqual(
-    ['extension', 'id', 'meta', 'resourceType'].filter((k) => k in corps).sort(),
+    ['communication', 'extension', 'id', 'meta', 'resourceType'].filter((k) => k in corps).sort(),
   );
 });
+
+When(
+  'le service téléconsultation tente de modifier le nom de {string}',
+  async ({ monde }, patientId: string) => {
+    await appelerDossier(
+      monde,
+      'PUT',
+      `Patient/${patientId}`,
+      monde.jetons.get('service téléconsultation'),
+      { resourceType: 'Patient', id: patientId, name: [{ family: 'Remplace' }] },
+    );
+  },
+);
+
+When(
+  'le service téléconsultation enregistre la langue {string} de {string}',
+  async ({ monde }, langue: string, patientId: string) => {
+    await appelerDossier(
+      monde,
+      'PUT',
+      `Patient/${patientId}`,
+      monde.jetons.get('service téléconsultation'),
+      { resourceType: 'Patient', id: patientId, communication: communicationPreferee(langue) },
+    );
+  },
+);
+
+Then(
+  'la fiche de {string} garde son nom et prend la langue {string}',
+  // eslint-disable-next-line no-empty-pattern -- aucun élément du contexte n'est utilisé
+  async ({}, patientId: string, langue: string) => {
+    // Lue directement dans le serveur FHIR de test, sans la minimisation de la passerelle.
+    const r = await fetch(`${FHIR_URL}/Patient/${patientId}`, {
+      headers: { 'cache-control': 'no-cache' },
+    });
+    const p = (await r.json()) as Parameters<typeof languePreferee>[0] & {
+      name?: { family?: string }[];
+    };
+    expect(p.name?.[0]?.family).toBe('Fictif');
+    expect(languePreferee(p)).toBe(langue);
+  },
+);
 
 async function appelerDossier(
   monde: Monde,

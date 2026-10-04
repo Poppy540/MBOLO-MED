@@ -1,8 +1,8 @@
 // Étapes « langues » (ADR-0025) : choix de la langue sur le premier écran de l'application patient,
 // avant toute connexion. Données FICTIVES uniquement.
 import { expect, type Browser, type Page } from '@playwright/test';
-import { APP_PATIENT_URL } from '../configuration.js';
-import { Given, Then, When, type Monde } from './fixtures.js';
+import { APP_PATIENT_URL, FHIR_URL } from '../configuration.js';
+import { Given, Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
 
 const APP = 'application patient';
 
@@ -47,5 +47,32 @@ Then(
   'un texte pas encore traduit reste en français : {string}',
   async ({ monde }, texte: string) => {
     await expect(page(monde).getByRole('button', { name: texte })).toBeVisible();
+  },
+);
+
+When('{string} se connecte depuis cet écran', async ({ monde }, identifiant: string) => {
+  const p = page(monde);
+  // Le bouton est dans la langue choisie ; la suite de l'application n'est pas encore traduite.
+  await p.getByRole('button', { name: /Se connecter$/ }).click();
+  await saisirIdentifiants(p, identifiant, false);
+  await expect(p.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
+});
+
+Then(
+  'le dossier de {string} indique la langue préférée {string}',
+  // eslint-disable-next-line no-empty-pattern -- aucun élément du contexte n'est utilisé
+  async ({}, patientId: string, langue: string) => {
+    // Lu directement dans le serveur FHIR de test : la langue est écrite après la connexion, sans
+    // que l'application attende la réponse.
+    const preferee = async () => {
+      const r = await fetch(`${FHIR_URL}/Patient/${patientId}`, {
+        headers: { 'cache-control': 'no-cache' },
+      });
+      const p = (await r.json()) as {
+        communication?: { preferred?: boolean; language: { coding?: { code?: string }[] } }[];
+      };
+      return p.communication?.find((c) => c.preferred)?.language.coding?.[0]?.code;
+    };
+    await expect.poll(preferee, { timeout: 5_000 }).toBe(langue);
   },
 );

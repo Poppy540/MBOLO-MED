@@ -18,3 +18,9 @@ Fonctionnalité: Choix de la langue dans l'application patient
     Alors l’accueil affiche "[FICTIF] Se connecter" et la page est en "fr-x-fictif"
     Quand le patient choisit la langue "Français"
     Alors l’accueil affiche "Se connecter" et la page est en "fr"
+
+  Scénario: La langue choisie avant la connexion est gardée dans le dossier, pour les SMS du patient
+    Étant donné que l’application patient est ouverte, sans connexion
+    Quand le patient choisit la langue "[FICTIF] Démo"
+    Et que "patient-fictif-02" se connecte depuis cet écran
+    Alors le dossier de "pat-fictif-002" indique la langue préférée "fr-x-fictif"

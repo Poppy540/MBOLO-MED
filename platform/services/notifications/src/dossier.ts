@@ -1,7 +1,7 @@
 // Contacts lus dans le dossier médical via la passerelle (ADR-0010), avec le compte de service
 // mbolo-notifications-service (system/Patient.r system/Practitioner.r system/Consent.s).
 import type { ContactPoint, Consent, FhirResource, Patient, Practitioner } from 'fhir/r4.js';
-import { enAttenteApresPerte } from '@mbolo/dossier-fhir';
+import { enAttenteApresPerte, languePreferee } from '@mbolo/dossier-fhir';
 import { ClientFhir, consentementActif } from '@mbolo/identite';
 import type { Destinataire, SourceContacts } from './notifications.js';
 
@@ -13,7 +13,7 @@ export class ContactsFhir extends ClientFhir implements SourceContacts {
 
   /**
    * Langue préférée du patient (ADR-0025) : `Patient.communication` marquée `preferred`, sinon la
-   * première. Seul l'élément communication est demandé.
+   * première (`languePreferee`). Seul l'élément communication est demandé.
    */
   async languePreferee(patientId: string): Promise<string | undefined> {
     const d = `Patient/${patientId}`;
@@ -24,9 +24,7 @@ export class ContactsFhir extends ClientFhir implements SourceContacts {
     if (!r.ok) throw ClientFhir.echec(r, 'Langue');
     const patient = (await r.json()) as Patient;
     if (patient.resourceType !== 'Patient' || patient.id !== patientId) return undefined;
-    const langues = patient.communication ?? [];
-    const choisie = langues.find((c) => c.preferred) ?? langues[0];
-    return choisie?.language.coding?.find((c) => c.system === 'urn:ietf:bcp:47')?.code;
+    return languePreferee(patient);
   }
 
   /** 24 heures après un changement du numéro pour perte (ADR-0023), lu sans cache. */
