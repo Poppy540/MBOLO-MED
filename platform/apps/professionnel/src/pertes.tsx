@@ -6,7 +6,7 @@
 // Chaque consultation est tracée dans le dossier du patient. Chargé à la demande.
 import { useTitreAuFocus } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
-import { IdentiteDeclaree, MOTIFS, Photos, appeler, type Fiche } from './verifications.js';
+import { IdentiteDeclaree, MOTIFS, Photos, appeler, t, type Fiche } from './verifications.js';
 
 interface Demande {
   patientId: string;
@@ -51,19 +51,19 @@ export function Pertes(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📱</span> Changements de numéro
+        <span aria-hidden="true">📱</span> {t('pertes.titre')}
       </h2>
-      <p>Patients qui ont perdu leur téléphone et envoyé de nouvelles photos.</p>
+      <p>{t('pertes.explication')}</p>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('verif.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucune demande en attente.</p>
+        <p>{t('pertes.aucune')}</p>
       ) : (
-        <ul class="liste" aria-label="Demandes de changement de numéro">
+        <ul class="liste" aria-label={t('pertes.liste')}>
           {liste.map((d) => (
             <li key={d.patientId}>
               <button data-patient={d.patientId} onClick={() => setChoisi(d.patientId)}>
-                Dossier {d.patientId} — demande du {p.quand(d.depuis)}
+                {t('pertes.dossier', { patient: d.patientId, date: p.quand(d.depuis) })}
               </button>
             </li>
           ))}
@@ -103,11 +103,7 @@ function FicheDemande(p: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(demande),
       });
-      p.retour(
-        resultat === 'acceptee'
-          ? 'Nouveau numéro enregistré. L’ancien numéro a été prévenu.'
-          : 'Demande refusée. Le numéro ne change pas.',
-      );
+      p.retour(t(resultat === 'acceptee' ? 'pertes.acceptee' : 'pertes.refusee'));
     } catch (x) {
       p.signaler((x as Error).message);
     } finally {
@@ -118,16 +114,16 @@ function FicheDemande(p: {
   if (!fiche) {
     return (
       <section>
-        <p aria-live="polite">Chargement…</p>
-        <button onClick={() => p.retour()}>Retour</button>
+        <p aria-live="polite">{t('verif.chargement')}</p>
+        <button onClick={() => p.retour()}>{t('verif.retour')}</button>
       </section>
     );
   }
   return (
     <section>
-      <p>Demande du {p.quand(fiche.depuis)}.</p>
+      <p>{t('pertes.demandeDu', { date: p.quand(fiche.depuis) })}</p>
       <IdentiteDeclaree fiche={fiche} />
-      <h3>Nouvelles photos</h3>
+      <h3>{t('pertes.nouvellesPhotos')}</h3>
       <Photos
         jeton={p.jeton}
         patientId={p.patientId}
@@ -135,9 +131,9 @@ function FicheDemande(p: {
         quand={p.quand}
         signaler={p.signaler}
       />
-      <h3>Photos de l’inscription</h3>
+      <h3>{t('pertes.photosInscription')}</h3>
       {fiche.anciennes.length === 0 ? (
-        <p>Plus conservées : comparez avec l’identité déclarée.</p>
+        <p>{t('pertes.plusConservees')}</p>
       ) : (
         <Photos
           jeton={p.jeton}
@@ -149,11 +145,11 @@ function FicheDemande(p: {
       )}
       <form onSubmit={(e) => void decider(e)}>
         <fieldset>
-          <legend>Décision</legend>
+          <legend>{t('verif.decision')}</legend>
           {(
             [
-              ['acceptee', 'Accepter le nouveau numéro'],
-              ['refusee', 'Refuser'],
+              ['acceptee', 'pertes.accepter'],
+              ['refusee', 'pertes.refuser'],
             ] as const
           ).map(([valeur, libelle]) => (
             <label key={valeur}>
@@ -164,35 +160,32 @@ function FicheDemande(p: {
                 required
                 onChange={() => setResultat(valeur)}
               />{' '}
-              {libelle}
+              {t(libelle)}
             </label>
           ))}
         </fieldset>
         {resultat === 'acceptee' && (
           <p>
-            <small>
-              L’ancien numéro sera prévenu par SMS, puis le patient attendra 24 heures avant de
-              recevoir un code de connexion.
-            </small>
+            <small>{t('pertes.attente')}</small>
           </p>
         )}
         {resultat === 'refusee' && (
           <label>
-            Motif du refus
+            {t('verif.motifRefus')}
             <select name="motif" required>
               {MOTIFS.map(([valeur, libelle]) => (
                 <option key={valeur} value={valeur}>
-                  {libelle}
+                  {t(libelle)}
                 </option>
               ))}
             </select>
           </label>
         )}
         <button class="principal" type="submit" disabled={envoi || !resultat}>
-          Enregistrer la décision
+          {t('verif.enregistrer')}
         </button>
       </form>
-      <button onClick={() => p.retour()}>Retour</button>
+      <button onClick={() => p.retour()}>{t('verif.retour')}</button>
     </section>
   );
 }

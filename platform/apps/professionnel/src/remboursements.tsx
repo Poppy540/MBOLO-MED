@@ -3,8 +3,11 @@
 // personne habilitée valide ou refuse, selon les règles du porteur de projet. Aucun texte libre ;
 // ni le patient ni le numéro ne sont affichés. Chargé à la demande.
 import { useEffect, useState } from 'preact/hooks';
-import { appelReseau } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
+import { frRemboursements } from './textes-fr-remboursements.js';
+
+const t = creerTraducteur(frRemboursements, CONFIG.langue);
 
 interface Remboursement {
   id: string;
@@ -39,7 +42,7 @@ async function appeler<T>(
   }
   if (!r.ok) {
     const e = (await r.json().catch(() => ({}))) as { erreur?: string };
-    throw new ErreurRemboursement(e.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    throw new ErreurRemboursement(e.erreur ?? t('remb.indisponible'));
   }
   return (await r.json()) as T;
 }
@@ -76,11 +79,13 @@ export function Remboursements(p: {
         { decision: choix.decision },
       );
       p.signaler(
-        r.statut === 'effectue'
-          ? 'Remboursement versé.'
-          : r.statut === 'valide'
-            ? 'Remboursement validé ; il sera versé dès que le prestataire répondra.'
-            : 'Remboursement refusé.',
+        t(
+          r.statut === 'effectue'
+            ? 'remb.verse'
+            : r.statut === 'valide'
+              ? 'remb.valide'
+              : 'remb.refuse',
+        ),
       );
     } catch (e) {
       p.signaler((e as Error).message);
@@ -92,40 +97,39 @@ export function Remboursements(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">↩️</span> Remboursements à valider
+        <span aria-hidden="true">↩️</span> {t('remb.titre')}
       </h2>
-      <p>
-        Paiements reçus pour des rendez-vous annulés. Décidez selon les règles de remboursement de
-        Mbolo Santé ; l’argent revient au téléphone qui a payé.
-      </p>
+      <p>{t('remb.explication')}</p>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('remb.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucun remboursement à valider.</p>
+        <p>{t('remb.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Remboursements à valider">
+        <ul class="liste" aria-label={t('remb.titre')}>
           {liste.map((r) => (
             <li key={r.id} data-remboursement={r.id}>
               <strong>{montant(r.montant, r.devise)}</strong>
               {r.operateur && <span> — {r.operateur}</span>}
               <br />
-              <small>Préparé le {p.quand(r.prepareLe)}</small>
+              <small>{t('remb.prepareLe', { date: p.quand(r.prepareLe) })}</small>
               {choix?.id === r.id ? (
                 <div class="actions">
                   <button class="principal" onClick={() => void decider()}>
-                    {choix.decision === 'valide'
-                      ? 'Confirmer le remboursement'
-                      : 'Confirmer le refus'}
+                    {t(
+                      choix.decision === 'valide'
+                        ? 'remb.confirmerRemboursement'
+                        : 'remb.confirmerRefus',
+                    )}
                   </button>
-                  <button onClick={() => setChoix(undefined)}>Annuler</button>
+                  <button onClick={() => setChoix(undefined)}>{t('remb.annuler')}</button>
                 </div>
               ) : (
                 <div class="actions">
                   <button onClick={() => setChoix({ id: r.id, decision: 'valide' })}>
-                    Valider
+                    {t('remb.valider')}
                   </button>
                   <button onClick={() => setChoix({ id: r.id, decision: 'refuse' })}>
-                    Refuser
+                    {t('remb.refuser')}
                   </button>
                 </div>
               )}

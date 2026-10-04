@@ -10,8 +10,11 @@
 //   service compare ; le code est affiché une seule fois, pour être dicté pendant l'appel.
 // Rien d'autre du dossier n'est affiché. Chargé à la demande.
 import { useState } from 'preact/hooks';
-import { appelReseau } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
+import { frAssistance } from './textes-fr-assistance.js';
+
+const t = creerTraducteur(frAssistance, CONFIG.langue);
 
 interface Fiche {
   patientId: string;
@@ -39,7 +42,7 @@ async function appeler<T>(jeton: string, chemin: string, corps: unknown): Promis
   }
   if (!r.ok) {
     const e = (await r.json().catch(() => ({}))) as { erreur?: string };
-    throw new ErreurAssistance(e.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    throw new ErreurAssistance(e.erreur ?? t('assist.indisponible'));
   }
   return (await r.json()) as T;
 }
@@ -98,10 +101,8 @@ export function Assistance(p: { jeton: string; signaler: (m?: string) => void })
         { patientId: fiche.patientId, naissance: champ(f, 'naissance'), rappel: true },
       );
       p.signaler(
-        `${r.retires === 0 ? 'Aucun proche à retirer' : `${r.retires} proche(s) retiré(s)`}. ` +
-          (r.sms === 'envoyee'
-            ? 'Le patient a reçu un SMS de confirmation.'
-            : 'Le SMS de confirmation n’a pas pu partir : prévenez le patient.'),
+        `${r.retires === 0 ? t('assist.aucunRetire') : t('assist.retires', { nombre: r.retires })} ` +
+          t(r.sms === 'envoyee' ? 'assist.smsEnvoye' : 'assist.smsEchec'),
       );
       setFiche(undefined);
     } catch (x) {
@@ -142,58 +143,47 @@ export function Assistance(p: { jeton: string; signaler: (m?: string) => void })
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🛟</span> Aider un patient qui appelle
+        <span aria-hidden="true">🛟</span> {t('assist.titre')}
       </h2>
-      <p>
-        Pour un patient qui ne peut pas agir lui-même dans son application : retirer ses proches, ou
-        lui donner un code pour retrouver son compte. Chaque étape est enregistrée dans son dossier.
-      </p>
+      <p>{t('assist.explication')}</p>
       <form onSubmit={(e) => void rechercher(e)}>
         <label>
-          Type de numéro
+          {t('assist.typeNumero')}
           <select name="type">
-            <option value="assurance-maladie">Assurance maladie ({CONFIG.assurance})</option>
-            <option value="provisoire">Numéro provisoire</option>
+            <option value="assurance-maladie">
+              {t('assist.assurance', { assurance: CONFIG.assurance })}
+            </option>
+            <option value="provisoire">{t('assist.provisoire')}</option>
           </select>
         </label>
         <label>
-          Numéro donné par le patient
+          {t('assist.numeroDonne')}
           <input name="numero" required maxLength={64} autoComplete="off" />
         </label>
         <button type="submit" disabled={envoi}>
-          Retrouver le dossier
+          {t('assist.retrouver')}
         </button>
       </form>
       {code && (
         <div role="status" data-code-recuperation>
-          <p>
-            Dictez ce code au patient (ou à son aidant, patient présent). Il ne sera plus affiché.
-          </p>
+          <p>{t('assist.dictez')}</p>
           <p>
             <strong class="code">{code.code}</strong>
           </p>
-          <p>
-            Valable une seule fois, jusqu’au {heure(code.expireLe)}. Le patient le saisit dans « Mot
-            de passe oublié ? », puis choisit un nouveau mot de passe.
-          </p>
+          <p>{t('assist.validite', { date: heure(code.expireLe) })}</p>
           <button type="button" onClick={() => setCode(undefined)}>
-            J’ai dicté le code
+            {t('assist.dicte')}
           </button>
         </div>
       )}
-      {fiche && !fiche.telephone && (
-        <p role="status">
-          Aucun numéro dans ce dossier : impossible de rappeler le patient, donc pas d’intervention
-          de l’équipe.
-        </p>
-      )}
+      {fiche && !fiche.telephone && <p role="status">{t('assist.sansNumero')}</p>}
       {fiche?.telephone && (
         <div data-assistance={fiche.patientId}>
           <p>
-            Proches avec un accès ou une invitation en cours : <strong>{fiche.proches}</strong>
+            {t('assist.proches')} <strong>{fiche.proches}</strong>
           </p>
           <p>
-            1. Raccrochez, puis rappelez le patient au numéro de son dossier :{' '}
+            {t('assist.rappeler')}{' '}
             <a href={`tel:${fiche.telephone.replace(/\s/g, '')}`}>{fiche.telephone}</a>
           </p>
           <label>
@@ -202,11 +192,11 @@ export function Assistance(p: { jeton: string; signaler: (m?: string) => void })
               checked={rappele}
               onChange={(e) => setRappele((e.currentTarget as HTMLInputElement).checked)}
             />{' '}
-            J’ai rappelé le patient à ce numéro et il confirme sa demande
+            {t('assist.rappele')}
           </label>
           {rappele && (
             <fieldset>
-              <legend>Sa demande</legend>
+              <legend>{t('assist.demande')}</legend>
               <label>
                 <input
                   type="radio"
@@ -214,7 +204,7 @@ export function Assistance(p: { jeton: string; signaler: (m?: string) => void })
                   checked={demande === 'proches'}
                   onChange={() => setDemande('proches')}
                 />{' '}
-                Retirer tous ses proches
+                {t('assist.retirerProches')}
               </label>
               <label>
                 <input
@@ -223,33 +213,33 @@ export function Assistance(p: { jeton: string; signaler: (m?: string) => void })
                   checked={demande === 'compte'}
                   onChange={() => setDemande('compte')}
                 />{' '}
-                Retrouver son compte (mot de passe oublié)
+                {t('assist.retrouverCompte')}
               </label>
             </fieldset>
           )}
           {rappele && demande === 'proches' && (
             <form onSubmit={(e) => void retirer(e)}>
               <label>
-                2. Date de naissance dite par le patient
+                {t('assist.naissance')}
                 <input name="naissance" type="date" required />
               </label>
               <button class="principal" type="submit" disabled={envoi}>
-                Retirer tous ses proches
+                {t('assist.retirerProches')}
               </button>
             </form>
           )}
           {rappele && demande === 'compte' && (
             <form onSubmit={(e) => void donnerCode(e)}>
               <label>
-                2. Date de naissance dite par le patient
+                {t('assist.naissance')}
                 <input name="naissance" type="date" required />
               </label>
               <label>
-                3. Numéro lu par le patient sur sa carte
+                {t('assist.numeroLu')}
                 <input name="numero_lu" required maxLength={64} autoComplete="off" />
               </label>
               <button class="principal" type="submit" disabled={envoi}>
-                Donner un code
+                {t('assist.donnerCode')}
               </button>
             </form>
           )}

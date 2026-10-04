@@ -2,9 +2,13 @@
 // la personne habilitée compare les photos à l'identité déclarée, à l'œil (aucune reconnaissance
 // automatique), puis décide. Chaque ouverture est tracée dans le dossier du patient, qui peut la
 // voir. Les photos restent en mémoire le temps de l'écran, jamais sur le téléphone. Chargé à la demande.
-import { appelReseau, useTitreAuFocus } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur, useTitreAuFocus } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
+import { frVerification, type CleVerification } from './textes-fr-verification.js';
+
+/** Textes des écrans de vérification et de changement de numéro (catalogue chargé avec eux). */
+export const t = creerTraducteur(frVerification, CONFIG.langue);
 
 interface EnAttente {
   patientId: string;
@@ -21,19 +25,25 @@ export interface Fiche {
   documents: { id: string; type: string; deposeLe: string }[];
 }
 
-export const LIBELLES_TYPE: Record<string, string> = {
-  'piece-identite': "Pièce d'identité",
-  'acte-naissance': 'Acte de naissance',
-  visage: 'Visage',
+const LIBELLES_TYPE: readonly (readonly [string, CleVerification])[] = [
+  ['piece-identite', 'type.pieceIdentite'],
+  ['acte-naissance', 'type.acteNaissance'],
+  ['visage', 'type.visage'],
+];
+
+/** Nom d'un type de document ; un type inconnu garde son code. */
+const libelleType = (type: string): string => {
+  const cle = LIBELLES_TYPE.find(([code]) => code === type)?.[1];
+  return cle ? t(cle) : type;
 };
 
 /** Motifs de refus : liste fermée, identique à celle du service (aucun texte libre). */
-export const MOTIFS: [string, string][] = [
-  ['photo-illisible', 'Photo illisible'],
-  ['document-non-conforme', 'Document non conforme'],
-  ['visage-different', 'Le visage ne correspond pas'],
-  ['document-expire', 'Document expiré'],
-  ['autre-controle-en-personne', 'Autre : contrôle en personne'],
+export const MOTIFS: readonly (readonly [string, CleVerification])[] = [
+  ['photo-illisible', 'motif.photoIllisible'],
+  ['document-non-conforme', 'motif.documentNonConforme'],
+  ['visage-different', 'motif.visageDifferent'],
+  ['document-expire', 'motif.documentExpire'],
+  ['autre-controle-en-personne', 'motif.controleEnPersonne'],
 ];
 
 class ErreurVerif extends Error {}
@@ -56,7 +66,7 @@ export async function appeler(
   }
   if (!r.ok) {
     const corps = (await r.json().catch(() => ({}))) as { erreur?: string };
-    throw new ErreurVerif(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    throw new ErreurVerif(corps.erreur ?? t('verif.indisponible'));
   }
   return r;
 }
@@ -95,18 +105,18 @@ export function Verifications(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🪪</span> Vérifications à faire
+        <span aria-hidden="true">🪪</span> {t('verif.titre')}
       </h2>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('verif.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucune vérification en attente.</p>
+        <p>{t('verif.aucune')}</p>
       ) : (
-        <ul class="liste" aria-label="Vérifications en attente">
+        <ul class="liste" aria-label={t('verif.liste')}>
           {liste.map((v) => (
             <li key={v.patientId}>
               <button data-patient={v.patientId} onClick={() => setChoisi(v.patientId)}>
-                Dossier {v.patientId} — photos du {p.quand(v.depuis)}
+                {t('verif.dossier', { patient: v.patientId, date: p.quand(v.depuis) })}
               </button>
             </li>
           ))}
@@ -155,7 +165,7 @@ function FicheVerification(p: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(demande),
       });
-      p.retour('Décision enregistrée.');
+      p.retour(t('verif.enregistree'));
     } catch (x) {
       p.signaler((x as Error).message);
     } finally {
@@ -166,15 +176,15 @@ function FicheVerification(p: {
   if (!fiche) {
     return (
       <section>
-        <p aria-live="polite">Chargement…</p>
-        <button onClick={() => p.retour()}>Retour</button>
+        <p aria-live="polite">{t('verif.chargement')}</p>
+        <button onClick={() => p.retour()}>{t('verif.retour')}</button>
       </section>
     );
   }
   return (
     <section>
       <IdentiteDeclaree fiche={fiche} />
-      <h3>Photos</h3>
+      <h3>{t('verif.photos')}</h3>
       <Photos
         jeton={p.jeton}
         patientId={p.patientId}
@@ -184,12 +194,12 @@ function FicheVerification(p: {
       />
       <form onSubmit={(e) => void decider(e)}>
         <fieldset>
-          <legend>Décision</legend>
+          <legend>{t('verif.decision')}</legend>
           {(
             [
-              ['verifiee', 'Identité vérifiée'],
-              ['refusee', 'Refusée'],
-              ['a-refaire', 'Photos à refaire'],
+              ['verifiee', 'verif.verifiee'],
+              ['refusee', 'verif.refusee'],
+              ['a-refaire', 'verif.aRefaire'],
             ] as const
           ).map(([valeur, libelle]) => (
             <label key={valeur}>
@@ -200,21 +210,21 @@ function FicheVerification(p: {
                 required
                 onChange={() => setResultat(valeur)}
               />{' '}
-              {libelle}
+              {t(libelle)}
             </label>
           ))}
         </fieldset>
         {resultat === 'verifiee' && (
           <fieldset>
-            <legend>Numéro du patient</legend>
+            <legend>{t('verif.numeroPatient')}</legend>
             <label>
               <input type="radio" name="type-numero" value="assurance-maladie" defaultChecked />{' '}
-              Assurance maladie ({CONFIG.assurance})
+              {t('verif.assurance', { assurance: CONFIG.assurance })}
             </label>
             <label>
-              <input type="radio" name="type-numero" value="provisoire" /> Numéro provisoire
+              <input type="radio" name="type-numero" value="provisoire" /> {t('verif.provisoire')}
             </label>
-            <label for="numero">Numéro</label>
+            <label for="numero">{t('verif.numero')}</label>
             <input
               id="numero"
               name="numero"
@@ -226,21 +236,21 @@ function FicheVerification(p: {
         )}
         {resultat === 'refusee' && (
           <label>
-            Motif du refus
+            {t('verif.motifRefus')}
             <select name="motif" required>
               {MOTIFS.map(([valeur, libelle]) => (
                 <option key={valeur} value={valeur}>
-                  {libelle}
+                  {t(libelle)}
                 </option>
               ))}
             </select>
           </label>
         )}
         <button class="principal" type="submit" disabled={envoi || !resultat}>
-          Enregistrer la décision
+          {t('verif.enregistrer')}
         </button>
       </form>
-      <button onClick={() => p.retour()}>Retour</button>
+      <button onClick={() => p.retour()}>{t('verif.retour')}</button>
     </section>
   );
 }
@@ -249,17 +259,17 @@ export function IdentiteDeclaree(p: { fiche: Omit<Fiche, 'documents'> }) {
   const f = p.fiche;
   return (
     <>
-      <h2>Identité déclarée</h2>
+      <h2>{t('verif.identiteDeclaree')}</h2>
       <dl class="identite">
-        <dt>Nom</dt>
+        <dt>{t('verif.nom')}</dt>
         <dd>{f.nom ?? '—'}</dd>
-        <dt>Prénom(s)</dt>
+        <dt>{t('verif.prenoms')}</dt>
         <dd>{f.prenoms.join(' ') || '—'}</dd>
-        <dt>Date de naissance</dt>
+        <dt>{t('verif.naissance')}</dt>
         <dd>{f.naissance ?? '—'}</dd>
         {f.identifiants.flatMap((i) => [
           <dt key={`t-${i.type}`}>
-            {i.type === 'assurance-maladie' ? 'Assurance maladie' : 'Numéro provisoire'}
+            {t(i.type === 'assurance-maladie' ? 'verif.assuranceMaladie' : 'verif.provisoire')}
           </dt>,
           <dd key={`v-${i.type}`}>{i.valeur}</dd>,
         ])}
@@ -298,18 +308,18 @@ export function Photos(p: {
   return (
     <>
       <p>
-        <small>Chaque ouverture est enregistrée dans le dossier du patient.</small>
+        <small>{t('verif.tracage')}</small>
       </p>
       <div class="photos">
         {p.documents.map((d) => (
           <figure key={d.id}>
             {images[d.id] ? (
-              <img src={images[d.id]} alt={`Photo : ${LIBELLES_TYPE[d.type] ?? d.type}`} />
+              <img src={images[d.id]} alt={t('verif.photo', { type: libelleType(d.type) })} />
             ) : (
-              <p aria-live="polite">Chargement…</p>
+              <p aria-live="polite">{t('verif.chargement')}</p>
             )}
             <figcaption>
-              {LIBELLES_TYPE[d.type] ?? d.type} — {p.quand(d.deposeLe)}
+              {t('verif.legende', { type: libelleType(d.type), date: p.quand(d.deposeLe) })}
             </figcaption>
           </figure>
         ))}
