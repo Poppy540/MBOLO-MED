@@ -3,9 +3,12 @@
 // par SMS et s'affiche aussi, en secours. Le patient retire un proche à tout moment.
 // Le numéro n'est jamais gardé, ni ici ni sur le serveur.
 import { useState } from 'preact/hooks';
-import { appelReseau, MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur, MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
+import { frProches } from './textes-fr-proches.js';
 import { numeroInternational } from './telephone.js';
+
+const t = creerTraducteur(frProches, CONFIG.langue);
 
 /** Texte du partage avec un proche : BROUILLON, à valider par le juriste avant production. */
 export const VERSION_PARTAGE_PROCHE = 'c-proche-v0.1-brouillon';
@@ -22,15 +25,20 @@ export interface Proche {
   expireLe: string;
 }
 
-/** Liens proposés (codes v3-RoleCode du dossier). */
-export const LIENS: [string, string][] = [
-  ['CHILD', 'Mon enfant'],
-  ['SPS', 'Mon conjoint ou ma conjointe'],
-  ['SIB', 'Mon frère ou ma sœur'],
-  ['PRN', 'Mon parent'],
-  ['FAMMEMB', 'Un autre membre de ma famille'],
-  ['FRND', 'Un ami ou une amie'],
+/** Liens proposés (codes v3-RoleCode du dossier) et leur libellé. */
+export const LIENS: [string, keyof typeof frProches][] = [
+  ['CHILD', 'proches.lienEnfant'],
+  ['SPS', 'proches.lienConjoint'],
+  ['SIB', 'proches.lienFrereSoeur'],
+  ['PRN', 'proches.lienParent'],
+  ['FAMMEMB', 'proches.lienFamille'],
+  ['FRND', 'proches.lienAmi'],
 ];
+
+const libelleLien = (code: string) => {
+  const cle = LIENS.find(([c]) => c === code)?.[1];
+  return cle ? t(cle) : undefined;
+};
 
 const jour = (iso: string) =>
   new Intl.DateTimeFormat(CONFIG.langue, { timeZone: CONFIG.fuseau, dateStyle: 'long' }).format(
@@ -67,9 +75,9 @@ export function MesProches(p: {
     const donnees = new FormData(f);
     const telephone = numeroInternational(String(donnees.get('telephone') ?? ''));
     const nom = String(donnees.get('prenom') ?? '').trim();
-    if (!nom) return setErreur('Indiquez le prénom de votre proche.');
+    if (!nom) return setErreur(t('proches.prenomManquant'));
     if (!telephone) {
-      return setErreur(`Numéro au format international, par exemple +${CONFIG.indicatif} …`);
+      return setErreur(t('proches.numeroInternational', { indicatif: CONFIG.indicatif }));
     }
     setErreur(undefined);
     try {
@@ -91,7 +99,7 @@ export function MesProches(p: {
         f.reset();
         return p.confirmer();
       }
-      if (!r.ok) return setErreur(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+      if (!r.ok) return setErreur(corps.erreur ?? t('proches.indisponible'));
       // Le champ du numéro est vidé aussitôt : il n'est gardé nulle part.
       f.reset();
       setFormulaire(false);
@@ -121,7 +129,7 @@ export function MesProches(p: {
       );
       if (!r.ok) {
         const corps = (await r.json().catch(() => ({}))) as { erreur?: string };
-        return setErreur(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+        return setErreur(corps.erreur ?? t('proches.indisponible'));
       }
       await p.recharger();
     } catch (e) {
@@ -130,12 +138,17 @@ export function MesProches(p: {
     }
   };
 
+  // Le prénom est en gras dans la phrase de l'accord, qui reste entière pour la traduction.
+  const [avantPrenom = '', apresPrenom = ''] = t('proches.accord', { prenom: '\u0000' }).split(
+    '\u0000',
+  );
+
   return (
     <>
       <h3>
-        <span aria-hidden="true">👨‍👩‍👧</span> Mes proches
+        <span aria-hidden="true">👨‍👩‍👧</span> {t('proches.titre')}
       </h3>
-      <p>Un proche voit vos ordonnances et les consignes du médecin, jamais le reste du dossier.</p>
+      <p>{t('proches.explication')}</p>
       {erreur && (
         <p class="message" role="alert">
           {erreur}
@@ -145,36 +158,37 @@ export function MesProches(p: {
         <div class="message" data-code={invite.code}>
           <p>
             {invite.sms === 'envoyee'
-              ? `Code envoyé par SMS à ${invite.prenom}.`
-              : `Le SMS n’a pas pu partir.`}{' '}
-            En secours, vous pouvez lui donner ce code vous-même :
+              ? t('proches.smsEnvoye', { prenom: invite.prenom })
+              : t('proches.smsEchec')}{' '}
+            {t('proches.secours')}
           </p>
           <p>
-            <strong>{invite.code}</strong> — valable jusqu’au {jour(invite.expireLe)}.
+            <strong>{invite.code}</strong>{' '}
+            {t('proches.codeValable', { date: jour(invite.expireLe) })}
           </p>
         </div>
       )}
       {actifs.length > 0 && (
-        <ul class="liste" aria-label="Mes proches">
+        <ul class="liste" aria-label={t('proches.liste')}>
           {actifs.map((x) => (
             <li key={x.id} data-proche={x.id} data-statut={x.statut}>
               <strong>{x.prenom}</strong>
-              {x.lien && <span> — {LIENS.find(([c]) => c === x.lien)?.[1]}</span>}
+              {x.lien && <span> — {libelleLien(x.lien)}</span>}
               <p>
                 {x.statut === 'utilise'
-                  ? 'A créé son compte.'
-                  : `Invitation envoyée, valable jusqu’au ${jour(x.expireLe)}.`}
+                  ? t('proches.compteCree')
+                  : t('proches.invitationEnvoyee', { date: jour(x.expireLe) })}
               </p>
               <div class="actions">
-                <button onClick={() => void retirer(x)}>Retirer ce proche</button>
+                <button onClick={() => void retirer(x)}>{t('proches.retirer')}</button>
               </div>
             </li>
           ))}
         </ul>
       )}
       {formulaire ? (
-        <form onSubmit={(e) => void envoyer(e)} aria-label="Inviter un proche">
-          <label for="prenom-proche">Prénom de votre proche</label>
+        <form onSubmit={(e) => void envoyer(e)} aria-label={t('proches.inviter')}>
+          <label for="prenom-proche">{t('proches.prenom')}</label>
           <input
             id="prenom-proche"
             name="prenom"
@@ -182,15 +196,15 @@ export function MesProches(p: {
             autocomplete="off"
             onInput={(e) => setPrenom((e.target as HTMLInputElement).value.trim())}
           />
-          <label for="lien-proche">Qui est-ce ?</label>
+          <label for="lien-proche">{t('proches.quiEstCe')}</label>
           <select id="lien-proche" name="lien" defaultValue="CHILD">
             {LIENS.map(([code, libelle]) => (
               <option key={code} value={code}>
-                {libelle}
+                {t(libelle)}
               </option>
             ))}
           </select>
-          <label for="telephone-proche">Son numéro de téléphone (avec l’indicatif du pays)</label>
+          <label for="telephone-proche">{t('proches.telephone')}</label>
           <input
             id="telephone-proche"
             name="telephone"
@@ -200,21 +214,19 @@ export function MesProches(p: {
             placeholder={`+${CONFIG.indicatif} …`}
           />
           <p>
-            J’accepte que <strong>{prenom || 'mon proche'}</strong> voie mes ordonnances et les
-            consignes de mon médecin (« Ce qu’il faut faire »), jamais le reste de mon dossier.
+            {avantPrenom}
+            <strong>{prenom || t('proches.monProche')}</strong>
+            {apresPrenom}
           </p>
+          <p>{t('proches.accordRetrait')}</p>
           <p>
-            Je peux retirer cet accord à tout moment, ici. Chaque lecture est enregistrée et je peux
-            la voir. Mbolo Santé enverra un code à ce numéro par SMS ; le numéro n’est pas gardé.
-          </p>
-          <p>
-            <small>Texte de partage, version {VERSION_PARTAGE_PROCHE}.</small>
+            <small>{t('proches.version', { version: VERSION_PARTAGE_PROCHE })}</small>
           </p>
           <button class="principal" type="submit">
-            <span aria-hidden="true">✅</span> J’accepte et j’envoie le code
+            <span aria-hidden="true">✅</span> {t('proches.accepterEtEnvoyer')}
           </button>
           <button type="button" onClick={() => setFormulaire(false)}>
-            Annuler
+            {t('proches.annuler')}
           </button>
         </form>
       ) : (
@@ -228,7 +240,7 @@ export function MesProches(p: {
               setFormulaire(true);
             }}
           >
-            <span aria-hidden="true">➕</span> Inviter un proche
+            <span aria-hidden="true">➕</span> {t('proches.inviter')}
           </button>
         )
       )}
