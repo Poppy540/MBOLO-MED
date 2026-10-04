@@ -17,6 +17,7 @@ import {
   terminerConnexion,
   urlDeconnexion,
   useTitreAuFocus,
+  Picto,
 } from '@mbolo/client-web';
 import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
 import { filtrer, specialites } from './annuaire.js';
@@ -374,7 +375,7 @@ function Secours() {
   return (
     <p class="secours" role="note">
       <strong>
-        <span aria-hidden="true">🚑</span>{' '}
+        <Picto nom="urgence" />{' '}
         {t(CONFIG.secours.length > 0 ? 'secours.appelezNumeros' : 'secours.appelez')}
       </strong>{' '}
       {CONFIG.secours.map((s) => (
@@ -727,7 +728,7 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📅</span> {t('rendezVous.titre')}
+        <Picto nom="rendez-vous" /> {t('rendezVous.titre')}
       </h2>
       {liste === undefined ? (
         <p aria-live="polite">{t('commun.chargement')}</p>
@@ -750,14 +751,14 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
                     class="principal"
                     onClick={() => p.allerA({ nom: 'paiement', rendezVousId: r.id })}
                   >
-                    <span aria-hidden="true">💳</span> {t('rendezVous.payer')}
+                    <Picto nom="payer" /> {t('rendezVous.payer')}
                   </button>
                 ) : (
                   <button
                     class="principal"
                     onClick={() => p.allerA({ nom: 'visio', rendezVous: r })}
                   >
-                    <span aria-hidden="true">📹</span> {t('rendezVous.rejoindre')}
+                    <Picto nom="video" /> {t('rendezVous.rejoindre')}
                   </button>
                 )}
                 {/* Même médecin, avant le début (règle du service) ; pas pendant le paiement. */}
@@ -798,7 +799,7 @@ function MesRendezVous(p: { allerA: (e: Ecran) => void; signaler: (e: unknown) =
         <span aria-hidden="true">📄</span> {t('rendezVous.documents')}
       </button>
       <button onClick={() => p.allerA({ nom: 'partages' })}>
-        <span aria-hidden="true">🔒</span> {t('rendezVous.partages')}
+        <Picto nom="partage" /> {t('rendezVous.partages')}
       </button>
       <button onClick={() => p.allerA({ nom: 'recus' })}>
         <span aria-hidden="true">🧾</span> {t('rendezVous.recus')}

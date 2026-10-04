@@ -102,9 +102,13 @@ Les textes affichés sont rangés dans un catalogue par langue, avec la fonction
 
 Aucune vraie langue n'est encore proposée : chaque langue ajoutée doit être traduite par des humains et validée. Pour tester le parcours, un catalogue de **démonstration** `fr-x-fictif` (« [FICTIF] Démo », `textes-fictif.ts`) reprend quelques textes du français marqués `[FICTIF]` ; il n'est proposé que si `VITE_LANGUES` le cite (job e2e de la CI), jamais en production.
 
+## Pictogrammes (ADR-0025)
+
+Les actions clés (rendez-vous, vidéo, audio seulement, raccrocher, payer, ordonnance, urgence, partage, proche, réseau absent) ont des **pictogrammes SVG** dessinés dans le code (`Picto` de `@mbolo/client-web`) au lieu d'émojis, dont le dessin change d'un téléphone à l'autre et qui s'affichent en carrés vides sur les anciens Android. Un pictogramme accompagne toujours un texte visible et reste caché aux lecteurs d'écran. C'est un premier jeu simple, à tester avec des patients pendant le test terrain avant d'être figé ; un test empêche le retour de ces émojis dans les écrans.
+
 ## Budget de poids
 
-`pnpm build` échoue si le poids compressé (gzip) dépasse un plafond (script commun `packages/client-web/scripts/budget.mjs`) : **30 Ko à l'ouverture** (aujourd'hui 16,6 Ko), **8 Ko par écran chargé à la demande** (le plus lourd : « Mes partages et accès », 4,4 Ko avec son catalogue), **160 Ko pour la bibliothèque vidéo**, chargée seulement pour une consultation (140 Ko).
+`pnpm build` échoue si le poids compressé (gzip) dépasse un plafond (script commun `packages/client-web/scripts/budget.mjs`) : **30 Ko à l'ouverture** (aujourd'hui 17,2 Ko), **8 Ko par écran chargé à la demande** (le plus lourd : « Mes partages et accès », 4,4 Ko avec son catalogue), **160 Ko pour la bibliothèque vidéo**, chargée seulement pour une consultation (140 Ko).
 
 Sur un réseau « 3G lente » simulé, l'écran d'accueil s'affiche en moins de 8 secondes avec moins de 30 Ko transférés (e2e `faible-debit/reseau-lent.feature`).
 

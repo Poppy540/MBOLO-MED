@@ -3,7 +3,13 @@
 // qui paie (le sien ou celui d'un proche), puis valide sur son téléphone. Le numéro n'est jamais
 // gardé dans le navigateur ; le rendez-vous n'est confirmé que par le serveur.
 import { useEffect, useState } from 'preact/hooks';
-import { appelReseau, creerTraducteur, MOTIF_NIVEAU_INSUFFISANT, suivre } from '@mbolo/client-web';
+import {
+  appelReseau,
+  creerTraducteur,
+  MOTIF_NIVEAU_INSUFFISANT,
+  suivre,
+  Picto,
+} from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { frPaiement } from './textes-fr-paiement.js';
 
@@ -162,7 +168,7 @@ export function Paiement(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">💳</span> {t('paiement.titre')}
+        <Picto nom="payer" /> {t('paiement.titre')}
       </h2>
       {erreur && (
         <p class="message" role="alert">

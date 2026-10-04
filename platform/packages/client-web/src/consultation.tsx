@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { ErreurApi, type AccesSalle } from './api.js';
 import { economiserDonnees } from './repli.js';
 import type { EtatVisio, Visio } from './visio.js';
+import { Picto } from './pictos.js';
 
 export function Consultation(p: {
   /** Demande le jeton de salle (API de téléconsultation). */
@@ -46,7 +47,7 @@ export function Consultation(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📹</span> Téléconsultation
+        <Picto nom="video" /> Téléconsultation
       </h2>
       <p aria-live="polite" data-etat-visio="">
         {!etat?.connecte
@@ -68,10 +69,18 @@ export function Consultation(p: {
       {etat?.connecte && (
         <div class="actions">
           <button onClick={() => void visio.current?.audioSeulement(!etat.audioSeulement)}>
-            {etat.audioSeulement ? '🎥 Réactiver la vidéo' : '🔈 Audio seulement'}
+            {etat.audioSeulement ? (
+              <>
+                <Picto nom="video" /> Réactiver la vidéo
+              </>
+            ) : (
+              <>
+                <Picto nom="audio" /> Audio seulement
+              </>
+            )}
           </button>
           <button class="danger" onClick={p.retour}>
-            <span aria-hidden="true">📞</span> Raccrocher
+            <Picto nom="raccrocher" /> Raccrocher
           </button>
         </div>
       )}

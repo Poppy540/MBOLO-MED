@@ -3,7 +3,7 @@
 // par SMS et s'affiche aussi, en secours. Le patient retire un proche à tout moment.
 // Le numéro n'est jamais gardé, ni ici ni sur le serveur.
 import { useState } from 'preact/hooks';
-import { appelReseau, creerTraducteur, MOTIF_NIVEAU_INSUFFISANT } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur, MOTIF_NIVEAU_INSUFFISANT, Picto } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { frProches } from './textes-fr-proches.js';
 import { numeroInternational } from './telephone.js';
@@ -146,7 +146,7 @@ export function MesProches(p: {
   return (
     <>
       <h3>
-        <span aria-hidden="true">👨‍👩‍👧</span> {t('proches.titre')}
+        <Picto nom="proche" /> {t('proches.titre')}
       </h3>
       <p>{t('proches.explication')}</p>
       {erreur && (

@@ -10,6 +10,7 @@ import {
   MOTIF_NIVEAU_INSUFFISANT,
   niveauDuJeton,
   useTitreAuFocus,
+  Picto,
 } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { MesProches, type Proche } from './proches.js';
@@ -206,7 +207,7 @@ export function Partages(p: {
     return (
       <section>
         <h2>
-          <span aria-hidden="true">🔒</span> {t('partages.partagerTitre')}
+          <Picto nom="partage" /> {t('partages.partagerTitre')}
         </h2>
         <p>
           {avantNom}
@@ -231,7 +232,7 @@ export function Partages(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🔒</span> {t('partages.titre')}
+        <Picto nom="partage" /> {t('partages.titre')}
       </h2>
       {message && (
         <p class="message" role="status">
@@ -264,7 +265,7 @@ export function Partages(p: {
               data-partager={m.id}
               onClick={() => (niveauSuffisant ? setPropose(m) : p.confirmer())}
             >
-              <span aria-hidden="true">🤝</span> {t('partages.partagerAvec', { nom: m.nom })}
+              <Picto nom="partage" /> {t('partages.partagerAvec', { nom: m.nom })}
             </button>
           ))}
           <MesProches
@@ -285,7 +286,7 @@ export function Partages(p: {
                   {t(a.autorise ? 'partages.accorde' : 'partages.refuse')}
                   {a.urgence && (
                     <p>
-                      <span aria-hidden="true">🚨</span>{' '}
+                      <Picto nom="urgence" />{' '}
                       {a.justification
                         ? t('partages.urgenceMotif', { motif: a.justification })
                         : t('partages.urgence')}

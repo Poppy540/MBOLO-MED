@@ -39,3 +39,5 @@ export type { RendezVousHorsLigne as RendezVousRetenu, Stockage } from './hors-l
 export { RendezVousHorsLigne } from './hors-ligne-vue.js';
 export { clesManquantes, creerTraducteur } from './textes.js';
 export type { Catalogue, Message, Pluriel, Traduction, Valeurs } from './textes.js';
+export { Picto, PICTOS } from './pictos.js';
+export type { NomPicto } from './pictos.js';
