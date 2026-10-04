@@ -28,6 +28,10 @@ Aucune donnée de santé n'est affichée ici : le dossier du patient s'ouvre par
 - **Dernière liste de rendez-vous connue** : gardée sur le téléphone réduite à l'identifiant, l'horaire et la durée (ni professionnel, ni patient, ni motif), affichée sans réseau avec sa date de mise à jour, **effacée à la déconnexion**.
 - Service worker actif seulement dans l'application construite (`pnpm build`), pas en développement.
 
+## Textes et langues (ADR-0025)
+
+Les textes affichés sont rangés dans un catalogue (`src/textes-fr.ts`, fonction `t()` de `@mbolo/client-web`, clés typées, pluriels par `Intl.PluralRules`), comme dans l'application patient. Sont passés au catalogue : les écrans de `app.tsx` (menu, rendez-vous, report, créneaux, dossier du patient et compte-rendu ; le texte écrit par le professionnel s'affiche tel quel) ; suivront les écrans chargés à la demande (vérifications, numéros perdus, remboursements, assistance). Un test vérifie que chaque clé est utilisée. Seul le français existe : l'anglais, pour les professionnels venus du monde entier, attend la décision du porteur de projet (ADR-0025, question 2). Les pictogrammes SVG des actions clés (`Picto`) remplacent les émojis du rendez-vous et de la vidéo.
+
 ## Déploiement dans un autre pays
 
 Mêmes variables que l'application patient (`VITE_KEYCLOAK_ISSUER`, `VITE_KEYCLOAK_CLIENT`, défaut `mbolo-app-pro`, `VITE_FUSEAU`, `VITE_LANGUE`, `VITE_NOM_ASSURANCE`, `VITE_WEBRTC_URL`) et même politique de sécurité du contenu. L'heure saisie est convertie en instant selon `VITE_FUSEAU`, heure d'été comprise.

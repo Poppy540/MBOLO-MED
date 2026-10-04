@@ -15,6 +15,7 @@ import {
   quand as formater,
   terminerConnexion,
   urlDeconnexion,
+  Picto,
   useTitreAuFocus,
   versInstant,
 } from '@mbolo/client-web';
@@ -26,6 +27,7 @@ import {
   type ResumeDossier,
 } from './api.js';
 import { CONFIG } from './config.js';
+import { t, type CleTexte } from './textes.js';
 
 const connexion = () => ({
   emetteur: CONFIG.emetteur,
@@ -86,12 +88,12 @@ export function App() {
           );
         }
       })
-      .catch(() => setMessage('La connexion a échoué. Réessayez.'))
+      .catch(() => setMessage(t('connexion.echec')))
       .finally(() => setAttente(false));
   }, []);
 
   const signaler = (e: unknown) => {
-    setMessage(e instanceof ErreurApi ? e.message : 'Service indisponible. Réessayez plus tard.');
+    setMessage(e instanceof ErreurApi ? e.message : t('commun.serviceIndisponible'));
     if (e instanceof ErreurApi && e.statut === 401) {
       jeton = undefined;
       setEcran({ nom: 'accueil' });
@@ -106,7 +108,7 @@ export function App() {
     <main>
       <header>
         <h1>
-          <span aria-hidden="true">🩺</span> Mbolo Santé Pro
+          <span aria-hidden="true">🩺</span> {t('appli.nom')}
         </h1>
         {jeton && (
           <button
@@ -116,7 +118,7 @@ export function App() {
               location.assign(urlDeconnexion(connexion()));
             }}
           >
-            Se déconnecter
+            {t('commun.seDeconnecter')}
           </button>
         )}
       </header>
@@ -134,13 +136,13 @@ export function App() {
                   class={ecran.nom === 'rendez-vous' ? 'principal' : ''}
                   onClick={() => allerA({ nom: 'rendez-vous' })}
                 >
-                  <span aria-hidden="true">📅</span> Rendez-vous
+                  <Picto nom="rendez-vous" /> {t('menu.rendezVous')}
                 </button>
                 <button
                   class={ecran.nom === 'creneaux' ? 'principal' : ''}
                   onClick={() => allerA({ nom: 'creneaux' })}
                 >
-                  <span aria-hidden="true">🕒</span> Mes créneaux
+                  <span aria-hidden="true">🕒</span> {t('menu.creneaux')}
                 </button>
               </>
             )}
@@ -149,7 +151,7 @@ export function App() {
                 class={ecran.nom === 'verifications' ? 'principal' : ''}
                 onClick={() => allerA({ nom: 'verifications' })}
               >
-                <span aria-hidden="true">🪪</span> Vérifications
+                <span aria-hidden="true">🪪</span> {t('menu.verifications')}
               </button>
             )}
             {estVerificateur() && (
@@ -157,7 +159,7 @@ export function App() {
                 class={ecran.nom === 'pertes' ? 'principal' : ''}
                 onClick={() => allerA({ nom: 'pertes' })}
               >
-                <span aria-hidden="true">📱</span> Numéros perdus
+                <span aria-hidden="true">📱</span> {t('menu.pertes')}
               </button>
             )}
             {estValideur() && (
@@ -165,7 +167,7 @@ export function App() {
                 class={ecran.nom === 'remboursements' ? 'principal' : ''}
                 onClick={() => allerA({ nom: 'remboursements' })}
               >
-                <span aria-hidden="true">↩️</span> Remboursements
+                <span aria-hidden="true">↩️</span> {t('menu.remboursements')}
               </button>
             )}
             {estAssistant() && (
@@ -173,7 +175,7 @@ export function App() {
                 class={ecran.nom === 'assistance' ? 'principal' : ''}
                 onClick={() => allerA({ nom: 'assistance' })}
               >
-                <span aria-hidden="true">🛟</span> Assistance
+                <span aria-hidden="true">🛟</span> {t('menu.assistance')}
               </button>
             )}
           </nav>
@@ -184,7 +186,7 @@ export function App() {
         </p>
       )}
       {attente ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : ecran.nom === 'accueil' && !navigator.onLine ? (
         <RendezVousHorsLigne
           stockage={localStorage}
@@ -193,14 +195,14 @@ export function App() {
         />
       ) : ecran.nom === 'accueil' ? (
         <section>
-          <p>Espace des professionnels de santé.</p>
+          <p>{t('accueil.presentation')}</p>
           <button
             class="principal"
             onClick={async () =>
               location.assign(await demarrerConnexion(connexion(), sessionStorage))
             }
           >
-            <span aria-hidden="true">🔑</span> Se connecter
+            <span aria-hidden="true">🔑</span> {t('accueil.seConnecter')}
           </button>
         </section>
       ) : ecran.nom === 'rendez-vous' ? (
@@ -222,7 +224,7 @@ export function App() {
       ) : (
         <Consultation
           salle={() => api.salle(ecran.rendezVous.id)}
-          autre="Patient"
+          autre={t('consultation.autre')}
           retour={() => allerA({ nom: 'rendez-vous' })}
           signaler={signaler}
         />
@@ -238,12 +240,12 @@ function EcranVerifications(p: { signaler: (m: string) => void }) {
   useEffect(() => {
     import('./verifications.js')
       .then((m) => setEcran(() => m.Verifications))
-      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+      .catch(() => p.signaler(t('commun.pasDeReseau')));
   }, []);
   return Ecran && jeton ? (
     <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -254,12 +256,12 @@ function EcranPertes(p: { signaler: (m: string) => void }) {
   useEffect(() => {
     import('./pertes.js')
       .then((m) => setEcran(() => m.Pertes))
-      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+      .catch(() => p.signaler(t('commun.pasDeReseau')));
   }, []);
   return Ecran && jeton ? (
     <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -270,12 +272,12 @@ function EcranRemboursements(p: { signaler: (m: string) => void }) {
   useEffect(() => {
     import('./remboursements.js')
       .then((m) => setEcran(() => m.Remboursements))
-      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+      .catch(() => p.signaler(t('commun.pasDeReseau')));
   }, []);
   return Ecran && jeton ? (
     <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -289,12 +291,12 @@ function EcranAssistance(p: { signaler: (m?: string) => void }) {
   useEffect(() => {
     import('./assistance.js')
       .then((m) => setEcran(() => m.Assistance))
-      .catch(() => p.signaler('Pas de réseau. Réessayez plus tard.'));
+      .catch(() => p.signaler(t('commun.pasDeReseau')));
   }, []);
   return Ecran && jeton ? (
     <Ecran jeton={jeton} signaler={p.signaler} />
   ) : (
-    <p aria-live="polite">Chargement…</p>
+    <p aria-live="polite">{t('commun.chargement')}</p>
   );
 }
 
@@ -325,24 +327,27 @@ function MesRendezVous(p: {
   }
   return (
     <section>
-      <h2>Rendez-vous à venir</h2>
+      <h2>{t('rendezVous.titre')}</h2>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucun rendez-vous prévu.</p>
+        <p>{t('rendezVous.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Rendez-vous prévus">
+        <ul class="liste" aria-label={t('rendezVous.liste')}>
           {liste.map((r) => (
             <li key={r.id} data-rendez-vous={r.id} data-creneau={r.creneauId}>
-              <strong>{quand(r.debut)}</strong> <span>({r.dureeMinutes} min)</span>
+              <strong>{quand(r.debut)}</strong>{' '}
+              <span>{t('commun.duree', { minutes: r.dureeMinutes })}</span>
               <div class="actions">
                 <button class="principal" onClick={() => p.allerA({ nom: 'visio', rendezVous: r })}>
-                  <span aria-hidden="true">📹</span> Rejoindre
+                  <Picto nom="video" /> {t('rendezVous.rejoindre')}
                 </button>
                 <button onClick={() => p.allerA({ nom: 'dossier', rendezVous: r })}>
-                  <span aria-hidden="true">📋</span> Dossier
+                  <span aria-hidden="true">📋</span> {t('rendezVous.dossier')}
                 </button>
-                <button onClick={() => p.allerA({ nom: 'report', rendezVous: r })}>Reporter</button>
+                <button onClick={() => p.allerA({ nom: 'report', rendezVous: r })}>
+                  {t('rendezVous.reporter')}
+                </button>
                 <button
                   onClick={() =>
                     api
@@ -351,7 +356,7 @@ function MesRendezVous(p: {
                       .catch(p.signaler)
                   }
                 >
-                  Annuler
+                  {t('rendezVous.annuler')}
                 </button>
               </div>
             </li>
@@ -378,13 +383,13 @@ function Report(p: {
   );
   return (
     <section>
-      <h2>Reporter le rendez-vous du {quand(p.rendezVous.debut)}</h2>
+      <h2>{t('report.titre', { date: quand(p.rendezVous.debut) })}</h2>
       {libres === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : libres.length === 0 ? (
-        <p>Aucun créneau libre : publiez-en d’abord.</p>
+        <p>{t('report.aucunCreneau')}</p>
       ) : (
-        <ul class="liste" aria-label="Créneaux libres">
+        <ul class="liste" aria-label={t('report.creneauxLibres')}>
           {libres.map((c) => (
             <li key={c.id}>
               <button
@@ -392,22 +397,17 @@ function Report(p: {
                 onClick={() =>
                   api
                     .reporter(p.rendezVous.id, c.id)
-                    .then(() =>
-                      p.allerA(
-                        { nom: 'rendez-vous' },
-                        'Rendez-vous reporté. Le patient est prévenu.',
-                      ),
-                    )
+                    .then(() => p.allerA({ nom: 'rendez-vous' }, t('report.fait')))
                     .catch(p.signaler)
                 }
               >
-                {quand(c.debut)} ({c.dureeMinutes} min)
+                {quand(c.debut)} {t('commun.duree', { minutes: c.dureeMinutes })}
               </button>
             </li>
           ))}
         </ul>
       )}
-      <button onClick={() => p.allerA({ nom: 'rendez-vous' })}>Retour</button>
+      <button onClick={() => p.allerA({ nom: 'rendez-vous' })}>{t('commun.retour')}</button>
     </section>
   );
 }
@@ -427,7 +427,7 @@ function MesCreneaux(p: { signaler: (e: unknown) => void }) {
         dureeMinutes: Number(f.get('duree')),
         nombre: Number(f.get('nombre')),
       });
-      setInfo(`${publies.length} créneau(x) publié(s).`);
+      setInfo(t('creneaux.publies', { nombre: publies.length }));
       await charger();
     } catch (x) {
       setInfo(undefined);
@@ -437,44 +437,44 @@ function MesCreneaux(p: { signaler: (e: unknown) => void }) {
 
   return (
     <section>
-      <h2>Publier des créneaux</h2>
+      <h2>{t('creneaux.publierTitre')}</h2>
       <form onSubmit={publier} class="formulaire">
         <label>
-          Date <input type="date" name="date" required />
+          {t('creneaux.date')} <input type="date" name="date" required />
         </label>
         <label>
-          Heure de début <input type="time" name="heure" required />
+          {t('creneaux.heure')} <input type="time" name="heure" required />
         </label>
         <label>
-          Durée{' '}
+          {t('creneaux.duree')}{' '}
           <select name="duree">
             {/* Sans attribut « selected » : un nouveau rendu ne doit pas écraser le choix. */}
-            <option value="20">20 min</option>
-            <option value="15">15 min</option>
-            <option value="30">30 min</option>
+            <option value="20">{t('creneaux.minutes', { minutes: 20 })}</option>
+            <option value="15">{t('creneaux.minutes', { minutes: 15 })}</option>
+            <option value="30">{t('creneaux.minutes', { minutes: 30 })}</option>
           </select>
         </label>
         <label>
-          Nombre de créneaux{' '}
+          {t('creneaux.nombre')}{' '}
           {/* Champs non contrôlés : le rechargement de la liste ne doit pas écraser la saisie. */}
           <input type="number" name="nombre" min={1} max={16} defaultValue="1" />
         </label>
         <button class="principal" type="submit">
-          <span aria-hidden="true">➕</span> Publier
+          <span aria-hidden="true">➕</span> {t('creneaux.publier')}
         </button>
       </form>
       {info && <p role="status">{info}</p>}
-      <h2>Mes créneaux (14 jours)</h2>
+      <h2>{t('creneaux.mesCreneaux')}</h2>
       {liste === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : liste.length === 0 ? (
-        <p>Aucun créneau publié.</p>
+        <p>{t('creneaux.aucun')}</p>
       ) : (
-        <ul class="liste" aria-label="Mes créneaux">
+        <ul class="liste" aria-label={t('creneaux.liste')}>
           {liste.map((c) => (
             <li key={c.id} data-creneau={c.id} data-statut={c.statut}>
-              <strong>{quand(c.debut)}</strong> ({c.dureeMinutes} min) —{' '}
-              {c.statut === 'libre' ? 'libre' : 'réservé'}
+              <strong>{quand(c.debut)}</strong> {t('commun.duree', { minutes: c.dureeMinutes })} —{' '}
+              {t(c.statut === 'libre' ? 'creneaux.libre' : 'creneaux.reserve')}
               {c.statut === 'libre' && (
                 <div class="actions">
                   <button
@@ -485,7 +485,7 @@ function MesCreneaux(p: { signaler: (e: unknown) => void }) {
                         .catch(p.signaler)
                     }
                   >
-                    Retirer
+                    {t('creneaux.retirer')}
                   </button>
                 </div>
               )}
@@ -497,18 +497,24 @@ function MesCreneaux(p: { signaler: (e: unknown) => void }) {
   );
 }
 
-const SECTIONS = [
-  ['motif', 'Motif de consultation'],
-  ['observations', 'Observations'],
-  ['conclusion', 'Conclusion'],
-  ['conduiteATenir', 'Conduite à tenir'],
-] as const;
+const SECTIONS: readonly (readonly [string, CleTexte])[] = [
+  ['motif', 'cr.motifConsultation'],
+  ['observations', 'cr.observations'],
+  ['conclusion', 'cr.conclusion'],
+  ['conduiteATenir', 'cr.conduiteATenir'],
+];
 
-const LIBELLES_CR: Record<string, string> = {
-  motif: 'Motif',
-  observations: 'Observations',
-  conclusion: 'Conclusion',
-  'conduite-a-tenir': 'Conduite à tenir',
+const LIBELLES_CR: Readonly<Record<string, CleTexte>> = {
+  motif: 'cr.motif',
+  observations: 'cr.observations',
+  conclusion: 'cr.conclusion',
+  'conduite-a-tenir': 'cr.conduiteATenir',
+};
+
+/** Titre d'une rubrique de compte-rendu ; une rubrique inconnue garde son code. */
+const libelleCr = (s: string): string => {
+  const cle = Object.entries(LIBELLES_CR).find(([code]) => code === s)?.[1];
+  return cle ? t(cle) : s;
 };
 
 /**
@@ -543,7 +549,7 @@ function DossierPatient(p: {
     try {
       await clinique.ecrireCompteRendu(p.rendezVous.id, saisie);
       (e.currentTarget as HTMLFormElement | null)?.reset();
-      setInfo('Compte-rendu enregistré dans le dossier.');
+      setInfo(t('dossier.enregistre'));
       await lire();
     } catch (x) {
       setInfo(undefined);
@@ -553,18 +559,15 @@ function DossierPatient(p: {
 
   return (
     <section>
-      <h2>Dossier — rendez-vous du {quand(p.rendezVous.debut)}</h2>
+      <h2>{t('dossier.titre', { date: quand(p.rendezVous.debut) })}</h2>
       {refus ? (
         <div data-acces-refuse="">
           <p class="message" role="status">
-            Le patient n’a pas partagé son dossier avec vous.
+            {t('dossier.nonPartage')}
           </p>
           <details>
-            <summary>Accès d’urgence (bris de glace)</summary>
-            <p>
-              Réservé à une urgence vitale. Votre motif est enregistré, signalé au patient et revu
-              par un humain.
-            </p>
+            <summary>{t('dossier.brisDeGlace')}</summary>
+            <p>{t('dossier.brisDeGlaceExplication')}</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -573,70 +576,69 @@ function DossierPatient(p: {
               }}
             >
               <label>
-                Motif <textarea name="motif" required maxLength={500} rows={3} />
+                {t('dossier.motifAcces')}{' '}
+                <textarea name="motif" required maxLength={500} rows={3} />
               </label>
               <button class="danger" type="submit">
-                Accéder en urgence
+                {t('dossier.accederUrgence')}
               </button>
             </form>
           </details>
         </div>
       ) : dossier === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('commun.chargement')}</p>
       ) : (
         <div data-dossier="">
           {dossier.motifAcces === 'bris-de-glace' && (
             <p class="message" role="status">
-              Accès d’urgence : cette consultation du dossier sera revue.
+              {t('dossier.accesUrgence')}
             </p>
           )}
-          <h3>Problèmes de santé</h3>
+          <h3>{t('dossier.problemes')}</h3>
           {dossier.problemes.length === 0 ? (
-            <p>Aucun problème enregistré.</p>
+            <p>{t('dossier.aucunProbleme')}</p>
           ) : (
             <ul class="liste">
               {dossier.problemes.map((x, i) => (
                 <li key={i}>
                   {x.texte}{' '}
-                  <em>
-                    ({x.parProfessionnel ? 'posé par un professionnel' : 'déclaré, non confirmé'})
-                  </em>
+                  <em>{t(x.parProfessionnel ? 'dossier.parProfessionnel' : 'dossier.declare')}</em>
                 </li>
               ))}
             </ul>
           )}
-          <h3>Comptes-rendus</h3>
+          <h3>{t('dossier.comptesRendus')}</h3>
           {dossier.comptesRendus.length === 0 ? (
-            <p>Aucun compte-rendu.</p>
+            <p>{t('dossier.aucunCompteRendu')}</p>
           ) : (
-            <ul class="liste" aria-label="Comptes-rendus">
+            <ul class="liste" aria-label={t('dossier.comptesRendus')}>
               {dossier.comptesRendus.map((c) => (
                 <li key={c.id} data-compte-rendu={c.id}>
                   <strong>{quand(c.date)}</strong>
-                  {Object.entries(c.sections).map(([s, t]) => (
+                  {Object.entries(c.sections).map(([s, texte]) => (
                     <p key={s}>
-                      <strong>{LIBELLES_CR[s] ?? s} :</strong> {t}
+                      <strong>{t('dossier.rubrique', { titre: libelleCr(s) })}</strong> {texte}
                     </p>
                   ))}
                 </li>
               ))}
             </ul>
           )}
-          <h3>Rédiger le compte-rendu</h3>
+          <h3>{t('dossier.rediger')}</h3>
           <form onSubmit={enregistrer} class="formulaire">
             {SECTIONS.map(([cle, libelle]) => (
               <label key={cle}>
-                {libelle} <textarea name={cle} maxLength={4000} rows={3} />
+                {t(libelle)} <textarea name={cle} maxLength={4000} rows={3} />
               </label>
             ))}
             <button class="principal" type="submit">
-              <span aria-hidden="true">💾</span> Enregistrer le compte-rendu
+              <span aria-hidden="true">💾</span> {t('dossier.enregistrer')}
             </button>
           </form>
           {info && <p role="status">{info}</p>}
         </div>
       )}
-      <button onClick={() => p.allerA({ nom: 'rendez-vous' })}>Retour</button>
+      <button onClick={() => p.allerA({ nom: 'rendez-vous' })}>{t('commun.retour')}</button>
     </section>
   );
 }
