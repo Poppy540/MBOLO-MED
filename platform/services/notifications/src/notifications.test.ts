@@ -1,14 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { CATALOGUE, IDENTIFIANTS_GABARITS, rediger, verifierPays } from './gabarits.js';
+import {
+  CATALOGUE,
+  IDENTIFIANTS_GABARITS,
+  languesApprouvees,
+  PAYS_PAR_DEFAUT,
+  paysPour,
+  rediger,
+  verifierPays,
+} from './gabarits.js';
 import { CanalSimule, ServiceNotifications, type SourceContacts } from './notifications.js';
 
 // Données FICTIVES.
 const contacts = (
-  o: { rappels?: boolean; numero?: string | undefined; attente?: boolean } = {},
+  o: {
+    rappels?: boolean;
+    numero?: string | undefined;
+    attente?: boolean;
+    langue?: () => Promise<string | undefined>;
+  } = {},
 ): SourceContacts => ({
   telephone: async () => ('numero' in o ? o.numero : '+241 00 00 00 00'),
   accepteRappels: async () => o.rappels ?? true,
   enAttenteApresPerte: async () => o.attente ?? false,
+  ...(o.langue ? { languePreferee: o.langue } : {}),
 });
 
 const demande = {
@@ -50,6 +64,58 @@ describe('gabarits', () => {
       'Aucun gabarit approuvé',
     );
     expect(() => verifierPays({ fuseau: 'Afrique/Inconnue', langue: 'fr-FR' })).toThrow('invalide');
+  });
+});
+
+describe('langue préférée du patient (ADR-0025)', () => {
+  it('seules les langues dont tous les gabarits sont approuvés sont utilisables', () => {
+    expect(languesApprouvees()).toEqual(['fr']);
+  });
+
+  it('prend la langue préférée si elle est approuvée, garde le fuseau du pays', () => {
+    const p = paysPour(PAYS_PAR_DEFAUT, 'en-GB', ['fr', 'en']);
+    expect(p).toEqual({ fuseau: 'Africa/Libreville', langue: 'en-GB', langueTextes: 'en-GB' });
+  });
+
+  it('garde la langue du pays si la langue préférée n’est pas approuvée ou absente', () => {
+    expect(paysPour(PAYS_PAR_DEFAUT, 'en', ['fr'])).toBe(PAYS_PAR_DEFAUT);
+    expect(paysPour(PAYS_PAR_DEFAUT, undefined)).toBe(PAYS_PAR_DEFAUT);
+    expect(paysPour(PAYS_PAR_DEFAUT, 'fr-CA')).toBe(PAYS_PAR_DEFAUT);
+  });
+
+  it('garde les formats du pays pour un code de langue invalide', () => {
+    const p = paysPour(PAYS_PAR_DEFAUT, 'en-%%', ['fr', 'en']);
+    expect(p.langue).toBe('fr-FR');
+    expect(p.langueTextes).toBe('en-%%');
+  });
+
+  it('écrit en français si la langue du patient n’a pas tous ses gabarits, ou si le dossier ne répond pas', async () => {
+    for (const langue of [
+      async () => 'en',
+      async () => Promise.reject(new Error('dossier indisponible')),
+    ]) {
+      const canal = new CanalSimule();
+      const service = new ServiceNotifications(contacts({ langue }), canal);
+      expect(await service.envoyer(demande)).toBe('envoyee');
+      expect(await service.envoyerCodeConnexion('pat-fictif-001', '482913')).toBe('envoyee');
+      expect(await service.alerterPatient('pat-fictif-001', 'numero-change')).toBe('envoyee');
+      expect(canal.boite.map((m) => m.texte.slice(0, 14))).toEqual(Array(3).fill('Mbolo Santé : '));
+      expect(canal.boite[0]?.texte).toContain('est annulé');
+    }
+  });
+
+  it('ne lit pas la langue d’un patient qui n’a pas accepté les rappels', async () => {
+    let lue = false;
+    const langue = async () => {
+      lue = true;
+      return 'fr';
+    };
+    const service = new ServiceNotifications(
+      contacts({ rappels: false, langue }),
+      new CanalSimule(),
+    );
+    expect(await service.envoyer(demande)).toBe('ignoree-sans-consentement');
+    expect(lue).toBe(false);
   });
 });
 

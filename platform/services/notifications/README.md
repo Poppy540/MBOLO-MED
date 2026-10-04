@@ -42,7 +42,7 @@ Le Gabon est le premier pays ; rien de propre au pays n'est codé en dur :
 
 - **Fuseau et formats** : `NOTIFICATIONS_FUSEAU` et `NOTIFICATIONS_LANGUE`, vérifiés au démarrage.
 - **Nouvelle langue** : ajouter une entrée au `CATALOGUE` de `src/gabarits.ts`, avec **tous** les gabarits (un test le vérifie, ainsi que la longueur et l'absence de donnée de santé). Les textes sont relus par le porteur de projet, et si possible par un locuteur du pays, avant la production.
-- **À venir** : langue choisie par chaque patient (`Patient.communication`), plutôt qu'une langue par déploiement.
+- **Langue du patient** (ADR-0025) : un SMS au patient (rappels, code de connexion, alertes) est écrit dans sa langue préférée (`Patient.communication`, élément `preferred`, code BCP 47) si **tous** les gabarits existent dans cette langue (`languesApprouvees`), jamais dans un mélange de deux langues ; sinon dans la langue du pays. Le fuseau reste celui du pays ; un dossier illisible n'empêche pas l'envoi. Le compte de service lit seulement `Patient.telecom` et `Patient.communication` (minimisation par la passerelle). Le code de vérification d'un nouveau numéro, envoyé avant la création du dossier, reste dans la langue du pays.
 
 ## Tests
 
