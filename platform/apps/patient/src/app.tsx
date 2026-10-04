@@ -29,6 +29,8 @@ const connexion = () => ({
   emetteur: CONFIG.emetteur,
   client: CONFIG.client,
   retour: `${location.origin}/`,
+  // Pages Keycloak dans la langue choisie, si le royaume la propose (ADR-0025).
+  langue: langueChoisie,
 });
 
 /** Professionnel choisi (lien reçu du point de consultation), gardé le temps de la connexion. */

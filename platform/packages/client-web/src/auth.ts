@@ -19,6 +19,11 @@ export interface ParametresConnexion {
   emetteur: string;
   client: string;
   retour: string;
+  /**
+   * Langue choisie dans l'application (ADR-0025), transmise à Keycloak (`ui_locales`) : ses pages
+   * s'affichent dans cette langue si le royaume la propose, sinon dans sa langue par défaut.
+   */
+  langue?: string;
 }
 
 /**
@@ -45,6 +50,7 @@ export async function urlAutorisation(
     // Double authentification (ADR-0022) : niveau 2 demandé juste avant une action sensible.
     ...(niveau ? { acr_values: String(niveau) } : {}),
     ...(action ? { kc_action: action } : {}),
+    ...(p.langue ? { ui_locales: p.langue } : {}),
   });
   const point = inscription ? 'registrations' : 'auth';
   return `${p.emetteur}/protocol/openid-connect/${point}?${q.toString()}`;

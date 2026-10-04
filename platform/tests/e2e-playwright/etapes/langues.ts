@@ -50,10 +50,24 @@ Then(
   },
 );
 
-When('{string} se connecte depuis cet écran', async ({ monde }, identifiant: string) => {
+When('le patient ouvre la page de connexion', async ({ monde }) => {
   const p = page(monde);
-  // Le bouton est dans la langue choisie ; la suite de l'application n'est pas encore traduite.
+  // Le bouton est dans la langue choisie.
   await p.getByRole('button', { name: /Se connecter$/ }).click();
+  await p.waitForURL(/\/protocol\/openid-connect\/auth/);
+});
+
+Then(
+  'la page de connexion reçoit la langue {string} et s’affiche en {string}',
+  async ({ monde }, langue: string, affichee: string) => {
+    const p = page(monde);
+    expect(new URL(p.url()).searchParams.get('ui_locales')).toBe(langue);
+    await expect(p.locator('html')).toHaveAttribute('lang', affichee);
+  },
+);
+
+When('{string} se connecte sur cette page', async ({ monde }, identifiant: string) => {
+  const p = page(monde);
   await saisirIdentifiants(p, identifiant, false);
   await expect(p.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
 });
