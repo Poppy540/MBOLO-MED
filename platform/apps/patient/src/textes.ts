@@ -10,15 +10,21 @@ import { fr } from './textes-fr.js';
 
 export type { CleTexte } from './textes-fr.js';
 
-const CATALOGUES: Readonly<Record<string, () => Promise<Traduction<typeof fr>>>> = {
-  // Démonstration [FICTIF] pour tester le parcours sans attendre les traducteurs (jamais en production).
-  'fr-x-fictif': () => import('./textes-fictif.js').then((m) => m.fictif),
-};
+/** Langues qui ont un catalogue, en plus du français (chacun chargé par `chargerCatalogue`). */
+const CATALOGUES = ['fr-x-fictif'];
 
-export const LANGUES = languesProposees(CONFIG.langues, [
-  LANGUE_DE_REFERENCE.code,
-  ...Object.keys(CATALOGUES),
-]);
+/** Liste fermée : seul un code connu charge un fichier, jamais un nom construit à partir du code. */
+function chargerCatalogue(code: string): Promise<Traduction<typeof fr>> | undefined {
+  switch (code) {
+    // Démonstration [FICTIF] pour tester le parcours sans attendre les traducteurs (jamais en production).
+    case 'fr-x-fictif':
+      return import('./textes-fictif.js').then((m) => m.fictif);
+    default:
+      return undefined;
+  }
+}
+
+export const LANGUES = languesProposees(CONFIG.langues, [LANGUE_DE_REFERENCE.code, ...CATALOGUES]);
 
 const stockage = (): Storage | undefined => {
   try {
@@ -38,14 +44,11 @@ export let langueChoisie = LANGUE_DE_REFERENCE.code;
  */
 export async function choisirLangue(code: string): Promise<void> {
   if (!LANGUES.some((l) => l.code === code)) return;
-  const charger = CATALOGUES[code];
   let traduction: Traduction<typeof fr> | undefined;
-  if (charger) {
-    try {
-      traduction = await charger();
-    } catch {
-      return;
-    }
+  try {
+    traduction = await chargerCatalogue(code);
+  } catch {
+    return;
   }
   t = traduction ? creerTraducteur(fr, code, traduction) : creerTraducteur(fr, CONFIG.langue);
   langueChoisie = code;

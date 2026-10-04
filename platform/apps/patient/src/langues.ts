@@ -26,7 +26,7 @@ export function languesProposees(texte: string, catalogues: readonly string[]): 
     const nom = entree.slice(i + 1).trim();
     const valide =
       i > 0 &&
-      /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(code) &&
+      codeValide(code) &&
       nom.length > 0 &&
       nom.length <= 30 &&
       catalogues.includes(code) &&
@@ -34,6 +34,19 @@ export function languesProposees(texte: string, catalogues: readonly string[]): 
     if (valide) langues.push({ code, nom });
   }
   return langues.length > 0 ? langues : [LANGUE_DE_REFERENCE];
+}
+
+/**
+ * Code BCP 47 simple : langue en 2 ou 3 lettres, puis sous-étiquettes de 1 à 8 caractères (« fr »,
+ * « fr-x-fictif »). Vérifié morceau par morceau, sans expression régulière à répétition imbriquée.
+ */
+function codeValide(code: string): boolean {
+  const [langue, ...suite] = code.split('-');
+  return (
+    /^[a-z]{2,3}$/.test(langue ?? '') &&
+    suite.length <= 4 &&
+    suite.every((s) => /^[A-Za-z0-9]{1,8}$/.test(s))
+  );
 }
 
 /** Langue gardée sur le téléphone si elle est encore proposée, sinon la première de la liste. */

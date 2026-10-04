@@ -72,3 +72,15 @@ describe('catalogue de démonstration [FICTIF]', () => {
     }
   });
 });
+
+describe('codes de langue', () => {
+  it('refuse un code trop long ou mal formé, sans lenteur même sur une entrée piégée', () => {
+    const piege = `fr${'-a'.repeat(5000)}!`;
+    const debut = Date.now();
+    expect(languesProposees(`${piege}:Piège`, [piege])).toEqual([{ code: 'fr', nom: 'Français' }]);
+    expect(Date.now() - debut).toBeLessThan(100);
+    expect(languesProposees('f:Court,fr--x:Vide', ['f', 'fr--x'])).toEqual([
+      { code: 'fr', nom: 'Français' },
+    ]);
+  });
+});

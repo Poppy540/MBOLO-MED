@@ -104,7 +104,7 @@ Aucune vraie langue n'est encore proposée : chaque langue ajoutée doit être t
 
 ## Budget de poids
 
-`pnpm build` échoue si le poids compressé (gzip) dépasse un plafond (script commun `packages/client-web/scripts/budget.mjs`) : **30 Ko à l'ouverture** (aujourd'hui 16,5 Ko), **8 Ko par écran chargé à la demande** (le plus lourd : « Mes partages et accès », 4,4 Ko avec son catalogue), **160 Ko pour la bibliothèque vidéo**, chargée seulement pour une consultation (140 Ko).
+`pnpm build` échoue si le poids compressé (gzip) dépasse un plafond (script commun `packages/client-web/scripts/budget.mjs`) : **30 Ko à l'ouverture** (aujourd'hui 16,6 Ko), **8 Ko par écran chargé à la demande** (le plus lourd : « Mes partages et accès », 4,4 Ko avec son catalogue), **160 Ko pour la bibliothèque vidéo**, chargée seulement pour une consultation (140 Ko).
 
 Sur un réseau « 3G lente » simulé, l'écran d'accueil s'affiche en moins de 8 secondes avec moins de 30 Ko transférés (e2e `faible-debit/reseau-lent.feature`).
 
