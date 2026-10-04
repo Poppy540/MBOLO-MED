@@ -1,7 +1,7 @@
 // Configuration publique (aucun secret : l'application est un client public, PKCE obligatoire).
 // Le Gabon est le premier pays : tout ce qui dépend du pays (fuseau, langue) est paramétrable au
-// déploiement, sans modifier le code (VITE_FUSEAU, VITE_LANGUE, VITE_NOM_ASSURANCE, VITE_OPERATEURS,
-// VITE_INDICATIF, VITE_NUMEROS_SECOURS).
+// déploiement, sans modifier le code (VITE_FUSEAU, VITE_LANGUE, VITE_LANGUES, VITE_NOM_ASSURANCE,
+// VITE_OPERATEURS, VITE_INDICATIF, VITE_NUMEROS_SECOURS).
 import { numerosSecours } from './secours.js';
 
 const env = import.meta.env;
@@ -37,6 +37,11 @@ export const CONFIG = {
    * médical ; aucun par défaut.
    */
   secours: numerosSecours(lire('VITE_NUMEROS_SECOURS', '')),
-  /** Langue et formats (BCP 47). */
+  /** Formats des dates, des montants et pluriels du français (BCP 47). */
   langue: lire('VITE_LANGUE', 'fr-FR'),
+  /**
+   * Langues proposées au patient (« code:Nom » séparés par des virgules, ADR-0025), seulement celles
+   * dont la traduction est validée. Une seule langue : aucun choix affiché.
+   */
+  langues: lire('VITE_LANGUES', 'fr:Français'),
 };

@@ -1,7 +1,7 @@
 // Catalogue de référence de l'application patient : le français (ADR-0025). Ses clés sont celles de
 // toutes les langues ; une langue ajoutée reprend ces clés dans son propre fichier, traduit par des
 // humains et validé (juriste pour les consentements, comité médical pour l'urgence et les conseils).
-// Les écrans chargés à la demande (paiement, partages…) seront ajoutés par lots.
+// Les écrans chargés à la demande ont chacun leur catalogue (`textes-fr-<écran>.ts`).
 import type { Catalogue } from '@mbolo/client-web';
 
 export const fr = {
@@ -24,6 +24,7 @@ export const fr = {
   'accueil.presentation': 'Consultez un médecin depuis votre téléphone.',
   'accueil.seConnecter': 'Se connecter',
   'accueil.codeInvitation': "J'ai un code d'invitation",
+  'langue.choisir': 'Langue',
 
   // Dossier à compléter (ADR-0014)
   'dossier.identiteRefusee':

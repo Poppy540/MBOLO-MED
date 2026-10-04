@@ -21,7 +21,7 @@ import {
 import { creerApi, type Creneau, type Praticien, type RendezVous } from './api.js';
 import { filtrer, specialites } from './annuaire.js';
 import { CONFIG } from './config.js';
-import { t, type CleTexte } from './textes.js';
+import { choisirLangue, LANGUES, langueChoisie, t, type CleTexte } from './textes.js';
 
 const connexion = () => ({
   emetteur: CONFIG.emetteur,
@@ -155,6 +155,8 @@ type Ecran =
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
+  // Changer de langue redessine toute l'application avec les textes de la nouvelle langue.
+  const [, setLangue] = useState(langueChoisie);
   // Au changement d'écran, le focus va au titre du nouvel écran (clavier, lecteur d'écran).
   useTitreAuFocus(ecran.nom);
   const [message, setMessage] = useState<string>();
@@ -264,7 +266,12 @@ export function App() {
       {attente ? (
         <p aria-live="polite">{t('commun.chargement')}</p>
       ) : ecran.nom === 'accueil' ? (
-        <Accueil />
+        <Accueil
+          choisirLangue={async (code) => {
+            await choisirLangue(code);
+            setLangue(code);
+          }}
+        />
       ) : ecran.nom === 'dossier-a-completer' ? (
         <DossierACompleter
           refusee={ecran.refusee === true}
@@ -379,7 +386,7 @@ function Secours() {
   );
 }
 
-function Accueil() {
+function Accueil(p: { choisirLangue: (code: string) => Promise<void> }) {
   // Sans réseau, la connexion est impossible : on montre les rendez-vous déjà connus.
   if (!navigator.onLine) {
     return (
@@ -402,7 +409,30 @@ function Accueil() {
       >
         <span aria-hidden="true">✉️</span> {t('accueil.codeInvitation')}
       </button>
+      <ChoixLangue choisir={p.choisirLangue} />
     </section>
+  );
+}
+
+/**
+ * Choix de la langue avant la connexion (ADR-0025) : chaque langue est écrite dans cette langue, et
+ * marquée comme telle pour les lecteurs d'écran (WCAG 3.1.2). Rien n'est affiché s'il n'y en a qu'une.
+ */
+function ChoixLangue(p: { choisir: (code: string) => Promise<void> }) {
+  if (LANGUES.length < 2) return null;
+  return (
+    <nav aria-label={t('langue.choisir')}>
+      {LANGUES.map((l) => (
+        <button
+          key={l.code}
+          lang={l.code}
+          aria-pressed={l.code === langueChoisie}
+          onClick={() => void p.choisir(l.code)}
+        >
+          {l.nom}
+        </button>
+      ))}
+    </nav>
   );
 }
 

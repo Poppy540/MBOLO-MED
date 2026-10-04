@@ -114,6 +114,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          # Catalogue de démonstration [FICTIF] proposé pour tester le choix de la langue (ADR-0025).
+          VITE_LANGUES: 'fr:Français,fr-x-fictif:[FICTIF] Démo'
       - name: Navigateur Chromium pour Playwright
         run: pnpm --filter @mbolo/e2e exec playwright install --with-deps chromium
       - name: Secrets de test éphémères (générés, masqués, jamais conservés)
