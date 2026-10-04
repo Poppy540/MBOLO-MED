@@ -64,7 +64,7 @@ Les professionnels viennent **du monde entier** (D-0001) : l'espace professionne
 1. **Mécanisme et catalogue français de l'application patient** : `t()`, clés typées, test de complétude, budget vérifié. Les textes sont extraits par lots, écran par écran, sans rien changer à l'affichage (les e2e existants le prouvent).
 2. **Choix de la langue** : liste par pays, bouton avant connexion, `lang` de la page, catalogue de démonstration marqué `[FICTIF]` pour tester le parcours sans attendre les traducteurs. *Fait (PR n°141).* La liste `VITE_LANGUES` sert de barrière au déploiement ; le flag `langue.<code>` (ouverture par cohorte) arrivera avec la première vraie langue.
 3. **Pictogrammes SVG** à la place des émojis. *Fait pour les actions clés de l'application patient et de la consultation (PR n°142) : premier jeu simple (`Picto` de `@mbolo/client-web`), à tester sur le terrain ou à faire redessiner (question 5) ; les autres émojis suivent avec l'espace professionnel (étape 4).*
-4. **Espace professionnel** : même mécanisme, avec l'anglais si le porteur de projet le retient (question 2). *En cours (PR n°143) : catalogue français des écrans de `app.tsx` et pictogrammes ; écrans chargés à la demande ensuite.*
+4. **Espace professionnel** : même mécanisme, avec l'anglais si le porteur de projet le retient (question 2). *Fait pour le français (PR n°143 et n°144) : tous les écrans au catalogue, pictogrammes du rendez-vous et de la vidéo ; l'anglais attend la question 2.*
 5. **Pages Keycloak et SMS** dans la langue du compte : attribut `locale` du compte Keycloak (transmis par `ui_locales` à la connexion), catalogues `messages_<code>.properties` du thème `mbolo`, gabarits de SMS par langue.
 6. **Vocal**, selon la réponse à la question 4.
 

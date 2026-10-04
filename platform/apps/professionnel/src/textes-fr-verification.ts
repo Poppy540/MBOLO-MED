@@ -1,0 +1,61 @@
+// Textes des écrans « Vérifications à faire » (ADR-0015) et « Changements de numéro » (ADR-0023),
+// qui partagent l'identité déclarée, les photos et les motifs de refus (ADR-0025). Catalogue chargé
+// avec ces écrans, jamais à l'ouverture de l'espace professionnel.
+import type { Catalogue } from '@mbolo/client-web';
+
+export const frVerification = {
+  'verif.titre': 'Vérifications à faire',
+  'verif.chargement': 'Chargement…',
+  'verif.retour': 'Retour',
+  'verif.indisponible': 'Service indisponible. Réessayez plus tard.',
+  'verif.aucune': 'Aucune vérification en attente.',
+  'verif.liste': 'Vérifications en attente',
+  'verif.dossier': 'Dossier {patient} — photos du {date}',
+  'verif.enregistree': 'Décision enregistrée.',
+  'verif.photos': 'Photos',
+  'verif.decision': 'Décision',
+  'verif.verifiee': 'Identité vérifiée',
+  'verif.refusee': 'Refusée',
+  'verif.aRefaire': 'Photos à refaire',
+  'verif.numeroPatient': 'Numéro du patient',
+  'verif.assurance': 'Assurance maladie ({assurance})',
+  'verif.provisoire': 'Numéro provisoire',
+  'verif.numero': 'Numéro',
+  'verif.motifRefus': 'Motif du refus',
+  'verif.enregistrer': 'Enregistrer la décision',
+  'verif.identiteDeclaree': 'Identité déclarée',
+  'verif.nom': 'Nom',
+  'verif.prenoms': 'Prénom(s)',
+  'verif.naissance': 'Date de naissance',
+  'verif.assuranceMaladie': 'Assurance maladie',
+  'verif.tracage': 'Chaque ouverture est enregistrée dans le dossier du patient.',
+  'verif.photo': 'Photo : {type}',
+  'verif.legende': '{type} — {date}',
+  'type.pieceIdentite': "Pièce d'identité",
+  'type.acteNaissance': 'Acte de naissance',
+  'type.visage': 'Visage',
+  'motif.photoIllisible': 'Photo illisible',
+  'motif.documentNonConforme': 'Document non conforme',
+  'motif.visageDifferent': 'Le visage ne correspond pas',
+  'motif.documentExpire': 'Document expiré',
+  'motif.controleEnPersonne': 'Autre : contrôle en personne',
+
+  // Changements de numéro après un téléphone perdu
+  'pertes.titre': 'Changements de numéro',
+  'pertes.explication': 'Patients qui ont perdu leur téléphone et envoyé de nouvelles photos.',
+  'pertes.aucune': 'Aucune demande en attente.',
+  'pertes.liste': 'Demandes de changement de numéro',
+  'pertes.dossier': 'Dossier {patient} — demande du {date}',
+  'pertes.acceptee': 'Nouveau numéro enregistré. L’ancien numéro a été prévenu.',
+  'pertes.refusee': 'Demande refusée. Le numéro ne change pas.',
+  'pertes.demandeDu': 'Demande du {date}.',
+  'pertes.nouvellesPhotos': 'Nouvelles photos',
+  'pertes.photosInscription': 'Photos de l’inscription',
+  'pertes.plusConservees': 'Plus conservées : comparez avec l’identité déclarée.',
+  'pertes.accepter': 'Accepter le nouveau numéro',
+  'pertes.refuser': 'Refuser',
+  'pertes.attente':
+    'L’ancien numéro sera prévenu par SMS, puis le patient attendra 24 heures avant de recevoir un code de connexion.',
+} as const satisfies Catalogue;
+
+export type CleVerification = keyof typeof frVerification;

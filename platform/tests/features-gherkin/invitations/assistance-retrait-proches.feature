@@ -21,7 +21,7 @@ Fonctionnalité: L'équipe d'assistance retire les proches d'un patient, à sa d
     Alors l’espace d’assistance indique "La date de naissance ne correspond pas"
     Et l'invitation du proche est "valide"
     Quand il saisit de nouveau la date de naissance "1990-01-01"
-    Alors l’espace d’assistance indique "proche(s) retiré(s)"
+    Alors l’espace d’assistance indique "retiré"
     Et l'invitation du proche est "revoque"
     Et la fiche du proche est inactive et le partage retiré
     Et le numéro "+241 00 00 00 01" reçoit le message "l’équipe a retiré l’accès de vos proches"
