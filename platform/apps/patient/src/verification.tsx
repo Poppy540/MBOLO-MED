@@ -6,12 +6,16 @@
 // nouvelles photos pour sa demande de changement de numéro.
 import {
   appelReseau,
+  creerTraducteur,
   DELAI_ENVOI_FICHIER_MS,
   DELAI_REQUETE_MS,
   useTitreAuFocus,
 } from '@mbolo/client-web';
 import { useEffect, useState } from 'preact/hooks';
 import { CONFIG } from './config.js';
+import { frVerification } from './textes-fr-verification.js';
+
+const t = creerTraducteur(frVerification, CONFIG.langue);
 
 type TypeDocument = 'piece-identite' | 'acte-naissance' | 'visage';
 
@@ -45,7 +49,7 @@ async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): P
   if (!r.ok) {
     // Messages du service, déjà en phrases simples ; sinon un message général.
     const corps = (await r.json().catch(() => ({}))) as { erreur?: string };
-    throw new ErreurEnvoi(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    throw new ErreurEnvoi(corps.erreur ?? t('verification.indisponible'));
   }
   return (await r.json()) as T;
 }
@@ -53,7 +57,7 @@ async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): P
 /** Réduit et recompresse la photo en JPEG, sans métadonnées (ni lieu ni appareil). */
 async function compresser(fichier: File): Promise<Blob> {
   const image = await createImageBitmap(fichier).catch(() => {
-    throw new ErreurEnvoi('Cette image ne peut pas être lue. Prenez une nouvelle photo.');
+    throw new ErreurEnvoi(t('verification.imageIllisible'));
   });
   const echelle = Math.min(1, COTE_MAX / Math.max(image.width, image.height));
   const toile = document.createElement('canvas');
@@ -65,7 +69,7 @@ async function compresser(fichier: File): Promise<Blob> {
     const blob = await new Promise<Blob | null>((ok) => toile.toBlob(ok, 'image/jpeg', qualite));
     if (blob && blob.size <= TAILLE_MAX) return blob;
   }
-  throw new ErreurEnvoi('Photo trop lourde. Prenez une nouvelle photo.');
+  throw new ErreurEnvoi(t('verification.photoTropLourde'));
 }
 
 export function Verification(p: { jeton: string; retour: () => void; perte?: boolean }) {
@@ -84,7 +88,7 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
           p.jeton,
           `${CONFIG.apiDocuments}/perte`,
         ).then((d): Etat => {
-          if (!d.ouverte) throw new ErreurEnvoi('Aucune demande de changement de numéro en cours.');
+          if (!d.ouverte) throw new ErreurEnvoi(t('verification.aucunePerte'));
           return {
             patientId: '',
             statut: 'verifiee',
@@ -99,7 +103,7 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
   useEffect(() => void charger(), []);
 
   const signaler = (e: unknown) =>
-    setMessage(e instanceof ErreurEnvoi ? e.message : 'Service indisponible. Réessayez plus tard.');
+    setMessage(e instanceof ErreurEnvoi ? e.message : t('verification.indisponible'));
 
   const decider = async (accepte: boolean) => {
     if (!etat) return;
@@ -129,7 +133,7 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
   const envoyer = async (type: TypeDocument, champ: string) => {
     const fichier = (document.getElementById(champ) as HTMLInputElement | null)?.files?.[0];
     if (!fichier) {
-      setMessage('Choisissez ou prenez d’abord une photo.');
+      setMessage(t('verification.choisirPhoto'));
       return;
     }
     setMessage(undefined);
@@ -157,20 +161,17 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
   if (refus) {
     return (
       <section>
-        <h2>Charte refusée</h2>
-        <p>
-          Vous avez refusé la charte. Vous gardez votre compte, mais vous ne pourrez pas consulter.
-          Un professionnel de santé peut vous proposer une vérification en personne.
-        </p>
-        <button onClick={p.retour}>Retour</button>
+        <h2>{t('verification.charteRefusee')}</h2>
+        <p>{t('verification.refusExplication')}</p>
+        <button onClick={p.retour}>{t('verification.retour')}</button>
       </section>
     );
   }
   if (!etat) {
     return (
       <section>
-        {alerte ?? <p aria-live="polite">Chargement…</p>}
-        <button onClick={p.retour}>Retour</button>
+        {alerte ?? <p aria-live="polite">{t('verification.chargement')}</p>}
+        <button onClick={p.retour}>{t('verification.retour')}</button>
       </section>
     );
   }
@@ -184,34 +185,26 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
     <section>
       <h2>
         <span aria-hidden="true">📷</span>{' '}
-        {p.perte ? 'Vos deux nouvelles photos' : 'Vos deux photos'}
+        {t(p.perte ? 'verification.deuxNouvellesPhotos' : 'verification.deuxPhotos')}
       </h2>
-      {p.perte && (
-        <p>
-          Pour changer votre numéro sans votre ancien téléphone, une personne de l'équipe Mbolo
-          Santé doit vérifier que c'est bien vous.
-        </p>
-      )}
+      {p.perte && <p>{t('verification.perteExplication')}</p>}
       {alerte}
-      <ul class="liste" aria-label="Photos envoyées">
+      <ul class="liste" aria-label={t('verification.photosEnvoyees')}>
         <li>
-          {documentEnvoye ? '✅' : '⬜'} Votre document {documentEnvoye ? 'est envoyé' : ''}
+          {documentEnvoye ? '✅' : '⬜'}{' '}
+          {t(documentEnvoye ? 'verification.documentEnvoye' : 'verification.document')}
         </li>
         <li>
-          {envoyees.has('visage') ? '✅' : '⬜'} Votre visage{' '}
-          {envoyees.has('visage') ? 'est envoyé' : ''}
+          {envoyees.has('visage') ? '✅' : '⬜'}{' '}
+          {t(envoyees.has('visage') ? 'verification.visageEnvoye' : 'verification.visage')}
         </li>
       </ul>
       {documentEnvoye && envoyees.has('visage') ? (
-        <p>
-          {p.perte
-            ? 'Merci. Une personne de l’équipe Mbolo Santé va vérifier vos photos avant de changer votre numéro. Votre ancien numéro recevra un message.'
-            : "Merci. Une personne de l'équipe Mbolo Santé va vérifier vos photos, puis vous pourrez consulter."}
-        </p>
+        <p>{t(p.perte ? 'verification.merciPerte' : 'verification.merci')}</p>
       ) : (
         <>
           <fieldset>
-            <legend>1. Votre document</legend>
+            <legend>{t('verification.etapeDocument')}</legend>
             <label>
               <input
                 type="radio"
@@ -219,7 +212,7 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
                 checked={typeDocument === 'piece-identite'}
                 onChange={() => setTypeDocument('piece-identite')}
               />{' '}
-              Pièce d'identité (avec votre numéro {CONFIG.assurance})
+              {t('verification.pieceIdentite', { assurance: CONFIG.assurance })}
             </label>
             <label>
               <input
@@ -228,33 +221,33 @@ export function Verification(p: { jeton: string; retour: () => void; perte?: boo
                 checked={typeDocument === 'acte-naissance'}
                 onChange={() => setTypeDocument('acte-naissance')}
               />{' '}
-              Acte de naissance
+              {t('verification.acteNaissance')}
             </label>
-            <label for="photo-document">Photo de votre document</label>
+            <label for="photo-document">{t('verification.photoDocument')}</label>
             <input id="photo-document" type="file" accept="image/*" capture="environment" />
             <button
               class="principal"
               disabled={envoi}
               onClick={() => void envoyer(typeDocument, 'photo-document')}
             >
-              Envoyer la photo du document
+              {t('verification.envoyerDocument')}
             </button>
           </fieldset>
           <fieldset>
-            <legend>2. Votre visage</legend>
-            <label for="photo-visage">Photo de votre visage</label>
+            <legend>{t('verification.etapeVisage')}</legend>
+            <label for="photo-visage">{t('verification.photoVisage')}</label>
             <input id="photo-visage" type="file" accept="image/*" capture="user" />
             <button
               class="principal"
               disabled={envoi}
               onClick={() => void envoyer('visage', 'photo-visage')}
             >
-              Envoyer la photo du visage
+              {t('verification.envoyerVisage')}
             </button>
           </fieldset>
         </>
       )}
-      <button onClick={p.retour}>Retour</button>
+      <button onClick={p.retour}>{t('verification.retour')}</button>
     </section>
   );
 }
@@ -272,46 +265,27 @@ function Charte(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">📜</span> Charte de vérification d'identité
+        <span aria-hidden="true">📜</span> {t('charte.titre')}
       </h2>
       {p.alerte}
-      <h3>Pourquoi nous vérifions votre identité</h3>
+      <h3>{t('charte.pourquoiTitre')}</h3>
+      <p>{t('charte.pourquoi')}</p>
+      <h3>{t('charte.demandeTitre')}</h3>
+      <p>{t('charte.demande', { assurance: CONFIG.assurance })}</p>
+      <h3>{t('charte.quiTitre')}</h3>
+      <p>{t('charte.qui')}</p>
+      <h3>{t('charte.ouTitre')}</h3>
+      <p>{t('charte.ou')}</p>
+      <h3>{t('charte.droitsTitre')}</h3>
+      <p>{t('charte.droits')}</p>
       <p>
-        Un médecin doit savoir qui il soigne. Cela protège votre dossier médical : personne d'autre
-        ne peut consulter à votre place.
+        <small>{t('charte.version', { version: p.version })}</small>
       </p>
-      <h3>Ce que nous vous demandons</h3>
-      <p>
-        Deux photos : votre document (pièce d'identité avec votre numéro {CONFIG.assurance}, ou acte
-        de naissance), et votre visage.
-      </p>
-      <h3>Qui regarde vos photos</h3>
-      <p>
-        Seulement une personne de l'équipe Mbolo Santé, habilitée pour cela. Chaque consultation des
-        photos est enregistrée. Aucun programme ni intelligence artificielle ne décide à sa place.
-        Votre médecin ne voit pas vos photos.
-      </p>
-      <h3>Où et combien de temps</h3>
-      <p>
-        Vos photos sont gardées chiffrées, comme preuve de la vérification, puis supprimées. Nous
-        gardons seulement le résultat.
-      </p>
-      <h3>Vos droits</h3>
-      <p>
-        Vous pouvez voir, faire corriger ou supprimer vos informations, et retirer votre accord.
-        Sans identité vérifiée, vous ne pourrez pas consulter.
-      </p>
-      <p>
-        <small>Charte de vérification d'identité, version {p.version}.</small>
-      </p>
-      <p>
-        J'ai lu (ou on m'a lu) cette charte. J'accepte que Mbolo Santé garde une photo de mon
-        document et de mon visage pour vérifier mon identité.
-      </p>
+      <p>{t('charte.accord')}</p>
       <button class="principal" onClick={() => void p.decider(true)}>
-        <span aria-hidden="true">✅</span> J'accepte
+        <span aria-hidden="true">✅</span> {t('charte.accepte')}
       </button>
-      <button onClick={() => void p.decider(false)}>Je refuse</button>
+      <button onClick={() => void p.decider(false)}>{t('charte.refuse')}</button>
     </section>
   );
 }

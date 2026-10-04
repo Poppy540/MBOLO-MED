@@ -26,7 +26,7 @@ Then(
     await expect(p.locator('[data-montant]')).toHaveText(
       new RegExp(`^${montantAffiche(montant, devise)}$`),
     );
-    await expect(p.getByText(/à payer dans les \d+ minutes/)).toBeVisible();
+    await expect(p.getByText(/à payer dans (les \d+ minutes|1 minute),/)).toBeVisible();
   },
 );
 

@@ -3,8 +3,11 @@
 // qui paie (le sien ou celui d'un proche), puis valide sur son téléphone. Le numéro n'est jamais
 // gardé dans le navigateur ; le rendez-vous n'est confirmé que par le serveur.
 import { useEffect, useState } from 'preact/hooks';
-import { appelReseau, MOTIF_NIVEAU_INSUFFISANT, suivre } from '@mbolo/client-web';
+import { appelReseau, creerTraducteur, MOTIF_NIVEAU_INSUFFISANT, suivre } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
+import { frPaiement } from './textes-fr-paiement.js';
+
+const t = creerTraducteur(frPaiement, CONFIG.langue);
 
 interface Reservation {
   id: string;
@@ -47,7 +50,7 @@ async function appeler<T>(
   if (!r.ok) {
     // Messages des services, déjà en phrases simples ; sinon un message général.
     const e = (await r.json().catch(() => ({}))) as { erreur?: string; motif?: string };
-    const x = new ErreurPaiement(e.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    const x = new ErreurPaiement(e.erreur ?? t('paiement.indisponible'));
     x.niveauInsuffisant = r.status === 401 && e.motif === MOTIF_NIVEAU_INSUFFISANT;
     throw x;
   }
@@ -88,9 +91,9 @@ export function Paiement(p: {
       return { ...r, ...(paiement ? { paiement } : {}) };
     });
     if (r.statut === 'prevu') {
-      setEtape({ nom: 'fin', message: 'Paiement reçu. Votre rendez-vous est confirmé.' });
+      setEtape({ nom: 'fin', message: t('paiement.recu') });
     } else if (r.statut === 'annule') {
-      setEtape({ nom: 'fin', message: 'Le délai de paiement est dépassé. Le créneau est libéré.' });
+      setEtape({ nom: 'fin', message: t('paiement.delaiDepasse') });
     }
     return r;
   };
@@ -116,7 +119,7 @@ export function Paiement(p: {
         `${CONFIG.apiPaiement}/paiements/${id}`,
       );
       if (paiement.statut === 'echoue') {
-        setErreur('Le paiement n’a pas abouti. Vous pouvez réessayer.');
+        setErreur(t('paiement.echoue'));
         setEtape({ nom: 'saisie' });
         return true;
       }
@@ -159,7 +162,7 @@ export function Paiement(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">💳</span> Payer la consultation
+        <span aria-hidden="true">💳</span> {t('paiement.titre')}
       </h2>
       {erreur && (
         <p class="message" role="alert">
@@ -167,12 +170,12 @@ export function Paiement(p: {
         </p>
       )}
       {etape.nom === 'chargement' ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('paiement.chargement')}</p>
       ) : etape.nom === 'fin' ? (
         <>
           <p role="status">{etape.message}</p>
           <button class="principal" onClick={() => p.retour(etape.message)}>
-            Mes rendez-vous
+            {t('paiement.mesRendezVous')}
           </button>
         </>
       ) : (
@@ -183,23 +186,19 @@ export function Paiement(p: {
                 {montant(reservation.paiement.montant, reservation.paiement.devise)}
               </strong>
               {reservation.expireLe && (
-                <>
-                  {' '}
-                  — à payer dans les {minutesRestantes(reservation.expireLe)} minutes, sinon le
-                  créneau est libéré.
-                </>
+                <> {t('paiement.delai', { nombre: minutesRestantes(reservation.expireLe) })}</>
               )}
             </p>
           )}
           {etape.nom === 'attente' ? (
             <p role="status" aria-live="polite">
-              <span aria-hidden="true">📱</span> Validez le paiement sur le téléphone avec votre
-              code secret {nomOperateur(etape.operateur)}.
+              <span aria-hidden="true">📱</span>{' '}
+              {t('paiement.validez', { operateur: nomOperateur(etape.operateur) })}
             </p>
           ) : (
             <form onSubmit={payer}>
               <fieldset>
-                <legend>Opérateur</legend>
+                <legend>{t('paiement.operateur')}</legend>
                 {CONFIG.operateurs.map((o) => (
                   <label key={o.code} class="choix">
                     <input
@@ -214,7 +213,7 @@ export function Paiement(p: {
                 ))}
               </fieldset>
               <label>
-                Numéro qui paie (le vôtre ou celui d’un proche)
+                {t('paiement.numero')}
                 <input
                   name="numero"
                   type="tel"
@@ -225,11 +224,11 @@ export function Paiement(p: {
                 />
               </label>
               <button class="principal" type="submit">
-                <span aria-hidden="true">✅</span> Payer
+                <span aria-hidden="true">✅</span> {t('paiement.payer')}
               </button>
             </form>
           )}
-          <button onClick={() => p.retour()}>Plus tard</button>
+          <button onClick={() => p.retour()}>{t('paiement.plusTard')}</button>
         </>
       )}
     </section>

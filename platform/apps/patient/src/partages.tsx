@@ -6,12 +6,16 @@
 import { useEffect, useState } from 'preact/hooks';
 import {
   appelReseau,
+  creerTraducteur,
   MOTIF_NIVEAU_INSUFFISANT,
   niveauDuJeton,
   useTitreAuFocus,
 } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { MesProches, type Proche } from './proches.js';
+import { frPartages } from './textes-fr-partages.js';
+
+const t = creerTraducteur(frPartages, CONFIG.langue);
 
 /** Texte du partage avec un professionnel : BROUILLON, à valider par le juriste avant production. */
 export const VERSION_PARTAGE_PRO = 'c-partage-pro-v0.1-brouillon';
@@ -58,7 +62,7 @@ async function appeler<T>(jeton: string, url: string, init: RequestInit = {}): P
   }
   if (!r.ok) {
     const corps = (await r.json().catch(() => ({}))) as { erreur?: string; motif?: string };
-    const e = new ErreurPartage(corps.erreur ?? 'Service indisponible. Réessayez plus tard.');
+    const e = new ErreurPartage(corps.erreur ?? t('partages.indisponible'));
     e.niveauInsuffisant = r.status === 401 && corps.motif === MOTIF_NIVEAU_INSUFFISANT;
     throw e;
   }
@@ -85,12 +89,12 @@ const date = (iso: string) =>
 
 /** Qui a demandé l'accès, en mots simples (le détail nominatif reste dans le dossier). */
 function qui(a: Acces): string {
-  if (a.roles.includes('patient')) return 'Vous-même';
-  if (a.roles.includes('agent-ia')) return 'L’assistant Mbolo Santé (programme informatique)';
-  if (a.roles.includes('proche')) return 'Votre proche';
-  if (a.roles.includes('infirmier')) return 'Un infirmier';
-  if (a.roles.includes('professionnel')) return 'Un professionnel de santé';
-  return 'Une personne de l’équipe';
+  if (a.roles.includes('patient')) return t('partages.vousMeme');
+  if (a.roles.includes('agent-ia')) return t('partages.assistant');
+  if (a.roles.includes('proche')) return t('partages.votreProche');
+  if (a.roles.includes('infirmier')) return t('partages.infirmier');
+  if (a.roles.includes('professionnel')) return t('partages.unProfessionnel');
+  return t('partages.equipe');
 }
 
 export function Partages(p: {
@@ -131,7 +135,7 @@ export function Partages(p: {
       const ids = [
         ...new Set(rdv.rendezVous.filter((r) => r.statut !== 'annule').map((r) => r.praticienId)),
       ];
-      setMedecins(ids.map((id) => ({ id, nom: noms.get(id) ?? 'Votre médecin' })));
+      setMedecins(ids.map((id) => ({ id, nom: noms.get(id) ?? t('partages.votreMedecin') })));
       setPartages(partagesActifs(c.consentements));
       setHistorique([...acces.acces].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20));
       // Fonction fermée (403) ou indisponible : la section « Mes proches » n'apparaît pas.
@@ -141,7 +145,7 @@ export function Partages(p: {
           .catch(() => null),
       );
     } catch (e) {
-      setMessage(e instanceof ErreurPartage ? e.message : 'Service indisponible.');
+      setMessage(e instanceof ErreurPartage ? e.message : t('partages.indisponibleCourt'));
     }
   };
   useEffect(() => void charger(), []);
@@ -151,9 +155,9 @@ export function Partages(p: {
     if (reference.startsWith('RelatedPerson/')) {
       const fiche = reference.slice('RelatedPerson/'.length);
       const proche = proches?.find((x) => x.relatedPersonId === fiche)?.prenom;
-      return proche ? `${proche} (votre proche)` : 'Votre proche';
+      return proche ? t('partages.prenomProche', { prenom: proche }) : t('partages.votreProche');
     }
-    return medecins.find((m) => m.id === id)?.nom ?? 'Un professionnel de santé';
+    return medecins.find((m) => m.id === id)?.nom ?? t('partages.unProfessionnel');
   };
 
   const partager = async (m: { id: string; nom: string }) => {
@@ -171,11 +175,11 @@ export function Partages(p: {
         }),
       });
       setPropose(undefined);
-      setMessage(`Votre dossier est partagé avec ${m.nom}.`);
+      setMessage(t('partages.partage', { nom: m.nom }));
       await charger();
     } catch (e) {
       if (e instanceof ErreurPartage && e.niveauInsuffisant) return p.confirmer();
-      setMessage(e instanceof ErreurPartage ? e.message : 'Service indisponible.');
+      setMessage(e instanceof ErreurPartage ? e.message : t('partages.indisponibleCourt'));
     }
   };
 
@@ -189,34 +193,34 @@ export function Partages(p: {
           method: 'POST',
         },
       );
-      setMessage('Partage retiré.');
+      setMessage(t('partages.retire'));
       await charger();
     } catch (e) {
-      setMessage(e instanceof ErreurPartage ? e.message : 'Service indisponible.');
+      setMessage(e instanceof ErreurPartage ? e.message : t('partages.indisponibleCourt'));
     }
   };
 
   if (propose) {
+    // Le nom du médecin est en gras dans la phrase de l'accord, qui reste entière pour la traduction.
+    const [avantNom = '', apresNom = ''] = t('partages.accord', { nom: '\u0000' }).split('\u0000');
     return (
       <section>
         <h2>
-          <span aria-hidden="true">🔒</span> Partager mon dossier
+          <span aria-hidden="true">🔒</span> {t('partages.partagerTitre')}
         </h2>
         <p>
-          J’accepte que <strong>{propose.nom}</strong> lise mon dossier médical Mbolo Santé, et y
-          écrive le compte-rendu et l’ordonnance de mes consultations.
+          {avantNom}
+          <strong>{propose.nom}</strong>
+          {apresNom}
         </p>
+        <p>{t('partages.accordRetrait')}</p>
         <p>
-          Je peux retirer cet accord à tout moment, ici, dans « Mes partages et accès ». Chaque
-          lecture de mon dossier est enregistrée et je peux la voir.
-        </p>
-        <p>
-          <small>Texte de partage, version {VERSION_PARTAGE_PRO}.</small>
+          <small>{t('partages.version', { version: VERSION_PARTAGE_PRO })}</small>
         </p>
         <button class="principal" onClick={() => void partager(propose)}>
-          <span aria-hidden="true">✅</span> J’accepte
+          <span aria-hidden="true">✅</span> {t('partages.jAccepte')}
         </button>
-        <button onClick={() => setPropose(undefined)}>Non, pas maintenant</button>
+        <button onClick={() => setPropose(undefined)}>{t('partages.pasMaintenant')}</button>
       </section>
     );
   }
@@ -227,7 +231,7 @@ export function Partages(p: {
   return (
     <section>
       <h2>
-        <span aria-hidden="true">🔒</span> Mes partages et accès
+        <span aria-hidden="true">🔒</span> {t('partages.titre')}
       </h2>
       {message && (
         <p class="message" role="status">
@@ -235,20 +239,20 @@ export function Partages(p: {
         </p>
       )}
       {partages === undefined ? (
-        <p aria-live="polite">Chargement…</p>
+        <p aria-live="polite">{t('partages.chargement')}</p>
       ) : (
         <>
-          <h3>Qui peut lire mon dossier</h3>
+          <h3>{t('partages.quiPeutLire')}</h3>
           {partages.length === 0 ? (
-            <p>Personne d’autre que vous.</p>
+            <p>{t('partages.personne')}</p>
           ) : (
-            <ul class="liste" aria-label="Partages en cours">
+            <ul class="liste" aria-label={t('partages.enCours')}>
               {partages.map((x) => (
                 <li key={x.id} data-partage={x.beneficiaire}>
                   <strong>{nomDe(x.beneficiaire)}</strong>
-                  {x.depuis && <span> — depuis le {date(x.depuis)}</span>}
+                  {x.depuis && <span> {t('partages.depuis', { date: date(x.depuis) })}</span>}
                   <div class="actions">
-                    <button onClick={() => void retirer(x)}>Retirer ce partage</button>
+                    <button onClick={() => void retirer(x)}>{t('partages.retirer')}</button>
                   </div>
                 </li>
               ))}
@@ -260,7 +264,7 @@ export function Partages(p: {
               data-partager={m.id}
               onClick={() => (niveauSuffisant ? setPropose(m) : p.confirmer())}
             >
-              <span aria-hidden="true">🤝</span> Partager mon dossier avec {m.nom}
+              <span aria-hidden="true">🤝</span> {t('partages.partagerAvec', { nom: m.nom })}
             </button>
           ))}
           <MesProches
@@ -270,20 +274,21 @@ export function Partages(p: {
             niveauSuffisant={niveauSuffisant}
             confirmer={p.confirmer}
           />
-          <h3>Qui a demandé à lire mon dossier</h3>
+          <h3>{t('partages.quiADemande')}</h3>
           {historique.length === 0 ? (
-            <p>Personne pour le moment.</p>
+            <p>{t('partages.personnePourLeMoment')}</p>
           ) : (
-            <ul class="liste" aria-label="Accès à mon dossier">
+            <ul class="liste" aria-label={t('partages.historique')}>
               {historique.map((a, i) => (
                 <li key={i} data-acces={a.autorise ? 'accorde' : 'refuse'}>
-                  <strong>{date(a.date)}</strong> — {qui(a)} :{' '}
-                  {a.autorise ? 'accès accordé' : 'accès refusé'}
+                  <strong>{date(a.date)}</strong> {t('partages.ligneAcces', { qui: qui(a) })}{' '}
+                  {t(a.autorise ? 'partages.accorde' : 'partages.refuse')}
                   {a.urgence && (
                     <p>
-                      <span aria-hidden="true">🚨</span> Accès en urgence
-                      {a.justification ? ` : ${a.justification}` : ''}. Il sera vérifié par une
-                      personne de l’équipe.
+                      <span aria-hidden="true">🚨</span>{' '}
+                      {a.justification
+                        ? t('partages.urgenceMotif', { motif: a.justification })
+                        : t('partages.urgence')}
                     </p>
                   )}
                 </li>
@@ -292,7 +297,7 @@ export function Partages(p: {
           )}
         </>
       )}
-      <button onClick={p.retour}>Retour</button>
+      <button onClick={p.retour}>{t('partages.retour')}</button>
     </section>
   );
 }
