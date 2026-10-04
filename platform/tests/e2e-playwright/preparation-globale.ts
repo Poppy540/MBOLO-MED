@@ -65,6 +65,18 @@ async function preparerDossier(): Promise<void> {
               // propre numéro : leurs SMS ne se mêlent pas à ceux des autres scénarios.
               telecom: [{ system: 'phone', value: TELEPHONES_FICTIFS[id] ?? '+241 00 00 00 01' }],
               birthDate: '1990-01-01',
+              // Langue préférée sans gabarits de SMS approuvés (ADR-0025) : ses SMS doivent rester
+              // dans la langue du pays. À changer si des gabarits anglais sont un jour approuvés.
+              ...(id === 'pat-fictif-001'
+                ? {
+                    communication: [
+                      {
+                        language: { coding: [{ system: 'urn:ietf:bcp:47', code: 'en' }] },
+                        preferred: true,
+                      },
+                    ],
+                  }
+                : {}),
               extension: [
                 {
                   url: EXTENSION_STATUT_IDENTITE,

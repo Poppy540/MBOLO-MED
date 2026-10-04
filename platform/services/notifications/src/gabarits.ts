@@ -107,7 +107,7 @@ export const CATALOGUE_CODE_CONNEXION: Readonly<Record<string, string>> = {
 export const FORMAT_CODE_CONNEXION = /^[0-9]{6}$/;
 
 export function redigerCodeConnexion(code: string, pays: Pays = PAYS_PAR_DEFAUT): string {
-  const texte = CATALOGUE_CODE_CONNEXION[langueDe(pays.langue)];
+  const texte = CATALOGUE_CODE_CONNEXION[langueDesTextes(pays)];
   if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
   if (!FORMAT_CODE_CONNEXION.test(code)) throw new Error('Variables invalides.');
   return texte.replace('{code}', code);
@@ -133,12 +133,51 @@ export interface Pays {
   fuseau: string;
   /** Langue et formats (BCP 47), ex. fr-FR. */
   langue: string;
+  /**
+   * Langue des textes, si elle diffère de celle du pays : la langue préférée du patient (ADR-0025).
+   * Les dates gardent les formats du pays quand le navigateur de Node ne connaît pas cette langue.
+   */
+  langueTextes?: string;
 }
 
 export const PAYS_PAR_DEFAUT: Pays = { fuseau: 'Africa/Libreville', langue: 'fr-FR' };
 
 const langueDe = (langue: string) => langue.split('-')[0]?.toLowerCase() ?? '';
-const textes = (langue: string) => CATALOGUE[langueDe(langue)];
+const langueDesTextes = (p: Pays) => langueDe(p.langueTextes ?? p.langue);
+const textes = (p: Pays) => CATALOGUE[langueDesTextes(p)];
+
+/**
+ * Langues dont TOUS les gabarits sont approuvés (ADR-0012, ADR-0025) : une langue n'est utilisée
+ * pour un SMS que si elle est complète, jamais un mélange de deux langues.
+ */
+export function languesApprouvees(): string[] {
+  return Object.keys(CATALOGUE).filter(
+    (l) =>
+      CATALOGUE_INVITATION_PROCHE[l] !== undefined &&
+      CATALOGUE_CODE_CONNEXION[l] !== undefined &&
+      Object.values(ALERTES_PATIENT).every((c) => c[l] !== undefined),
+  );
+}
+
+/**
+ * Paramètres d'envoi pour un patient : sa langue préférée (dossier, `Patient.communication`) si tous
+ * les gabarits y sont approuvés, sinon la langue du pays. Le fuseau reste celui du pays.
+ */
+export function paysPour(
+  pays: Pays,
+  preferee: string | undefined,
+  approuvees: readonly string[] = languesApprouvees(),
+): Pays {
+  if (!preferee || !approuvees.includes(langueDe(preferee))) return pays;
+  if (langueDe(preferee) === langueDe(pays.langue)) return pays;
+  let formats = pays.langue;
+  try {
+    if (Intl.DateTimeFormat.supportedLocalesOf([preferee]).length > 0) formats = preferee;
+  } catch {
+    // Code de langue invalide : formats du pays.
+  }
+  return { fuseau: pays.fuseau, langue: formats, langueTextes: preferee };
+}
 
 /** Vérifie au démarrage que le pays est utilisable (fuseau connu, textes approuvés). */
 export function verifierPays(p: Pays): void {
@@ -147,13 +186,7 @@ export function verifierPays(p: Pays): void {
   } catch {
     throw new Error(`Fuseau ou langue invalide : ${p.fuseau}, ${p.langue}.`);
   }
-  const langue = langueDe(p.langue);
-  if (
-    !textes(p.langue) ||
-    !CATALOGUE_INVITATION_PROCHE[langue] ||
-    !CATALOGUE_CODE_CONNEXION[langue] ||
-    Object.values(ALERTES_PATIENT).some((c) => !c[langue])
-  ) {
+  if (!languesApprouvees().includes(langueDe(p.langue))) {
     throw new Error(`Aucun gabarit approuvé pour la langue ${p.langue}.`);
   }
 }
@@ -165,7 +198,7 @@ export interface Variables {
 }
 
 export function rediger(g: Gabarit, v: Variables, pays: Pays = PAYS_PAR_DEFAUT): string {
-  const catalogue = textes(pays.langue);
+  const catalogue = textes(pays);
   if (!catalogue) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
   const t = new Date(v.instant);
   if (Number.isNaN(t.getTime())) throw new Error('Instant invalide.');
@@ -190,7 +223,7 @@ export function redigerInvitationProche(
   jours: number,
   pays: Pays = PAYS_PAR_DEFAUT,
 ): string {
-  const texte = CATALOGUE_INVITATION_PROCHE[langueDe(pays.langue)];
+  const texte = CATALOGUE_INVITATION_PROCHE[langueDesTextes(pays)];
   if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
   if (!FORMAT_CODE.test(code) || !Number.isInteger(jours) || jours < 1 || jours > 90) {
     throw new Error('Variables invalides.');
@@ -202,7 +235,7 @@ export function redigerAlerteProche(
   alerte: AlertePatient = 'proche-inscrit',
   pays: Pays = PAYS_PAR_DEFAUT,
 ): string {
-  const texte = ALERTES_PATIENT[alerte][langueDe(pays.langue)];
+  const texte = ALERTES_PATIENT[alerte][langueDesTextes(pays)];
   if (!texte) throw new Error(`Aucun gabarit approuvé pour la langue ${pays.langue}.`);
   return texte;
 }

@@ -537,7 +537,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements",
-            "claim.value": "Patient.telecom Practitioner.telecom",
+            "claim.value": "Patient.telecom Patient.communication Practitioner.telecom",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

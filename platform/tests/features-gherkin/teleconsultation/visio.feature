@@ -126,4 +126,5 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
     Et que "medecin-fictif-01" publie 1 créneaux de 20 minutes dans 5 jours
     Et que "medecin-fictif-01" reporte ce rendez-vous sur le premier de ces créneaux
+    # Son dossier indique l'anglais, sans gabarits approuvés : le SMS reste en français (ADR-0025).
     Alors le numéro "+241 00 00 00 01" reçoit le message "est déplacé au"

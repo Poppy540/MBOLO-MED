@@ -2,6 +2,7 @@
 // numéro lu dans le dossier au moment de l'envoi. Ni le numéro ni le texte ne sont journalisés.
 import {
   PAYS_PAR_DEFAUT,
+  paysPour,
   rediger,
   redigerAlerteProche,
   redigerCodeConnexion,
@@ -24,6 +25,8 @@ export interface SourceContacts {
   accepteRappels(patientId: string): Promise<boolean>;
   /** Vrai pendant les 24 heures qui suivent un changement du numéro pour perte (ADR-0023). */
   enAttenteApresPerte(patientId: string): Promise<boolean>;
+  /** Langue préférée du patient dans son dossier (BCP 47), si elle y est indiquée (ADR-0025). */
+  languePreferee?(patientId: string): Promise<string | undefined>;
 }
 
 /** Canal d'envoi (fournisseur SMS ou WhatsApp, ou canal simulé). */
@@ -47,13 +50,28 @@ export class ServiceNotifications {
     private readonly pays: Pays = PAYS_PAR_DEFAUT,
   ) {}
 
+  /**
+   * Langue du SMS pour un patient : sa langue préférée si tous les gabarits y sont approuvés, sinon
+   * celle du pays. Un dossier illisible n'empêche pas l'envoi : la langue du pays est utilisée.
+   */
+  private async paysDuPatient(patientId: string): Promise<Pays> {
+    try {
+      return paysPour(this.pays, await this.contacts.languePreferee?.(patientId));
+    } catch {
+      return this.pays;
+    }
+  }
+
   async envoyer(d: Demande): Promise<Resultat> {
     // Le texte est rédigé d'abord : une variable invalide est une erreur de l'appelant.
-    const texte = rediger(d.gabarit, d.variables, this.pays);
+    rediger(d.gabarit, d.variables, this.pays);
+    let pays = this.pays;
     if (d.destinataire.startsWith('Patient/')) {
       const patientId = d.destinataire.slice('Patient/'.length);
       if (!(await this.contacts.accepteRappels(patientId))) return 'ignoree-sans-consentement';
+      pays = await this.paysDuPatient(patientId);
     }
+    const texte = rediger(d.gabarit, d.variables, pays);
     const telephone = await this.contacts.telephone(d.destinataire);
     if (!telephone) return 'ignoree-sans-numero';
     try {
@@ -81,7 +99,7 @@ export class ServiceNotifications {
     // Après une perte, le nouveau numéro ne reçoit aucun code pendant 24 heures : si ce n'est pas
     // le vrai patient, celui-ci a le temps de réagir à l'alerte reçue à l'ancien numéro (ADR-0023).
     if (await this.contacts.enAttenteApresPerte(patientId)) return 'attente-apres-perte';
-    const texte = redigerCodeConnexion(code, this.pays);
+    const texte = redigerCodeConnexion(code, await this.paysDuPatient(patientId));
     const telephone = await this.contacts.telephone(`Patient/${patientId}`);
     if (!telephone) return 'ignoree-sans-numero';
     try {
@@ -108,7 +126,7 @@ export class ServiceNotifications {
   }
 
   async alerterPatient(patientId: string, alerte: AlertePatient): Promise<Resultat> {
-    const texte = redigerAlerteProche(alerte, this.pays);
+    const texte = redigerAlerteProche(alerte, await this.paysDuPatient(patientId));
     const telephone = await this.contacts.telephone(`Patient/${patientId}`);
     if (!telephone) return 'ignoree-sans-numero';
     try {

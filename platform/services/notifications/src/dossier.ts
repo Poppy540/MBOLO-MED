@@ -11,6 +11,24 @@ export class ContactsFhir extends ClientFhir implements SourceContacts {
     return (await this.numero(d))?.value;
   }
 
+  /**
+   * Langue préférée du patient (ADR-0025) : `Patient.communication` marquée `preferred`, sinon la
+   * première. Seul l'élément communication est demandé.
+   */
+  async languePreferee(patientId: string): Promise<string | undefined> {
+    const d = `Patient/${patientId}`;
+    const r = await this.appeler(`${this.base}/${d}?_elements=communication`, {
+      headers: { 'cache-control': 'no-cache' },
+    });
+    if (r.status === 404 || r.status === 410) return undefined;
+    if (!r.ok) throw ClientFhir.echec(r, 'Langue');
+    const patient = (await r.json()) as Patient;
+    if (patient.resourceType !== 'Patient' || patient.id !== patientId) return undefined;
+    const langues = patient.communication ?? [];
+    const choisie = langues.find((c) => c.preferred) ?? langues[0];
+    return choisie?.language.coding?.find((c) => c.system === 'urn:ietf:bcp:47')?.code;
+  }
+
   /** 24 heures après un changement du numéro pour perte (ADR-0023), lu sans cache. */
   async enAttenteApresPerte(patientId: string): Promise<boolean> {
     const numero = await this.numero(`Patient/${patientId}`);

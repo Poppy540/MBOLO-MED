@@ -95,12 +95,14 @@ When('le service notifications demande {string} au dossier', async ({ monde }, c
   await appelerDossier(monde, 'GET', chemin, monde.jetons.get('service notifications'));
 });
 
-Then('le dossier ne renvoie que le numéro de téléphone', ({ monde }) => {
+Then('le dossier ne renvoie que le numéro de téléphone et la langue', ({ monde }) => {
   const corps = monde.reponse?.corps ?? {};
   expect(corps['telecom']).toBeDefined();
+  // Langue préférée du patient (ADR-0025), pour écrire ses SMS dans sa langue.
+  expect(JSON.stringify(corps['communication'])).toContain('urn:ietf:bcp:47');
   // Ni nom, ni date de naissance, ni autre élément que type, identifiant et métadonnées.
   expect(Object.keys(corps).sort()).toEqual(
-    ['id', 'meta', 'resourceType', 'telecom'].filter((k) => k in corps).sort(),
+    ['communication', 'id', 'meta', 'resourceType', 'telecom'].filter((k) => k in corps).sort(),
   );
   expect(corps['name']).toBeUndefined();
 });
