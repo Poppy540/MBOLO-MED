@@ -5,7 +5,14 @@
 // Un proche désigné par le patient (C-PROCHE, flag documents.proche) voit le même écran, réduit aux
 // ordonnances et à la rubrique « Ce qu'il faut faire » (filtré par le service, pas par l'écran).
 import { useEffect, useState } from 'preact/hooks';
-import { appelReseau, creerTraducteur, ErreurApi, quand, STATUT_RESEAU } from '@mbolo/client-web';
+import {
+  appelReseau,
+  creerTraducteur,
+  ErreurApi,
+  quand,
+  STATUT_RESEAU,
+  Picto,
+} from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { frDocuments } from './textes-fr-documents.js';
 
@@ -105,7 +112,7 @@ export function Documents(p: { jeton: string; retour?: () => void; proche?: bool
       ) : (
         <>
           <h3>
-            <span aria-hidden="true">💊</span> {t('documents.ordonnances')}
+            <Picto nom="ordonnance" /> {t('documents.ordonnances')}
           </h3>
           {documents.ordonnances.length === 0 ? (
             <p>{t('documents.aucuneOrdonnance')}</p>

@@ -277,7 +277,9 @@ Then(
   'l’application rappelle, même sans réseau, d’appeler les secours en cas d’urgence',
   async ({ monde }) => {
     const secours = page(monde).getByRole('note');
-    await expect(secours).toHaveText("🚑 En cas d'urgence, appelez les secours.");
+    await expect(secours).toHaveText("En cas d'urgence, appelez les secours.");
+    // Pictogramme SVG (ADR-0025), identique sur tous les téléphones, caché aux lecteurs d'écran.
+    await expect(secours.locator('svg.picto[aria-hidden="true"]')).toHaveCount(1);
     await expect(secours.locator('a')).toHaveCount(0);
   },
 );
