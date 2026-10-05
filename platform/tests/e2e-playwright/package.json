@@ -13,7 +13,7 @@
     "@mbolo/base-donnees": "workspace:*",
     "@mbolo/dossier-fhir": "workspace:*",
     "@mbolo/identite": "workspace:*",
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.63.0",
     "livekit-client": "^2.22.3",
     "playwright-bdd": "^9.2.1"
   }

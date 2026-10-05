@@ -27,7 +27,7 @@
     "fastify": "^5.12.5"
   },
   "devDependencies": {
-    "@types/fhir": "^0.0.41",
+    "@types/fhir": "^0.0.44",
     "jose": "^6.2.12"
   }
 }
