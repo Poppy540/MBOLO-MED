@@ -15,7 +15,7 @@
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Même version que l'image Keycloak (docker-compose.yml de identite). -->
-    <keycloak.version>26.7.4</keycloak.version>
+    <keycloak.version>26.8.0</keycloak.version>
     <junit.version>6.1.3</junit.version>
   </properties>
 
