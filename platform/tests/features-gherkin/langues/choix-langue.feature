@@ -22,5 +22,9 @@ Fonctionnalité: Choix de la langue dans l'application patient
   Scénario: La langue choisie avant la connexion est gardée dans le dossier, pour les SMS du patient
     Étant donné que l’application patient est ouverte, sans connexion
     Quand le patient choisit la langue "[FICTIF] Démo"
-    Et que "patient-fictif-02" se connecte depuis cet écran
+    Et que le patient ouvre la page de connexion
+    # Keycloak reçoit la langue choisie ; il ne la propose pas (seulement le français) et reste en
+    # français, sans erreur. Une langue validée s'ajoute au royaume avec ses textes (ADR-0025).
+    Alors la page de connexion reçoit la langue "fr-x-fictif" et s’affiche en "fr"
+    Quand "patient-fictif-02" se connecte sur cette page
     Alors le dossier de "pat-fictif-002" indique la langue préférée "fr-x-fictif"

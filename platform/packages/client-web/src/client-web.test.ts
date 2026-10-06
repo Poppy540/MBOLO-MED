@@ -110,6 +110,14 @@ describe('inscription avec un code (ADR-0014)', () => {
     }
   });
 
+  it('transmet la langue choisie aux pages Keycloak (ui_locales, ADR-0025)', async () => {
+    const url = new URL(await demarrerConnexion({ ...p, langue: 'fr-x-fictif' }, memoire(), true));
+    expect(url.searchParams.get('ui_locales')).toBe('fr-x-fictif');
+    expect(new URL(await demarrerConnexion(p, memoire())).searchParams.has('ui_locales')).toBe(
+      false,
+    );
+  });
+
   it('lance une action Keycloak et lit son résultat au retour (ADR-0023)', async () => {
     const url = new URL(
       await demarrerConnexion(p, memoire(), false, undefined, 'mbolo-changer-telephone'),
