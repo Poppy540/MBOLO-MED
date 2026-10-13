@@ -19,7 +19,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/rate-limit": "^11.2.1",
     "@mbolo/base-donnees": "workspace:*",
     "@mbolo/drapeaux": "workspace:*",
     "@mbolo/identite": "workspace:*",
