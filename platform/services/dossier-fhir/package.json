@@ -19,6 +19,6 @@
     "ig:valider": "bash scripts/valider-ig.sh"
   },
   "devDependencies": {
-    "@types/fhir": "^0.0.41"
+    "@types/fhir": "^0.0.44"
   }
 }
