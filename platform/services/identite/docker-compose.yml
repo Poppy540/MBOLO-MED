@@ -5,7 +5,7 @@
 services:
   keycloak:
     # Version exacte : l'extension d'inscription (keycloak-extension/) est compilée pour elle.
-    image: quay.io/keycloak/keycloak:26.7.4
+    image: quay.io/keycloak/keycloak:26.8.1-1
     command: ["start-dev", "--import-realm"]
     ports:
       - "127.0.0.1:8081:8080"
