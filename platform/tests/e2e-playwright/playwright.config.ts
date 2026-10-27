@@ -42,7 +42,10 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env['CI'],
   retries: 0,
-  reporter: 'list',
+  // En CI, chaque échec devient aussi une annotation GitHub (rapporteur intégré à Playwright, sans
+  // dépendance) : le scénario et l'erreur se lisent dans la PR et par l'API, même quand le journal
+  // du job est noyé sous ceux des conteneurs.
+  reporter: process.env['CI'] ? [['list'], ['github']] : 'list',
   globalSetup: './preparation-globale.ts',
   // Pas de trace ni de vidéo : elles contiendraient des jetons et des mots de passe de test.
   use: {
