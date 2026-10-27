@@ -13,6 +13,7 @@ import {
 } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { AlerteNumeroHttp } from './alerte.js';
+import { DepotCandidaturesPostgres, ServiceCandidature } from './candidature.js';
 import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
@@ -98,7 +99,8 @@ try {
   process.exit(1);
 }
 
-const depot = new DepotPostgres(connecter({ url: urlBase, application: 'documents', production }));
+const sql = connecter({ url: urlBase, application: 'documents', production });
+const depot = new DepotPostgres(sql);
 // KMS de l'hébergeur si configuré, sinon clé locale du coffre-fort (ADR-0016).
 const maitre = trousseauDepuis(env);
 let documents: ServiceDocuments;
@@ -110,6 +112,19 @@ try {
   });
 } catch (e) {
   journal.erreur('paramètres des documents invalides', { err: e });
+  process.exit(1);
+}
+// Dossier de candidature des professionnels (ADR-0026) : même chiffrement, même stockage.
+let candidature: ServiceCandidature;
+try {
+  candidature = new ServiceCandidature(new DepotCandidaturesPostgres(sql), stockage, maitre, {
+    versionCharte: env['DOCUMENTS_VERSION_CHARTE_PRO'] ?? 'c-verification-pro-v0.1',
+    // Durée à fixer avec le juriste (ADR-0026, question 5) ; 2 ans en attendant.
+    conservationJours: Number(env['DOCUMENTS_PIECES_CONSERVATION_JOURS'] ?? '730'),
+    maxParType: Number(env['DOCUMENTS_PIECES_MAX_PAR_TYPE'] ?? '2'),
+  });
+} catch (e) {
+  journal.erreur('paramètres des pièces des professionnels invalides', { err: e });
   process.exit(1);
 }
 
@@ -200,6 +215,7 @@ const app = await creerServeur({
     depot,
   ),
   verificateur,
+  candidature,
   ...(perte ? { perte } : {}),
   journal,
   limites: {
@@ -216,6 +232,8 @@ const purger = async (): Promise<void> => {
   try {
     const n = await documents.supprimerEchus();
     if (n > 0) journal.info('documents échus supprimés', { nombre: n });
+    const p = await candidature.supprimerEchus();
+    if (p > 0) journal.info('pièces de professionnels échues supprimées', { nombre: p });
   } catch (e) {
     journal.erreur('suppression des documents échus impossible', { err: e });
   }
