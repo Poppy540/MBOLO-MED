@@ -1,4 +1,5 @@
-// Rotation de la clé maître (ADR-0016) : les clés des documents sont ré-enveloppées avec la clé
+// Rotation de la clé maître (ADR-0016) : les clés des documents (photos des patients, pièces des
+// professionnels, ADR-0026) sont ré-enveloppées avec la clé
 // maître actuelle du trousseau, sans jamais déchiffrer les documents eux-mêmes. Reprise possible :
 // une clé déjà sur la clé actuelle est laissée telle quelle ; une clé changée entre-temps (document
 // supprimé à échéance) est ignorée.
@@ -13,7 +14,7 @@ export interface BilanRotation {
 }
 
 export async function reenvelopper(
-  depot: DepotDocuments,
+  depot: Pick<DepotDocuments, 'clesPresentes' | 'remplacerCle'>,
   trousseau: TrousseauCles,
   taillePaquet = 100,
 ): Promise<BilanRotation> {

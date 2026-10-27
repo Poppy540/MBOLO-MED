@@ -5,6 +5,7 @@
 import { connecter } from '@mbolo/base-donnees';
 import { creerJournal } from '@mbolo/journal-securise';
 import { trousseauDepuis } from './cles.js';
+import { DepotCandidaturesPostgres } from './candidature.js';
 import { DepotPostgres } from './depot.js';
 import { reenvelopper } from './rotation.js';
 
@@ -25,6 +26,9 @@ try {
   journal.info('rotation de la clé maître démarrée', { cle: trousseau.actuelle.identifiant });
   const bilan = await reenvelopper(new DepotPostgres(sql), trousseau);
   journal.info('rotation de la clé maître terminée', { ...bilan });
+  // Pièces des professionnels (ADR-0026) : mêmes enveloppes, autre table.
+  const pieces = await reenvelopper(new DepotCandidaturesPostgres(sql), trousseau);
+  journal.info('rotation de la clé maître terminée (pièces des professionnels)', { ...pieces });
 } catch (e) {
   journal.erreur('rotation de la clé maître interrompue (reprise possible)', { err: e });
   process.exitCode = 1;

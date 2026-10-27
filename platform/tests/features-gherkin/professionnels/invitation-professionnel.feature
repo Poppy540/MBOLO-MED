@@ -16,6 +16,9 @@ Fonctionnalité: L'équipe de recrutement invite un professionnel de santé
     Et le candidat ne peut pas publier de créneaux
     Et "patient-fictif-01" est connecté
     Et l'annuaire de "patient-fictif-01" ne montre pas ce candidat
+    Et le candidat ne peut déposer aucune pièce avant d'accepter la charte
+    Quand le candidat accepte la charte de vérification et dépose la photo de son diplôme
+    Alors son dossier de candidature montre la charte acceptée et son diplôme, sans le contenu
 
   Scénario: Un code de professionnel révoqué ne permet plus de créer de compte
     Étant donné que "recruteur-fictif-01" est connecté
@@ -33,3 +36,4 @@ Fonctionnalité: L'équipe de recrutement invite un professionnel de santé
     Alors l'invitation du professionnel est refusée avec le statut 403
     Quand une personne sans jeton invite un professionnel
     Alors l'invitation du professionnel est refusée avec le statut 401
+    Et le dossier de candidature est refusé à "medecin-fictif-01"

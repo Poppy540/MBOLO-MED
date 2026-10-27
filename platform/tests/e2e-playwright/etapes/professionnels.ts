@@ -5,6 +5,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { expect, type Request } from '@playwright/test';
 import {
   APPLICATIONS,
+  DOCUMENTS_URL,
   EMETTEUR,
   FHIR_URL,
   INVITATIONS_URL,
@@ -14,6 +15,7 @@ import {
   TELECONSULTATION_URL,
 } from '../configuration.js';
 import { Then, When, type Monde } from './fixtures.js';
+import { pngFictif } from './documents.js';
 import { codeUnique, retenirSecret } from './totp.js';
 
 async function appeler(
@@ -233,4 +235,63 @@ Then("l'annuaire de {string} ne montre pas ce candidat", async ({ monde }, ident
   const ids = ((await r.json()) as { praticiens: { id: string }[] }).praticiens.map((p) => p.id);
   expect(ids.length).toBeGreaterThan(0);
   expect(ids).not.toContain(monde.candidat?.practitionerId);
+});
+
+// ── Dossier de candidature (service documents, ADR-0026) ────────────────────
+
+const VERSION_CHARTE_PRO = 'c-verification-pro-v0.1';
+
+const candidature = (jeton: string, chemin: string, init: RequestInit = {}) =>
+  fetch(`${DOCUMENTS_URL}/candidature${chemin}`, {
+    ...init,
+    headers: { authorization: `Bearer ${jeton}`, ...(init.headers ?? {}) },
+  });
+
+const deposerDiplome = (jeton: string) =>
+  candidature(jeton, '/pieces/diplome', {
+    method: 'POST',
+    headers: { 'content-type': 'image/png' },
+    body: new Uint8Array(pngFictif(30, 60, 90)),
+  });
+
+Then("le candidat ne peut déposer aucune pièce avant d'accepter la charte", async ({ monde }) => {
+  expect((await deposerDiplome(monde.inscription?.jeton ?? '')).status).toBe(409);
+});
+
+When(
+  'le candidat accepte la charte de vérification et dépose la photo de son diplôme',
+  async ({ monde }) => {
+    const jeton = monde.inscription?.jeton ?? '';
+    const charte = await candidature(jeton, '/charte', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ version: VERSION_CHARTE_PRO, accepte: true }),
+    });
+    expect(charte.status).toBe(204);
+    expect((await deposerDiplome(jeton)).status).toBe(201);
+  },
+);
+
+Then(
+  'son dossier de candidature montre la charte acceptée et son diplôme, sans le contenu',
+  async ({ monde }) => {
+    const r = await candidature(monde.inscription?.jeton ?? '', '');
+    expect(r.status).toBe(200);
+    const etat = (await r.json()) as {
+      practitionerId: string;
+      charte: { version: string; acceptee: boolean };
+      pieces: Record<string, unknown>[];
+    };
+    expect(etat.practitionerId).toBe(monde.candidat?.practitionerId);
+    expect(etat.charte).toEqual({ version: VERSION_CHARTE_PRO, acceptee: true });
+    expect(etat.pieces).toHaveLength(1);
+    // Type et date seulement : jamais le contenu de la pièce.
+    expect(Object.keys(etat.pieces[0] ?? {}).sort()).toEqual(['deposeLe', 'type']);
+    expect(etat.pieces[0]?.['type']).toBe('diplome');
+  },
+);
+
+Then('le dossier de candidature est refusé à {string}', async ({ monde }, identifiant: string) => {
+  const r = await candidature(monde.jetons.get(identifiant) ?? '', '');
+  expect(r.status).toBe(403);
 });

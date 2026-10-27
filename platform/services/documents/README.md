@@ -66,6 +66,16 @@ Le patient n'a plus son ancien numéro : une personne habilitée vérifie son id
 - **Acceptée** : SMS d'alerte à l'**ancien** numéro par le service notifications (`POST /numero-change`, lu dans le dossier avant la mise à jour) ; **sans alerte, rien ne change** (503, réessayer). Puis `Patient.telecom` seul est remplacé par la passerelle, avec le parcours `perte` et la date (`changement-telephone`) : **aucun code de connexion pendant 24 heures**.
 - **Pas de flag** : c'est une fonction de sécurité. Le dépôt des photos reste soumis à la charte `C-IDENTITE` (flag `identite.photos`).
 
+## Dossier de candidature d'un professionnel (ADR-0026)
+
+Pour le **professionnel candidat** seulement (rôle d'attente `professionnel-candidat`, attribut `practitioner_id`, jamais un agent IA ; 403 pour tout autre compte). Pas de flag ici : seul un compte créé avec un code d'invitation (flag `professionnels.recrutement`, service `invitations`) porte ce rôle.
+
+- `GET /candidature` → `{ practitionerId, charte: { version, acceptee }, pieces: [{ type, deposeLe }] }` : jamais le contenu d'une pièce.
+- `POST /candidature/charte` `{ version, accepte }` → 204 : accord ou refus de la charte `C-VERIFICATION-PRO` (brouillon `docs/securite/charte-verification-professionnels.md`, version `DOCUMENTS_VERSION_CHARTE_PRO`), par le candidat lui-même ; une ancienne version est refusée (409). Chaque décision est gardée (table `chartes_professionnels`), la dernière fait foi.
+- `POST /candidature/pieces/:type` (octets bruts JPEG ou PNG, 2 Mo au plus) → 201 : `diplome`, `inscription-ordre`, `piece-identite`, `assurance-rcp`. Exige la charte acceptée dans la version en vigueur (409 sinon) ; format reconnu sur le contenu (415) ; au plus `DOCUMENTS_PIECES_MAX_PAR_TYPE` pièces par type (409, compté sous verrou). Même chiffrement par enveloppe que les photos des patients (table `pieces_professionnels`, sans image ni nom), même rotation de la clé maître, suppression à échéance par destruction de la clé (`DOCUMENTS_PIECES_CONSERVATION_JOURS`, 730 jours en attendant la décision du juriste, ADR-0026 question 5).
+- Journal : compte, fiche, type, taille ; jamais le contenu ni le nom.
+- La consultation des pièces par le rôle `verification-professionnels` viendra avec l'écran de vérification (ADR-0026, PR 4).
+
 ## Configuration
 
 | Variable | Rôle |
@@ -80,6 +90,7 @@ Le patient n'a plus son ancien numéro : une personne habilitée vérifie son id
 | `DOCUMENTS_SYSTEME_ASSURANCE`, `DOCUMENTS_SYSTEME_PROVISOIRE` | Système (URI) des numéros d'assurance maladie et provisoires : dépend du pays |
 | `DOCUMENTS_VERSION_CHARTE` (défaut `0.1`) | Version de la charte en vigueur : une nouvelle version exige une nouvelle acceptation |
 | `DOCUMENTS_CONSERVATION_JOURS` (défaut 90), `DOCUMENTS_MAX_PAR_TYPE` (défaut 2) | Durée de conservation (à fixer par pays avec l'avis juridique) et nombre de photos par type |
+| `DOCUMENTS_VERSION_CHARTE_PRO` (défaut `c-verification-pro-v0.1`), `DOCUMENTS_PIECES_CONSERVATION_JOURS` (défaut 730), `DOCUMENTS_PIECES_MAX_PAR_TYPE` (défaut 2) | Charte et pièces des professionnels candidats (ADR-0026) |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flag `identite.photos` (sans Unleash : désactivé) |
 | `NOTIFICATIONS_URL`, `DOCUMENTS_APPELANTS_PERTE` (défaut `mbolo-keycloak-inscription`) | Téléphone perdu (ADR-0023) : alerte à l'ancien numéro, et clients autorisés à ouvrir une demande ; sans `NOTIFICATIONS_URL`, les routes « perte » ne sont pas ouvertes |
 

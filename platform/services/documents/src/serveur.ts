@@ -11,6 +11,7 @@ import {
   limiterAppels,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
+import { ErreurCandidature, TYPES_PIECE, type ServiceCandidature } from './candidature.js';
 import { MOTIFS_REFUS, RESULTATS, RESULTATS_PERTE, TYPES_DOCUMENT } from './depot.js';
 import { TAILLE_MAX } from './format.js';
 import { ErreurKmsIndisponible } from './kms.js';
@@ -51,6 +52,8 @@ export async function creerServeur(o: {
    */
   perte?: { service: ServicePerte; verifierAppelant: VerifierAppelant };
   limites?: Limites;
+  /** Dossier de candidature des professionnels (ADR-0026) ; sans lui, /candidature est absent. */
+  candidature?: ServiceCandidature;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
 }): Promise<FastifyInstance> {
@@ -102,7 +105,7 @@ export async function creerServeur(o: {
       signalerAlerte(o.journal, 'erreur-serveur', 'service de clés indisponible');
       return reply.code(503).send({ erreur: 'Service momentanément indisponible.' });
     }
-    if (err instanceof ErreurVerification) {
+    if (err instanceof ErreurVerification || err instanceof ErreurCandidature) {
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if (err instanceof ErreurDocument) {
@@ -163,6 +166,79 @@ export async function creerServeur(o: {
       }
     },
   );
+
+  // ── Dossier de candidature d'un professionnel (ADR-0026) ──────────────────────
+  const candidature = o.candidature;
+  if (candidature) {
+    app.get('/candidature', async (req) => candidature.etat(await authentifier(req)));
+
+    app.post<{ Body: { version: string; accepte: boolean } }>(
+      '/candidature/charte',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['version', 'accepte'],
+            properties: {
+              version: { type: 'string', pattern: '^[A-Za-z0-9.-]{1,32}$' },
+              accepte: { type: 'boolean' },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        await candidature.deciderCharte(u, req.body);
+        o.journal.info('charte des professionnels', {
+          sujet: u.sujet,
+          practitionerId: u.practitionerId,
+          version: req.body.version,
+          accepte: req.body.accepte,
+        });
+        return reply.code(204).send();
+      },
+    );
+
+    app.post<{ Params: { type: string } }>(
+      '/candidature/pieces/:type',
+      {
+        config: { rateLimit: { max: limites.depotParMinute, timeWindow: '1 minute' } },
+        schema: {
+          params: {
+            type: 'object',
+            properties: { type: { type: 'string', enum: [...TYPES_PIECE] } },
+            required: ['type'],
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        if (!Buffer.isBuffer(req.body)) {
+          return reply.code(415).send({ erreur: 'Seules les photos JPEG ou PNG sont acceptées.' });
+        }
+        try {
+          const d = await candidature.deposer(u, req.params.type, req.body);
+          // Chaque dépôt est tracé : qui, pour quelle fiche, quel type, quelle taille.
+          o.journal.info('pièce de candidature déposée', {
+            sujet: u.sujet,
+            practitionerId: u.practitionerId,
+            type: d.type,
+            documentId: d.id,
+            taille: req.body.length,
+          });
+          return await reply.code(201).send({ type: d.type, format: d.format });
+        } catch (e) {
+          o.journal.avertissement('pièce de candidature refusée', {
+            sujet: u.sujet,
+            type: req.params.type,
+            motif: (e as Error).message,
+          });
+          throw e;
+        }
+      },
+    );
+  }
 
   // ── Vérificateur (rôle verification-identite) ─────────────────────────────────
   app.get('/verifications', async (req) => {
