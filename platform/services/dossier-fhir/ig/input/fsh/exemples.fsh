@@ -69,11 +69,28 @@ Usage: #example
 * agent.who.display = "Agent 1 — accueil et orientation (assistant IA)"
 
 Instance: fictif-praticien-0001
-InstanceOf: Practitioner
-Title: "[FICTIF] Médecin Test"
+InstanceOf: MboloPraticien
+Title: "[FICTIF] Médecin Test, vérifié"
 Usage: #example
 * meta.tag = MboloMarqueurCS#fictif
+* extension[statutVerification].valueCode = MboloStatutVerificationProCS#verifie
+* active = true
 * name.family = "Test"
+* name.given = "Médecin"
+* qualification.code.text = "Médecine générale"
+* qualification.identifier.value = "FICTIF-ORDRE-0001"
+* qualification.issuer.display = "Ordre des médecins [FICTIF]"
+* qualification.period.start = "2026-01-01"
+* qualification.period.end = "2027-01-01"
+
+Instance: fictif-praticien-0002
+InstanceOf: MboloPraticien
+Title: "[FICTIF] Candidat à vérifier"
+Usage: #example
+* meta.tag = MboloMarqueurCS#fictif
+* extension[statutVerification].valueCode = MboloStatutVerificationProCS#a-verifier
+* active = false
+* name.family = "Candidat"
 * name.given = "Médecin"
 
 Instance: fictif-agenda-0001

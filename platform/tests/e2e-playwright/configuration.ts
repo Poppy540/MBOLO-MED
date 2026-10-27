@@ -218,6 +218,12 @@ export const SPECIALITES_FICTIVES: Record<string, string> = {
   'prac-fictif-002': 'Pédiatrie',
 };
 
+/**
+ * [FICTIF] Professionnels avec un agenda mais pas (encore) vérifiés (ADR-0026) : sans compte, ils
+ * servent à vérifier qu'ils n'apparaissent pas aux patients. Tous les autres sont vérifiés.
+ */
+export const PRATICIENS_NON_VERIFIES = ['prac-fictif-candidat'];
+
 /** [FICTIF] Ressources du dossier référencées par les comptes (créées dans le serveur FHIR de test). */
 export const RESSOURCES_FHIR = [
   ...COMPTES.flatMap((c) =>
@@ -230,6 +236,7 @@ export const RESSOURCES_FHIR = [
       id,
     })),
   ),
+  ...PRATICIENS_NON_VERIFIES.map((id) => ({ type: 'Practitioner' as const, id })),
 ];
 
 /**

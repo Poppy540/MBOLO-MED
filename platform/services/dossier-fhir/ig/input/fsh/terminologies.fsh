@@ -171,3 +171,23 @@ Description: "Parcours admis pour un changement de numéro (ADR-0023)."
 * ^status = #draft
 * ^experimental = true
 * include codes from system MboloChangementTelephoneCS
+
+CodeSystem: MboloStatutVerificationProCS
+Id: mbolo-statut-verification
+Title: "Statut de la vérification d'un professionnel"
+Description: "Résultat de la vérification d'un professionnel de santé par le rôle humain verification-professionnels (ADR-0026). Seul « verifie » ouvre l'annuaire et les créneaux."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #a-verifier "À vérifier" "Dossier déposé, ou attestation arrivée à échéance, pas encore contrôlé."
+* #verifie "Vérifié" "Diplôme, inscription à l'Ordre et identité contrôlés à la source par une personne habilitée."
+* #refuse "Refusé" "La vérification n'a pas permis de confirmer le dossier."
+* #suspendu "Suspendu" "Activité suspendue par une personne habilitée (signalement de l'Ordre, plainte, incident confirmé)."
+
+ValueSet: MboloStatutVerificationProVS
+Id: mbolo-statut-verification
+Title: "Statuts de la vérification d'un professionnel"
+Description: "Statuts admis pour la vérification d'un professionnel de santé (ADR-0026)."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloStatutVerificationProCS

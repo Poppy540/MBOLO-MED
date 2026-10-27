@@ -15,6 +15,8 @@ export const PROFILS = {
   /** Ligne d'ordonnance électronique (ADR-0018, proposée). */
   ordonnance: `${CANONIQUE}/StructureDefinition/mbolo-ordonnance`,
   proche: `${CANONIQUE}/StructureDefinition/mbolo-proche`,
+  /** Professionnel de santé et statut de sa vérification (ADR-0026, proposée). */
+  praticien: `${CANONIQUE}/StructureDefinition/mbolo-praticien`,
 } as const;
 
 export const SYSTEMES = {
@@ -42,6 +44,7 @@ export const SYSTEMES = {
   typeIdentifiantPatient: `${CANONIQUE}/CodeSystem/mbolo-type-identifiant-patient`,
   statutIdentite: `${CANONIQUE}/CodeSystem/mbolo-statut-identite`,
   changementTelephone: `${CANONIQUE}/CodeSystem/mbolo-changement-telephone`,
+  statutVerificationPro: `${CANONIQUE}/CodeSystem/mbolo-statut-verification`,
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;

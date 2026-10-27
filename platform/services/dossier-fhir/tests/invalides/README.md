@@ -17,3 +17,5 @@ Chacune viole une règle des profils Mbolo Santé. Le script `scripts/valider-ig
 | `telephone-change-sans-date.json` | `mbolo-pat-3` : numéro changé (ici après une perte) sans date du changement, qui ouvre les 24 heures sans code de connexion (ADR-0023) | `mbolo-pat-3` |
 | `ordonnance-par-agent-ia.json` | `mbolo-ord-2` : ordonnance prescrite par un agent IA (principe n°1, ADR-0018) | `mbolo-ord-2` |
 | `ordonnance-texte-libre.json` | `mbolo-ord-1` : consigne en texte libre dans une ordonnance (principe n°8) | `mbolo-ord-1` |
+| `praticien-actif-non-verifie.json` | `mbolo-prat-1` : professionnel actif alors que sa vérification n'est pas faite (ADR-0026) | `mbolo-prat-1` |
+| `praticien-verifie-sans-inscription.json` | `mbolo-prat-2` : professionnel « vérifié » sans numéro d'inscription, Ordre émetteur ni fin de validité | `mbolo-prat-2` |

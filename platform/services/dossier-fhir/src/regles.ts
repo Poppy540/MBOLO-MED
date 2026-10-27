@@ -16,6 +16,7 @@ import type {
   Reference,
 } from 'fhir/r4.js';
 import { verifierOrdonnance } from './ordonnance.js';
+import { verifierPraticien } from './praticien.js';
 import { verifierProche } from './proche.js';
 import { verifierTelephones } from './telephone.js';
 import {
@@ -322,6 +323,8 @@ export function valider(r: FhirResource, env: Environnement): Violation[] {
         return verifierOrdonnance(r);
       case 'RelatedPerson':
         return verifierProche(r);
+      case 'Practitioner':
+        return verifierPraticien(r);
       default:
         return [];
     }

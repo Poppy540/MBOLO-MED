@@ -66,3 +66,12 @@ export {
   communicationPreferee,
   languePreferee,
 } from './langue.js';
+export {
+  EXTENSION_STATUT_VERIFICATION,
+  STATUTS_VERIFICATION_PRO,
+  praticien,
+  praticienVerifie,
+  statutVerification,
+  verifierPraticien,
+} from './praticien.js';
+export type { Inscription, OptionsPraticien, StatutVerificationPro } from './praticien.js';

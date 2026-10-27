@@ -3,6 +3,7 @@
 import { ErreurDepot, type Utilisateur } from '@mbolo/identite';
 import { creerJournal, type Evenement } from '@mbolo/journal-securise';
 import { describe, expect, it } from 'vitest';
+import { AnnuaireMemoire } from './annuaire.js';
 import { DepotCreneauxMemoire } from './creneaux.js';
 import { IdentitesMemoire } from './identites.js';
 import { PaiementsHttp, PaiementsMemoire } from './paiements.js';
@@ -43,7 +44,8 @@ async function monter(o: { payant?: boolean; sansService?: boolean } = {}) {
         sms.push({ destinataire, evenement });
       },
     },
-    undefined,
+    // [FICTIF] Professionnel vérifié (ADR-0026).
+    new AnnuaireMemoire(new Map([['prac-fictif-001', { nom: 'Dr Test A [FICTIF]' }]])),
     new IdentitesMemoire(new Map([['pat-fictif-001', 'verifiee']])),
     o.sansService ? undefined : { service: paiements, delaiMinutes: 15 },
   );

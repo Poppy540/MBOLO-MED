@@ -199,8 +199,22 @@ export class ServiceTeleconsultation {
   }
 
   /**
-   * Annuaire pour les patients de la cohorte : professionnels qui ont un agenda, avec leur prochain
-   * créneau libre (14 jours), les plus proches d'abord. Ni téléphone ni adresse.
+   * ADR-0026 : seul un professionnel vérifié, dont l'inscription est encore valable, apparaît aux
+   * patients, publie des créneaux ou reçoit une réservation.
+   */
+  private async exigerPraticienVerifie(
+    praticienId: string,
+    message: string,
+    statut: 403 | 404 | 409,
+  ): Promise<void> {
+    if (!(await this.annuaire.fiche(praticienId, this.maintenant()))) {
+      throw new ErreurTeleconsultation(message, statut);
+    }
+  }
+
+  /**
+   * Annuaire pour les patients de la cohorte : professionnels vérifiés qui ont un agenda, avec leur
+   * prochain créneau libre (14 jours), les plus proches d'abord. Ni téléphone ni adresse.
    */
   async praticiens(u: Utilisateur): Promise<(Fiche & { id: string; prochainCreneau?: string })[]> {
     if (!u.roles.includes('patient') || !u.patientId) {
@@ -212,7 +226,7 @@ export class ServiceTeleconsultation {
     const liste = await Promise.all(
       ids.map(async (id) => {
         const [fiche, creneaux] = await Promise.all([
-          this.annuaire.fiche(id),
+          this.annuaire.fiche(id, new Date(t)),
           this.creneaux.duPraticien(
             id,
             new Date(t).toISOString(),
@@ -258,6 +272,11 @@ export class ServiceTeleconsultation {
       throw new ErreurTeleconsultation('Accès refusé.', 403);
     }
     await this.exigerFonction(u);
+    await this.exigerPraticienVerifie(
+      u.practitionerId,
+      'Votre compte professionnel doit être vérifié avant de publier des créneaux.',
+      403,
+    );
     if (d.nombre < 1 || d.nombre > CRENEAUX_MAX) {
       throw new ErreurTeleconsultation('Nombre de créneaux invalide.', 409);
     }
@@ -294,6 +313,7 @@ export class ServiceTeleconsultation {
       throw new ErreurTeleconsultation('Accès refusé.', 403);
     }
     await this.exigerFonction(u);
+    await this.exigerPraticienVerifie(praticienId, 'Professionnel introuvable.', 404);
     const t = this.maintenant().getTime();
     const tous = await this.creneaux.duPraticien(
       praticienId,
@@ -319,6 +339,7 @@ export class ServiceTeleconsultation {
     if (c.statut !== 'libre' || new Date(c.debut).getTime() <= this.maintenant().getTime()) {
       throw new ErreurTeleconsultation('Créneau non disponible.', 409);
     }
+    await this.exigerPraticienVerifie(c.praticienId, 'Créneau non disponible.', 409);
     const payant = await this.drapeaux.estActif('paiement.mobile-money', {
       sujet: u.sujet,
       typeUtilisateur: 'patient',
@@ -472,6 +493,9 @@ export class ServiceTeleconsultation {
     if (c.id === r.creneauId || c.statut !== 'libre' || new Date(c.debut).getTime() <= maintenant) {
       throw new ErreurTeleconsultation('Créneau non disponible.', 409);
     }
+    // Professionnel suspendu entre-temps : le rendez-vous reste (l'équipe prévient le patient,
+    // ADR-0026), mais il n'est pas déplacé chez lui.
+    await this.exigerPraticienVerifie(c.praticienId, 'Créneau non disponible.', 409);
     try {
       await this.creneaux.reserver(c.id);
     } catch (e) {

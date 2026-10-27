@@ -50,7 +50,7 @@ Aujourd'hui :
 
 ### 6. Mise en œuvre proposée (petites PR)
 
-1. **Profil FHIR** `MboloPraticien` (extension `statut-verification`, qualification structurée, règles : actif seulement si vérifié) et **filtre de l'annuaire et des créneaux** dans `teleconsultation` (les professionnels de test deviennent « vérifiés » dans les données fictives).
+1. **Profil FHIR** `MboloPraticien` (extension `statut-verification`, qualification structurée, règles : actif seulement si vérifié) et **filtre de l'annuaire et des créneaux** dans `teleconsultation` (les professionnels de test deviennent « vérifiés » dans les données fictives). **Fait** : règles `mbolo-prat-1` et `-2`, `praticienVerifie` (fiche active, vérifiée, inscription encore valable), annuaire, publication, réservation et report refusés sinon.
 2. **Invitations et inscription** : code de type `professionnel`, rôle `professionnel-candidat`, fiche inactive (extension Keycloak, liste fermée `RolesInscription`).
 3. **Dossier de candidature** : déclaration, charte `C-VERIFICATION-PRO`, pièces dans `documents`, écran dans l'espace professionnel.
 4. **Vérification** : écran du rôle `verification-professionnels`, sources et résultats point par point, décision, activation par le serveur, séparation des tâches.

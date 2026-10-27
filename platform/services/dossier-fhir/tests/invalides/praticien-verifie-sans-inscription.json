@@ -1,0 +1,19 @@
+{
+  "resourceType": "Practitioner",
+  "id": "fictif-invalide-prat-2",
+  "meta": {
+    "profile": ["https://mbolo-sante.example/fhir/StructureDefinition/mbolo-praticien"],
+    "tag": [
+      { "system": "https://mbolo-sante.example/fhir/CodeSystem/mbolo-marqueur", "code": "fictif" }
+    ]
+  },
+  "extension": [
+    {
+      "url": "https://mbolo-sante.example/fhir/StructureDefinition/statut-verification",
+      "valueCode": "verifie"
+    }
+  ],
+  "active": true,
+  "name": [{ "family": "Test", "given": ["Médecin"] }],
+  "qualification": [{ "code": { "text": "Médecine générale" } }]
+}

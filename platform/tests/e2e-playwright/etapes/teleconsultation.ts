@@ -135,6 +135,33 @@ Then(
   },
 );
 
+// ADR-0026 : un professionnel non vérifié n'apparaît pas, et ses créneaux ne sont pas proposés.
+Then(
+  'l’annuaire de {string} montre {string} et pas {string}',
+  async ({ monde }, identifiant: string, montre: string, cache: string) => {
+    await appeler(monde, 'GET', '/praticiens', monde.jetons.get(identifiant));
+    expect(monde.reponse?.statut).toBe(200);
+    const ids = (monde.reponse?.corps['praticiens'] as { id: string }[]).map((p) => p.id);
+    expect(ids).toContain(montre);
+    expect(ids).not.toContain(cache);
+  },
+);
+
+Then(
+  'les créneaux de {string} ne sont pas proposés à {string}',
+  async ({ monde }, praticien: string, identifiant: string) => {
+    await appeler(monde, 'GET', `/praticiens/${praticien}/creneaux`, monde.jetons.get(identifiant));
+    expect(monde.reponse?.statut).toBe(404);
+  },
+);
+
+Then('le dossier médical garde ce créneau libre', async ({ monde }) => {
+  const r = await fetch(`${FHIR_URL}/Slot/${monde.creneaux?.[0] ?? ''}`, {
+    headers: { 'cache-control': 'no-cache' },
+  });
+  expect(((await r.json()) as { status: string }).status).toBe('free');
+});
+
 When('{string} réserve le premier de ces créneaux', async ({ monde }, identifiant: string) => {
   await reserver(monde, identifiant, monde.creneaux?.[0] ?? '');
 });

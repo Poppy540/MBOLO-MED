@@ -470,7 +470,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements",
-            "claim.value": "Practitioner.name Practitioner.qualification Patient.extension Patient.communication",
+            "claim.value": "Practitioner.name Practitioner.qualification Practitioner.active Practitioner.extension Patient.extension Patient.communication",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

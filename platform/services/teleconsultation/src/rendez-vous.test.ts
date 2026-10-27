@@ -1,6 +1,7 @@
 import type { Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
-import { AnnuaireMemoire, versFiche } from './annuaire.js';
+import { EXTENSION_STATUT_VERIFICATION, praticien } from '@mbolo/dossier-fhir';
+import { AnnuaireFhir, AnnuaireMemoire, versFiche, type Fiche } from './annuaire.js';
 import { DepotCreneauxMemoire } from './creneaux.js';
 import { IdentitesMemoire } from './identites.js';
 import {
@@ -56,6 +57,15 @@ const identitesVerifiees = () =>
     ]),
   );
 
+/** [FICTIF] Professionnels vérifiés (ADR-0026) : seuls eux publient et reçoivent des réservations. */
+const annuaireVerifies = () =>
+  new AnnuaireMemoire(
+    new Map([
+      ['prac-fictif-001', { nom: 'Dr Test A [FICTIF]' }],
+      ['prac-fictif-002', { nom: 'Dr Test B [FICTIF]' }],
+    ]),
+  );
+
 /** Service monté avec une horloge réglable et un créneau libre de prac-fictif-001 à DEBUT. */
 async function monter(heure = '2026-09-27T09:00:00Z') {
   const s = salles();
@@ -74,7 +84,7 @@ async function monter(heure = '2026-09-27T09:00:00Z') {
         notifications.push({ destinataire, evenement, instant });
       },
     },
-    undefined,
+    annuaireVerifies(),
     identitesVerifiees(),
   );
   const [c] = await creneaux.publier('prac-fictif-001', [{ debut: DEBUT, dureeMinutes: 20 }]);
@@ -91,7 +101,7 @@ describe('identité vérifiée avant toute réservation (ADR-0014)', () => {
       { estActif: async (nom) => nom !== 'paiement.mobile-money' },
       () => new Date('2026-09-27T09:00:00Z'),
       undefined,
-      undefined,
+      annuaireVerifies(),
       new IdentitesMemoire(statut ? new Map([['pat-fictif-001', statut]]) : new Map()),
     );
 
@@ -267,7 +277,7 @@ describe('téléconsultation', () => {
       { estActif: async (nom) => nom !== 'paiement.mobile-money' },
       () => new Date('2026-09-27T09:00:00Z'),
       undefined,
-      undefined,
+      annuaireVerifies(),
       identitesVerifiees(),
     );
     await expect(enPanne.demander(patient, { creneauId: c.id })).rejects.toThrow(
@@ -528,5 +538,123 @@ describe('fiche d’annuaire', () => {
       }),
     ).toEqual({ nom: 'Dr Test Fictif', specialite: 'Médecine générale' });
     expect(versFiche({ resourceType: 'Practitioner' })).toEqual({ nom: 'Professionnel de santé' });
+  });
+});
+
+describe('professionnels vérifiés seulement (ADR-0026)', () => {
+  /** prac-fictif-001 vérifié ; prac-fictif-003 a un agenda mais n'est pas (ou plus) vérifié. */
+  async function monterAvecCandidat() {
+    const fiches = new Map<string, Fiche>([['prac-fictif-001', { nom: 'Dr Test A [FICTIF]' }]]);
+    const creneaux = new DepotCreneauxMemoire();
+    const service = new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      creneaux,
+      salles().f,
+      { estActif: async (nom) => nom !== 'paiement.mobile-money' },
+      () => new Date('2026-09-27T09:00:00Z'),
+      undefined,
+      new AnnuaireMemoire(fiches),
+      identitesVerifiees(),
+    );
+    const [a] = await creneaux.publier('prac-fictif-001', [
+      { debut: '2026-09-28T08:00:00Z', dureeMinutes: 20 },
+      { debut: '2026-09-28T08:20:00Z', dureeMinutes: 20 },
+    ]);
+    const [b] = await creneaux.publier('prac-fictif-003', [
+      { debut: '2026-09-28T09:00:00Z', dureeMinutes: 20 },
+    ]);
+    if (!a || !b) throw new Error('créneaux non publiés');
+    return { service, creneaux, fiches, a, b };
+  }
+  const candidat: Utilisateur = {
+    sujet: 'u-m3',
+    roles: ['professionnel'],
+    practitionerId: 'prac-fictif-003',
+  };
+
+  it('un professionnel non vérifié n’apparaît pas dans l’annuaire, même avec un agenda', async () => {
+    const { service } = await monterAvecCandidat();
+    expect((await service.praticiens(patient)).map((p) => p.id)).toEqual(['prac-fictif-001']);
+  });
+
+  it('un professionnel non vérifié ne publie pas de créneaux (403)', async () => {
+    const { service } = await monterAvecCandidat();
+    await expect(
+      service.publier(candidat, { debut: '2026-09-29T08:00:00Z', dureeMinutes: 20, nombre: 1 }),
+    ).rejects.toMatchObject({ statut: 403, message: expect.stringContaining('vérifié') });
+  });
+
+  it('ses créneaux ne sont ni proposés (404) ni réservables (409), et restent libres', async () => {
+    const { service, creneaux, b } = await monterAvecCandidat();
+    await expect(service.creneauxLibres(patient, 'prac-fictif-003')).rejects.toMatchObject({
+      statut: 404,
+    });
+    await expect(service.demander(patient, { creneauId: b.id })).rejects.toMatchObject({
+      statut: 409,
+    });
+    expect((await creneaux.lire(b.id))?.statut).toBe('libre');
+  });
+
+  it('suspendu après une réservation : le rendez-vous reste, mais n’est pas déplacé chez lui', async () => {
+    const { service, fiches, a, creneaux } = await monterAvecCandidat();
+    const r = await service.demander(patient, { creneauId: a.id });
+    fiches.delete('prac-fictif-001');
+    const [autre] = await creneaux.duPraticien(
+      'prac-fictif-001',
+      '2026-09-28T08:20:00Z',
+      '2026-09-28T08:21:00Z',
+    );
+    if (!autre) throw new Error('second créneau attendu');
+    await expect(service.reporter(patient, r.id, { creneauId: autre.id })).rejects.toMatchObject({
+      statut: 409,
+    });
+    expect((await service.mesRendezVous(patient)).map((x) => x.statut)).toEqual(['prevu']);
+    expect(await service.praticiens(patient)).toEqual([]);
+  });
+});
+
+describe('annuaire lu dans le dossier (ADR-0026)', () => {
+  const inscription = {
+    specialite: 'Pédiatrie',
+    numero: 'FICTIF-ORDRE-0002',
+    ordre: 'Ordre des médecins [FICTIF]',
+    debut: '2026-01-01',
+    fin: '2026-12-31',
+  };
+  const lire = (fiche: object, maintenant = '2026-09-27T09:00:00Z') => {
+    const appels: RequestInit[] = [];
+    const annuaire = new AnnuaireFhir({
+      base: 'https://fhir.test/fhir',
+      fetch: (async (_url: string, init: RequestInit) => {
+        appels.push(init);
+        return new Response(JSON.stringify(fiche), { status: 200 });
+      }) as typeof fetch,
+    });
+    return { appels, fiche: annuaire.fiche('prac-fictif-002', new Date(maintenant)) };
+  };
+  const verifie = praticien({
+    nom: 'Fictif',
+    prenom: 'Test',
+    statut: 'verifie',
+    inscription,
+    env: 'dev',
+  });
+
+  it('fiche d’un professionnel vérifié, lue sans cache', async () => {
+    const l = lire(verifie);
+    expect(await l.fiche).toEqual({ nom: 'Test Fictif', specialite: 'Pédiatrie' });
+    expect(l.appels[0]?.headers).toMatchObject({ 'cache-control': 'no-cache' });
+  });
+
+  it('aucune fiche : à vérifier, suspendu, inscription expirée ou statut absent', async () => {
+    const candidat = praticien({ nom: 'Fictif', prenom: 'C', statut: 'a-verifier', env: 'dev' });
+    expect(await lire(candidat).fiche).toBeUndefined();
+    const suspendu = {
+      ...verifie,
+      extension: [{ url: EXTENSION_STATUT_VERIFICATION, valueCode: 'suspendu' }],
+    };
+    expect(await lire(suspendu).fiche).toBeUndefined();
+    expect(await lire(verifie, '2027-01-01T09:00:00Z').fiche).toBeUndefined();
+    expect(await lire({ ...verifie, extension: undefined }).fiche).toBeUndefined();
   });
 });
