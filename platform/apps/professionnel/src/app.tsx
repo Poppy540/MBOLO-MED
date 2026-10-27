@@ -50,7 +50,8 @@ type Ecran =
   | { nom: 'verifications' }
   | { nom: 'pertes' }
   | { nom: 'remboursements' }
-  | { nom: 'assistance' };
+  | { nom: 'assistance' }
+  | { nom: 'candidature' };
 
 /** Rôles du compte connecté (jeton Keycloak) : l'affichage suit, le service décide. */
 const roles = (): string[] => {
@@ -61,6 +62,8 @@ const estVerificateur = () => roles().includes('verification-identite');
 const estValideur = () => roles().includes('validation-remboursement');
 const estAssistant = () => roles().includes('assistance-patient');
 const estSoignant = () => roles().some((r) => r === 'professionnel' || r === 'infirmier');
+/** Compte d'attente d'un professionnel invité (ADR-0026) : son dossier seulement, aucun patient. */
+const estCandidat = () => roles().includes('professionnel-candidat') && !estSoignant();
 
 export function App() {
   const [ecran, setEcran] = useState<Ecran>({ nom: 'accueil' });
@@ -76,15 +79,17 @@ export function App() {
           jeton = j;
           history.replaceState(null, '', '/');
           setEcran(
-            estSoignant()
-              ? { nom: 'rendez-vous' }
-              : estVerificateur()
-                ? { nom: 'verifications' }
-                : estValideur()
-                  ? { nom: 'remboursements' }
-                  : estAssistant()
-                    ? { nom: 'assistance' }
-                    : { nom: 'rendez-vous' },
+            estCandidat()
+              ? { nom: 'candidature' }
+              : estSoignant()
+                ? { nom: 'rendez-vous' }
+                : estVerificateur()
+                  ? { nom: 'verifications' }
+                  : estValideur()
+                    ? { nom: 'remboursements' }
+                    : estAssistant()
+                      ? { nom: 'assistance' }
+                      : { nom: 'rendez-vous' },
           );
         }
       })
@@ -219,6 +224,8 @@ export function App() {
         <EcranRemboursements signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'assistance' ? (
         <EcranAssistance signaler={(m) => setMessage(m)} />
+      ) : ecran.nom === 'candidature' ? (
+        <EcranCandidature signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'report' ? (
         <Report rendezVous={ecran.rendezVous} allerA={allerA} signaler={signaler} />
       ) : (
@@ -291,6 +298,22 @@ function EcranAssistance(p: { signaler: (m?: string) => void }) {
   useEffect(() => {
     import('./assistance.js')
       .then((m) => setEcran(() => m.Assistance))
+      .catch(() => p.signaler(t('commun.pasDeReseau')));
+  }, []);
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} signaler={p.signaler} />
+  ) : (
+    <p aria-live="polite">{t('commun.chargement')}</p>
+  );
+}
+
+/** Dossier de candidature d'un professionnel invité (ADR-0026) ; écran chargé à la demande. */
+function EcranCandidature(p: { signaler: (m?: string) => void }) {
+  type Props = { jeton: string; signaler: (m?: string) => void };
+  const [Ecran, setEcran] = useState<ComponentType<Props>>();
+  useEffect(() => {
+    import('./candidature.js')
+      .then((m) => setEcran(() => m.Candidature))
       .catch(() => p.signaler(t('commun.pasDeReseau')));
   }, []);
   return Ecran && jeton ? (

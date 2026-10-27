@@ -14,6 +14,7 @@ import {
   declarationDe,
   declarationPraticien,
   estSpecialite,
+  SPECIALITES,
   statutVerification,
   type Declaration,
   type StatutVerificationPro,
@@ -282,6 +283,8 @@ export interface EtatCandidature {
   /** Statut de la vérification lu dans la fiche ; la déclaration n'est modifiable qu'« a-verifier ». */
   statut: StatutVerificationPro | 'inconnu';
   declaration?: Declaration;
+  /** Listes fermées du pays, pour le formulaire de déclaration (jamais de texte libre). */
+  choix: { specialites: { code: string; libelle: string }[]; langues: string[] };
   /** Pièces présentes : type et date seulement, jamais le contenu. */
   pieces: { type: TypePiece; deposeLe: string }[];
 }
@@ -356,6 +359,13 @@ export class ServiceCandidature {
       charte: { version: this.parametres.versionCharte, acceptee },
       statut: (lue && statutVerification(lue.fiche)) ?? 'inconnu',
       ...(declaration ? { declaration } : {}),
+      choix: {
+        specialites: this.parametres.specialites.filter(estSpecialite).map((code) => ({
+          code,
+          libelle: SPECIALITES[code],
+        })),
+        langues: [...this.parametres.langues],
+      },
       pieces: pieces.map((p) => ({ type: p.type, deposeLe: p.deposeLe.toISOString() })),
     };
   }

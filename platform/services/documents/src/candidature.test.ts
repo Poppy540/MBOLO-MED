@@ -135,6 +135,13 @@ describe('dossier de candidature (ADR-0026)', () => {
       practitionerId: CANDIDAT,
       charte: { version: VERSION, acceptee: false },
       statut: 'a-verifier',
+      choix: {
+        specialites: [
+          { code: 'medecine-generale', libelle: 'Médecine générale' },
+          { code: 'pediatrie', libelle: 'Pédiatrie' },
+        ],
+        langues: ['fr', 'en', 'fan'],
+      },
       pieces: [],
     });
     // Aucune pièce avant la charte.
