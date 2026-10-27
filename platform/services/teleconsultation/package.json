@@ -24,7 +24,7 @@
     "@mbolo/drapeaux": "workspace:*",
     "@mbolo/identite": "workspace:*",
     "@mbolo/journal-securise": "workspace:*",
-    "fastify": "^5.12.5",
+    "fastify": "^5.12.6",
     "livekit-server-sdk": "^2.19.1"
   },
   "devDependencies": {
