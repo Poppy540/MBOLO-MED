@@ -2,9 +2,10 @@
 // inscription du candidat dans Keycloak (vraie extension, vraie double authentification), fiche
 // inactive dans le dossier. Données FICTIVES uniquement.
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { expect, type Request } from '@playwright/test';
+import { expect, type Browser, type Request } from '@playwright/test';
 import {
   APPLICATIONS,
+  APP_PRO_URL,
   DOCUMENTS_URL,
   EMETTEUR,
   FHIR_URL,
@@ -258,20 +259,6 @@ Then("le candidat ne peut déposer aucune pièce avant d'accepter la charte", as
   expect((await deposerDiplome(monde.inscription?.jeton ?? '')).status).toBe(409);
 });
 
-When(
-  'le candidat accepte la charte de vérification et dépose la photo de son diplôme',
-  async ({ monde }) => {
-    const jeton = monde.inscription?.jeton ?? '';
-    const charte = await candidature(jeton, '/charte', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ version: VERSION_CHARTE_PRO, accepte: true }),
-    });
-    expect(charte.status).toBe(204);
-    expect((await deposerDiplome(jeton)).status).toBe(201);
-  },
-);
-
 Then(
   'son dossier de candidature montre la charte acceptée et son diplôme, sans le contenu',
   async ({ monde }) => {
@@ -310,13 +297,6 @@ const declarer = (jeton: string, corps: object) =>
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(corps),
   });
-
-When(
-  "le candidat déclare sa spécialité, son inscription à l'Ordre et ses langues de consultation",
-  async ({ monde }) => {
-    expect((await declarer(monde.inscription?.jeton ?? '', DECLARATION)).status).toBe(204);
-  },
-);
 
 Then(
   'sa fiche porte sa déclaration, toujours inactive et à vérifier, sans période de validité',
@@ -363,3 +343,63 @@ Then('le candidat ne peut pas déclarer une spécialité hors de la liste', asyn
   });
   expect(r.status).toBe(400);
 });
+
+// ── Écran « Ma candidature » de l'espace professionnel (ADR-0026, 3c) ───────
+
+const PRO = 'espace professionnel';
+
+const pagePro = (monde: Monde) => {
+  const p = monde.visio.get(PRO)?.page;
+  if (!p) throw new Error('L’espace professionnel n’est pas ouvert dans ce scénario.');
+  return p;
+};
+
+When(
+  'le candidat ouvre son dossier de candidature dans l’espace professionnel',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }) => {
+    const { identifiant, motDePasse } = monde.inscription ?? {};
+    if (!identifiant || !motDePasse) throw new Error('Aucun candidat inscrit dans ce scénario.');
+    const contexte = await browser.newContext();
+    const p = await contexte.newPage();
+    monde.visio.set(PRO, { contexte, page: p });
+    await p.goto(APP_PRO_URL);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await p.locator('#username').fill(identifiant);
+    await p.locator('#password').fill(motDePasse);
+    await p.locator('#kc-login').click();
+    // Double authentification configurée à l'inscription : code de l'application.
+    await p.locator('#otp').fill(await codeUnique(identifiant));
+    await p.locator('#kc-login').click();
+    // Aucun menu de soignant : seul son dossier, en commençant par la charte.
+    await expect(p.getByRole('heading', { name: 'Charte de vérification' })).toBeVisible();
+    await expect(p.getByRole('button', { name: /Mes créneaux/ })).toHaveCount(0);
+  },
+);
+
+When('le candidat accepte la charte dans l’espace professionnel', async ({ monde }) => {
+  await pagePro(monde).getByRole('button', { name: 'J’accepte' }).click();
+});
+
+When(
+  'le candidat déclare sa spécialité, son Ordre et ses langues, et envoie la photo de son diplôme dans l’espace professionnel',
+  async ({ monde }) => {
+    const p = pagePro(monde);
+    await p.getByLabel('Spécialité').selectOption('pediatrie');
+    await p.getByLabel(/Pays de l’Ordre/).fill(DECLARATION.paysOrdre);
+    await p.getByLabel('Numéro d’inscription à l’Ordre').fill(DECLARATION.numeroOrdre);
+    for (const code of DECLARATION.langues) {
+      await p.locator(`input[name=langues][value="${code}"]`).check();
+    }
+    await p.getByRole('button', { name: 'Enregistrer ma déclaration' }).click();
+    await expect(p.getByRole('alert')).toHaveText('Déclaration enregistrée.');
+    const diplome = p.locator('fieldset[data-piece=diplome]');
+    await diplome.locator('input[type=file]').setInputFiles({
+      name: 'diplome-fictif.png',
+      mimeType: 'image/png',
+      buffer: pngFictif(30, 60, 90),
+    });
+    await diplome.getByRole('button', { name: 'Envoyer' }).click();
+    await expect(p.getByRole('alert')).toHaveText('Photo envoyée.');
+    await expect(diplome).toContainText('1 photo envoyée');
+  },
+);

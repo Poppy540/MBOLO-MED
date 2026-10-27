@@ -17,10 +17,14 @@ Fonctionnalité: L'équipe de recrutement invite un professionnel de santé
     Et "patient-fictif-01" est connecté
     Et l'annuaire de "patient-fictif-01" ne montre pas ce candidat
     Et le candidat ne peut déposer aucune pièce avant d'accepter la charte
-    Quand le candidat accepte la charte de vérification et dépose la photo de son diplôme
+    Quand le candidat ouvre son dossier de candidature dans l’espace professionnel
+    Alors l’écran de l’"espace professionnel" respecte les règles d’accessibilité
+    Quand le candidat accepte la charte dans l’espace professionnel
+    Alors dans l’"espace professionnel", le focus est sur le titre "Ma candidature"
+    Quand le candidat déclare sa spécialité, son Ordre et ses langues, et envoie la photo de son diplôme dans l’espace professionnel
     Alors son dossier de candidature montre la charte acceptée et son diplôme, sans le contenu
-    Quand le candidat déclare sa spécialité, son inscription à l'Ordre et ses langues de consultation
-    Alors sa fiche porte sa déclaration, toujours inactive et à vérifier, sans période de validité
+    Et sa fiche porte sa déclaration, toujours inactive et à vérifier, sans période de validité
+    Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité
     Et le candidat ne peut pas déclarer une spécialité hors de la liste
 
   Scénario: Un code de professionnel révoqué ne permet plus de créer de compte
