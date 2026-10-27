@@ -1,5 +1,5 @@
 <#--
-  Mbolo Santé : copie de template.ftl du thème keycloak.v2 de Keycloak 26.7.4 (licence Apache 2.0),
+  Mbolo Santé : copie de template.ftl du thème keycloak.v2 de Keycloak 26.7.4, inchangé en 26.8.1 (licence Apache 2.0),
   avec une seule modification : le champ en lecture seule qui rappelle l'identifiant
   (kc-attempted-username) reçoit aria-label="${label}". Dans l'original, le libellé vise un champ
   « username » qui n'existe pas sur ces pages : un lecteur d'écran annonçait un champ sans nom

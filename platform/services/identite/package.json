@@ -23,7 +23,7 @@
     "@mbolo/dossier-fhir": "workspace:*",
     "@mbolo/drapeaux": "workspace:*",
     "@mbolo/journal-securise": "workspace:*",
-    "fastify": "^5.12.5",
+    "fastify": "^5.12.7",
     "jose": "^6.2.12"
   },
   "devDependencies": {
