@@ -607,7 +607,7 @@
     },
     {
       "clientId": "mbolo-documents-service",
-      "name": "Compte de service du service documents (dossier : identité déclarée et statut du patient, charte C-IDENTITE ; modification du statut, des identifiants et, après une perte, du téléphone seulement ; traces des photos consultées ; alerte à l'ancien numéro ; déclaration du professionnel candidat : spécialité, Ordre et langues seulement)",
+      "name": "Compte de service documents (identité et statut du patient, C-IDENTITE ; statut, identifiants et téléphone après une perte ; traces des photos ; alerte à l'ancien numéro ; déclaration du candidat : spécialité, Ordre, langues)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-jwt",

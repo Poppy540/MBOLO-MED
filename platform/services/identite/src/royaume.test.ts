@@ -18,6 +18,7 @@ interface Royaume {
   roles: { realm: { name: string; description?: string; composites?: { realm?: string[] } }[] };
   clients: {
     clientId: string;
+    name?: string;
     defaultClientScopes?: string[];
     directAccessGrantsEnabled?: boolean;
     standardFlowEnabled?: boolean;
@@ -87,6 +88,13 @@ describe('royaume mbolo', () => {
   it('garde les descriptions des rôles sous la limite de Keycloak (255 caractères)', () => {
     for (const r of royaume.roles.realm) {
       expect(r.description?.length ?? 0, r.name).toBeLessThanOrEqual(255);
+    }
+  });
+
+  it('garde les noms des clients sous la limite de Keycloak (255 caractères)', () => {
+    // Au-delà, Keycloak ne démarre pas : l'import du royaume échoue.
+    for (const c of royaume.clients) {
+      expect(c.name?.length ?? 0, c.clientId).toBeLessThanOrEqual(255);
     }
   });
 
