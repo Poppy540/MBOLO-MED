@@ -34,6 +34,17 @@ export const ROLES = [
    * lui-même.
    */
   'validation-reversement',
+  /**
+   * Équipe de recrutement (ADR-0026) : invite les professionnels de santé par un code à usage unique ;
+   * ne vérifie jamais un candidat qu'elle a recruté. Aucun accès clinique. Double authentification.
+   * Jamais un agent IA.
+   */
+  'recrutement',
+  /**
+   * Professionnel qui a créé son compte avec un code d'invitation, en attente de vérification
+   * (ADR-0026) : il complète son dossier de candidature, sans aucun accès aux patients.
+   */
+  'professionnel-candidat',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

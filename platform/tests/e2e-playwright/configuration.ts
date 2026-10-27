@@ -54,6 +54,8 @@ export const COHORTES: Record<string, string[]> = {
   'ordonnances.electroniques': ['medecin-fictif-01'],
   // Récupération du compte (ADR-0021) : le flag est évalué pour le membre de l'équipe.
   'compte.recuperation': ['assistant-fictif-01'],
+  // Invitation des professionnels (ADR-0026) : le flag est évalué pour le recruteur.
+  'professionnels.recrutement': ['recruteur-fictif-01'],
 };
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
@@ -76,7 +78,8 @@ export interface CompteFictif {
     | 'verification-identite'
     | 'validation-remboursement'
     | 'assistance-patient'
-    | 'validation-reversement';
+    | 'validation-reversement'
+    | 'recrutement';
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -193,6 +196,14 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'reversements-fictif-01',
     prenom: 'Honoré',
     role: 'validation-reversement',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    // Invite les professionnels de santé ; ne les vérifie jamais (ADR-0026).
+    identifiant: 'recruteur-fictif-01',
+    prenom: 'Hortense',
+    role: 'recrutement',
     application: 'pro',
     attributs: {},
   },

@@ -22,17 +22,18 @@ import org.keycloak.models.utils.FormMessage;
 import org.keycloak.provider.ProviderConfigProperty;
 
 /**
- * Étape du formulaire d'inscription (ADR-0014, ADR-0019) : exige un code d'invitation, l'utilise une
- * seule fois pour le compte créé et n'attribue que le rôle fixé par le type du code : {@code patient}
- * ou {@code proche} (liste fermée, {@link RolesInscription}). Le mot de passe reste dans Keycloak ;
- * l'identité du patient n'est pas demandée ici (elle va dans le dossier FHIR, étape suivante). Un
- * proche est rattaché à sa fiche et doit configurer la double authentification.
+ * Étape du formulaire d'inscription (ADR-0014, ADR-0019, ADR-0026) : exige un code d'invitation,
+ * l'utilise une seule fois pour le compte créé et n'attribue que le rôle fixé par le type du code :
+ * {@code patient}, {@code proche} ou {@code professionnel-candidat} (liste fermée, {@link
+ * RolesInscription}). Le mot de passe reste dans Keycloak ; l'identité du patient n'est pas demandée
+ * ici (elle va dans le dossier FHIR, étape suivante). Un proche ou un professionnel candidat est
+ * rattaché à sa fiche et doit configurer la double authentification.
  */
 public final class CodeInvitationFormAction implements FormAction, FormActionFactory {
 
   public static final String ID = "mbolo-code-invitation";
   public static final String CHAMP = "code_invitation";
-  /** Seul rôle que l'inscription peut donner (liste fermée). */
+  /** Rôle d'un compte créé avec un code de patient (les autres types : {@link RolesInscription}). */
   public static final String ROLE = "patient";
   /** Audience des jetons de service présentés au service des invitations. */
   public static final String AUDIENCE = "mbolo-invitations-api";
@@ -92,7 +93,7 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
                 () ->
                     new IllegalStateException(
                         "Code d'invitation non utilisable : inscription annulée."));
-    // Le rôle vient du type du code, fixé par le service ; liste fermée (patient ou proche).
+    // Le rôle vient du type du code, fixé par le service ; liste fermée (patient, proche, candidat).
     String nomRole =
         RolesInscription.role(utilisation.type())
             .orElseThrow(() -> new IllegalStateException("Type de code inconnu."));
@@ -108,6 +109,13 @@ public final class CodeInvitationFormAction implements FormAction, FormActionFac
       // Conditions d'utilisation du proche (accord du porteur de projet du 2026-09-28) : acceptées
       // avant tout accès ; Keycloak garde la date d'acceptation sur le compte.
       utilisateur.addRequiredAction(UserModel.RequiredAction.TERMS_AND_CONDITIONS);
+    } else if ("professionnel".equals(utilisation.type())) {
+      // Professionnel candidat (ADR-0026) : rattaché à sa fiche inactive ; double authentification
+      // configurée dès l'inscription, comme pour tous les professionnels. Aucun accès aux patients
+      // tant qu'une personne habilitée ne l'a pas vérifié.
+      utilisateur.setSingleAttribute(
+          RolesInscription.ATTRIBUT_PRATICIEN, utilisation.practitionerId());
+      utilisateur.addRequiredAction(UserModel.RequiredAction.CONFIGURE_TOTP);
     }
     JOURNAL.infof(
         "inscription avec code d'invitation : compte %s, rôle %s", utilisateur.getId(), nomRole);

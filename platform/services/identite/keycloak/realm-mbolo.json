@@ -126,6 +126,22 @@
         "composites": {
           "realm": ["mfa-requise"]
         }
+      },
+      {
+        "name": "recrutement",
+        "description": "Invite les professionnels de santé par un code à usage unique (ADR-0026) ; ne vérifie jamais un candidat qu'il a recruté. Aucun accès clinique. MFA obligatoire. Jamais un agent IA.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
+      },
+      {
+        "name": "professionnel-candidat",
+        "description": "Professionnel inscrit avec un code, en attente de vérification par une personne habilitée (ADR-0026) : complète son dossier, aucun accès aux patients. MFA obligatoire.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },
@@ -765,7 +781,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c",
+            "claim.value": "system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c system/Practitioner.c",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

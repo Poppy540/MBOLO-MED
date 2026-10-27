@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { genererCode, normaliser, presenter, type Empreinte } from './codes.js';
 import {
   COHORTE_PROCHES,
+  COHORTE_PROFESSIONNELS,
   COHORTE_RECUPERATION,
   statut,
   type DepotInvitations,
@@ -48,15 +49,19 @@ export interface InvitationListee {
   statut: Statut;
 }
 
-/** Code utilisé à l'inscription : cohorte, type, et fiche du proche pour un code de proche. */
+/**
+ * Code utilisé à l'inscription : cohorte, type, et la fiche du proche (code de proche) ou du
+ * candidat (code de professionnel, ADR-0026).
+ */
 export interface CodeUtilise {
   cohorte: string;
   type: TypeInvitation;
   relatedPersonId?: string;
+  practitionerId?: string;
 }
 
 export function verifierParametres(p: ParametresInvitations): void {
-  for (const reservee of [COHORTE_PROCHES, COHORTE_RECUPERATION]) {
+  for (const reservee of [COHORTE_PROCHES, COHORTE_RECUPERATION, COHORTE_PROFESSIONNELS]) {
     if (p.cohortes.includes(reservee)) {
       throw new Error(`La cohorte « ${reservee} » est réservée aux codes techniques.`);
     }
@@ -158,6 +163,8 @@ export class ServiceInvitations {
       cohorte: i.cohorte,
       type: i.type,
       ...(i.relatedPersonId ? { relatedPersonId: i.relatedPersonId } : {}),
+      // Professionnel (ADR-0026) : sa fiche reste inactive, seule la vérification l'activera.
+      ...(i.practitionerId ? { practitionerId: i.practitionerId } : {}),
     };
   }
 

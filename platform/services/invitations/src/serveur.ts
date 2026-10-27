@@ -3,6 +3,7 @@
 // Inscription (ADR-0014) : contrôle et utilisation d'un code par l'extension Keycloak seulement.
 // Proches (ADR-0019) : le patient invite, liste et révoque ses propres invitations ; à sa demande,
 // l'équipe d'assistance (rôle assistance-patient) retire tous ses proches.
+// Professionnels (ADR-0026) : l'équipe de recrutement (rôle recrutement) invite, liste et révoque.
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   ErreurDepot,
@@ -26,6 +27,7 @@ import type { Limiteur } from './limiteur.js';
 import { ErreurServiceAppele } from './adaptateurs.js';
 import type { ServiceAssistance } from './assistance.js';
 import { ErreurProche, type ServiceProches } from './proches.js';
+import { ErreurProfessionnel, NOM_MAX, type ServiceRecrutement } from './professionnels.js';
 import type { TypeInvitation } from './depot.js';
 import { COHORTE, ErreurInvitation, type ServiceInvitations } from './service.js';
 
@@ -49,6 +51,8 @@ export async function creerServeur(o: {
   proches?: ServiceProches;
   /** Retrait des proches par l'équipe d'assistance (ADR-0019) ; sans lui, /assistance est absent. */
   assistance?: ServiceAssistance;
+  /** Invitation des professionnels (ADR-0026) ; sans lui, les routes /professionnels sont absentes. */
+  recrutement?: ServiceRecrutement;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -96,6 +100,11 @@ export async function creerServeur(o: {
           verification: 'naissance',
         });
       }
+      return reply
+        .code(err.statut)
+        .send({ erreur: err.message, ...(err.motif ? { motif: err.motif } : {}) });
+    }
+    if (err instanceof ErreurProfessionnel) {
       return reply
         .code(err.statut)
         .send({ erreur: err.message, ...(err.motif ? { motif: err.motif } : {}) });
@@ -230,7 +239,7 @@ export async function creerServeur(o: {
       type: 'array',
       minItems: 1,
       uniqueItems: true,
-      items: { type: 'string', enum: ['patient', 'proche'] },
+      items: { type: 'string', enum: ['patient', 'proche', 'professionnel'] },
     } as const;
 
     // Contrôle avant la création du compte : les essais sont limités par adresse du navigateur,
@@ -293,6 +302,63 @@ export async function creerServeur(o: {
           type: utilise.type,
         });
         return utilise;
+      },
+    );
+  }
+
+  const recrutement = o.recrutement;
+  if (recrutement) {
+    // Membre de l'équipe de recrutement connecté ; le rôle est contrôlé par le service.
+    const connecte = async (req: FastifyRequest): Promise<Utilisateur> => {
+      const entete = req.headers.authorization;
+      if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+      try {
+        return await o.verifierJeton(entete.slice('Bearer '.length));
+      } catch {
+        throw new ErreurAuthentification();
+      }
+    };
+    const nom = { type: 'string', minLength: 1, maxLength: NOM_MAX } as const;
+
+    app.post<{ Body: { nom: string; prenom: string } }>(
+      '/professionnels',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['nom', 'prenom'],
+            properties: { nom, prenom: nom },
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await connecte(req);
+        const r = await recrutement.inviter(u, req.body);
+        // Jamais le code ni le nom dans le journal : le recruteur et la fiche suffisent.
+        o.journal.info('professionnel invité', { par: u.sujet, practitionerId: r.practitionerId });
+        return reply.code(201).send(r);
+      },
+    );
+
+    app.get('/professionnels', async (req) => ({
+      invitations: await recrutement.lister(await connecte(req)),
+    }));
+
+    app.post<{ Params: { id: string } }>(
+      '/professionnels/:id/revocation',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            required: ['id'],
+            properties: { id: { type: 'string', format: 'uuid' } },
+          },
+        },
+      },
+      async (req) => {
+        await recrutement.revoquer(await connecte(req), req.params.id);
+        return { statut: 'revoque' };
       },
     );
   }
