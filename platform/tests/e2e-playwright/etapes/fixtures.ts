@@ -38,6 +38,8 @@ export interface Monde {
   proche?: { id: string; code: string; relatedPersonId: string; prenom: string };
   /** Invitation créée pendant le scénario (le code n'existe que dans cette mémoire de test). */
   invitation?: { id: string; code: string };
+  /** Professionnel invité par le recrutement (ADR-0026) : sa fiche inactive dans le dossier. */
+  candidat?: { practitionerId: string };
   /** Inscription pendant le scénario : identifiant fictif et jeton obtenu, ou page d'erreur. */
   inscription?: { identifiant: string; jeton?: string; page?: Page; motDePasse?: string };
   /** Compte connecté dans l'application patient du scénario (numéro du code SMS, ADR-0022). */

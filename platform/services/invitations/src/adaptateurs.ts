@@ -4,10 +4,11 @@
 // - identite, avec le jeton du patient, pour son consentement C-PROCHE ;
 // - notifications, avec le compte de service, pour le SMS du code.
 // Aucun contenu (prénom, numéro, code) n'est journalisé ici.
-import type { AuditEvent, FhirResource, Patient, RelatedPerson } from 'fhir/r4.js';
+import type { AuditEvent, FhirResource, Patient, Practitioner, RelatedPerson } from 'fhir/r4.js';
 import { ClientFhir, ErreurDepot, TYPE_FHIR, type FournisseurJeton } from '@mbolo/identite';
 import type { ConsentementsAssistance, DossierAssistance } from './assistance.js';
 import type { AlerteSms, ConsentementsProche, DossierProches, SmsInvitation } from './proches.js';
+import type { DossierProfessionnels } from './professionnels.js';
 
 export class DossierProchesFhir extends ClientFhir implements DossierProches {
   private static fiche(x: unknown): RelatedPerson {
@@ -69,6 +70,28 @@ export class DossierProchesFhir extends ClientFhir implements DossierProches {
  * Assistance aux patients (ADR-0019) : recherche par numéro, lecture du numéro de téléphone et de la
  * date de naissance (seuls éléments permis au compte de service), fiches des proches, traces.
  */
+/**
+ * Fiche du professionnel invité (ADR-0026), créée inactive par le compte de service
+ * (system/Practitioner.c) ; la passerelle la valide (profil mbolo-praticien) avant de l'écrire.
+ */
+export class DossierProfessionnelsFhir extends ClientFhir implements DossierProfessionnels {
+  async creer(p: Practitioner): Promise<string> {
+    const reponse = await this.appeler(`${this.base}/Practitioner`, {
+      method: 'POST',
+      headers: { 'content-type': TYPE_FHIR, prefer: 'return=representation' },
+      body: JSON.stringify(p),
+    });
+    if (reponse.status !== 201 && reponse.status !== 200) {
+      throw ClientFhir.echec(reponse, 'Professionnel');
+    }
+    const cree = (await reponse.json()) as FhirResource | null;
+    if (cree?.resourceType !== 'Practitioner' || !cree.id) {
+      throw new ErreurDepot('Réponse inattendue du dossier médical.', 503);
+    }
+    return cree.id;
+  }
+}
+
 export class DossierAssistanceFhir extends ClientFhir implements DossierAssistance {
   rechercherPatients(systeme: string, valeur: string): Promise<Patient[]> {
     return this.rechercher(

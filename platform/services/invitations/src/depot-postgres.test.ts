@@ -5,7 +5,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connecter, migrer, roleDe, type Sql } from '@mbolo/base-donnees';
 import { creerEmpreinte } from './codes.js';
-import { COHORTE_PROCHES, COHORTE_RECUPERATION, DepotPostgres } from './depot.js';
+import {
+  COHORTE_PROCHES,
+  COHORTE_PROFESSIONNELS,
+  COHORTE_RECUPERATION,
+  DepotPostgres,
+} from './depot.js';
 import { ServiceInvitations } from './service.js';
 
 const URL_MIGRATION = process.env['MBOLO_TEST_DATABASE_URL'];
@@ -190,5 +195,36 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
                         'recuperation', 'sujet-assistant-fictif', ${maintenant},
                         ${new Date(maintenant.getTime() + 1000)})`,
     ).rejects.toThrow(/codes_recuperation_dossier/);
+  });
+  it('ne dépasse pas le quota des codes de professionnels, même créés simultanément (ADR-0026)', async () => {
+    const depot = new DepotPostgres(execution);
+    // Quota global aux professionnels : on part du nombre déjà présent (exécutions précédentes).
+    const [avant] = await proprietaire<{ n: number }[]>`
+      select count(*)::int as n from invitations.codes where type = 'professionnel'`;
+    const quota = (avant?.n ?? 0) + 3;
+    const maintenant = new Date();
+    const codes = Array.from({ length: 8 }, (_, n) => ({
+      id: randomUUID(),
+      empreinte: empreinte(`PRO${n}${randomUUID().slice(0, 6)}`),
+      cohorte: COHORTE_PROFESSIONNELS,
+      type: 'professionnel' as const,
+      practitionerId: `prac-candidat-${randomUUID().slice(0, 8)}`,
+      creePar: 'sujet-recruteur-fictif',
+      creeLe: maintenant,
+      expireLe: new Date(maintenant.getTime() + 14 * 86_400_000),
+    }));
+    const resultats = await Promise.all(codes.map((c) => depot.creerProfessionnel(c, quota)));
+    expect(resultats.filter((r) => r === 'cree')).toHaveLength(3);
+    expect(resultats.filter((r) => r === 'quota-atteint')).toHaveLength(5);
+    const cree = codes[resultats.indexOf('cree')];
+    const trouve = await depot.trouver(cree?.empreinte ?? Buffer.alloc(0));
+    expect(trouve).toMatchObject({ type: 'professionnel', practitionerId: cree?.practitionerId });
+    // La fiche du candidat est obligatoire pour un code de professionnel (contrainte de la table).
+    await expect(
+      execution`insert into invitations.codes (id, empreinte, cohorte, type, cree_par, cree_le, expire_le)
+                values (${randomUUID()}, ${empreinte('SANSFICHE')}, ${COHORTE_PROFESSIONNELS},
+                        'professionnel', 'sujet-recruteur-fictif', ${maintenant},
+                        ${new Date(maintenant.getTime() + 1000)})`,
+    ).rejects.toThrow(/codes_professionnel_fiche/);
   });
 });

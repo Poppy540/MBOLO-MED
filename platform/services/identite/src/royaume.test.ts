@@ -74,6 +74,9 @@ describe('royaume mbolo', () => {
     'validation-remboursement',
     'assistance-patient',
     'validation-reversement',
+    // Recrutement et candidat (ADR-0026) : comme tous les professionnels, dès la création du compte.
+    'recrutement',
+    'professionnel-candidat',
     // Le proche voit des données de santé d'une autre personne (ADR-0019, porteur de projet).
     'proche',
   ])('impose la double authentification au rôle %s', (nom) => {
@@ -346,10 +349,11 @@ describe('royaume mbolo', () => {
         .sort(),
     ).toEqual(['mbolo-dossier-fhir', 'mbolo-notifications']);
     // Jamais de suppression ; du patient, seulement de quoi le retrouver et le rappeler (équipe
-    // d'assistance) ; traces en création seulement.
+    // d'assistance) ; traces en création seulement ; fiche d'un professionnel invité en création
+    // seulement (ADR-0026) : jamais l'activer, ce que seule la vérification fera.
     expect(
       mappers.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c');
+    ).toBe('system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c system/Practitioner.c');
     expect(
       mappers.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
     ).toBe('Patient.identifier Patient.telecom Patient.birthDate');

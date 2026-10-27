@@ -11,6 +11,8 @@ export interface Invitation {
   relatedPersonId?: string;
   /** Dossier du patient (référence opaque), pour un code de récupération seulement (ADR-0021). */
   patientId?: string;
+  /** Fiche du candidat dans le dossier (Practitioner inactif), pour un code de professionnel (ADR-0026). */
+  practitionerId?: string;
   /** Identifiant Keycloak opaque (sub) du créateur. */
   creePar: string;
   creeLe: Date;
@@ -22,15 +24,17 @@ export interface Invitation {
 
 export type Statut = 'valide' | 'utilise' | 'revoque' | 'expire';
 /**
- * `patient` et `proche` créent un compte ; `recuperation` (ADR-0021) rend l'accès à un compte
- * existant et n'est jamais accepté à l'inscription.
+ * `patient`, `proche` et `professionnel` (candidat, ADR-0026) créent un compte ; `recuperation`
+ * (ADR-0021) rend l'accès à un compte existant et n'est jamais accepté à l'inscription.
  */
-export type TypeInvitation = 'patient' | 'proche' | 'recuperation';
+export type TypeInvitation = 'patient' | 'proche' | 'recuperation' | 'professionnel';
 
 /** Cohorte technique des codes de proches : jamais une cohorte ouverte par un déploiement. */
 export const COHORTE_PROCHES = 'proches';
 /** Cohorte technique des codes de récupération (ADR-0021). */
 export const COHORTE_RECUPERATION = 'recuperation';
+/** Cohorte technique des codes des professionnels (ADR-0026). */
+export const COHORTE_PROFESSIONNELS = 'professionnels';
 
 /** Proches qui comptent dans la limite : invitation en cours ou compte créé (pas révoquée ni expirée). */
 const compteDansLimite = (i: Invitation, maintenant: Date) =>
@@ -84,6 +88,15 @@ export interface DepotInvitations {
    * de récupération encore inutilisés de ce dossier : un seul code valable à la fois.
    */
   creerRecuperation(i: Invitation, maintenant: Date): Promise<'cree' | 'doublon'>;
+  /**
+   * Enregistre le code d'un professionnel (ADR-0026) si moins de `quota` codes de professionnels
+   * existent (révoqués compris). Atomique : deux créations simultanées ne dépassent pas le quota.
+   */
+  creerProfessionnel(i: Invitation, quota: number): Promise<'cree' | 'quota-atteint' | 'doublon'>;
+  /** Codes des professionnels, les plus récents d'abord. */
+  listerProfessionnels(limite: number): Promise<Invitation[]>;
+  /** Révoque le code encore inutilisé d'un professionnel ; `false` sinon (ou autre type de code). */
+  revoquerProfessionnel(id: string, maintenant: Date): Promise<boolean>;
 }
 
 export class DepotMemoire implements DepotInvitations {
@@ -201,6 +214,33 @@ export class DepotMemoire implements DepotInvitations {
     this.invitations.push({ ...i });
     return 'cree';
   }
+
+  async creerProfessionnel(
+    i: Invitation,
+    quota: number,
+  ): Promise<'cree' | 'quota-atteint' | 'doublon'> {
+    if (this.invitations.some((x) => x.empreinte.equals(i.empreinte))) return 'doublon';
+    if (this.invitations.filter((x) => x.type === 'professionnel').length >= quota) {
+      return 'quota-atteint';
+    }
+    this.invitations.push({ ...i });
+    return 'cree';
+  }
+
+  async listerProfessionnels(limite: number): Promise<Invitation[]> {
+    return this.invitations
+      .filter((x) => x.type === 'professionnel')
+      .sort((a, b) => b.creeLe.getTime() - a.creeLe.getTime())
+      .slice(0, limite)
+      .map((x) => ({ ...x }));
+  }
+
+  async revoquerProfessionnel(id: string, maintenant: Date): Promise<boolean> {
+    const i = this.invitations.find((x) => x.id === id && x.type === 'professionnel');
+    if (!i || i.utiliseLe || i.revoqueLe) return false;
+    i.revoqueLe = maintenant;
+    return true;
+  }
 }
 
 interface Ligne {
@@ -210,6 +250,7 @@ interface Ligne {
   type: TypeInvitation;
   related_person_id: string | null;
   patient_id: string | null;
+  practitioner_id: string | null;
   cree_par: string;
   cree_le: Date;
   expire_le: Date;
@@ -225,6 +266,7 @@ const versInvitation = (l: Ligne): Invitation => ({
   type: l.type,
   ...(l.related_person_id ? { relatedPersonId: l.related_person_id } : {}),
   ...(l.patient_id ? { patientId: l.patient_id } : {}),
+  ...(l.practitioner_id ? { practitionerId: l.practitioner_id } : {}),
   creePar: l.cree_par,
   creeLe: l.cree_le,
   expireLe: l.expire_le,
@@ -362,5 +404,39 @@ export class DepotPostgres implements DepotInvitations {
         on conflict (empreinte) do nothing`;
       return inserees.count === 1 ? ('cree' as const) : ('doublon' as const);
     });
+  }
+
+  async creerProfessionnel(
+    i: Invitation,
+    quota: number,
+  ): Promise<'cree' | 'quota-atteint' | 'doublon'> {
+    return this.sql.begin(async (tx) => {
+      // Un verrou pour tous les codes de professionnels : comptage et insertion cohérents.
+      await tx`select pg_advisory_xact_lock(hashtext('mbolo-invitations:professionnels'))`;
+      const [compte] = await tx<{ n: number }[]>`
+        select count(*)::int as n from invitations.codes where type = 'professionnel'`;
+      if ((compte?.n ?? 0) >= quota) return 'quota-atteint' as const;
+      const inserees = await tx`
+        insert into invitations.codes
+          (id, empreinte, cohorte, type, practitioner_id, cree_par, cree_le, expire_le)
+        values (${i.id}, ${i.empreinte}, ${i.cohorte}, 'professionnel', ${i.practitionerId ?? null},
+                ${i.creePar}, ${i.creeLe}, ${i.expireLe})
+        on conflict (empreinte) do nothing`;
+      return inserees.count === 1 ? ('cree' as const) : ('doublon' as const);
+    });
+  }
+
+  async listerProfessionnels(limite: number): Promise<Invitation[]> {
+    const lignes = await this.sql<Ligne[]>`
+      select * from invitations.codes where type = 'professionnel'
+       order by cree_le desc limit ${limite}`;
+    return lignes.map(versInvitation);
+  }
+
+  async revoquerProfessionnel(id: string, maintenant: Date): Promise<boolean> {
+    const r = await this.sql`
+      update invitations.codes set revoque_le = ${maintenant}
+       where id = ${id} and type = 'professionnel' and utilise_le is null and revoque_le is null`;
+    return r.count === 1;
   }
 }

@@ -63,6 +63,13 @@ export const CATALOGUE = {
     dependances: ['paiement.mobile-money'],
     branche: true,
   },
+  'professionnels.recrutement': {
+    description:
+      "L'équipe de recrutement invite un professionnel de santé par un code à usage unique ; le candidat crée un compte d'attente, sans accès aux patients, jusqu'à sa vérification par une personne habilitée (ADR-0026).",
+    vague: 1,
+    dependances: [],
+    branche: true,
+  },
   'compte.recuperation': {
     description:
       "L'équipe d'assistance remet à un patient sans e-mail un code de récupération de son compte, après rappel au numéro du dossier, date de naissance et numéro d'assurance (ADR-0021).",

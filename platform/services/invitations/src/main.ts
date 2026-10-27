@@ -13,6 +13,7 @@ import {
   ConsentementsIdentite,
   DossierAssistanceFhir,
   DossierProchesFhir,
+  DossierProfessionnelsFhir,
   SmsNotifications,
 } from './adaptateurs.js';
 import { ServiceAssistance } from './assistance.js';
@@ -23,6 +24,7 @@ import { DepotPostgres } from './depot.js';
 import { LimiteurPostgres } from './limiteur.js';
 import { creerServeur } from './serveur.js';
 import { ServiceProches } from './proches.js';
+import { ServiceRecrutement } from './professionnels.js';
 import { ServiceInvitations } from './service.js';
 
 const journal = creerJournal({ service: 'invitations' });
@@ -95,6 +97,7 @@ const limiteur = (portee: string, maximum: number, fenetreMinutes: number) =>
   new LimiteurPostgres(sql, { portee, maximum, fenetreMs: fenetreMinutes * 60_000, empreinte });
 let proches: ServiceProches | undefined;
 let assistance: ServiceAssistance | undefined;
+let recrutement: ServiceRecrutement | undefined;
 let service: ServiceInvitations;
 try {
   if (fhir && identite && notifications && authentification) {
@@ -152,6 +155,18 @@ try {
         },
       },
     );
+    // Invitation des professionnels (ADR-0026), derrière le flag professionnels.recrutement.
+    recrutement = new ServiceRecrutement(
+      depot,
+      empreinte,
+      new DossierProfessionnelsFhir({ base: fhir, entetes }),
+      drapeaux,
+      {
+        validiteJours: Number(env['INVITATIONS_VALIDITE_PROFESSIONNEL_JOURS'] ?? '14'),
+        quota: Number(env['INVITATIONS_QUOTA_PROFESSIONNELS'] ?? '200'),
+        env: production ? 'prod' : 'dev',
+      },
+    );
   }
   const activer = proches;
   service = new ServiceInvitations(
@@ -202,6 +217,7 @@ const app = await creerServeur({
   journal,
   ...(proches ? { proches } : {}),
   ...(assistance ? { assistance } : {}),
+  ...(recrutement ? { recrutement } : {}),
   trustProxy: env['INVITATIONS_TRUST_PROXY'] === 'true',
   // Extension d'inscription de Keycloak (ADR-0014) : jetons signés par le royaume lui-même.
   verifierService: creerVerificateurService({

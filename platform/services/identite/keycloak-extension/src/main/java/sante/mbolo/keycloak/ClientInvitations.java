@@ -38,8 +38,11 @@ public final class ClientInvitations {
     this.http = HttpClient.newBuilder().connectTimeout(DELAI).build();
   }
 
-  /** Code utilisé : type (patient ou proche) et, pour un proche, sa fiche dans le dossier. */
-  public record Utilisation(String type, String relatedPersonId) {}
+  /**
+   * Code utilisé : type (patient, proche ou professionnel) et, pour un proche ou un professionnel, sa
+   * fiche dans le dossier.
+   */
+  public record Utilisation(String type, String relatedPersonId, String practitionerId) {}
 
   /**
    * Le code peut-il encore servir ? L'adresse du navigateur sert à limiter les essais. Les types de
@@ -71,7 +74,7 @@ public final class ClientInvitations {
 
   /**
    * Utilise le code pour le compte {@code sujet} ; présent seulement si le service l'a accepté et que
-   * la réponse est cohérente (type de la liste fermée, fiche valide pour un proche).
+   * la réponse est cohérente (type de la liste fermée, fiche valide pour un proche ou un professionnel).
    */
   public Optional<Utilisation> utiliser(String code, String sujet) {
     try {
@@ -83,10 +86,12 @@ public final class ClientInvitations {
       Map<?, ?> corps = JsonSerialization.readValue(r.body(), Map.class);
       Object type = corps.get("type");
       Object fiche = corps.get("relatedPersonId");
+      Object praticien = corps.get("practitionerId");
       String t = type instanceof String s ? s : null;
       String f = fiche instanceof String s ? s : null;
-      return RolesInscription.coherente(t, f)
-          ? Optional.of(new Utilisation(t, f))
+      String p = praticien instanceof String s ? s : null;
+      return RolesInscription.coherente(t, f, p)
+          ? Optional.of(new Utilisation(t, f, p))
           : Optional.empty();
     } catch (IOException | RuntimeException e) {
       return Optional.empty();

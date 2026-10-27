@@ -89,17 +89,19 @@ class ClientInvitationsTest {
   @Test
   void declareLesTypesDeCodesQueLExtensionSaitTraiter() {
     client().controler("ABCD-EFGH", "192.0.2.1");
-    assertTrue(requetes.get(0).contains("\"types\":[\"patient\",\"proche\"]"));
+    assertTrue(
+        requetes.get(0).contains("\"types\":[\"patient\",\"proche\",\"professionnel\"]"));
   }
 
   @Test
   void utiliseLeCodePourLeCompteCree() {
     reponse = "{\"cohorte\":\"ville-fictive\",\"type\":\"patient\"}";
     assertEquals(
-        Optional.of(new ClientInvitations.Utilisation("patient", null)),
+        Optional.of(new ClientInvitations.Utilisation("patient", null, null)),
         client().utiliser("ABCD-EFGH", "sujet-fictif"));
     assertTrue(requetes.get(0).startsWith("/inscription/utilisation Bearer jeton-fictif "));
-    assertTrue(requetes.get(0).contains("\"types\":[\"patient\",\"proche\"]"));
+    assertTrue(
+        requetes.get(0).contains("\"types\":[\"patient\",\"proche\",\"professionnel\"]"));
     statut = 409;
     assertTrue(client().utiliser("ABCD-EFGH", "sujet-fictif").isEmpty());
   }
@@ -108,7 +110,17 @@ class ClientInvitationsTest {
   void codeDeProcheRattacheASaFiche() {
     reponse = "{\"cohorte\":\"proches\",\"type\":\"proche\",\"relatedPersonId\":\"rp-fictif-9\"}";
     assertEquals(
-        Optional.of(new ClientInvitations.Utilisation("proche", "rp-fictif-9")),
+        Optional.of(new ClientInvitations.Utilisation("proche", "rp-fictif-9", null)),
+        client().utiliser("ABCD-EFGH", "sujet-fictif"));
+  }
+
+  @Test
+  void codeDeProfessionnelRattacheASaFicheInactive() {
+    reponse =
+        "{\"cohorte\":\"professionnels\",\"type\":\"professionnel\","
+            + "\"practitionerId\":\"prac-candidat-1\"}";
+    assertEquals(
+        Optional.of(new ClientInvitations.Utilisation("professionnel", null, "prac-candidat-1")),
         client().utiliser("ABCD-EFGH", "sujet-fictif"));
   }
 
@@ -158,6 +170,9 @@ class ClientInvitationsTest {
     for (String r :
         List.of(
             "{\"type\":\"professionnel\"}",
+            "{\"type\":\"professionnel\",\"practitionerId\":\"../x\"}",
+            "{\"type\":\"administrateur\",\"practitionerId\":\"prac-fictif-1\"}",
+            "{\"type\":\"patient\",\"practitionerId\":\"prac-fictif-1\"}",
             "{\"type\":\"proche\"}",
             "{\"type\":\"proche\",\"relatedPersonId\":\"../x\"}",
             "{\"cohorte\":\"ville-fictive\"}",
