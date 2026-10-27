@@ -19,6 +19,9 @@ Fonctionnalité: L'équipe de recrutement invite un professionnel de santé
     Et le candidat ne peut déposer aucune pièce avant d'accepter la charte
     Quand le candidat accepte la charte de vérification et dépose la photo de son diplôme
     Alors son dossier de candidature montre la charte acceptée et son diplôme, sans le contenu
+    Quand le candidat déclare sa spécialité, son inscription à l'Ordre et ses langues de consultation
+    Alors sa fiche porte sa déclaration, toujours inactive et à vérifier, sans période de validité
+    Et le candidat ne peut pas déclarer une spécialité hors de la liste
 
   Scénario: Un code de professionnel révoqué ne permet plus de créer de compte
     Étant donné que "recruteur-fictif-01" est connecté

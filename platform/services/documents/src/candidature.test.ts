@@ -1,4 +1,5 @@
 // Dossier de candidature d'un professionnel (ADR-0026). Données FICTIVES uniquement.
+import { EXTENSION_STATUT_VERIFICATION, praticien } from '@mbolo/dossier-fhir';
 import type { Utilisateur } from '@mbolo/identite';
 import { creerJournal, type Evenement } from '@mbolo/journal-securise';
 import { randomBytes } from 'node:crypto';
@@ -7,7 +8,7 @@ import { DepotCandidaturesMemoire, ServiceCandidature } from './candidature.js';
 import { CleMaitreLocale, TrousseauCles, dechiffrer } from './chiffrement.js';
 import { ConditionsMemoire } from './conditions.js';
 import { DepotMemoire } from './depot.js';
-import { DossierMemoire } from './dossier.js';
+import { DossierMemoire, FichesMemoire } from './dossier.js';
 import { reenvelopper } from './rotation.js';
 import { creerServeur } from './serveur.js';
 import { ServiceDocuments } from './service.js';
@@ -30,6 +31,21 @@ const COMPTES: Record<string, Utilisateur> = {
   },
 };
 const VERSION = 'c-verification-pro-v0.1';
+const PARAMETRES = {
+  versionCharte: VERSION,
+  conservationJours: 730,
+  maxParType: 2,
+  specialites: ['medecine-generale', 'pediatrie'],
+  langues: ['fr', 'en', 'fan'],
+};
+const ficheCandidat = () =>
+  praticien({ nom: 'Candidat', prenom: 'Médecin [FICTIF]', statut: 'a-verifier', env: 'dev' });
+const DECLARATION = {
+  specialite: 'pediatrie',
+  paysOrdre: 'GA',
+  numeroOrdre: 'FICTIF-ORDRE-0002',
+  langues: ['fr', 'fan'],
+};
 const jpeg = () => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), randomBytes(500)]);
 const png = () =>
   Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), randomBytes(200)]);
@@ -39,12 +55,14 @@ async function monter() {
   const stockage = new StockageMemoire();
   const maitre = new CleMaitreLocale(randomBytes(32).toString('base64'));
   const depotPieces = new DepotCandidaturesMemoire();
+  const fiches = new FichesMemoire(new Map([[CANDIDAT, ficheCandidat()]]));
   const horloge = { maintenant: new Date('2026-10-28T08:00:00Z') };
   const candidature = new ServiceCandidature(
     depotPieces,
     stockage,
     maitre,
-    { versionCharte: VERSION, conservationJours: 730, maxParType: 2 },
+    fiches,
+    PARAMETRES,
     () => horloge.maintenant,
   );
   // Parcours des patients, inutilisé ici mais requis par le serveur.
@@ -78,7 +96,7 @@ async function monter() {
       ecrire: (ligne) => evenements.push(JSON.parse(ligne) as Evenement),
     }),
   });
-  const appel = (methode: 'GET' | 'POST', url: string, compte?: string, corps?: object) =>
+  const appel = (methode: 'GET' | 'POST' | 'PUT', url: string, compte?: string, corps?: object) =>
     app.inject({
       method: methode,
       url,
@@ -98,6 +116,7 @@ async function monter() {
     app,
     candidature,
     depotPieces,
+    fiches,
     stockage,
     maitre,
     evenements,
@@ -115,6 +134,7 @@ describe('dossier de candidature (ADR-0026)', () => {
     expect(initial.json()).toEqual({
       practitionerId: CANDIDAT,
       charte: { version: VERSION, acceptee: false },
+      statut: 'a-verifier',
       pieces: [],
     });
     // Aucune pièce avant la charte.
@@ -157,7 +177,11 @@ describe('dossier de candidature (ADR-0026)', () => {
       expect((await m.appel('GET', '/candidature', compte)).statusCode).toBe(403);
       expect((await m.accepter(compte)).statusCode).toBe(403);
       expect((await m.envoyer(compte, 'diplome', jpeg())).statusCode).toBe(403);
+      expect(
+        (await m.appel('PUT', '/candidature/declaration', compte, DECLARATION)).statusCode,
+      ).toBe(403);
     }
+    expect(m.fiches.versions.size).toBe(0);
     expect((await m.appel('GET', '/candidature')).statusCode).toBe(401);
     expect(m.depotPieces.chartes).toHaveLength(0);
     expect(m.depotPieces.pieces).toHaveLength(0);
@@ -206,11 +230,13 @@ describe('dossier de candidature (ADR-0026)', () => {
     const nouvelle = new CleMaitreLocale(randomBytes(32).toString('base64'), 'nouvelle');
     const depot = new DepotCandidaturesMemoire();
     const stockage = new StockageMemoire();
-    const service = new ServiceCandidature(depot, stockage, new TrousseauCles(ancienne), {
-      versionCharte: VERSION,
-      conservationJours: 730,
-      maxParType: 2,
-    });
+    const service = new ServiceCandidature(
+      depot,
+      stockage,
+      new TrousseauCles(ancienne),
+      new FichesMemoire(new Map([[CANDIDAT, ficheCandidat()]])),
+      PARAMETRES,
+    );
     await service.deciderCharte(COMPTES['candidat'] as Utilisateur, {
       version: VERSION,
       accepte: true,
@@ -229,5 +255,75 @@ describe('dossier de candidature (ADR-0026)', () => {
         new TrousseauCles(nouvelle),
       ),
     ).toEqual(contenu);
+  });
+
+  describe('déclaration (3b)', () => {
+    const declarer = (m: Awaited<ReturnType<typeof monter>>, corps: object = DECLARATION) =>
+      m.appel('PUT', '/candidature/declaration', 'candidat', corps);
+
+    it('après la charte, la déclaration est écrite dans la fiche sans période et relue', async () => {
+      const m = await monter();
+      expect((await declarer(m)).statusCode).toBe(409);
+      await m.accepter();
+      expect((await declarer(m)).statusCode).toBe(204);
+      const fiche = m.fiches.fiches.get(CANDIDAT);
+      expect(fiche?.active).toBe(false);
+      expect(fiche?.name?.[0]?.family).toBe('Candidat');
+      expect(fiche?.qualification?.[0]?.period).toBeUndefined();
+      expect((await m.appel('GET', '/candidature', 'candidat')).json()).toMatchObject({
+        statut: 'a-verifier',
+        declaration: DECLARATION,
+      });
+      // Correction avant la vérification : la dernière déclaration remplace la précédente.
+      expect((await declarer(m, { ...DECLARATION, langues: ['en'] })).statusCode).toBe(204);
+      expect(m.fiches.fiches.get(CANDIDAT)?.communication).toHaveLength(1);
+      expect(JSON.stringify(m.evenements)).not.toContain('FICTIF-ORDRE-0002');
+    });
+
+    it('refuse une spécialité ou une langue hors des listes du pays, un champ inconnu (400)', async () => {
+      const m = await monter();
+      await m.accepter();
+      for (const corps of [
+        { ...DECLARATION, specialite: 'cardiologie' },
+        { ...DECLARATION, specialite: 'Chirurgie [texte libre]' },
+        { ...DECLARATION, langues: ['es'] },
+        { ...DECLARATION, numeroOrdre: '<b>1</b>' },
+        { ...DECLARATION, paysOrdre: 'Gabon' },
+        { ...DECLARATION, commentaire: 'texte libre' },
+      ]) {
+        expect((await declarer(m, corps)).statusCode).toBe(400);
+      }
+      expect(m.fiches.versions.size).toBe(0);
+    });
+
+    it('fiche vérifiée, refusée ou suspendue : plus modifiable (409)', async () => {
+      const m = await monter();
+      await m.accepter();
+      for (const statut of ['verifie', 'refuse', 'suspendu']) {
+        m.fiches.changer(CANDIDAT, {
+          ...ficheCandidat(),
+          extension: [{ url: EXTENSION_STATUT_VERIFICATION, valueCode: statut }],
+        });
+        expect((await declarer(m)).statusCode).toBe(409);
+      }
+      expect(m.fiches.fiches.get(CANDIDAT)?.qualification).toBeUndefined();
+    });
+
+    it('une décision arrivée entre la lecture et l’écriture n’est jamais écrasée (409)', async () => {
+      const m = await monter();
+      await m.accepter();
+      const lire = m.fiches.lire.bind(m.fiches);
+      m.fiches.lire = async (id) => {
+        const lue = await lire(id);
+        // La personne habilitée décide pendant la déclaration.
+        m.fiches.changer(CANDIDAT, {
+          ...ficheCandidat(),
+          extension: [{ url: EXTENSION_STATUT_VERIFICATION, valueCode: 'refuse' }],
+        });
+        return lue;
+      };
+      expect((await declarer(m)).statusCode).toBe(409);
+      expect(m.fiches.fiches.get(CANDIDAT)?.qualification).toBeUndefined();
+    });
   });
 });

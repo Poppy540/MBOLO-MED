@@ -85,13 +85,21 @@ Usage: #example
 
 Instance: fictif-praticien-0002
 InstanceOf: MboloPraticien
-Title: "[FICTIF] Candidat à vérifier"
+Title: "[FICTIF] Candidat à vérifier, avec sa déclaration"
 Usage: #example
 * meta.tag = MboloMarqueurCS#fictif
 * extension[statutVerification].valueCode = MboloStatutVerificationProCS#a-verifier
 * active = false
 * name.family = "Candidat"
 * name.given = "Médecin"
+* qualification.code = MboloSpecialiteCS#pediatrie "Pédiatrie"
+* qualification.code.text = "Pédiatrie"
+* qualification.identifier.value = "FICTIF-ORDRE-0002"
+* qualification.issuer.identifier.system = "urn:iso:std:iso:3166"
+* qualification.issuer.identifier.value = "GA"
+* qualification.issuer.display = "Ordre (GA)"
+* communication[0] = urn:ietf:bcp:47#fr
+* communication[1] = urn:ietf:bcp:47#fan
 
 Instance: fictif-agenda-0001
 InstanceOf: MboloAgenda
