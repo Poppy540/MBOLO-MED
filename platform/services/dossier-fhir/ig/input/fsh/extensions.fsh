@@ -36,3 +36,13 @@ Description: "Comment le numéro du patient a été changé (ADR-0023) : par le 
 * value[x] only code
 * valueCode 1..1
 * valueCode from MboloChangementTelephoneVS (required)
+
+Extension: StatutVerificationPro
+Id: statut-verification
+Title: "Statut de la vérification du professionnel"
+Description: "Où en est la vérification d'un professionnel de santé (diplôme, inscription à l'Ordre, identité), décidée par une personne habilitée, jamais par un agent IA (ADR-0026). Les sources consultées et la décision sont tracées dans le journal des accès, jamais ici."
+* ^context[0].type = #element
+* ^context[0].expression = "Practitioner"
+* value[x] only code
+* valueCode 1..1
+* valueCode from MboloStatutVerificationProVS (required)

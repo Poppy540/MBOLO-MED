@@ -257,3 +257,26 @@ Description: "Une ligne d'ordonnance rédigée et signée par le professionnel d
 * dosageInstruction 1..* MS
 * dispenseRequest 1..1 MS
 * dispenseRequest.validityPeriod 1..1 MS
+
+Invariant: mbolo-prat-1
+Description: "Un professionnel n'est actif (annuaire, créneaux, consultations) qu'une fois vérifié par une personne habilitée (ADR-0026)."
+Expression: "active = true implies extension.where(url = 'https://mbolo-sante.example/fhir/StructureDefinition/statut-verification' and value = 'verifie').exists()"
+Severity: #error
+
+Invariant: mbolo-prat-2
+Description: "Une vérification réussie repose sur une qualification complète : numéro d'inscription, Ordre émetteur et fin de validité, qui fixe la prochaine vérification (ADR-0026)."
+Expression: "extension.where(url = 'https://mbolo-sante.example/fhir/StructureDefinition/statut-verification' and value = 'verifie').exists() implies qualification.where(identifier.value.exists() and issuer.exists() and period.end.exists()).exists()"
+Severity: #error
+
+Profile: MboloPraticien
+Parent: Practitioner
+Id: mbolo-praticien
+Title: "Professionnel de santé Mbolo Santé"
+Description: "Professionnel de santé avec le statut de sa vérification (ADR-0026, proposée) : la fiche est créée inactive, et n'est activée par le serveur qu'après la décision « vérifié » d'une personne habilitée, jamais d'un agent IA."
+* ^status = #draft
+* ^experimental = true
+* obeys mbolo-prat-1 and mbolo-prat-2
+* extension contains StatutVerificationPro named statutVerification 1..1 MS
+* active 1..1 MS
+* name 1..* MS
+* qualification MS

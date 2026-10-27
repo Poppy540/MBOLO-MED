@@ -1,6 +1,7 @@
 import type { Utilisateur } from '@mbolo/identite';
 import { creerJournal } from '@mbolo/journal-securise';
 import { describe, expect, it } from 'vitest';
+import { AnnuaireMemoire } from './annuaire.js';
 import { DepotCreneauxMemoire } from './creneaux.js';
 import { IdentitesMemoire } from './identites.js';
 import { DepotRendezVousMemoire, ServiceTeleconsultation } from './rendez-vous.js';
@@ -25,7 +26,8 @@ async function serveur(
     { estActif: async (nom) => nom !== 'paiement.mobile-money' },
     () => new Date('2026-09-27T09:00:00Z'),
     undefined,
-    undefined,
+    // [FICTIF] Professionnel vérifié (ADR-0026).
+    new AnnuaireMemoire(new Map([['prac-fictif-001', { nom: 'Dr Test A [FICTIF]' }]])),
     identites,
   );
   return creerServeur({

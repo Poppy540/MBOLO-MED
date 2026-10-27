@@ -197,12 +197,14 @@ describe('royaume mbolo', () => {
     ).toBe(
       'system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru',
     );
-    // Annuaire : du professionnel, seuls le nom et la qualification sortent de la passerelle ;
-    // du patient, seulement le statut de vérification d'identité (extension, ADR-0014) et la
+    // Annuaire : du professionnel, seuls le nom, la qualification et le statut de sa vérification
+    // (active, extension, ADR-0026) sortent de la passerelle ; du patient, seulement le statut de vérification d'identité (extension, ADR-0014) et la
     // langue préférée (ADR-0025).
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
-    ).toBe('Practitioner.name Practitioner.qualification Patient.extension Patient.communication');
+    ).toBe(
+      'Practitioner.name Practitioner.qualification Practitioner.active Practitioner.extension Patient.extension Patient.communication',
+    );
     // Seule la langue préférée peut être modifiée sur la fiche du patient (ADR-0025).
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements_modifiables')?.config[

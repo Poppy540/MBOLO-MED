@@ -6,6 +6,7 @@ import {
   agendaVideo,
   EXTENSION_STATUT_IDENTITE,
   MARQUEUR_FICTIF,
+  praticien,
   SYSTEMES,
 } from '@mbolo/dossier-fhir';
 import {
@@ -14,6 +15,7 @@ import {
   KEYCLOAK_URL,
   COHORTES,
   PATIENTS_A_VERIFIER,
+  PRATICIENS_NON_VERIFIES,
   PREFIXE_INSCRITS,
   RESSOURCES_FHIR,
   ROYAUME,
@@ -37,6 +39,36 @@ async function jetonAdministrateur(): Promise<string> {
   });
   if (!r.ok) throw new Error(`Connexion administrateur Keycloak impossible (${r.status}).`);
   return ((await r.json()) as { access_token: string }).access_token;
+}
+
+/**
+ * [FICTIF] Professionnel conforme au profil mbolo-praticien (ADR-0026) : vérifié, inscription valable
+ * un an (spécialité affichée et filtrée dans l'annuaire), sauf les candidats, inactifs et à vérifier.
+ */
+function praticienFictif(id: string) {
+  const fin = new Date(Date.now() + 365 * 24 * 3_600_000).toISOString().slice(0, 10);
+  const fiche = PRATICIENS_NON_VERIFIES.includes(id)
+    ? praticien({ nom: 'Fictif', prenom: id, statut: 'a-verifier', env: 'dev' })
+    : praticien({
+        nom: 'Fictif',
+        prenom: id,
+        statut: 'verifie',
+        inscription: {
+          specialite: SPECIALITES_FICTIVES[id] ?? 'Médecine générale',
+          numero: `FICTIF-ORDRE-${id}`,
+          ordre: 'Ordre des médecins [FICTIF]',
+          debut: '2026-01-01',
+          fin,
+        },
+        env: 'dev',
+      });
+  const { extension, active, qualification } = fiche;
+  return {
+    extension,
+    active,
+    ...(qualification ? { qualification } : {}),
+    telecom: [{ system: 'phone', value: '+241 00 00 00 02' }],
+  };
 }
 
 /** Patients, professionnels et proches FICTIFS dans le serveur FHIR (identifiants imposés, marqués fictifs). */
@@ -96,13 +128,7 @@ async function preparerDossier(): Promise<void> {
               ],
             }
           : {}),
-        ...(type === 'Practitioner'
-          ? {
-              telecom: [{ system: 'phone', value: '+241 00 00 00 02' }],
-              // Spécialité affichée dans l'annuaire (filtre de l'application patient).
-              qualification: [{ code: { text: SPECIALITES_FICTIVES[id] ?? 'Médecine générale' } }],
-            }
-          : {}),
+        ...(type === 'Practitioner' ? praticienFictif(id) : {}),
       }),
     });
     if (!r.ok)
