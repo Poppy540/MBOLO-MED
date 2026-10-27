@@ -607,7 +607,7 @@
     },
     {
       "clientId": "mbolo-documents-service",
-      "name": "Compte de service du service documents (dossier : identité déclarée et statut du patient, charte C-IDENTITE ; modification du statut, des identifiants et, après une perte, du téléphone seulement ; traces des photos consultées ; alerte à l'ancien numéro)",
+      "name": "Compte de service documents (identité et statut du patient, C-IDENTITE ; statut, identifiants et téléphone après une perte ; traces des photos ; alerte à l'ancien numéro ; déclaration du candidat : spécialité, Ordre, langues)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-jwt",
@@ -651,7 +651,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Patient.ru system/Consent.s system/AuditEvent.c",
+            "claim.value": "system/Patient.ru system/Consent.s system/AuditEvent.c system/Practitioner.ru",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",
@@ -665,7 +665,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements",
-            "claim.value": "Patient.extension Patient.identifier Patient.name Patient.birthDate",
+            "claim.value": "Patient.extension Patient.identifier Patient.name Patient.birthDate Practitioner.active Practitioner.extension Practitioner.qualification Practitioner.communication",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",
@@ -679,7 +679,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements_modifiables",
-            "claim.value": "Patient.extension Patient.identifier Patient.telecom",
+            "claim.value": "Patient.extension Patient.identifier Patient.telecom Practitioner.qualification Practitioner.communication",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

@@ -4,11 +4,23 @@
 // - dépose ses pièces : diplôme, attestation d'inscription à l'Ordre, pièce d'identité, assurance de
 //   responsabilité civile professionnelle si exigée. Chiffrées une par une (enveloppe, ADR-0015),
 //   sans image ni nom dans les métadonnées, supprimées à échéance par destruction de la clé.
+// - déclare sa spécialité (liste fermée), son Ordre (pays) et son numéro d'inscription, ses langues de
+//   consultation : écrits dans sa fiche Practitioner, sans période de validité (une déclaration ne
+//   rend jamais « vérifié »), et seulement tant que la fiche est « à vérifier » et inactive.
 // Seule une personne habilitée (rôle verification-professionnels, PR suivante) les consultera.
 import { randomUUID } from 'node:crypto';
 import type { Sql } from '@mbolo/base-donnees';
+import {
+  declarationDe,
+  declarationPraticien,
+  estSpecialite,
+  statutVerification,
+  type Declaration,
+  type StatutVerificationPro,
+} from '@mbolo/dossier-fhir';
 import type { Utilisateur } from '@mbolo/identite';
 import { chiffrer, type CleMaitre } from './chiffrement.js';
+import type { FichesPraticiens } from './dossier.js';
 import { TAILLE_MAX, reconnaitre, type Format } from './format.js';
 import type { Stockage } from './stockage.js';
 
@@ -258,11 +270,18 @@ export interface ParametresCandidature {
   conservationJours: number;
   /** Pièces présentes au plus, par type (recto et verso, ou deux pages). */
   maxParType: number;
+  /** Spécialités ouvertes dans le pays (codes de SPECIALITES, liste fermée). */
+  specialites: readonly string[];
+  /** Langues de consultation proposées (codes BCP 47, liste fermée par pays). */
+  langues: readonly string[];
 }
 
 export interface EtatCandidature {
   practitionerId: string;
   charte: { version: string; acceptee: boolean };
+  /** Statut de la vérification lu dans la fiche ; la déclaration n'est modifiable qu'« a-verifier ». */
+  statut: StatutVerificationPro | 'inconnu';
+  declaration?: Declaration;
   /** Pièces présentes : type et date seulement, jamais le contenu. */
   pieces: { type: TypePiece; deposeLe: string }[];
 }
@@ -279,6 +298,7 @@ export class ServiceCandidature {
     private readonly depot: DepotCandidatures,
     private readonly stockage: Stockage,
     private readonly maitre: CleMaitre,
+    private readonly fiches: FichesPraticiens,
     private readonly parametres: ParametresCandidature,
     private readonly horloge: () => Date = () => new Date(),
   ) {
@@ -290,6 +310,15 @@ export class ServiceCandidature {
     }
     if (!/^[A-Za-z0-9.-]{1,32}$/.test(parametres.versionCharte)) {
       throw new Error('Version de la charte invalide.');
+    }
+    if (parametres.specialites.length === 0 || !parametres.specialites.every(estSpecialite)) {
+      throw new Error('Liste des spécialités invalide.');
+    }
+    if (
+      parametres.langues.length === 0 ||
+      !parametres.langues.every((l) => /^[a-z]{2,3}$/.test(l))
+    ) {
+      throw new Error('Liste des langues de consultation invalide.');
     }
   }
 
@@ -316,13 +345,17 @@ export class ServiceCandidature {
 
   async etat(u: Utilisateur): Promise<EtatCandidature> {
     const practitionerId = this.candidat(u);
-    const [acceptee, pieces] = await Promise.all([
+    const [acceptee, pieces, lue] = await Promise.all([
       this.charteAcceptee(practitionerId),
       this.depot.piecesDe(practitionerId),
+      this.fiches.lire(practitionerId),
     ]);
+    const declaration = lue && declarationDe(lue.fiche);
     return {
       practitionerId,
       charte: { version: this.parametres.versionCharte, acceptee },
+      statut: (lue && statutVerification(lue.fiche)) ?? 'inconnu',
+      ...(declaration ? { declaration } : {}),
       pieces: pieces.map((p) => ({ type: p.type, deposeLe: p.deposeLe.toISOString() })),
     };
   }
@@ -341,6 +374,36 @@ export class ServiceCandidature {
       accepte: d.accepte,
       decideLe: this.horloge(),
     });
+  }
+
+  /**
+   * Déclaration du candidat lui-même, après la charte, tant que sa fiche est « à vérifier » et
+   * inactive : la passerelle ne remplace que `qualification` et `communication`, et refuse
+   * l'écriture si une décision est arrivée depuis la lecture (verrou optimiste → 409).
+   */
+  async declarer(u: Utilisateur, d: Declaration): Promise<void> {
+    const practitionerId = this.candidat(u);
+    if (!(await this.charteAcceptee(practitionerId))) {
+      throw new ErreurCandidature('Acceptez d’abord la charte.', 409);
+    }
+    if (!this.parametres.specialites.includes(d.specialite)) {
+      throw new ErreurCandidature('Spécialité non proposée.', 400);
+    }
+    if (!d.langues.every((l) => this.parametres.langues.includes(l))) {
+      throw new ErreurCandidature('Langue non proposée.', 400);
+    }
+    let elements: ReturnType<typeof declarationPraticien>;
+    try {
+      elements = declarationPraticien(d);
+    } catch (e) {
+      throw new ErreurCandidature((e as Error).message, 400);
+    }
+    const lue = await this.fiches.lire(practitionerId);
+    if (!lue) throw new ErreurCandidature('Fiche introuvable.', 403);
+    if (lue.fiche.active !== false || statutVerification(lue.fiche) !== 'a-verifier') {
+      throw new ErreurCandidature('Votre dossier n’est plus modifiable.', 409);
+    }
+    await this.fiches.declarer(practitionerId, elements, lue.version);
   }
 
   async deposer(u: Utilisateur, type: string, octets: Buffer): Promise<PieceDeposee> {

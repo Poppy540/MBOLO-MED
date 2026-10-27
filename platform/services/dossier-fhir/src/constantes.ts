@@ -45,6 +45,8 @@ export const SYSTEMES = {
   statutIdentite: `${CANONIQUE}/CodeSystem/mbolo-statut-identite`,
   changementTelephone: `${CANONIQUE}/CodeSystem/mbolo-changement-telephone`,
   statutVerificationPro: `${CANONIQUE}/CodeSystem/mbolo-statut-verification`,
+  specialite: `${CANONIQUE}/CodeSystem/mbolo-specialite`,
+  pays: 'urn:iso:std:iso:3166',
 } as const;
 
 export const EXTENSION_MODE_RECUEIL = `${CANONIQUE}/StructureDefinition/mode-recueil`;

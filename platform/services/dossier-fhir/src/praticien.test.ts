@@ -2,6 +2,8 @@ import type { Practitioner } from 'fhir/r4.js';
 import { describe, expect, it } from 'vitest';
 import {
   EXTENSION_STATUT_VERIFICATION,
+  declarationDe,
+  declarationPraticien,
   praticien,
   praticienVerifie,
   statutVerification,
@@ -87,5 +89,56 @@ describe('Practitioner — vérification du professionnel (ADR-0026)', () => {
     ).toBe(false);
     // Fiche sans statut (ancienne fiche, ou statut non lisible) : refusée.
     expect(praticienVerifie({ ...verifie(), extension: undefined }, le('2026-06-01'))).toBe(false);
+  });
+});
+
+describe('Practitioner — déclaration du candidat (ADR-0026, 3b)', () => {
+  // Données FICTIVES.
+  const declaration = {
+    specialite: 'pediatrie' as const,
+    paysOrdre: 'GA',
+    numeroOrdre: 'FICTIF-ORDRE-0002',
+    langues: ['fr', 'fan', 'fr'],
+  };
+  const candidat = () => ({
+    ...praticien({ nom: 'Candidat', prenom: 'Médecin', statut: 'a-verifier', env: 'dev' }),
+    ...declarationPraticien(declaration),
+  });
+
+  it('fiche à vérifier valide avec sa déclaration, relue telle quelle (langues dédoublonnées)', () => {
+    const p = candidat();
+    expect(valider(p, 'dev')).toEqual([]);
+    expect(p.qualification?.[0]?.code.text).toBe('Pédiatrie');
+    expect(declarationDe(p)).toEqual({ ...declaration, langues: ['fr', 'fan'] });
+  });
+
+  it('une déclaration ne rend jamais vérifié : sans période, mbolo-prat-2 la refuse', () => {
+    const p = candidat();
+    expect(p.qualification?.[0]?.period).toBeUndefined();
+    const forcee: Practitioner = {
+      ...p,
+      active: true,
+      extension: [{ url: EXTENSION_STATUT_VERIFICATION, valueCode: 'verifie' }],
+    };
+    expect(regles(forcee)).toContain('mbolo-prat-2');
+    expect(praticienVerifie(forcee, le('2026-10-28'))).toBe(false);
+  });
+
+  it('refuse une spécialité hors liste, un pays, un numéro ou des langues invalides', () => {
+    const avec = (d: object) => () => declarationPraticien({ ...declaration, ...d } as never);
+    expect(avec({ specialite: 'Chirurgie esthétique' })).toThrow('Spécialité');
+    expect(avec({ paysOrdre: 'gab' })).toThrow('Pays');
+    expect(avec({ numeroOrdre: '<script>' })).toThrow('Numéro');
+    expect(avec({ numeroOrdre: '' })).toThrow('Numéro');
+    expect(avec({ langues: [] })).toThrow('Langues');
+    expect(avec({ langues: ['fr', 'français'] })).toThrow('Langues');
+    expect(avec({ langues: ['fr', 'en', 'es', 'pt', 'ar', 'de', 'it'] })).toThrow('Langues');
+  });
+
+  it('fiche sans déclaration, ou inscription vérifiée en texte : rien à relire', () => {
+    expect(
+      declarationDe(praticien({ nom: 'C', prenom: 'M', statut: 'a-verifier', env: 'dev' })),
+    ).toBeUndefined();
+    expect(declarationDe(verifie())).toBeUndefined();
   });
 });

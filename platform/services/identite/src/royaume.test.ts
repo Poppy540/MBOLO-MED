@@ -18,6 +18,7 @@ interface Royaume {
   roles: { realm: { name: string; description?: string; composites?: { realm?: string[] } }[] };
   clients: {
     clientId: string;
+    name?: string;
     defaultClientScopes?: string[];
     directAccessGrantsEnabled?: boolean;
     standardFlowEnabled?: boolean;
@@ -87,6 +88,13 @@ describe('royaume mbolo', () => {
   it('garde les descriptions des rôles sous la limite de Keycloak (255 caractères)', () => {
     for (const r of royaume.roles.realm) {
       expect(r.description?.length ?? 0, r.name).toBeLessThanOrEqual(255);
+    }
+  });
+
+  it('garde les noms des clients sous la limite de Keycloak (255 caractères)', () => {
+    // Au-delà, Keycloak ne démarre pas : l'import du royaume échoue.
+    for (const c of royaume.clients) {
+      expect(c.name?.length ?? 0, c.clientId).toBeLessThanOrEqual(255);
     }
   });
 
@@ -228,18 +236,26 @@ describe('royaume mbolo', () => {
     const mappeurs = c?.protocolMappers ?? [];
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Patient.ru system/Consent.s system/AuditEvent.c');
+    ).toBe('system/Patient.ru system/Consent.s system/AuditEvent.c system/Practitioner.ru');
     // Du patient, seuls l'identité déclarée et son statut sortent de la passerelle (pour la
     // comparer aux photos) ; seuls le statut, les identifiants et, après une perte du téléphone
     // (ADR-0023), le numéro de téléphone peuvent être modifiés : jamais le nom ni la naissance.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
-    ).toBe('Patient.extension Patient.identifier Patient.name Patient.birthDate');
+    ).toBe(
+      'Patient.extension Patient.identifier Patient.name Patient.birthDate ' +
+        'Practitioner.active Practitioner.extension Practitioner.qualification Practitioner.communication',
+    );
+    // Du professionnel candidat (ADR-0026, 3b), seule sa déclaration (spécialité, Ordre, langues)
+    // est modifiable : jamais son statut ni son activation, réservés à la décision de vérification.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements_modifiables')?.config[
         'claim.value'
       ],
-    ).toBe('Patient.extension Patient.identifier Patient.telecom');
+    ).toBe(
+      'Patient.extension Patient.identifier Patient.telecom ' +
+        'Practitioner.qualification Practitioner.communication',
+    );
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])
         .filter((m) => m.protocolMapper === 'oidc-audience-mapper')

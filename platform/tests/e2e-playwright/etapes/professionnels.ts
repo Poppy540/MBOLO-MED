@@ -295,3 +295,71 @@ Then('le dossier de candidature est refusé à {string}', async ({ monde }, iden
   const r = await candidature(monde.jetons.get(identifiant) ?? '', '');
   expect(r.status).toBe(403);
 });
+
+// Déclaration du candidat (ADR-0026, 3b) : liste fermée, écrite dans la fiche sans période.
+const DECLARATION = {
+  specialite: 'pediatrie',
+  paysOrdre: 'GA',
+  numeroOrdre: 'FICTIF-ORDRE-E2E',
+  langues: ['fr', 'fan'],
+};
+
+const declarer = (jeton: string, corps: object) =>
+  candidature(jeton, '/declaration', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(corps),
+  });
+
+When(
+  "le candidat déclare sa spécialité, son inscription à l'Ordre et ses langues de consultation",
+  async ({ monde }) => {
+    expect((await declarer(monde.inscription?.jeton ?? '', DECLARATION)).status).toBe(204);
+  },
+);
+
+Then(
+  'sa fiche porte sa déclaration, toujours inactive et à vérifier, sans période de validité',
+  async ({ monde }) => {
+    const r = await fetch(
+      `${FHIR_URL}/Practitioner/${monde.candidat?.practitionerId ?? 'absente'}`,
+      { headers: { 'cache-control': 'no-cache' } },
+    );
+    expect(r.status).toBe(200);
+    const p = (await r.json()) as {
+      active?: boolean;
+      extension?: { url: string; valueCode?: string }[];
+      name?: { family?: string }[];
+      qualification?: {
+        code: { coding?: { code?: string }[] };
+        identifier?: { value?: string }[];
+        period?: unknown;
+      }[];
+      communication?: { coding?: { code?: string }[] }[];
+    };
+    expect(p.active).toBe(false);
+    expect(p.extension?.find((e) => e.url.endsWith('/statut-verification'))?.valueCode).toBe(
+      'a-verifier',
+    );
+    // Le reste de la fiche (nom donné au recruteur) est conservé par la passerelle.
+    expect(p.name?.[0]?.family).toBe('Fictif');
+    expect(p.qualification?.[0]?.code.coding?.[0]?.code).toBe('pediatrie');
+    expect(p.qualification?.[0]?.identifier?.[0]?.value).toBe('FICTIF-ORDRE-E2E');
+    expect(p.qualification?.[0]?.period).toBeUndefined();
+    expect(p.communication?.map((c) => c.coding?.[0]?.code)).toEqual(['fr', 'fan']);
+    const etat = (await (await candidature(monde.inscription?.jeton ?? '', '')).json()) as {
+      statut: string;
+      declaration: unknown;
+    };
+    expect(etat.statut).toBe('a-verifier');
+    expect(etat.declaration).toEqual(DECLARATION);
+  },
+);
+
+Then('le candidat ne peut pas déclarer une spécialité hors de la liste', async ({ monde }) => {
+  const r = await declarer(monde.inscription?.jeton ?? '', {
+    ...DECLARATION,
+    specialite: 'Spécialité en texte libre [FICTIF]',
+  });
+  expect(r.status).toBe(400);
+});

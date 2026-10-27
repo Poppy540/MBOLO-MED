@@ -11,6 +11,7 @@ import {
   limiterAppels,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
+import { LANGUES_CONSULTATION_MAX, SPECIALITES, type Declaration } from '@mbolo/dossier-fhir';
 import { ErreurCandidature, TYPES_PIECE, type ServiceCandidature } from './candidature.js';
 import { MOTIFS_REFUS, RESULTATS, RESULTATS_PERTE, TYPES_DOCUMENT } from './depot.js';
 import { TAILLE_MAX } from './format.js';
@@ -195,6 +196,41 @@ export async function creerServeur(o: {
           practitionerId: u.practitionerId,
           version: req.body.version,
           accepte: req.body.accepte,
+        });
+        return reply.code(204).send();
+      },
+    );
+
+    app.put<{ Body: Declaration }>(
+      '/candidature/declaration',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['specialite', 'paysOrdre', 'numeroOrdre', 'langues'],
+            properties: {
+              specialite: { type: 'string', enum: Object.keys(SPECIALITES) },
+              paysOrdre: { type: 'string', pattern: '^[A-Z]{2}$' },
+              numeroOrdre: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9 ./-]{0,31}$' },
+              langues: {
+                type: 'array',
+                minItems: 1,
+                maxItems: LANGUES_CONSULTATION_MAX,
+                items: { type: 'string', pattern: '^[a-z]{2,3}$' },
+              },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        await candidature.declarer(u, req.body);
+        // Tracé sans le numéro d'inscription : la fiche garde son historique de versions.
+        o.journal.info('déclaration du professionnel', {
+          sujet: u.sujet,
+          practitionerId: u.practitionerId,
+          specialite: req.body.specialite,
         });
         return reply.code(204).send();
       },

@@ -4,8 +4,8 @@
 // - modification du statut, des identifiants et, après une perte du téléphone (ADR-0023), du
 //   numéro de téléphone SEULEMENT (la passerelle conserve le reste du Patient) ;
 // - trace de chaque consultation (AuditEvent, immuable, visible par le patient).
-import type { AuditEvent, ContactPoint, Identifier, Patient } from 'fhir/r4.js';
-import { ClientFhir } from '@mbolo/identite';
+import type { AuditEvent, ContactPoint, Identifier, Patient, Practitioner } from 'fhir/r4.js';
+import { ClientFhir, ErreurDepot } from '@mbolo/identite';
 
 export interface DossierIdentite {
   patient(patientId: string): Promise<Patient | undefined>;
@@ -96,5 +96,76 @@ export class DossierFhir extends ClientFhir implements DossierIdentite {
       body: JSON.stringify(trace),
     });
     if (!r.ok) throw ClientFhir.echec(r, 'Trace');
+  }
+}
+
+/** Éléments de la fiche d'un professionnel que sa déclaration remplace (ADR-0026, 3b). */
+export type ElementsDeclares = Required<Pick<Practitioner, 'qualification' | 'communication'>>;
+
+/**
+ * Fiche du professionnel candidat, par la passerelle et le compte de service mbolo-documents-service :
+ * lecture du statut, de l'activation et de la déclaration ; modification de `qualification` et
+ * `communication` SEULEMENT, et seulement si la fiche n'a pas changé depuis sa lecture (verrou
+ * optimiste : une décision de vérification arrivée entre-temps n'est jamais écrasée).
+ */
+export interface FichesPraticiens {
+  lire(practitionerId: string): Promise<{ fiche: Practitioner; version: string } | undefined>;
+  declarer(practitionerId: string, elements: ElementsDeclares, version: string): Promise<void>;
+}
+
+/** Pour les tests : fiches en mémoire, version incrémentée à chaque écriture. */
+export class FichesMemoire implements FichesPraticiens {
+  readonly versions = new Map<string, number>();
+  constructor(readonly fiches = new Map<string, Practitioner>()) {}
+
+  async lire(practitionerId: string) {
+    const fiche = this.fiches.get(practitionerId);
+    if (!fiche) return undefined;
+    return {
+      fiche: structuredClone(fiche),
+      version: String(this.versions.get(practitionerId) ?? 1),
+    };
+  }
+
+  /** Remplace la fiche hors de la déclaration (ex. décision de vérification) : nouvelle version. */
+  changer(practitionerId: string, fiche: Practitioner): void {
+    this.fiches.set(practitionerId, fiche);
+    this.versions.set(practitionerId, (this.versions.get(practitionerId) ?? 1) + 1);
+  }
+
+  async declarer(practitionerId: string, elements: ElementsDeclares, version: string) {
+    const fiche = this.fiches.get(practitionerId);
+    if (!fiche) throw new Error('Fiche inconnue.');
+    if (String(this.versions.get(practitionerId) ?? 1) !== version) {
+      throw new ErreurDepot('Fiche modifiée entre-temps.', 409);
+    }
+    this.changer(practitionerId, { ...fiche, ...elements });
+  }
+}
+
+export class FichesFhir extends ClientFhir implements FichesPraticiens {
+  async lire(practitionerId: string) {
+    const r = await this.appeler(
+      `${this.base}/Practitioner/${encodeURIComponent(practitionerId)}`,
+      { headers: { 'cache-control': 'no-cache' } },
+    );
+    if (r.status === 404 || r.status === 410) return undefined;
+    if (!r.ok) throw ClientFhir.echec(r, 'Fiche');
+    const fiche = (await r.json()) as Practitioner;
+    if (fiche.resourceType !== 'Practitioner' || fiche.id !== practitionerId) return undefined;
+    return { fiche, version: fiche.meta?.versionId ?? '' };
+  }
+
+  async declarer(practitionerId: string, elements: ElementsDeclares, version: string) {
+    if (!version) throw new ErreurDepot('Fiche modifiée entre-temps.', 409);
+    const r = await this.appeler(
+      `${this.base}/Practitioner/${encodeURIComponent(practitionerId)}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/fhir+json', 'if-match': `W/"${version}"` },
+        body: JSON.stringify({ resourceType: 'Practitioner', id: practitionerId, ...elements }),
+      },
+    );
+    if (!r.ok) throw ClientFhir.echec(r, 'Fiche');
   }
 }

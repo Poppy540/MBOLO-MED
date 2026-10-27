@@ -191,3 +191,28 @@ Description: "Statuts admis pour la vérification d'un professionnel de santé (
 * ^status = #draft
 * ^experimental = true
 * include codes from system MboloStatutVerificationProCS
+
+CodeSystem: MboloSpecialiteCS
+Id: mbolo-specialite
+Title: "Spécialités des professionnels"
+Description: "Liste fermée des spécialités qu'un candidat peut déclarer (ADR-0026). Liste provisoire, à valider par le comité médical ; chaque pays en ouvre une partie par configuration."
+* ^status = #draft
+* ^caseSensitive = true
+* ^experimental = true
+* #medecine-generale "Médecine générale"
+* #pediatrie "Pédiatrie"
+* #gynecologie-obstetrique "Gynécologie-obstétrique"
+* #medecine-interne "Médecine interne"
+* #cardiologie "Cardiologie"
+* #dermatologie "Dermatologie"
+* #psychiatrie "Psychiatrie"
+* #endocrinologie-diabetologie "Endocrinologie-diabétologie"
+* #maladies-infectieuses "Maladies infectieuses et tropicales"
+
+ValueSet: MboloSpecialiteVS
+Id: mbolo-specialite
+Title: "Spécialités déclarables"
+Description: "Spécialités qu'un candidat peut déclarer (ADR-0026)."
+* ^status = #draft
+* ^experimental = true
+* include codes from system MboloSpecialiteCS

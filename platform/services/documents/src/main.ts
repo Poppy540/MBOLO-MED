@@ -17,7 +17,8 @@ import { DepotCandidaturesPostgres, ServiceCandidature } from './candidature.js'
 import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
-import { DossierFhir } from './dossier.js';
+import { DossierFhir, FichesFhir } from './dossier.js';
+import { SPECIALITES } from '@mbolo/dossier-fhir';
 import { ServicePerte } from './perte.js';
 import { creerServeur, LIMITES_PAR_DEFAUT } from './serveur.js';
 import { ServiceDocuments } from './service.js';
@@ -114,19 +115,6 @@ try {
   journal.erreur('paramètres des documents invalides', { err: e });
   process.exit(1);
 }
-// Dossier de candidature des professionnels (ADR-0026) : même chiffrement, même stockage.
-let candidature: ServiceCandidature;
-try {
-  candidature = new ServiceCandidature(new DepotCandidaturesPostgres(sql), stockage, maitre, {
-    versionCharte: env['DOCUMENTS_VERSION_CHARTE_PRO'] ?? 'c-verification-pro-v0.1',
-    // Durée à fixer avec le juriste (ADR-0026, question 5) ; 2 ans en attendant.
-    conservationJours: Number(env['DOCUMENTS_PIECES_CONSERVATION_JOURS'] ?? '730'),
-    maxParType: Number(env['DOCUMENTS_PIECES_MAX_PAR_TYPE'] ?? '2'),
-  });
-} catch (e) {
-  journal.erreur('paramètres des pièces des professionnels invalides', { err: e });
-  process.exit(1);
-}
 
 const emetteur = lire('KEYCLOAK_ISSUER');
 const drapeaux =
@@ -176,6 +164,28 @@ try {
 }
 
 const dossier = new DossierFhir(acces);
+// Dossier de candidature des professionnels (ADR-0026) : même chiffrement, même stockage.
+let candidature: ServiceCandidature;
+try {
+  candidature = new ServiceCandidature(
+    new DepotCandidaturesPostgres(sql),
+    stockage,
+    maitre,
+    new FichesFhir(acces),
+    {
+      versionCharte: env['DOCUMENTS_VERSION_CHARTE_PRO'] ?? 'c-verification-pro-v0.1',
+      // Durée à fixer avec le juriste (ADR-0026, question 5) ; 2 ans en attendant.
+      conservationJours: Number(env['DOCUMENTS_PIECES_CONSERVATION_JOURS'] ?? '730'),
+      maxParType: Number(env['DOCUMENTS_PIECES_MAX_PAR_TYPE'] ?? '2'),
+      // Listes fermées par pays : spécialités ouvertes (liste du comité médical) et langues proposées.
+      specialites: (env['DOCUMENTS_SPECIALITES'] ?? Object.keys(SPECIALITES).join(',')).split(','),
+      langues: (env['DOCUMENTS_LANGUES_CONSULTATION'] ?? 'fr,en,es,pt,fan,puu,mye,nzb').split(','),
+    },
+  );
+} catch (e) {
+  journal.erreur('paramètres des pièces des professionnels invalides', { err: e });
+  process.exit(1);
+}
 const verificateur = new ServiceVerificateur(documents, depot, dossier, { systemes, env: 'dev' });
 // Téléphone perdu (ADR-0023) : seulement si le service notifications est joignable (alerte à
 // l'ancien numéro avant tout changement).

@@ -68,10 +68,21 @@ export {
 } from './langue.js';
 export {
   EXTENSION_STATUT_VERIFICATION,
+  LANGUES_CONSULTATION_MAX,
+  SPECIALITES,
   STATUTS_VERIFICATION_PRO,
+  declarationDe,
+  declarationPraticien,
+  estSpecialite,
   praticien,
   praticienVerifie,
   statutVerification,
   verifierPraticien,
 } from './praticien.js';
-export type { Inscription, OptionsPraticien, StatutVerificationPro } from './praticien.js';
+export type {
+  Declaration,
+  Inscription,
+  OptionsPraticien,
+  Specialite,
+  StatutVerificationPro,
+} from './praticien.js';
