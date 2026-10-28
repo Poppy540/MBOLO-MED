@@ -5,6 +5,7 @@
 //   numéro de téléphone SEULEMENT (la passerelle conserve le reste du Patient) ;
 // - trace de chaque consultation (AuditEvent, immuable, visible par le patient).
 import type { AuditEvent, ContactPoint, Identifier, Patient, Practitioner } from 'fhir/r4.js';
+import type { ElementsDecision } from '@mbolo/dossier-fhir';
 import { ClientFhir, ErreurDepot } from '@mbolo/identite';
 
 export interface DossierIdentite {
@@ -104,18 +105,23 @@ export type ElementsDeclares = Required<Pick<Practitioner, 'qualification' | 'co
 
 /**
  * Fiche du professionnel candidat, par la passerelle et le compte de service mbolo-documents-service :
- * lecture du statut, de l'activation et de la déclaration ; modification de `qualification` et
- * `communication` SEULEMENT, et seulement si la fiche n'a pas changé depuis sa lecture (verrou
- * optimiste : une décision de vérification arrivée entre-temps n'est jamais écrasée).
+ * lecture du statut, de l'activation et de la déclaration ; modification de la déclaration
+ * (`qualification`, `communication`) par le candidat, ou de l'activation et du statut (`active`,
+ * `extension`, `qualification`) sur décision d'une personne habilitée ; jamais rien d'autre, et
+ * seulement si la fiche n'a pas changé depuis sa lecture (verrou optimiste). Chaque consultation du
+ * dossier par une personne habilitée est tracée (AuditEvent, immuable).
  */
 export interface FichesPraticiens {
   lire(practitionerId: string): Promise<{ fiche: Practitioner; version: string } | undefined>;
   declarer(practitionerId: string, elements: ElementsDeclares, version: string): Promise<void>;
+  decider(practitionerId: string, elements: ElementsDecision, version: string): Promise<void>;
+  tracer(trace: AuditEvent): Promise<void>;
 }
 
 /** Pour les tests : fiches en mémoire, version incrémentée à chaque écriture. */
 export class FichesMemoire implements FichesPraticiens {
   readonly versions = new Map<string, number>();
+  readonly traces: AuditEvent[] = [];
   constructor(readonly fiches = new Map<string, Practitioner>()) {}
 
   async lire(practitionerId: string) {
@@ -134,6 +140,18 @@ export class FichesMemoire implements FichesPraticiens {
   }
 
   async declarer(practitionerId: string, elements: ElementsDeclares, version: string) {
+    this.remplacer(practitionerId, elements, version);
+  }
+
+  async decider(practitionerId: string, elements: ElementsDecision, version: string) {
+    this.remplacer(practitionerId, elements, version);
+  }
+
+  async tracer(trace: AuditEvent): Promise<void> {
+    this.traces.push(trace);
+  }
+
+  private remplacer(practitionerId: string, elements: Partial<Practitioner>, version: string) {
     const fiche = this.fiches.get(practitionerId);
     if (!fiche) throw new Error('Fiche inconnue.');
     if (String(this.versions.get(practitionerId) ?? 1) !== version) {
@@ -157,6 +175,28 @@ export class FichesFhir extends ClientFhir implements FichesPraticiens {
   }
 
   async declarer(practitionerId: string, elements: ElementsDeclares, version: string) {
+    await this.remplacer(practitionerId, elements, version);
+  }
+
+  async decider(practitionerId: string, elements: ElementsDecision, version: string) {
+    await this.remplacer(practitionerId, elements, version);
+  }
+
+  async tracer(trace: AuditEvent): Promise<void> {
+    const r = await this.appeler(`${this.base}/AuditEvent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/fhir+json' },
+      body: JSON.stringify(trace),
+    });
+    if (!r.ok) throw ClientFhir.echec(r, 'Trace');
+  }
+
+  /** La passerelle ne remplace que les éléments envoyés, et refuse si la fiche a changé (412). */
+  private async remplacer(
+    practitionerId: string,
+    elements: Partial<Practitioner>,
+    version: string,
+  ): Promise<void> {
     if (!version) throw new ErreurDepot('Fiche modifiée entre-temps.', 409);
     const r = await this.appeler(
       `${this.base}/Practitioner/${encodeURIComponent(practitionerId)}`,

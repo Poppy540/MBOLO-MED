@@ -77,6 +77,18 @@ Pour le **professionnel candidat** seulement (rôle d'attente `professionnel-can
 - Journal : compte, fiche, type, taille ; jamais le contenu ni le nom.
 - La consultation des pièces par le rôle `verification-professionnels` viendra avec l'écran de vérification (ADR-0026, PR 4).
 
+## Vérification des professionnels (ADR-0026, étape 4)
+
+Rôle humain `verification-professionnels` (double authentification, jamais un agent IA, aucun accès clinique). Disponible seulement si `INVITATIONS_URL` est configurée : **séparation des tâches**, le service demande au service `invitations` qui a recruté la fiche (`GET /service/professionnels/:practitionerId/recruteurs`, compte de service) et refuse à cette personne de voir le dossier ou de décider (403) ; invitations injoignable → 503, rien n'est montré.
+
+- `GET /professionnels/a-verifier` → `{ candidats: [{ practitionerId, depuis }] }` : fiches « à vérifier » qui ont des pièces présentes, jamais la sienne.
+- `GET /professionnels/:practitionerId` → nom donné au recrutement, déclaration, pièces (type, date), décisions passées. `GET /professionnels/:practitionerId/pieces/:pieceId` → la pièce déchiffrée (`no-store`). **Chaque consultation est tracée dans le dossier** (`AuditEvent` sur la fiche du candidat, sous-type `verification-professionnel`) **avant** d'être montrée : sans trace, rien n'est montré.
+- `POST /professionnels/:practitionerId/decision` `{ resultat, controles, motif?, piecesARefaire?, validite? }` (listes fermées seulement, aucun texte libre) :
+  - `verifie` : les quatre points (`identite`, `diplome`, `inscription`, `specialite`) contrôlés conformes, chacun avec sa source (`registre-ordre`, `attestation-ordre`, `document-original`, `entretien-video`) et sa date, la déclaration et les trois pièces requises présentes, une validité en cours (`{ debut, fin }`). Le serveur active la fiche (`active`, statut `verifie`, inscription déclarée avec sa période) ; le rôle `professionnel` suivra à la connexion du candidat (étape 4b).
+  - `refuse` : motif de la liste (`diplome-non-confirme`, `inscription-introuvable`, `inscription-non-valable`, `identite-non-confirmee`, `specialite-non-confirmee`, `pieces-non-conformes`, liste provisoire à valider) ; fiche inactive, statut `refuse`.
+  - `a-completer` : pièces à refaire, effacées (clé détruite, puis objet) ; la fiche reste « à vérifier », le candidat en dépose de nouvelles.
+  - Seulement pour une fiche inactive et « à vérifier » (409 sinon) ; verrou optimiste (une décision simultanée n'est jamais écrasée) ; trace écrite avant la décision ; décision gardée (table `decisions_professionnels`, migration 0005, jamais modifiée), journal sans nom ni numéro d'inscription.
+
 ## Configuration
 
 | Variable | Rôle |
@@ -92,6 +104,7 @@ Pour le **professionnel candidat** seulement (rôle d'attente `professionnel-can
 | `DOCUMENTS_VERSION_CHARTE` (défaut `0.1`) | Version de la charte en vigueur : une nouvelle version exige une nouvelle acceptation |
 | `DOCUMENTS_CONSERVATION_JOURS` (défaut 90), `DOCUMENTS_MAX_PAR_TYPE` (défaut 2) | Durée de conservation (à fixer par pays avec l'avis juridique) et nombre de photos par type |
 | `DOCUMENTS_VERSION_CHARTE_PRO` (défaut `c-verification-pro-v0.1`), `DOCUMENTS_PIECES_CONSERVATION_JOURS` (défaut 730), `DOCUMENTS_PIECES_MAX_PAR_TYPE` (défaut 2) | Charte et pièces des professionnels candidats (ADR-0026) |
+| `INVITATIONS_URL` | Service `invitations`, pour la séparation des tâches de la vérification des professionnels (ADR-0026) ; absente : vérification des professionnels désactivée |
 | `DOCUMENTS_SPECIALITES` (défaut : toute la liste provisoire `SPECIALITES` de `@mbolo/dossier-fhir`), `DOCUMENTS_LANGUES_CONSULTATION` (défaut `fr,en,es,pt,fan,puu,mye,nzb`) | Listes fermées du pays pour la déclaration des candidats (à valider par le comité médical et le porteur de projet) |
 | `UNLEASH_API_URL`, `UNLEASH_BACKEND_TOKEN` | Flag `identite.photos` (sans Unleash : désactivé) |
 | `NOTIFICATIONS_URL`, `DOCUMENTS_APPELANTS_PERTE` (défaut `mbolo-keycloak-inscription`) | Téléphone perdu (ADR-0023) : alerte à l'ancien numéro, et clients autorisés à ouvrir une demande ; sans `NOTIFICATIONS_URL`, les routes « perte » ne sont pas ouvertes |

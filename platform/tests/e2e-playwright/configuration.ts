@@ -55,7 +55,7 @@ export const COHORTES: Record<string, string[]> = {
   // Récupération du compte (ADR-0021) : le flag est évalué pour le membre de l'équipe.
   'compte.recuperation': ['assistant-fictif-01'],
   // Invitation des professionnels (ADR-0026) : le flag est évalué pour le recruteur.
-  'professionnels.recrutement': ['recruteur-fictif-01'],
+  'professionnels.recrutement': ['recruteur-fictif-01', 'verificateur-pro-fictif-01'],
 };
 
 /** Applications clientes du royaume (realm-mbolo.json) : publiques, PKCE S256 obligatoire. */
@@ -79,7 +79,10 @@ export interface CompteFictif {
     | 'validation-remboursement'
     | 'assistance-patient'
     | 'validation-reversement'
-    | 'recrutement';
+    | 'recrutement'
+    | 'verification-professionnels';
+  /** Rôles supplémentaires (ex. séparation des tâches : recruter et vérifier). */
+  autresRoles?: CompteFictif['role'][];
   application: keyof typeof APPLICATIONS;
   attributs: Record<string, string>;
 }
@@ -204,6 +207,16 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'recruteur-fictif-01',
     prenom: 'Hortense',
     role: 'recrutement',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    // Vérifie les professionnels ; recrute aussi, pour tester qu'il ne peut pas vérifier un candidat
+    // qu'il a lui-même invité (séparation des tâches, ADR-0026).
+    identifiant: 'verificateur-pro-fictif-01',
+    prenom: 'Séraphin',
+    role: 'verification-professionnels',
+    autresRoles: ['recrutement'],
     application: 'pro',
     attributs: {},
   },

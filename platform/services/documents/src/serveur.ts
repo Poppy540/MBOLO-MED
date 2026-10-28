@@ -20,6 +20,15 @@ import type { DecisionPerte, ServicePerte } from './perte.js';
 import { ErreurDocument } from './service.js';
 import { ErreurVerification, type ServiceVerification } from './verification.js';
 import type { DemandeDecision, ServiceVerificateur } from './verificateur.js';
+import {
+  ErreurVerificationPro,
+  MOTIFS_REFUS_PRO,
+  POINTS,
+  RESULTATS_PRO,
+  SOURCES,
+  type DemandeDecisionPro,
+  type ServiceVerificationPro,
+} from './verification-pro.js';
 
 const ID = { type: 'string', pattern: '^[A-Za-z0-9\\-.]{1,64}$' } as const;
 
@@ -55,6 +64,8 @@ export async function creerServeur(o: {
   limites?: Limites;
   /** Dossier de candidature des professionnels (ADR-0026) ; sans lui, /candidature est absent. */
   candidature?: ServiceCandidature;
+  /** Vérification des professionnels (ADR-0026) ; sans lui, /professionnels est absent. */
+  verificationPro?: ServiceVerificationPro;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
   trustProxy?: boolean;
 }): Promise<FastifyInstance> {
@@ -106,7 +117,11 @@ export async function creerServeur(o: {
       signalerAlerte(o.journal, 'erreur-serveur', 'service de clés indisponible');
       return reply.code(503).send({ erreur: 'Service momentanément indisponible.' });
     }
-    if (err instanceof ErreurVerification || err instanceof ErreurCandidature) {
+    if (
+      err instanceof ErreurVerification ||
+      err instanceof ErreurCandidature ||
+      err instanceof ErreurVerificationPro
+    ) {
       return reply.code(err.statut).send({ erreur: err.message });
     }
     if (err instanceof ErreurDocument) {
@@ -167,6 +182,127 @@ export async function creerServeur(o: {
       }
     },
   );
+
+  // ── Vérification des professionnels (ADR-0026, étape 4) ────────────────────────
+  const verificationPro = o.verificationPro;
+  if (verificationPro) {
+    const fiche = { type: 'string', pattern: '^[A-Za-z0-9.-]{1,64}$' } as const;
+    const date = { type: 'string', format: 'date' } as const;
+
+    app.get('/professionnels/a-verifier', async (req) => ({
+      candidats: await verificationPro.aVerifier(await authentifier(req)),
+    }));
+
+    app.get<{ Params: { practitionerId: string } }>(
+      '/professionnels/:practitionerId',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            properties: { practitionerId: fiche },
+            required: ['practitionerId'],
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        const d = await verificationPro.dossier(u, req.params.practitionerId);
+        o.journal.info('dossier de candidature consulté', {
+          sujet: u.sujet,
+          practitionerId: req.params.practitionerId,
+        });
+        return reply.header('cache-control', 'no-store').send(d);
+      },
+    );
+
+    app.get<{ Params: { practitionerId: string; pieceId: string } }>(
+      '/professionnels/:practitionerId/pieces/:pieceId',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            properties: { practitionerId: fiche, pieceId: { type: 'string', format: 'uuid' } },
+            required: ['practitionerId', 'pieceId'],
+          },
+        },
+      },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        const p = await verificationPro.piece(u, req.params.practitionerId, req.params.pieceId);
+        o.journal.info('pièce de candidature consultée', {
+          sujet: u.sujet,
+          practitionerId: req.params.practitionerId,
+          pieceId: req.params.pieceId,
+        });
+        // Jamais gardée par le navigateur ni par un intermédiaire.
+        return reply
+          .header('cache-control', 'no-store')
+          .header('x-content-type-options', 'nosniff')
+          .type(p.format)
+          .send(p.octets);
+      },
+    );
+
+    app.post<{ Params: { practitionerId: string }; Body: DemandeDecisionPro }>(
+      '/professionnels/:practitionerId/decision',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            properties: { practitionerId: fiche },
+            required: ['practitionerId'],
+          },
+          // Listes fermées seulement : aucun texte libre dans une décision.
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['resultat', 'controles'],
+            properties: {
+              resultat: { type: 'string', enum: [...RESULTATS_PRO] },
+              motif: { type: 'string', enum: [...MOTIFS_REFUS_PRO] },
+              controles: {
+                type: 'array',
+                maxItems: POINTS.length,
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['point', 'source', 'consulteLe', 'conforme'],
+                  properties: {
+                    point: { type: 'string', enum: [...POINTS] },
+                    source: { type: 'string', enum: [...SOURCES] },
+                    consulteLe: date,
+                    conforme: { type: 'boolean' },
+                  },
+                },
+              },
+              piecesARefaire: {
+                type: 'array',
+                maxItems: TYPES_PIECE.length,
+                items: { type: 'string', enum: [...TYPES_PIECE] },
+              },
+              validite: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['debut', 'fin'],
+                properties: { debut: date, fin: date },
+              },
+            },
+          },
+        },
+      },
+      async (req) => {
+        const u = await authentifier(req);
+        const r = await verificationPro.decider(u, req.params.practitionerId, req.body);
+        o.journal.info('décision de vérification d’un professionnel', {
+          sujet: u.sujet,
+          practitionerId: req.params.practitionerId,
+          resultat: r.resultat,
+          ...(req.body.motif ? { motif: req.body.motif } : {}),
+        });
+        return r;
+      },
+    );
+  }
 
   // ── Dossier de candidature d'un professionnel (ADR-0026) ──────────────────────
   const candidature = o.candidature;

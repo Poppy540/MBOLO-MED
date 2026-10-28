@@ -3,9 +3,9 @@
 // habilitée (rôle verification-professionnels, jamais un agent IA) permet au serveur de l'activer.
 // Annuaire et créneaux sont réservés aux professionnels vérifiés dont l'inscription est en cours
 // de validité (praticienVerifie).
-import type { Practitioner, PractitionerQualification } from 'fhir/r4.js';
+import type { AuditEvent, Practitioner, PractitionerQualification } from 'fhir/r4.js';
 import { meta } from './construire.js';
-import { CANONIQUE, PROFILS, SYSTEMES } from './constantes.js';
+import { CANONIQUE, MARQUEUR_FICTIF, PROFILS, SYSTEMES } from './constantes.js';
 import { SYSTEME_LANGUE, codeLangueValide } from './langue.js';
 import type { Environnement, Violation } from './regles.js';
 
@@ -146,6 +146,83 @@ export function declarationDe(
   );
   if (!estSpecialite(specialite) || !paysOrdre || !numeroOrdre) return undefined;
   return { specialite, paysOrdre, numeroOrdre, langues };
+}
+
+/** Éléments de la fiche que la décision de vérification remplace (ADR-0026, étape 4). */
+export type ElementsDecision = Required<Pick<Practitioner, 'active' | 'extension'>> &
+  Pick<Practitioner, 'qualification'>;
+
+/**
+ * Activation sur décision « vérifié » d'une personne habilitée : fiche active, statut « verifie », et
+ * l'inscription déclarée par le candidat, confirmée à la source, avec sa période de validité (la
+ * fin fixe la prochaine vérification). Refusé si la fiche n'a pas de déclaration lisible.
+ */
+export function activationPraticien(
+  p: Practitioner,
+  validite: { debut: string; fin: string },
+): ElementsDecision {
+  const q = p.qualification?.[0];
+  if (!q || !declarationDe(p)) throw new Error('Aucune déclaration à confirmer.');
+  return {
+    active: true,
+    extension: avecStatut(p, 'verifie'),
+    qualification: [{ ...q, period: { start: validite.debut, end: validite.fin } }],
+  };
+}
+
+/** Fiche refusée ou suspendue (ou remise « à vérifier ») : inactive, la déclaration est gardée. */
+export function statutPraticien(
+  p: Practitioner,
+  statut: Exclude<StatutVerificationPro, 'verifie'>,
+): ElementsDecision {
+  return { active: false, extension: avecStatut(p, statut) };
+}
+
+const avecStatut = (p: Practitioner, statut: StatutVerificationPro) => [
+  ...(p.extension ?? []).filter((e) => e.url !== EXTENSION_STATUT_VERIFICATION),
+  { url: EXTENSION_STATUT_VERIFICATION, valueCode: statut },
+];
+
+export interface OptionsEvenementVerificationPro {
+  practitionerId: string;
+  /** Sujet Keycloak de la personne habilitée, jamais un nom. */
+  sujet: string;
+  roles: readonly string[];
+  /** Ce qui a été consulté (« dossier », type de pièce) ou décidé (« decision-verifie »…). */
+  objet: string;
+  action: 'R' | 'U';
+  date: string;
+  env: Environnement;
+}
+
+/**
+ * Trace d'une consultation du dossier d'un candidat ou d'une décision (ADR-0026) : qui, quand,
+ * quoi ; enregistrée avant d'afficher quoi que ce soit, jamais modifiée.
+ */
+export function evenementVerificationPro(o: OptionsEvenementVerificationPro): AuditEvent {
+  return {
+    resourceType: 'AuditEvent',
+    ...(o.env === 'prod' ? {} : { meta: { tag: [MARQUEUR_FICTIF] } }),
+    type: { system: SYSTEMES.auditType, code: '110110', display: 'Patient Record' },
+    subtype: [{ system: SYSTEMES.sousTypeAudit, code: 'verification-professionnel' }],
+    action: o.action,
+    recorded: o.date,
+    outcome: '0',
+    agent: [
+      {
+        who: { identifier: { system: SYSTEMES.sujetCompte, value: o.sujet } },
+        requestor: true,
+        role: o.roles.map((r) => ({ coding: [{ system: SYSTEMES.role, code: r }] })),
+      },
+    ],
+    source: { observer: { display: 'documents' } },
+    entity: [
+      {
+        what: { reference: `Practitioner/${o.practitionerId}` },
+        detail: [{ type: 'verification-professionnel', valueString: o.objet }],
+      },
+    ],
+  };
 }
 
 export function statutVerification(p: Practitioner): StatutVerificationPro | undefined {

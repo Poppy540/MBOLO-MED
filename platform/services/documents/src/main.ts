@@ -18,6 +18,8 @@ import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
 import { DossierFhir, FichesFhir } from './dossier.js';
+import { RecruteursHttp } from './recruteurs.js';
+import { DepotDecisionsProPostgres, ServiceVerificationPro } from './verification-pro.js';
 import { SPECIALITES } from '@mbolo/dossier-fhir';
 import { ServicePerte } from './perte.js';
 import { creerServeur, LIMITES_PAR_DEFAUT } from './serveur.js';
@@ -155,6 +157,7 @@ try {
       STORAGE_ENDPOINT: env['STORAGE_ENDPOINT'],
       UNLEASH_API_URL: env['UNLEASH_API_URL'],
       NOTIFICATIONS_URL: env['NOTIFICATIONS_URL'],
+      INVITATIONS_URL: env['INVITATIONS_URL'],
     },
     env['MBOLO_ENV'] === 'prod',
   );
@@ -187,6 +190,23 @@ try {
   process.exit(1);
 }
 const verificateur = new ServiceVerificateur(documents, depot, dossier, { systemes, env: 'dev' });
+// Vérification des professionnels (ADR-0026) : seulement si le service invitations répond à
+// « qui a recruté cette fiche ? » (séparation des tâches) ; sinon, aucune vérification possible.
+const invitations = env['INVITATIONS_URL'];
+const verificationPro = invitations
+  ? new ServiceVerificationPro(
+      new DepotDecisionsProPostgres(sql),
+      new DepotCandidaturesPostgres(sql),
+      stockage,
+      maitre,
+      new FichesFhir(acces),
+      new RecruteursHttp(invitations, acces.entetes),
+      env['MBOLO_ENV'] === 'prod' ? 'prod' : 'dev',
+    )
+  : undefined;
+if (!verificationPro) {
+  journal.avertissement('INVITATIONS_URL absente : vérification des professionnels désactivée');
+}
 // Téléphone perdu (ADR-0023) : seulement si le service notifications est joignable (alerte à
 // l'ancien numéro avant tout changement).
 const notifications = env['NOTIFICATIONS_URL'];
@@ -226,6 +246,7 @@ const app = await creerServeur({
   ),
   verificateur,
   candidature,
+  ...(verificationPro ? { verificationPro } : {}),
   ...(perte ? { perte } : {}),
   journal,
   limites: {

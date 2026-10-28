@@ -136,6 +136,14 @@
         }
       },
       {
+        "name": "verification-professionnels",
+        "description": "Vérifie à la source le dossier d'un professionnel candidat et décide (ADR-0026) ; jamais un candidat qu'il a recruté. Aucun accès clinique. MFA obligatoire. Jamais un agent IA.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
+      },
+      {
         "name": "professionnel-candidat",
         "description": "Professionnel inscrit avec un code, en attente de vérification par une personne habilitée (ADR-0026) : complète son dossier, aucun accès aux patients. MFA obligatoire.",
         "composite": true,
@@ -689,7 +697,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_elements_modifiables",
-            "claim.value": "Patient.extension Patient.identifier Patient.telecom Practitioner.qualification Practitioner.communication",
+            "claim.value": "Patient.extension Patient.identifier Patient.telecom Practitioner.qualification Practitioner.communication Practitioner.active Practitioner.extension",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

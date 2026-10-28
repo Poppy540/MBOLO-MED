@@ -156,6 +156,7 @@ describe('rôles sans accès clinique', () => {
     'assistance-patient',
     'validation-reversement',
     'recrutement',
+    'verification-professionnels',
     // Candidat en attente de vérification (ADR-0026) : même avec une fiche et un partage, refusé.
     'professionnel-candidat',
   ] as const)('%s : toujours refusé', (role) => {
