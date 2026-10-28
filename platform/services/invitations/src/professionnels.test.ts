@@ -60,6 +60,10 @@ async function monter(o: { ouvert?: boolean; quota?: number } = {}) {
       if (j !== 'extension') throw new Error('jeton de service invalide');
       return 'mbolo-keycloak-inscription';
     },
+    verifierDocuments: async (j) => {
+      if (j !== 'documents') throw new Error('jeton de service invalide');
+      return 'mbolo-documents-service';
+    },
     recrutement,
   });
   const appeler = (
@@ -205,6 +209,27 @@ describe('invitation des professionnels (ADR-0026)', () => {
     expect(
       (await m.appeler('POST', `/professionnels/${patient.id}/revocation`, 'recruteur')).statusCode,
     ).toBe(404);
+  });
+
+  it('séparation des tâches : le service documents seul obtient le recruteur d’une fiche', async () => {
+    const m = await monter();
+    const { practitionerId } = (await m.inviter()).json<{ practitionerId: string }>();
+    const url = `/service/professionnels/${practitionerId}/recruteurs`;
+    const r = await m.appeler('GET', url, 'documents');
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ recruteurs: ['sujet-recruteur-fictif'] });
+    expect(
+      (
+        await m.appeler('GET', '/service/professionnels/prac-inconnu/recruteurs', 'documents')
+      ).json(),
+    ).toEqual({ recruteurs: [] });
+    // Ni l'extension Keycloak, ni un recruteur, ni personne sans jeton.
+    for (const jeton of ['extension', 'recruteur', undefined]) {
+      expect((await m.appeler('GET', url, jeton)).statusCode).toBe(401);
+    }
+    expect(
+      (await m.appeler('GET', '/service/professionnels/..%2Fx/recruteurs', 'documents')).statusCode,
+    ).toBe(400);
   });
 
   it('quota atteint : 409, aucune fiche créée de plus', async () => {

@@ -225,6 +225,14 @@ const app = await creerServeur({
     audience: env['INVITATIONS_AUDIENCE'] ?? 'mbolo-invitations-api',
     clientsAutorises: ['mbolo-keycloak-inscription'],
   }),
+  // Service documents, pour la séparation des tâches de la vérification des professionnels.
+  verifierDocuments: creerVerificateurService({
+    emetteur,
+    audience: env['INVITATIONS_AUDIENCE'] ?? 'mbolo-invitations-api',
+    clientsAutorises: (env['INVITATIONS_APPELANTS_RECRUTEURS'] ?? 'mbolo-documents-service').split(
+      ',',
+    ),
+  }),
 });
 const port = Number(env['PORT'] ?? '3006');
 // Par défaut, seulement la machine locale ; `INVITATIONS_HOST` permet à un Keycloak en conteneur de

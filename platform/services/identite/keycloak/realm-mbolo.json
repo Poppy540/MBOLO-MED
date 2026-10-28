@@ -626,6 +626,16 @@
       },
       "protocolMappers": [
         {
+          "name": "audience-invitations-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mbolo-invitations-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
           "name": "audience-notifications",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
