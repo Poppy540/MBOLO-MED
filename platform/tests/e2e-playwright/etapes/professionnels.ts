@@ -531,3 +531,46 @@ Then(
     expect((await verification(monde, identifiant, '')).status).toBe(statut);
   },
 );
+
+// ── Activation à la connexion (ADR-0026, étape 4b) ─────────────────────────────
+
+When(
+  'le candidat se reconnecte à l’espace professionnel',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }) => {
+    const { identifiant, motDePasse } = monde.inscription ?? {};
+    if (!identifiant || !motDePasse) throw new Error('Aucun candidat inscrit dans ce scénario.');
+    // Nouveau navigateur : aucune session ouverte, la connexion passe par l'extension d'activation.
+    const contexte = await browser.newContext();
+    const p = await contexte.newPage();
+    monde.visio.set(PRO, { contexte, page: p });
+    await p.goto(APP_PRO_URL);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await p.locator('#username').fill(identifiant);
+    await p.locator('#password').fill(motDePasse);
+    await p.locator('#kc-login').click();
+    await p.locator('#otp').fill(await codeUnique(identifiant));
+    await p.locator('#kc-login').click();
+  },
+);
+
+Then(
+  'il arrive sur ses rendez-vous, avec le rôle professionnel et sans le rôle d’attente',
+  async ({ monde }) => {
+    const p = pagePro(monde);
+    await expect(p.getByRole('heading', { name: 'Rendez-vous à venir' })).toBeVisible();
+    await expect(p.getByRole('button', { name: /Mes créneaux/ })).toBeVisible();
+    const jeton = await jetonAdministrateur();
+    const admin = (chemin: string) =>
+      fetch(`${KEYCLOAK_URL}/admin/realms/${ROYAUME}${chemin}`, {
+        headers: { authorization: `Bearer ${jeton}` },
+      }).then((r) => r.json());
+    const [compte] = (await admin(
+      `/users?username=${monde.inscription?.identifiant ?? ''}&exact=true`,
+    )) as { id: string }[];
+    const roles = (
+      (await admin(`/users/${compte?.id ?? ''}/role-mappings/realm`)) as { name: string }[]
+    ).map((r) => r.name);
+    expect(roles).toContain('professionnel');
+    expect(roles).not.toContain('professionnel-candidat');
+  },
+);

@@ -874,7 +874,7 @@
     },
     {
       "alias": "navigateur-mbolo niveau 1",
-      "description": "Identifiant et mot de passe, puis MFA conditionnelle (rôles professionnels et proches).",
+      "description": "Identifiant et mot de passe, puis MFA conditionnelle (rôles professionnels et proches), puis activation d'un professionnel vérifié (ADR-0026).",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
@@ -899,6 +899,13 @@
           "flowAlias": "navigateur-mbolo mfa",
           "requirement": "CONDITIONAL",
           "priority": 30,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "mbolo-activation-professionnel",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 40,
           "userSetupAllowed": false
         }
       ]

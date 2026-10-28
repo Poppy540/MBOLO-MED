@@ -94,6 +94,15 @@ Action requise `mbolo-identite-patient` :
   - `..._IDENTIFIANT_ASSURANCE_SYSTEME` : système du numéro d'assurance du pays (Gabon : CNAMGS). Sans lui, le numéro saisi n'est pas retenu, et un professionnel attribuera un numéro provisoire.
 - **Actions requises du royaume** : déclarer une action dans le royaume supprime celles qui ne sont pas déclarées. Les actions par défaut (dont `CONFIGURE_TOTP`) sont donc listées explicitement, et un test le vérifie.
 
+### Activation d'un professionnel vérifié, à la connexion (ADR-0026)
+
+Authentificateur `mbolo-activation-professionnel`, dernière étape du niveau 1 de `navigateur-mbolo` (après le mot de passe et la double authentification) : pour un compte qui a le rôle d'attente `professionnel-candidat` et une fiche (`practitioner_id`), l'extension lit la fiche par la passerelle (jeton limité à `system/Practitioner.r` et à `Practitioner.active`, `.extension`, `.qualification`, sans cache). Si une personne habilitée l'a vérifiée (fiche active, statut `verifie`, inscription avec numéro, Ordre et fin de validité encore valable : même règle que `praticienVerifie`), le rôle **`professionnel`** remplace le rôle d'attente. Décision du porteur de projet du 2026-10-28 : personne n'attribue ce rôle à la main, aucun service n'a de droit d'administration sur les comptes.
+
+- **N'empêche jamais la connexion** : fiche non vérifiée, dossier injoignable ou autre type de compte → rien ne change.
+- Une session déjà ouverte n'est pas modifiée : le candidat se déconnecte puis se reconnecte après la décision.
+- Journal : le compte et la fiche activés, rien d'autre.
+- Configuration : `KC_SPI_AUTHENTICATOR_MBOLO_ACTIVATION_PROFESSIONNEL_DOSSIER_URL` (passerelle, suivie de `/fhir/`) ; sans elle, aucune activation.
+
 ### Mot de passe oublié d'un patient sans e-mail (ADR-0021)
 
 Flux `identifiants-oublies-mbolo` (`resetCredentialsFlow`), **sans aucun e-mail** :

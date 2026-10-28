@@ -13,8 +13,9 @@ import java.util.regex.Pattern;
 import org.keycloak.util.JsonSerialization;
 
 /**
- * Création du {@code Patient} dans le dossier FHIR, par la passerelle (ADR-0010), avec un jeton de
- * service limité à {@code system/Patient.c}. Rien n'est lu : l'extension ne voit aucun autre dossier.
+ * Accès au dossier FHIR par la passerelle (ADR-0010), avec des jetons de service limités à chaque
+ * usage : création du {@code Patient} ({@code system/Patient.c}), numéro du patient, et lecture du
+ * statut de la fiche d'un professionnel (ADR-0026). Aucune donnée de santé n'est lue.
  */
 public final class ClientDossier {
 
@@ -50,6 +51,37 @@ public final class ClientDossier {
       Object id = JsonSerialization.readValue(r.body(), Map.class).get("id");
       return id instanceof String s && IDENTIFIANT.matcher(s).matches()
           ? Optional.of(s)
+          : Optional.empty();
+    } catch (IOException | RuntimeException e) {
+      return Optional.empty();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Fiche d'un professionnel (ADR-0026), lue sans cache (une décision récente doit être vue) avec un
+   * jeton limité à la lecture de son statut, de son activation et de son inscription ; vide si la
+   * fiche est inconnue, refusée par la passerelle ou si le dossier est injoignable.
+   */
+  public Optional<Map<String, Object>> lirePraticien(String practitionerId) {
+    if (!IDENTIFIANT.matcher(practitionerId).matches()) return Optional.empty();
+    try {
+      HttpRequest requete =
+          HttpRequest.newBuilder(base.resolve("Practitioner/" + practitionerId))
+              .timeout(DELAI)
+              .header("accept", "application/fhir+json")
+              .header("cache-control", "no-cache")
+              .header("authorization", "Bearer " + jeton.get())
+              .GET()
+              .build();
+      HttpResponse<String> r = http.send(requete, HttpResponse.BodyHandlers.ofString());
+      if (r.statusCode() != 200) return Optional.empty();
+      @SuppressWarnings("unchecked")
+      Map<String, Object> fiche = JsonSerialization.readValue(r.body(), Map.class);
+      return "Practitioner".equals(fiche.get("resourceType")) && practitionerId.equals(fiche.get("id"))
+          ? Optional.of(fiche)
           : Optional.empty();
     } catch (IOException | RuntimeException e) {
       return Optional.empty();

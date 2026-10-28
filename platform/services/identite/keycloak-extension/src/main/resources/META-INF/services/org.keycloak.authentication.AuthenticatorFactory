@@ -1,2 +1,3 @@
 sante.mbolo.keycloak.CodeRecuperationAuthenticator
 sante.mbolo.keycloak.CodeSmsAuthenticator
+sante.mbolo.keycloak.ActivationProfessionnelAuthenticator
