@@ -403,3 +403,131 @@ When(
     await expect(diplome).toContainText('1 photo envoyée');
   },
 );
+
+// ── Vérification par une personne habilitée (ADR-0026, étape 4) ───────────────
+
+When(
+  'le candidat accepte la charte, déclare son inscription et dépose ses trois pièces',
+  async ({ monde }) => {
+    const jeton = monde.inscription?.jeton ?? '';
+    const charte = await candidature(jeton, '/charte', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ version: VERSION_CHARTE_PRO, accepte: true }),
+    });
+    expect(charte.status).toBe(204);
+    expect((await declarer(jeton, DECLARATION)).status).toBe(204);
+    for (const [type, teinte] of [
+      ['diplome', 40],
+      ['inscription-ordre', 80],
+      ['piece-identite', 120],
+    ] as const) {
+      const r = await candidature(jeton, `/pieces/${type}`, {
+        method: 'POST',
+        headers: { 'content-type': 'image/png' },
+        body: new Uint8Array(pngFictif(teinte, 60, 90)),
+      });
+      expect(r.status).toBe(201);
+    }
+  },
+);
+
+const verification = (monde: Monde, identifiant: string, chemin: string, init: RequestInit = {}) =>
+  fetch(`${DOCUMENTS_URL}/professionnels/${monde.candidat?.practitionerId ?? 'absente'}${chemin}`, {
+    ...init,
+    headers: {
+      authorization: `Bearer ${monde.jetons.get(identifiant) ?? ''}`,
+      ...(init.headers ?? {}),
+    },
+  });
+
+When(
+  '{string} ouvre le dossier du candidat et son diplôme',
+  async ({ monde }, identifiant: string) => {
+    const r = await verification(monde, identifiant, '');
+    expect(r.status).toBe(200);
+    const dossier = (await r.json()) as {
+      statut: string;
+      declaration: { numeroOrdre: string };
+      pieces: { id: string; type: string }[];
+    };
+    expect(dossier.statut).toBe('a-verifier');
+    expect(dossier.declaration.numeroOrdre).toBe(DECLARATION.numeroOrdre);
+    const diplome = dossier.pieces.find((p) => p.type === 'diplome');
+    const photo = await verification(monde, identifiant, `/pieces/${diplome?.id ?? 'absente'}`);
+    expect(photo.status).toBe(200);
+    expect(photo.headers.get('cache-control')).toBe('no-store');
+    expect(photo.headers.get('content-type')).toBe('image/png');
+  },
+);
+
+Then(
+  'chaque consultation est tracée dans le dossier, sur la fiche du candidat',
+  async ({ monde }) => {
+    const r = await fetch(
+      `${FHIR_URL}/AuditEvent?entity=Practitioner/${monde.candidat?.practitionerId ?? 'absente'}`,
+      { headers: { 'cache-control': 'no-cache' } },
+    );
+    expect(r.status).toBe(200);
+    const traces =
+      (
+        (await r.json()) as {
+          entry?: { resource: { entity?: { detail?: { valueString?: string }[] }[] } }[];
+        }
+      ).entry ?? [];
+    const objets = traces.map((e) => e.resource.entity?.[0]?.detail?.[0]?.valueString).sort();
+    expect(objets).toEqual(['diplome', 'dossier']);
+  },
+);
+
+const aujourdhui = () => new Date().toISOString().slice(0, 10);
+const dansUnAn = () => new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10);
+
+When(
+  '{string} vérifie le candidat, les quatre points étant conformes',
+  async ({ monde }, identifiant: string) => {
+    const r = await verification(monde, identifiant, '/decision', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        resultat: 'verifie',
+        controles: ['identite', 'diplome', 'inscription', 'specialite'].map((point) => ({
+          point,
+          source: 'registre-ordre',
+          consulteLe: aujourdhui(),
+          conforme: true,
+        })),
+        validite: { debut: aujourdhui(), fin: dansUnAn() },
+      }),
+    });
+    expect(r.status).toBe(200);
+  },
+);
+
+Then(
+  'la fiche du candidat est active et vérifiée, avec la fin de validité de son inscription',
+  async ({ monde }) => {
+    const r = await fetch(
+      `${FHIR_URL}/Practitioner/${monde.candidat?.practitionerId ?? 'absente'}`,
+      { headers: { 'cache-control': 'no-cache' } },
+    );
+    const p = (await r.json()) as {
+      active?: boolean;
+      extension?: { url: string; valueCode?: string }[];
+      qualification?: { identifier?: { value?: string }[]; period?: { end?: string } }[];
+    };
+    expect(p.active).toBe(true);
+    expect(p.extension?.find((e) => e.url.endsWith('/statut-verification'))?.valueCode).toBe(
+      'verifie',
+    );
+    expect(p.qualification?.[0]?.identifier?.[0]?.value).toBe(DECLARATION.numeroOrdre);
+    expect(p.qualification?.[0]?.period?.end).toBe(dansUnAn());
+  },
+);
+
+Then(
+  'le dossier du candidat est refusé à {string} avec le statut {int}',
+  async ({ monde }, identifiant: string, statut: number) => {
+    expect((await verification(monde, identifiant, '')).status).toBe(statut);
+  },
+);

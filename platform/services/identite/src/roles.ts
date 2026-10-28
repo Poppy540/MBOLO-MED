@@ -41,6 +41,12 @@ export const ROLES = [
    */
   'recrutement',
   /**
+   * Vérification des professionnels de santé (ADR-0026) : examine le dossier d'un candidat, consulte
+   * les sources officielles et décide ; jamais pour un candidat qu'elle a recruté (contrôlé par le
+   * service documents). Aucun accès clinique. Double authentification. Jamais un agent IA.
+   */
+  'verification-professionnels',
+  /**
    * Professionnel qui a créé son compte avec un code d'invitation, en attente de vérification
    * (ADR-0026) : il complète son dossier de candidature, sans aucun accès aux patients.
    */

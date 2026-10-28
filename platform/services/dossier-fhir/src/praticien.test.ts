@@ -2,10 +2,13 @@ import type { Practitioner } from 'fhir/r4.js';
 import { describe, expect, it } from 'vitest';
 import {
   EXTENSION_STATUT_VERIFICATION,
+  activationPraticien,
   declarationDe,
   declarationPraticien,
+  evenementVerificationPro,
   praticien,
   praticienVerifie,
+  statutPraticien,
   statutVerification,
 } from './praticien.js';
 import { valider } from './regles.js';
@@ -140,5 +143,57 @@ describe('Practitioner — déclaration du candidat (ADR-0026, 3b)', () => {
       declarationDe(praticien({ nom: 'C', prenom: 'M', statut: 'a-verifier', env: 'dev' })),
     ).toBeUndefined();
     expect(declarationDe(verifie())).toBeUndefined();
+  });
+});
+
+describe('Practitioner — décision de vérification (ADR-0026, 4)', () => {
+  // Données FICTIVES.
+  const candidat = (): Practitioner => ({
+    ...praticien({ nom: 'Candidat', prenom: 'Médecin', statut: 'a-verifier', env: 'dev' }),
+    ...declarationPraticien({
+      specialite: 'pediatrie',
+      paysOrdre: 'GA',
+      numeroOrdre: 'FICTIF-ORDRE-0003',
+      langues: ['fr'],
+    }),
+  });
+
+  it('activation : fiche active, vérifiée, inscription déclarée avec sa période, valide', () => {
+    const p = candidat();
+    const fiche = { ...p, ...activationPraticien(p, { debut: '2026-10-28', fin: '2027-10-28' }) };
+    expect(valider(fiche, 'dev')).toEqual([]);
+    expect(praticienVerifie(fiche, le('2026-11-01'))).toBe(true);
+    expect(praticienVerifie(fiche, le('2027-11-01'))).toBe(false);
+    expect(fiche.qualification?.[0]?.identifier?.[0]?.value).toBe('FICTIF-ORDRE-0003');
+    expect(fiche.communication).toEqual(p.communication);
+  });
+
+  it('activation refusée sans déclaration ; refus et suspension rendent la fiche inactive', () => {
+    const vide = praticien({ nom: 'C', prenom: 'M', statut: 'a-verifier', env: 'dev' });
+    expect(() => activationPraticien(vide, { debut: '2026-10-28', fin: '2027-10-28' })).toThrow();
+    const p = candidat();
+    const active = { ...p, ...activationPraticien(p, { debut: '2026-10-28', fin: '2027-10-28' }) };
+    const suspendue = { ...active, ...statutPraticien(active, 'suspendu') };
+    expect(suspendue.active).toBe(false);
+    expect(statutVerification(suspendue)).toBe('suspendu');
+    expect(
+      suspendue.extension?.filter((e) => e.url === EXTENSION_STATUT_VERIFICATION),
+    ).toHaveLength(1);
+    expect(valider(suspendue, 'dev')).toEqual([]);
+  });
+
+  it('trace : la fiche du candidat, le sujet de la personne habilitée, sans nom', () => {
+    const e = evenementVerificationPro({
+      practitionerId: 'prac-fictif-candidat',
+      sujet: 'sujet-verificateur-fictif',
+      roles: ['verification-professionnels'],
+      objet: 'diplome',
+      action: 'R',
+      date: '2026-10-28T08:00:00Z',
+      env: 'dev',
+    });
+    expect(e.entity?.[0]?.what?.reference).toBe('Practitioner/prac-fictif-candidat');
+    expect(e.subtype?.[0]?.code).toBe('verification-professionnel');
+    expect(JSON.stringify(e)).not.toContain('Candidat');
   });
 });

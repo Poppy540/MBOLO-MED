@@ -112,6 +112,7 @@ export function deciderAccesDossier(
     u.roles.includes('assistance-patient') ||
     u.roles.includes('validation-reversement') ||
     u.roles.includes('recrutement') ||
+    u.roles.includes('verification-professionnels') ||
     u.roles.includes('professionnel-candidat')
   ) {
     return refus('refus-role-sans-acces-clinique');

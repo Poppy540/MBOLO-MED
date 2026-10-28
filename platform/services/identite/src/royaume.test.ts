@@ -77,6 +77,7 @@ describe('royaume mbolo', () => {
     'validation-reversement',
     // Recrutement et candidat (ADR-0026) : comme tous les professionnels, dès la création du compte.
     'recrutement',
+    'verification-professionnels',
     'professionnel-candidat',
     // Le proche voit des données de santé d'une autre personne (ADR-0019, porteur de projet).
     'proche',
@@ -246,15 +247,17 @@ describe('royaume mbolo', () => {
       'Patient.extension Patient.identifier Patient.name Patient.birthDate ' +
         'Practitioner.active Practitioner.extension Practitioner.qualification Practitioner.communication',
     );
-    // Du professionnel candidat (ADR-0026, 3b), seule sa déclaration (spécialité, Ordre, langues)
-    // est modifiable : jamais son statut ni son activation, réservés à la décision de vérification.
+    // Du professionnel (ADR-0026) : sa déclaration (spécialité, Ordre, langues), modifiée par le
+    // candidat lui-même, puis son statut et son activation, sur décision d'une personne habilitée
+    // (contrôlés par le service documents) ; jamais son nom ni rien d'autre.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements_modifiables')?.config[
         'claim.value'
       ],
     ).toBe(
       'Patient.extension Patient.identifier Patient.telecom ' +
-        'Practitioner.qualification Practitioner.communication',
+        'Practitioner.qualification Practitioner.communication ' +
+        'Practitioner.active Practitioner.extension',
     );
     const audiences = (id: string) =>
       (royaume.clients.find((x) => x.clientId === id)?.protocolMappers ?? [])

@@ -323,10 +323,12 @@ export default async function preparationGlobale(): Promise<void> {
     }[];
     if (!cree) throw new Error(`Création du compte ${c.identifiant} impossible.`);
     sujets[c.identifiant] = cree.id;
-    const role = await (await admin(`/roles/${c.role}`)).json();
+    const roles = await Promise.all(
+      [c.role, ...(c.autresRoles ?? [])].map(async (r) => (await admin(`/roles/${r}`)).json()),
+    );
     await admin(`/users/${cree.id}/role-mappings/realm`, {
       method: 'POST',
-      body: JSON.stringify([role]),
+      body: JSON.stringify(roles),
     });
   }
   await preparerDrapeaux(sujets);

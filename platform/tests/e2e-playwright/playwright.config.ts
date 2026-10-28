@@ -202,6 +202,8 @@ export default defineConfig({
         // Téléphone perdu (ADR-0023) : alerte à l'ancien numéro avant tout changement ; en CI,
         // Keycloak (conteneur) ouvre la demande.
         NOTIFICATIONS_URL,
+        // Vérification des professionnels (ADR-0026) : qui a recruté une fiche.
+        INVITATIONS_URL,
         DOCUMENTS_HOST: process.env['DOCUMENTS_HOST'] ?? '127.0.0.1',
         UNLEASH_API_URL: UNLEASH_URL,
         UNLEASH_BACKEND_TOKEN: process.env['UNLEASH_BACKEND_TOKEN'] ?? '',
