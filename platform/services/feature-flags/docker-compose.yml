@@ -15,7 +15,7 @@ services:
       interval: 3s
       retries: 20
   unleash:
-    image: unleashorg/unleash-server:8.2.0
+    image: unleashorg/unleash-server:8.2.1
     depends_on:
       base:
         condition: service_healthy
