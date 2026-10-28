@@ -100,4 +100,26 @@ class ClientDossierTest {
     assertTrue(!client().modifierTelephone("../Practitioner/x", "+241 00 00 00 09"));
     assertEquals(0, requetes.stream().filter(r -> r.contains("Practitioner")).count());
   }
+
+  @Test
+  void litLaFicheDuProfessionnelSansCache() {
+    statut = 200;
+    reponse = "{\"resourceType\":\"Practitioner\",\"id\":\"prac-fictif-9\",\"active\":true}";
+    assertEquals(Optional.of(true), client().lirePraticien("prac-fictif-9").map(f -> f.get("active")));
+    assertTrue(requetes.get(0).startsWith("GET /fhir/Practitioner/prac-fictif-9 Bearer jeton-fictif"));
+  }
+
+  @Test
+  void ficheIntrouvableAutreOuIdentifiantDouteuxDonnentRien() {
+    statut = 404;
+    assertEquals(Optional.empty(), client().lirePraticien("prac-fictif-9"));
+    statut = 200;
+    reponse = "{\"resourceType\":\"Practitioner\",\"id\":\"prac-autre\"}";
+    assertEquals(Optional.empty(), client().lirePraticien("prac-fictif-9"));
+    reponse = "{\"resourceType\":\"Patient\",\"id\":\"prac-fictif-9\"}";
+    assertEquals(Optional.empty(), client().lirePraticien("prac-fictif-9"));
+    int avant = requetes.size();
+    assertEquals(Optional.empty(), client().lirePraticien("../Patient/x"));
+    assertEquals(avant, requetes.size());
+  }
 }

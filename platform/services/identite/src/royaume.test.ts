@@ -135,11 +135,13 @@ describe('royaume mbolo', () => {
       { etape: 'navigateur-mbolo niveau 1', exigence: 'CONDITIONAL', config: undefined },
       { etape: 'navigateur-mbolo niveau 2', exigence: 'CONDITIONAL', config: undefined },
     ]);
-    // Niveau 1 : mot de passe, puis OTP pour les rôles professionnels (inchangé).
+    // Niveau 1 : mot de passe, puis OTP pour les rôles professionnels, puis activation d'un
+    // candidat vérifié (ADR-0026) : seulement après les deux facteurs, et sans jamais bloquer.
     expect(executions('navigateur-mbolo niveau 1')).toEqual([
       { etape: 'conditional-level-of-authentication', exigence: 'REQUIRED', config: 'niveau-1' },
       { etape: 'auth-username-password-form', exigence: 'REQUIRED', config: undefined },
       { etape: 'navigateur-mbolo mfa', exigence: 'CONDITIONAL', config: undefined },
+      { etape: 'mbolo-activation-professionnel', exigence: 'REQUIRED', config: undefined },
     ]);
     // Niveau 2 : seulement quand l'application le demande, avant une action sensible.
     expect(executions('navigateur-mbolo niveau 2')).toEqual([

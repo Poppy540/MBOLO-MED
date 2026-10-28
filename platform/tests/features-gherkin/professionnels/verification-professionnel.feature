@@ -17,6 +17,8 @@ Fonctionnalité: Une personne habilitée vérifie le dossier d'un professionnel 
     Alors chaque consultation est tracée dans le dossier, sur la fiche du candidat
     Quand "verificateur-pro-fictif-01" vérifie le candidat, les quatre points étant conformes
     Alors la fiche du candidat est active et vérifiée, avec la fin de validité de son inscription
+    Quand le candidat se reconnecte à l’espace professionnel
+    Alors il arrive sur ses rendez-vous, avec le rôle professionnel et sans le rôle d’attente
 
   Scénario: Personne ne vérifie un candidat qu'il a recruté, ni sans le rôle de vérification
     Étant donné que "verificateur-pro-fictif-01" est connecté
