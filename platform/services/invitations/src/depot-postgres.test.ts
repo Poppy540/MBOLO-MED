@@ -219,6 +219,11 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)('dépôt PostgreSQL des invitatio
     const cree = codes[resultats.indexOf('cree')];
     const trouve = await depot.trouver(cree?.empreinte ?? Buffer.alloc(0));
     expect(trouve).toMatchObject({ type: 'professionnel', practitionerId: cree?.practitionerId });
+    // Séparation des tâches : le recruteur de la fiche est retrouvé, une fiche inconnue n'en a aucun.
+    expect(await depot.recruteursDe(cree?.practitionerId ?? '')).toEqual([
+      'sujet-recruteur-fictif',
+    ]);
+    expect(await depot.recruteursDe('prac-inconnu-fictif')).toEqual([]);
     // La fiche du candidat est obligatoire pour un code de professionnel (contrainte de la table).
     await expect(
       execution`insert into invitations.codes (id, empreinte, cohorte, type, cree_par, cree_le, expire_le)

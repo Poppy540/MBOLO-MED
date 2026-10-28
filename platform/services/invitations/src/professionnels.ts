@@ -168,6 +168,15 @@ export class ServiceRecrutement {
     }));
   }
 
+  /**
+   * Séparation des tâches (ADR-0026) : comptes qui ont recruté cette fiche, pour que le service
+   * documents refuse qu'ils la vérifient. Réservé au compte de service documents (contrôlé par la
+   * route), sans flag : la vérification doit rester possible même si les invitations sont fermées.
+   */
+  async recruteursDe(practitionerId: string): Promise<string[]> {
+    return this.depot.recruteursDe(practitionerId);
+  }
+
   /** Révoque un code encore inutilisé ; la fiche inactive reste dans le dossier (jamais supprimée). */
   async revoquer(u: Utilisateur, id: string): Promise<void> {
     await this.exigerRecruteur(u);

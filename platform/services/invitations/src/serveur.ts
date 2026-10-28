@@ -53,6 +53,11 @@ export async function creerServeur(o: {
   assistance?: ServiceAssistance;
   /** Invitation des professionnels (ADR-0026) ; sans lui, les routes /professionnels sont absentes. */
   recrutement?: ServiceRecrutement;
+  /**
+   * Jetons du compte de service documents (séparation des tâches, ADR-0026) ; distinct de
+   * `verifierService` : ni l'extension Keycloak ni un autre service n'obtient les recruteurs.
+   */
+  verifierDocuments?: VerifierService;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
@@ -361,6 +366,40 @@ export async function creerServeur(o: {
         return { statut: 'revoque' };
       },
     );
+
+    const verifierDocuments = o.verifierDocuments;
+    if (verifierDocuments) {
+      // Le service documents refuse qu'un recruteur vérifie le candidat qu'il a invité (ADR-0026).
+      // Sujets techniques seulement (jamais de nom) ; tableau vide si la fiche est inconnue.
+      app.get<{ Params: { practitionerId: string } }>(
+        '/service/professionnels/:practitionerId/recruteurs',
+        {
+          schema: {
+            params: {
+              type: 'object',
+              required: ['practitionerId'],
+              properties: { practitionerId: { type: 'string', pattern: '^[A-Za-z0-9.-]{1,64}$' } },
+            },
+          },
+        },
+        async (req) => {
+          const entete = req.headers.authorization;
+          if (!entete?.startsWith('Bearer ')) throw new ErreurAuthentification();
+          let appelant: string;
+          try {
+            appelant = await verifierDocuments(entete.slice('Bearer '.length));
+          } catch {
+            throw new ErreurAuthentification();
+          }
+          const recruteurs = await recrutement.recruteursDe(req.params.practitionerId);
+          o.journal.info('recruteurs d’une fiche demandés', {
+            appelant,
+            practitionerId: req.params.practitionerId,
+          });
+          return { recruteurs };
+        },
+      );
+    }
   }
 
   const proches = o.proches;

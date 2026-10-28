@@ -263,9 +263,11 @@ describe('royaume mbolo', () => {
     expect(audiences('mbolo-app-patient')).toContain('mbolo-documents-api');
     // L'espace professionnel l'appelle aussi : écran du vérificateur (rôle verification-identite).
     expect(audiences('mbolo-app-pro')).toContain('mbolo-documents-api');
-    // Alerte à l'ancien numéro après une perte : le dossier et les notifications, rien d'autre.
+    // Alerte à l'ancien numéro après une perte (notifications) ; recruteurs d'une fiche, pour la
+    // séparation des tâches de la vérification des professionnels (invitations, ADR-0026).
     expect(audiences('mbolo-documents-service').sort()).toEqual([
       'mbolo-dossier-fhir',
+      'mbolo-invitations-api',
       'mbolo-notifications',
     ]);
   });

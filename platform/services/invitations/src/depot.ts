@@ -97,6 +97,8 @@ export interface DepotInvitations {
   listerProfessionnels(limite: number): Promise<Invitation[]>;
   /** Révoque le code encore inutilisé d'un professionnel ; `false` sinon (ou autre type de code). */
   revoquerProfessionnel(id: string, maintenant: Date): Promise<boolean>;
+  /** Comptes qui ont invité cette fiche de professionnel (séparation des tâches, ADR-0026). */
+  recruteursDe(practitionerId: string): Promise<string[]>;
 }
 
 export class DepotMemoire implements DepotInvitations {
@@ -240,6 +242,16 @@ export class DepotMemoire implements DepotInvitations {
     if (!i || i.utiliseLe || i.revoqueLe) return false;
     i.revoqueLe = maintenant;
     return true;
+  }
+
+  async recruteursDe(practitionerId: string): Promise<string[]> {
+    return [
+      ...new Set(
+        this.invitations
+          .filter((x) => x.type === 'professionnel' && x.practitionerId === practitionerId)
+          .map((x) => x.creePar),
+      ),
+    ];
   }
 }
 
@@ -438,5 +450,12 @@ export class DepotPostgres implements DepotInvitations {
       update invitations.codes set revoque_le = ${maintenant}
        where id = ${id} and type = 'professionnel' and utilise_le is null and revoque_le is null`;
     return r.count === 1;
+  }
+
+  async recruteursDe(practitionerId: string): Promise<string[]> {
+    const lignes = await this.sql<{ cree_par: string }[]>`
+      select distinct cree_par from invitations.codes
+       where type = 'professionnel' and practitioner_id = ${practitionerId}`;
+    return lignes.map((l) => l.cree_par);
   }
 }
