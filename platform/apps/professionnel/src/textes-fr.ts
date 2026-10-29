@@ -21,6 +21,7 @@ export const fr = {
   'menu.rendezVous': 'Rendez-vous',
   'menu.creneaux': 'Mes créneaux',
   'menu.verifications': 'Vérifications',
+  'menu.verificationsPro': 'Professionnels',
   'menu.pertes': 'Numéros perdus',
   'menu.remboursements': 'Remboursements',
   'menu.assistance': 'Assistance',

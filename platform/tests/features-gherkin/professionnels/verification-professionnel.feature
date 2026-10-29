@@ -12,10 +12,13 @@ Fonctionnalité: Une personne habilitée vérifie le dossier d'un professionnel 
     Et que "recruteur-fictif-01" invite le professionnel "Fictif" "Verifie"
     Et que le candidat crée son compte avec ce code et configure la double authentification
     Et que le candidat accepte la charte, déclare son inscription et dépose ses trois pièces
-    Et que "verificateur-pro-fictif-01" est connecté
-    Quand "verificateur-pro-fictif-01" ouvre le dossier du candidat et son diplôme
+    Et que "verificateur-pro-fictif-01" ouvre les professionnels à vérifier dans l’espace professionnel
+    Quand la personne habilitée ouvre le dossier du candidat
+    Alors dans l’"espace professionnel", le focus est sur le titre "Candidat"
+    Quand elle regarde la photo de son diplôme
     Alors chaque consultation est tracée dans le dossier, sur la fiche du candidat
-    Quand "verificateur-pro-fictif-01" vérifie le candidat, les quatre points étant conformes
+    Et l’écran de l’"espace professionnel" respecte les règles d’accessibilité
+    Quand elle vérifie le candidat, les quatre points étant conformes, et confirme
     Alors la fiche du candidat est active et vérifiée, avec la fin de validité de son inscription
     Quand le candidat se reconnecte à l’espace professionnel
     Alors il arrive sur ses rendez-vous, avec le rôle professionnel et sans le rôle d’attente

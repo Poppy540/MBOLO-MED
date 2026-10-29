@@ -15,7 +15,7 @@ import {
   ROYAUME,
   TELECONSULTATION_URL,
 } from '../configuration.js';
-import { Then, When, type Monde } from './fixtures.js';
+import { Then, When, saisirIdentifiants, type Monde } from './fixtures.js';
 import { pngFictif } from './documents.js';
 import { codeUnique, retenirSecret } from './totp.js';
 
@@ -441,26 +441,6 @@ const verification = (monde: Monde, identifiant: string, chemin: string, init: R
     },
   });
 
-When(
-  '{string} ouvre le dossier du candidat et son diplôme',
-  async ({ monde }, identifiant: string) => {
-    const r = await verification(monde, identifiant, '');
-    expect(r.status).toBe(200);
-    const dossier = (await r.json()) as {
-      statut: string;
-      declaration: { numeroOrdre: string };
-      pieces: { id: string; type: string }[];
-    };
-    expect(dossier.statut).toBe('a-verifier');
-    expect(dossier.declaration.numeroOrdre).toBe(DECLARATION.numeroOrdre);
-    const diplome = dossier.pieces.find((p) => p.type === 'diplome');
-    const photo = await verification(monde, identifiant, `/pieces/${diplome?.id ?? 'absente'}`);
-    expect(photo.status).toBe(200);
-    expect(photo.headers.get('cache-control')).toBe('no-store');
-    expect(photo.headers.get('content-type')).toBe('image/png');
-  },
-);
-
 Then(
   'chaque consultation est tracée dans le dossier, sur la fiche du candidat',
   async ({ monde }) => {
@@ -482,27 +462,6 @@ Then(
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 const dansUnAn = () => new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10);
-
-When(
-  '{string} vérifie le candidat, les quatre points étant conformes',
-  async ({ monde }, identifiant: string) => {
-    const r = await verification(monde, identifiant, '/decision', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        resultat: 'verifie',
-        controles: ['identite', 'diplome', 'inscription', 'specialite'].map((point) => ({
-          point,
-          source: 'registre-ordre',
-          consulteLe: aujourdhui(),
-          conforme: true,
-        })),
-        validite: { debut: aujourdhui(), fin: dansUnAn() },
-      }),
-    });
-    expect(r.status).toBe(200);
-  },
-);
 
 Then(
   'la fiche du candidat est active et vérifiée, avec la fin de validité de son inscription',
@@ -572,5 +531,56 @@ Then(
     ).map((r) => r.name);
     expect(roles).toContain('professionnel');
     expect(roles).not.toContain('professionnel-candidat');
+  },
+);
+
+// ── Écran « Professionnels à vérifier » (ADR-0026, étape 4c) ───────────────────
+
+When(
+  '{string} ouvre les professionnels à vérifier dans l’espace professionnel',
+  async ({ monde, browser }: { monde: Monde; browser: Browser }, identifiant: string) => {
+    const contexte = await browser.newContext();
+    const p = await contexte.newPage();
+    monde.visio.set(PRO, { contexte, page: p });
+    await p.goto(`${APP_PRO_URL}/`);
+    await p.getByRole('button', { name: 'Se connecter' }).click();
+    await saisirIdentifiants(p, identifiant, true);
+    await expect(p.getByRole('heading', { name: 'Professionnels à vérifier' })).toBeVisible();
+  },
+);
+
+When('la personne habilitée ouvre le dossier du candidat', async ({ monde }) => {
+  const p = pagePro(monde);
+  await p.locator(`button[data-fiche="${monde.candidat?.practitionerId ?? 'absente'}"]`).click();
+  await expect(p.getByRole('heading', { name: 'Candidat' })).toBeVisible();
+  await expect(p.getByText(DECLARATION.numeroOrdre)).toBeVisible();
+});
+
+When('elle regarde la photo de son diplôme', async ({ monde }) => {
+  const p = pagePro(monde);
+  const diplome = p.locator('figure[data-piece=diplome]');
+  await diplome.getByRole('button', { name: 'Voir' }).click();
+  const img = diplome.getByRole('img', { name: /^Photo/ });
+  await expect(img).toBeVisible();
+  // La photo est réellement affichée (déchiffrée et décodée par le navigateur).
+  await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
+});
+
+When(
+  'elle vérifie le candidat, les quatre points étant conformes, et confirme',
+  async ({ monde }) => {
+    const p = pagePro(monde);
+    await p.getByLabel('Vérifié').check();
+    for (const point of ['identite', 'diplome', 'inscription', 'specialite']) {
+      const bloc = p.locator(`fieldset[data-point=${point}]`);
+      await bloc.getByLabel('Source consultée').selectOption('registre-ordre');
+      await bloc.getByLabel('Conforme').check();
+    }
+    await p.getByLabel('Début').fill(aujourdhui());
+    await p.getByLabel(/^Fin/).fill(dansUnAn());
+    await p.getByRole('button', { name: 'Enregistrer la décision' }).click();
+    await p.getByRole('button', { name: 'Confirmer : Vérifié' }).click();
+    await expect(p.getByRole('alert')).toContainText('Décision enregistrée.');
+    await expect(p.getByRole('heading', { name: 'Professionnels à vérifier' })).toBeVisible();
   },
 );

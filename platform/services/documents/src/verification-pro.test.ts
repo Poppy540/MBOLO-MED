@@ -185,6 +185,7 @@ describe('vérification des professionnels (ADR-0026, étape 4)', () => {
     }>();
     expect(dossier.nom).toBe('Fictif');
     expect(dossier.declaration.numeroOrdre).toBe('FICTIF-ORDRE-0004');
+    expect(dossier.declaration).toMatchObject({ specialiteLibelle: 'Pédiatrie' });
     expect(dossier.pieces.map((p) => p.type).sort()).toEqual([
       'diplome',
       'inscription-ordre',
