@@ -13,6 +13,7 @@ import type { Sql } from '@mbolo/base-donnees';
 import {
   activationPraticien,
   declarationDe,
+  SPECIALITES,
   evenementVerificationPro,
   statutPraticien,
   statutVerification,
@@ -108,7 +109,7 @@ export interface DossierCandidat {
   statut: StatutVerificationPro | 'inconnu';
   nom?: string;
   prenoms: string[];
-  declaration?: Declaration;
+  declaration?: Declaration & { specialiteLibelle: string };
   pieces: { id: string; type: TypePiece; deposeLe: string }[];
   decisions: { resultat: ResultatPro; motif?: MotifRefusPro; decideLe: string }[];
 }
@@ -199,7 +200,11 @@ export class ServiceVerificationPro {
       statut: statutVerification(lue.fiche) ?? 'inconnu',
       ...(nom?.family ? { nom: nom.family } : {}),
       prenoms: nom?.given ?? [],
-      ...(declaration ? { declaration } : {}),
+      ...(declaration
+        ? {
+            declaration: { ...declaration, specialiteLibelle: SPECIALITES[declaration.specialite] },
+          }
+        : {}),
       pieces: (await this.candidatures.piecesDe(practitionerId)).map((p) => ({
         id: p.id,
         type: p.type,

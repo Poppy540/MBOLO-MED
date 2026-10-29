@@ -51,7 +51,8 @@ type Ecran =
   | { nom: 'pertes' }
   | { nom: 'remboursements' }
   | { nom: 'assistance' }
-  | { nom: 'candidature' };
+  | { nom: 'candidature' }
+  | { nom: 'verifications-pro' };
 
 /** Rôles du compte connecté (jeton Keycloak) : l'affichage suit, le service décide. */
 const roles = (): string[] => {
@@ -59,6 +60,8 @@ const roles = (): string[] => {
   return (r as { roles?: string[] } | undefined)?.roles ?? [];
 };
 const estVerificateur = () => roles().includes('verification-identite');
+/** Vérification des professionnels candidats (ADR-0026). */
+const estVerificateurPro = () => roles().includes('verification-professionnels');
 const estValideur = () => roles().includes('validation-remboursement');
 const estAssistant = () => roles().includes('assistance-patient');
 const estSoignant = () => roles().some((r) => r === 'professionnel' || r === 'infirmier');
@@ -85,11 +88,13 @@ export function App() {
                 ? { nom: 'rendez-vous' }
                 : estVerificateur()
                   ? { nom: 'verifications' }
-                  : estValideur()
-                    ? { nom: 'remboursements' }
-                    : estAssistant()
-                      ? { nom: 'assistance' }
-                      : { nom: 'rendez-vous' },
+                  : estVerificateurPro()
+                    ? { nom: 'verifications-pro' }
+                    : estValideur()
+                      ? { nom: 'remboursements' }
+                      : estAssistant()
+                        ? { nom: 'assistance' }
+                        : { nom: 'rendez-vous' },
           );
         }
       })
@@ -131,11 +136,16 @@ export function App() {
         (ecran.nom === 'rendez-vous' ||
           ecran.nom === 'creneaux' ||
           ecran.nom === 'verifications' ||
+          ecran.nom === 'verifications-pro' ||
           ecran.nom === 'pertes' ||
           ecran.nom === 'remboursements' ||
           ecran.nom === 'assistance') && (
           <nav class="actions">
-            {(estSoignant() || (!estVerificateur() && !estValideur() && !estAssistant())) && (
+            {(estSoignant() ||
+              (!estVerificateur() &&
+                !estVerificateurPro() &&
+                !estValideur() &&
+                !estAssistant())) && (
               <>
                 <button
                   class={ecran.nom === 'rendez-vous' ? 'principal' : ''}
@@ -165,6 +175,14 @@ export function App() {
                 onClick={() => allerA({ nom: 'pertes' })}
               >
                 <span aria-hidden="true">📱</span> {t('menu.pertes')}
+              </button>
+            )}
+            {estVerificateurPro() && (
+              <button
+                class={ecran.nom === 'verifications-pro' ? 'principal' : ''}
+                onClick={() => allerA({ nom: 'verifications-pro' })}
+              >
+                <span aria-hidden="true">🩺</span> {t('menu.verificationsPro')}
               </button>
             )}
             {estValideur() && (
@@ -224,6 +242,8 @@ export function App() {
         <EcranRemboursements signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'assistance' ? (
         <EcranAssistance signaler={(m) => setMessage(m)} />
+      ) : ecran.nom === 'verifications-pro' ? (
+        <EcranVerificationsPro signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'candidature' ? (
         <EcranCandidature signaler={(m) => setMessage(m)} />
       ) : ecran.nom === 'report' ? (
@@ -302,6 +322,26 @@ function EcranAssistance(p: { signaler: (m?: string) => void }) {
   }, []);
   return Ecran && jeton ? (
     <Ecran jeton={jeton} signaler={p.signaler} />
+  ) : (
+    <p aria-live="polite">{t('commun.chargement')}</p>
+  );
+}
+
+/** Vérification des professionnels candidats (ADR-0026) ; écran chargé à la demande. */
+function EcranVerificationsPro(p: { signaler: (m?: string) => void }) {
+  type Props = {
+    jeton: string;
+    quand: (iso: string) => string;
+    signaler: (m?: string) => void;
+  };
+  const [Ecran, setEcran] = useState<ComponentType<Props>>();
+  useEffect(() => {
+    import('./verification-pro.js')
+      .then((m) => setEcran(() => m.VerificationPro))
+      .catch(() => p.signaler(t('commun.pasDeReseau')));
+  }, []);
+  return Ecran && jeton ? (
+    <Ecran jeton={jeton} quand={quand} signaler={p.signaler} />
   ) : (
     <p aria-live="polite">{t('commun.chargement')}</p>
   );
