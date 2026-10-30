@@ -18,6 +18,8 @@ const RESULTATS = {
   'a-completer': 'resultat.a-completer',
 } as const;
 type Resultat = keyof typeof RESULTATS;
+/** Historique : décisions et suspensions (ADR-0026, étape 5). */
+const HISTORIQUE = { ...RESULTATS, suspendu: 'resultat.suspendu' } as const;
 const POINTS = {
   identite: 'point.identite',
   diplome: 'point.diplome',
@@ -37,6 +39,13 @@ const MOTIFS = {
   'identite-non-confirmee': 'motif.identite-non-confirmee',
   'specialite-non-confirmee': 'motif.specialite-non-confirmee',
   'pieces-non-conformes': 'motif.pieces-non-conformes',
+} as const;
+/** Historique : motifs de refus et de suspension. */
+const MOTIFS_HISTORIQUE = {
+  ...MOTIFS,
+  'signalement-ordre': 'motif.signalement-ordre',
+  'plainte-confirmee': 'motif.plainte-confirmee',
+  'incident-qualite-confirme': 'motif.incident-qualite-confirme',
 } as const;
 const PIECES = {
   diplome: 'piece.diplome',
@@ -65,7 +74,7 @@ interface Dossier {
     langues: string[];
   };
   pieces: { id: string; type: string; deposeLe: string }[];
-  decisions: { resultat: Resultat; motif?: string; decideLe: string }[];
+  decisions: { resultat: keyof typeof HISTORIQUE; motif?: string; decideLe: string }[];
 }
 
 class ErreurVerifPro extends Error {}
@@ -90,6 +99,12 @@ async function appeler(jeton: string, chemin: string, init: RequestInit = {}): P
 }
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
+/** Validité retenue d'un an au plus : on revérifie au moins chaque année (2026-10-29). */
+const dansUnAn = () => {
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+};
 
 export function VerificationPro(p: {
   jeton: string;
@@ -249,9 +264,9 @@ function DossierCandidat(p: {
           <ul>
             {dossier.decisions.map((x) => (
               <li key={x.decideLe}>
-                {p.quand(x.decideLe)} — {t(RESULTATS[x.resultat])}
-                {x.motif && x.motif in MOTIFS
-                  ? ` (${t(MOTIFS[x.motif as keyof typeof MOTIFS])})`
+                {p.quand(x.decideLe)} — {t(HISTORIQUE[x.resultat])}
+                {x.motif && x.motif in MOTIFS_HISTORIQUE
+                  ? ` (${t(MOTIFS_HISTORIQUE[x.motif as keyof typeof MOTIFS_HISTORIQUE])})`
                   : ''}
               </li>
             ))}
@@ -312,7 +327,7 @@ function DossierCandidat(p: {
             <label for="debut">{t('vpro.debut')}</label>
             <input id="debut" name="debut" type="date" required max={aujourdhui()} />
             <label for="fin">{t('vpro.fin')}</label>
-            <input id="fin" name="fin" type="date" required min={aujourdhui()} />
+            <input id="fin" name="fin" type="date" required min={aujourdhui()} max={dansUnAn()} />
           </fieldset>
         )}
         {resultat === 'refuse' && (

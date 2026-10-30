@@ -584,3 +584,51 @@ When(
     await expect(p.getByRole('heading', { name: 'Professionnels à vérifier' })).toBeVisible();
   },
 );
+
+// ── Suspension (ADR-0026, étape 5) ─────────────────────────────────────────────
+
+When(
+  '{string} suspend le professionnel pour un signalement de l’Ordre',
+  async ({ monde }, identifiant: string) => {
+    const r = await verification(monde, identifiant, '/suspension', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ motif: 'signalement-ordre' }),
+    });
+    expect(r.status).toBe(200);
+  },
+);
+
+Then(
+  'la fiche du professionnel est suspendue et inactive, sa déclaration gardée',
+  async ({ monde }) => {
+    const r = await fetch(
+      `${FHIR_URL}/Practitioner/${monde.candidat?.practitionerId ?? 'absente'}`,
+      { headers: { 'cache-control': 'no-cache' } },
+    );
+    const p = (await r.json()) as {
+      active?: boolean;
+      extension?: { url: string; valueCode?: string }[];
+      qualification?: { identifier?: { value?: string }[] }[];
+    };
+    expect(p.active).toBe(false);
+    expect(p.extension?.find((e) => e.url.endsWith('/statut-verification'))?.valueCode).toBe(
+      'suspendu',
+    );
+    expect(p.qualification?.[0]?.identifier?.[0]?.value).toBe(DECLARATION.numeroOrdre);
+  },
+);
+
+Then(
+  'le professionnel revient dans les dossiers à vérifier de {string}',
+  async ({ monde }, identifiant: string) => {
+    const r = await fetch(`${DOCUMENTS_URL}/professionnels/a-verifier`, {
+      headers: { authorization: `Bearer ${monde.jetons.get(identifiant) ?? ''}` },
+    });
+    expect(r.status).toBe(200);
+    const ids = ((await r.json()) as { candidats: { practitionerId: string }[] }).candidats.map(
+      (c) => c.practitionerId,
+    );
+    expect(ids).toContain(monde.candidat?.practitionerId);
+  },
+);

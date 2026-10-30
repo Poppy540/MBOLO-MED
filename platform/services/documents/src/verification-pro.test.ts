@@ -291,6 +291,12 @@ describe('vérification des professionnels (ADR-0026, étape 4)', () => {
         controles: CONTROLES,
         validite: { debut: '2025-01-01', fin: '2026-01-01' },
       },
+      // Plus d'un an : on revérifie au moins chaque année (décision du 2026-10-29).
+      {
+        resultat: 'verifie',
+        controles: CONTROLES,
+        validite: { debut: '2026-10-01', fin: '2027-10-29' },
+      },
       { resultat: 'verifie', controles: CONTROLES },
       { resultat: 'refuse', controles: CONTROLES },
       { resultat: 'a-completer', controles: CONTROLES },
@@ -363,6 +369,16 @@ describe('vérification des professionnels (ADR-0026, étape 4)', () => {
     expect(m.decisions.decisions).toHaveLength(0);
   });
 
+  it('validité d’exactement un an : acceptée', async () => {
+    const m = await monter();
+    const d = await m.decider({
+      resultat: 'verifie',
+      controles: CONTROLES,
+      validite: { debut: '2026-10-01', fin: '2027-10-28' },
+    });
+    expect(d.statusCode).toBe(200);
+  });
+
   it('trace impossible : rien n’est montré', async () => {
     const m = await monter();
     m.fiches.tracer = async () => {
@@ -371,5 +387,94 @@ describe('vérification des professionnels (ADR-0026, étape 4)', () => {
     const r = await m.appel('GET', `/professionnels/${CANDIDAT}`, 'verificateur');
     expect(r.statusCode).toBe(500);
     expect(r.body).not.toContain('FICTIF-ORDRE-0004');
+  });
+});
+
+describe('suspension d’un professionnel vérifié (ADR-0026, étape 5)', () => {
+  const verifier = async (m: Awaited<ReturnType<typeof monter>>) =>
+    expect(
+      (await m.decider({ resultat: 'verifie', controles: CONTROLES, validite: VALIDITE }))
+        .statusCode,
+    ).toBe(200);
+  const suspendre = (m: Awaited<ReturnType<typeof monter>>, compte: string, motif: string) =>
+    m.appel('POST', `/professionnels/${CANDIDAT}/suspension`, compte, { motif });
+
+  it('suspendu : fiche inactive à l’instant, de retour dans la liste, réactivée par une nouvelle vérification', async () => {
+    const m = await monter();
+    await verifier(m);
+    m.horloge.maintenant = new Date('2026-11-02T09:00:00Z');
+    const r = await suspendre(m, 'verificateur', 'signalement-ordre');
+    expect(r.statusCode).toBe(200);
+    const fiche = m.fiches.fiches.get(CANDIDAT);
+    expect(fiche?.active).toBe(false);
+    expect(fiche && statutVerification(fiche)).toBe('suspendu');
+    expect(fiche && praticienVerifie(fiche, m.horloge.maintenant)).toBe(false);
+    // La déclaration et la validité passée restent : rien n'est effacé par une suspension.
+    expect(fiche?.qualification?.[0]?.period?.end).toBe('2027-10-01');
+    expect(m.fiches.traces.at(-1)?.entity?.[0]?.detail?.[0]?.valueString).toBe('suspension');
+    expect(m.decisions.decisions.at(-1)).toMatchObject({
+      resultat: 'suspendu',
+      motif: 'signalement-ordre',
+      controles: [],
+    });
+
+    // Elle revient dans la liste ; seule une vérification complète la réactive.
+    const liste = (await m.appel('GET', '/professionnels/a-verifier', 'verificateur')).json<{
+      candidats: { practitionerId: string }[];
+    }>();
+    expect(liste.candidats.map((c) => c.practitionerId)).toEqual([CANDIDAT]);
+    const dossier = (await m.appel('GET', `/professionnels/${CANDIDAT}`, 'verificateur')).json<{
+      statut: string;
+      decisions: { resultat: string; motif?: string }[];
+    }>();
+    expect(dossier.statut).toBe('suspendu');
+    expect(dossier.decisions[0]).toMatchObject({
+      resultat: 'suspendu',
+      motif: 'signalement-ordre',
+    });
+    // « À compléter » laisse la fiche suspendue et dans la liste.
+    expect(
+      (await m.decider({ resultat: 'a-completer', controles: [], piecesARefaire: ['diplome'] }))
+        .statusCode,
+    ).toBe(200);
+    expect(statutDe(m.fiches)).toBe('suspendu');
+    expect(
+      (await m.appel('GET', '/professionnels/a-verifier', 'verificateur'))
+        .json<{ candidats: { practitionerId: string }[] }>()
+        .candidats.map((c) => c.practitionerId),
+    ).toEqual([CANDIDAT]);
+  });
+
+  it('une suspension ne dépend pas du service invitations', async () => {
+    const m = await monter({ invitationsEnPanne: true });
+    m.fiches.changer(CANDIDAT, {
+      ...(m.fiches.fiches.get(CANDIDAT) ?? {}),
+      ...praticien({ nom: 'Fictif', prenom: 'Amina', statut: 'verifie', env: 'dev' }),
+    });
+    expect((await suspendre(m, 'verificateur', 'plainte-confirmee')).statusCode).toBe(200);
+    expect(statutDe(m.fiches)).toBe('suspendu');
+  });
+
+  it('refuse : fiche non vérifiée (409), motif hors liste ou texte libre (400), autres comptes (403)', async () => {
+    const m = await monter();
+    expect((await suspendre(m, 'verificateur', 'signalement-ordre')).statusCode).toBe(409);
+    await verifier(m);
+    expect((await suspendre(m, 'verificateur', 'autre')).statusCode).toBe(400);
+    expect(
+      (
+        await m.appel('POST', `/professionnels/${CANDIDAT}/suspension`, 'verificateur', {
+          motif: 'plainte-confirmee',
+          commentaire: 'texte libre',
+        })
+      ).statusCode,
+    ).toBe(400);
+    for (const compte of ['candidat', 'identite', 'agent', 'luiMeme']) {
+      expect((await suspendre(m, compte, 'signalement-ordre')).statusCode).toBe(403);
+    }
+    expect((await suspendre(m, '', 'signalement-ordre')).statusCode).toBe(401);
+    expect(statutDe(m.fiches)).toBe('verifie');
+    // Une fois suspendue, une seconde suspension est refusée.
+    expect((await suspendre(m, 'verificateur', 'incident-qualite-confirme')).statusCode).toBe(200);
+    expect((await suspendre(m, 'verificateur', 'signalement-ordre')).statusCode).toBe(409);
   });
 });

@@ -1,6 +1,7 @@
 # language: fr
 # Données FICTIVES uniquement. Règles : ADR-0026 (vérification des professionnels), décisions du
-# porteur de projet du 2026-10-28 (séparation des tâches demandée au service des invitations).
+# porteur de projet du 2026-10-28 (séparation des tâches demandée au service des invitations) et du
+# 2026-10-29 (suspension : seule une nouvelle vérification complète réactive la fiche).
 @professionnels @vague1
 Fonctionnalité: Une personne habilitée vérifie le dossier d'un professionnel candidat
   Afin que seuls des professionnels vérifiés à la source consultent des patients
@@ -22,6 +23,10 @@ Fonctionnalité: Une personne habilitée vérifie le dossier d'un professionnel 
     Alors la fiche du candidat est active et vérifiée, avec la fin de validité de son inscription
     Quand le candidat se reconnecte à l’espace professionnel
     Alors il arrive sur ses rendez-vous, avec le rôle professionnel et sans le rôle d’attente
+    Quand "verificateur-pro-fictif-01" est connecté
+    Et que "verificateur-pro-fictif-01" suspend le professionnel pour un signalement de l’Ordre
+    Alors la fiche du professionnel est suspendue et inactive, sa déclaration gardée
+    Et le professionnel revient dans les dossiers à vérifier de "verificateur-pro-fictif-01"
 
   Scénario: Personne ne vérifie un candidat qu'il a recruté, ni sans le rôle de vérification
     Étant donné que "verificateur-pro-fictif-01" est connecté
