@@ -7,7 +7,7 @@ import {
   creerVerificateur,
   exigerHttps,
 } from '@mbolo/identite';
-import { creerJournal } from '@mbolo/journal-securise';
+import { creerJournal, signalerAlerte } from '@mbolo/journal-securise';
 import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
 import { AnnuaireFhir, AnnuaireMemoire, type Annuaire } from './annuaire.js';
 import { IdentitesFhir, IdentitesMemoire, type Identites } from './identites.js';
@@ -133,6 +133,26 @@ if (paiements) {
       });
   }, intervalle).unref();
 }
+
+// ADR-0026, étape 5 : rendez-vous à venir d'un professionnel suspendu ou à revérifier, signalés à
+// l'équipe assistance-patient (nombre seulement, jamais de patient dans l'alerte), toutes les heures.
+const signalerAReprendre = async (): Promise<void> => {
+  try {
+    const n = (await service.aReprendre()).length;
+    if (n > 0) {
+      signalerAlerte(
+        journal,
+        'rendez-vous-a-reprendre',
+        'rendez-vous à venir chez un professionnel qui n’est plus vérifié',
+        { nombre: n },
+      );
+    }
+  } catch (e) {
+    journal.avertissement('recherche des rendez-vous à reprendre impossible', { err: e });
+  }
+};
+await signalerAReprendre();
+setInterval(() => void signalerAReprendre(), 3_600_000).unref();
 
 // Revue ASVS n°1 (C2) : en production, uniquement des adresses chiffrées (HTTPS, WSS).
 try {

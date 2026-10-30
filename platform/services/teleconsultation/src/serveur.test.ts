@@ -33,6 +33,7 @@ async function serveur(
   return creerServeur({
     verifierJeton: async (j) => {
       if (j === 'medecin') return MEDECIN;
+      if (j === 'assistance') return { sujet: 'u-a1', roles: ['assistance-patient'] };
       if (j !== 'patient') throw new Error('jeton invalide');
       return PATIENT;
     },
@@ -115,5 +116,24 @@ describe('langue préférée du patient (ADR-0025)', () => {
     expect((await choisir(app, 'medecin', { langue: 'fr' })).statusCode).toBe(403);
     expect((await choisir(app, 'anonyme', { langue: 'fr' })).statusCode).toBe(401);
     expect(identites.langues.size).toBe(0);
+  });
+});
+
+describe('API de téléconsultation : rendez-vous à reprendre (ADR-0026, étape 5)', () => {
+  it('pour l’équipe assistance-patient seulement, jamais gardée en cache', async () => {
+    const app = await serveur();
+    const appel = (jeton?: string) =>
+      app.inject({
+        method: 'GET',
+        url: '/assistance/rendez-vous-a-reprendre',
+        headers: jeton ? { authorization: `Bearer ${jeton}` } : {},
+      });
+    const r = await appel('assistance');
+    expect(r.statusCode).toBe(200);
+    expect(r.headers['cache-control']).toBe('no-store');
+    expect(r.json()).toEqual({ rendezVous: [] });
+    expect((await appel('patient')).statusCode).toBe(403);
+    expect((await appel('medecin')).statusCode).toBe(403);
+    expect((await appel()).statusCode).toBe(401);
   });
 });

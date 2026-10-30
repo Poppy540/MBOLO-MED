@@ -686,3 +686,69 @@ describe('annuaire lu dans le dossier (ADR-0026)', () => {
     expect(await lire({ ...verifie, extension: undefined }).fiche).toBeUndefined();
   });
 });
+
+describe('rendez-vous à reprendre par l’équipe (ADR-0026, étape 5)', () => {
+  const assistance: Utilisateur = { sujet: 'u-a1', roles: ['assistance-patient'] };
+
+  async function monterAvecRendezVous() {
+    const fiches = new Map<string, Fiche>([
+      ['prac-fictif-001', { nom: 'Dr Test A [FICTIF]' }],
+      ['prac-fictif-002', { nom: 'Dr Test B [FICTIF]' }],
+    ]);
+    const creneaux = new DepotCreneauxMemoire();
+    const etat = { heure: '2026-09-27T09:00:00Z' };
+    const service = new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      creneaux,
+      salles().f,
+      { estActif: async (nom) => nom !== 'paiement.mobile-money' },
+      () => new Date(etat.heure),
+      undefined,
+      new AnnuaireMemoire(fiches),
+      identitesVerifiees(),
+    );
+    const [a, b, c] = await creneaux.publier('prac-fictif-001', [
+      { debut: '2026-09-29T08:00:00Z', dureeMinutes: 20 },
+      { debut: '2026-09-28T08:00:00Z', dureeMinutes: 20 },
+      { debut: '2026-09-30T08:00:00Z', dureeMinutes: 20 },
+    ]);
+    const [d] = await creneaux.publier('prac-fictif-002', [
+      { debut: '2026-09-28T10:00:00Z', dureeMinutes: 20 },
+    ]);
+    if (!a || !b || !c || !d) throw new Error('créneaux non publiés');
+    const r1 = await service.demander(patient, { creneauId: a.id });
+    const r2 = await service.demander(autrePatient, { creneauId: b.id });
+    const r3 = await service.demander(patient, { creneauId: c.id });
+    await service.demander(autrePatient, { creneauId: d.id });
+    return { service, fiches, etat, r1, r2, r3 };
+  }
+
+  it('liste les rendez-vous à venir du professionnel suspendu, le plus proche d’abord', async () => {
+    const { service, fiches, etat, r1, r2, r3 } = await monterAvecRendezVous();
+    expect(await service.rendezVousAReprendre(assistance)).toEqual([]);
+    fiches.delete('prac-fictif-001');
+    await service.annuler(patient, r3.id);
+    expect(await service.rendezVousAReprendre(assistance)).toEqual([
+      { rendezVousId: r2.id, debut: r2.debut, statut: 'prevu', patientId: 'pat-fictif-002' },
+      { rendezVousId: r1.id, debut: r1.debut, statut: 'prevu', patientId: 'pat-fictif-001' },
+    ]);
+    // Un rendez-vous passé n'est plus à reprendre ; rien n'est annulé automatiquement.
+    etat.heure = '2026-09-28T12:00:00Z';
+    expect((await service.aReprendre()).map((x) => x.rendezVousId)).toEqual([r1.id]);
+    expect((await service.mesRendezVous(patient)).find((x) => x.id === r1.id)?.statut).toBe(
+      'prevu',
+    );
+  });
+
+  it('réservée à l’équipe : patient, professionnel, agent IA refusés (403)', async () => {
+    const { service } = await monterAvecRendezVous();
+    const agent: Utilisateur = {
+      sujet: 'u-agent',
+      roles: ['assistance-patient', 'agent-ia'],
+      agent: { nom: 'agent-01-accueil', patientSession: 'aucune' },
+    };
+    for (const u of [patient, medecin, agent]) {
+      await expect(service.rendezVousAReprendre(u)).rejects.toMatchObject({ statut: 403 });
+    }
+  });
+});
