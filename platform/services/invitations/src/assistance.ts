@@ -13,7 +13,7 @@
 // valable 24 h, qu'elle dicte au patient (ou à son aidant, patient présent) pendant l'appel. Le
 // patient le saisit dans Keycloak pour choisir un nouveau mot de passe ; il est prévenu par SMS.
 import { randomUUID } from 'node:crypto';
-import type { AuditEvent, Patient, RelatedPerson } from 'fhir/r4.js';
+import type { Appointment, AuditEvent, Patient, RelatedPerson } from 'fhir/r4.js';
 import {
   evenementAccesDossier,
   type Environnement,
@@ -36,6 +36,8 @@ export interface DossierAssistance {
   patient(patientId: string): Promise<Patient | undefined>;
   /** Fiches des proches de ce patient (RelatedPerson.patient). */
   prochesDuPatient(patientId: string): Promise<RelatedPerson[]>;
+  /** Rendez-vous (éléments lus : statut, début, participants). */
+  rendezVous(rendezVousId: string): Promise<Appointment | undefined>;
   tracer(trace: AuditEvent): Promise<void>;
 }
 
@@ -142,6 +144,38 @@ export class ServiceAssistance {
       ...(telephone ? { telephone } : {}),
       proches: (await this.aRetirer(p.id)).length,
     };
+  }
+
+  /**
+   * Rendez-vous à reprendre (ADR-0026, étape 5) : le professionnel n'est plus vérifié, l'équipe
+   * rappelle le patient pour lui proposer un autre médecin. Le numéro du dossier n'est donné que
+   * pour un rendez-vous à venir (prévu ou en attente de paiement) ; la demande est tracée dans le
+   * dossier du patient avant que rien ne soit montré.
+   */
+  async rappelRendezVous(
+    u: Utilisateur,
+    rendezVousId: string,
+  ): Promise<{ patientId: string; telephone?: string }> {
+    ServiceAssistance.exiger(u);
+    const r = await this.dossier.rendezVous(rendezVousId);
+    const patientId = r?.participant
+      .map((x) => x.actor?.reference ?? '')
+      .find((ref) => ref.startsWith('Patient/'))
+      ?.slice('Patient/'.length);
+    if (
+      !r ||
+      !patientId ||
+      (r.status !== 'booked' && r.status !== 'pending') ||
+      !r.start ||
+      new Date(r.start).getTime() <= this.horloge().getTime()
+    ) {
+      throw new ErreurProche(404, 'Aucun rendez-vous à venir.');
+    }
+    ServiceAssistance.exiger(u, patientId);
+    await this.tracer(u, patientId, 'rappel-rendez-vous');
+    const p = await this.dossier.patient(patientId);
+    const telephone = p?.telecom?.find((t) => t.system === 'phone' && t.value)?.value;
+    return { patientId, ...(telephone ? { telephone } : {}) };
   }
 
   /**

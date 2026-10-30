@@ -1,5 +1,5 @@
 // Retrait des proches par l'équipe d'assistance (ADR-0019). Données FICTIVES uniquement.
-import type { AuditEvent, Patient, RelatedPerson } from 'fhir/r4.js';
+import type { Appointment, AuditEvent, Patient, RelatedPerson } from 'fhir/r4.js';
 import type { Utilisateur } from '@mbolo/identite';
 import { describe, expect, it } from 'vitest';
 import { ServiceAssistance } from './assistance.js';
@@ -16,6 +16,24 @@ const patient: Patient = {
   telecom: [{ system: 'phone', value: '+241 00 00 00 01' }],
   birthDate: '1990-01-01',
 };
+
+/** [FICTIF] Rendez-vous : à venir, passé, annulé (maintenant = 2026-10-01T08:00Z). */
+const rdv = (id: string, status: Appointment['status'], start: string): Appointment => ({
+  resourceType: 'Appointment',
+  id,
+  status,
+  start,
+  participant: [
+    { actor: { reference: 'Practitioner/prac-fictif-001' }, status: 'accepted' },
+    { actor: { reference: 'Patient/pat-fictif-001' }, status: 'accepted' },
+  ],
+});
+const RENDEZ_VOUS = [
+  rdv('rdv-a-venir', 'booked', '2026-10-03T09:00:00Z'),
+  rdv('rdv-a-payer', 'pending', '2026-10-04T09:00:00Z'),
+  rdv('rdv-passe', 'booked', '2026-09-30T09:00:00Z'),
+  rdv('rdv-annule', 'cancelled', '2026-10-05T09:00:00Z'),
+];
 
 function monter(o: { patients?: Patient[] } = {}) {
   const maintenant = new Date('2026-10-01T08:00:00Z');
@@ -68,6 +86,7 @@ function monter(o: { patients?: Patient[] } = {}) {
       patient: async (id) => patients.find((p) => p.id === id),
       prochesDuPatient: async (id) =>
         [...fiches.values()].filter((f) => f.patient.reference === `Patient/${id}`),
+      rendezVous: async (id) => RENDEZ_VOUS.find((r) => r.id === id),
       tracer: async (t) => {
         traces.push(t);
       },
@@ -202,5 +221,38 @@ describe('ServiceAssistance', () => {
     );
     expect(e.motif).toBe('sans-numero');
     expect(m.retraits).toHaveLength(0);
+  });
+});
+
+describe('rappel d’un patient dont le rendez-vous est à reprendre (ADR-0026, étape 5)', () => {
+  it('numéro du dossier pour un rendez-vous à venir, tracé avant d’être montré', async () => {
+    const m = monter();
+    for (const id of ['rdv-a-venir', 'rdv-a-payer']) {
+      expect(await m.service.rappelRendezVous(assistant, id)).toEqual({
+        patientId: 'pat-fictif-001',
+        telephone: '+241 00 00 00 01',
+      });
+    }
+    expect(m.traces.map(etape)).toEqual(['rappel-rendez-vous', 'rappel-rendez-vous']);
+  });
+
+  it('rendez-vous passé, annulé ou inconnu : rien n’est montré ni tracé (404)', async () => {
+    const m = monter();
+    for (const id of ['rdv-passe', 'rdv-annule', 'rdv-inconnu']) {
+      expect((await echec(m.service.rappelRendezVous(assistant, id))).statut).toBe(404);
+    }
+    expect(m.traces).toHaveLength(0);
+  });
+
+  it('refuse un autre rôle, un agent IA, et le membre de l’équipe pour son propre rendez-vous', async () => {
+    const m = monter();
+    for (const u of [
+      { sujet: 'u-p1', roles: ['patient'], patientId: 'pat-fictif-001' },
+      { sujet: 'u-ia', roles: ['assistance-patient', 'agent-ia'] },
+      { sujet: 'u-assist2', roles: ['assistance-patient'], patientId: 'pat-fictif-001' },
+    ] as Utilisateur[]) {
+      expect((await echec(m.service.rappelRendezVous(u, 'rdv-a-venir'))).statut).toBe(403);
+    }
+    expect(m.traces).toHaveLength(0);
   });
 });

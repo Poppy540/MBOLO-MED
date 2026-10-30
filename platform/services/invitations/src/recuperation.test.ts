@@ -36,6 +36,7 @@ function monter(o: { actif?: () => boolean; sansRecuperation?: boolean } = {}) {
       rechercherPatients: async () => [patient],
       patient: async (id) => (id === patient.id ? patient : undefined),
       prochesDuPatient: async () => [],
+      rendezVous: async () => undefined,
       tracer: async (t) => {
         traces.push(t);
       },
