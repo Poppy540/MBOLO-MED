@@ -233,6 +233,18 @@ export class ServiceVerificationPro {
     return liste;
   }
 
+  /**
+   * Professionnels vérifiés (dernière décision « vérifié »), l'échéance la plus proche d'abord :
+   * pour les suspendre ou préparer leur revérification. Références opaques et fin de validité
+   * seulement, jamais la sienne.
+   */
+  async verifies(u: Utilisateur): Promise<{ practitionerId: string; finValidite: string }[]> {
+    this.exigerRole(u);
+    return (await this.decisions.verifiesJusquau('9999-12-31', 200)).filter(
+      (v) => v.practitionerId !== u.practitionerId,
+    );
+  }
+
   async dossier(u: Utilisateur, practitionerId: string): Promise<DossierCandidat> {
     this.exigerRole(u, practitionerId);
     await this.exigerNonRecruteur(u, practitionerId);

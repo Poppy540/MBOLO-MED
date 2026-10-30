@@ -40,13 +40,14 @@ const MOTIFS = {
   'specialite-non-confirmee': 'motif.specialite-non-confirmee',
   'pieces-non-conformes': 'motif.pieces-non-conformes',
 } as const;
-/** Historique : motifs de refus et de suspension. */
-const MOTIFS_HISTORIQUE = {
-  ...MOTIFS,
+/** Motifs de suspension (ADR-0026, étape 5, liste provisoire du service documents). */
+const MOTIFS_SUSPENSION = {
   'signalement-ordre': 'motif.signalement-ordre',
   'plainte-confirmee': 'motif.plainte-confirmee',
   'incident-qualite-confirme': 'motif.incident-qualite-confirme',
 } as const;
+/** Historique : motifs de refus et de suspension. */
+const MOTIFS_HISTORIQUE = { ...MOTIFS, ...MOTIFS_SUSPENSION } as const;
 const PIECES = {
   diplome: 'piece.diplome',
   'inscription-ordre': 'piece.inscription-ordre',
@@ -60,6 +61,11 @@ const libellePiece = (type: string) =>
 interface EnAttente {
   practitionerId: string;
   depuis: string;
+}
+
+interface Verifie {
+  practitionerId: string;
+  finValidite: string;
 }
 
 interface Dossier {
@@ -99,6 +105,17 @@ async function appeler(jeton: string, chemin: string, init: RequestInit = {}): P
 }
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
+/** Date de fin de validité (AAAA-MM-JJ), avec l'année, dans la langue du pays. */
+const jour = (date: string) =>
+  new Intl.DateTimeFormat(CONFIG.langue, {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(`${date}T00:00:00Z`));
+/** Échéance dans moins de 30 jours : rappel déjà envoyé par la plateforme (ADR-0026, 5c). */
+const echeanceProche = (date: string) =>
+  new Date(`${date}T00:00:00Z`).getTime() - Date.now() < 30 * 86_400_000;
 /** Validité retenue d'un an au plus : on revérifie au moins chaque année (2026-10-29). */
 const dansUnAn = () => {
   const d = new Date();
@@ -112,12 +129,18 @@ export function VerificationPro(p: {
   signaler: (message?: string) => void;
 }) {
   const [liste, setListe] = useState<EnAttente[]>();
+  const [verifies, setVerifies] = useState<Verifie[]>();
   const [choisi, setChoisi] = useState<string>();
   useTitreAuFocus(choisi ?? 'liste');
   const charger = () =>
-    appeler(p.jeton, '/a-verifier')
-      .then(async (r) => setListe(((await r.json()) as { candidats: EnAttente[] }).candidats))
-      .catch((e: unknown) => p.signaler((e as Error).message));
+    Promise.all([
+      appeler(p.jeton, '/a-verifier').then(async (r) =>
+        setListe(((await r.json()) as { candidats: EnAttente[] }).candidats),
+      ),
+      appeler(p.jeton, '/verifies').then(async (r) =>
+        setVerifies(((await r.json()) as { professionnels: Verifie[] }).professionnels),
+      ),
+    ]).catch((e: unknown) => p.signaler((e as Error).message));
   useEffect(() => void charger(), []);
 
   if (choisi) {
@@ -153,7 +176,112 @@ export function VerificationPro(p: {
           ))}
         </ul>
       )}
+      <Verifies
+        jeton={p.jeton}
+        verifies={verifies}
+        signaler={p.signaler}
+        suspendu={(message) => {
+          p.signaler(message);
+          void charger();
+        }}
+      />
     </section>
+  );
+}
+
+/**
+ * Professionnels vérifiés, l'échéance la plus proche d'abord (ADR-0026, étape 5) : suspension
+ * avec un motif de la liste, préparée puis confirmée (deux clics). Une nouvelle vérification
+ * complète, depuis la liste ci-dessus, la lèvera.
+ */
+function Verifies(p: {
+  jeton: string;
+  verifies: Verifie[] | undefined;
+  signaler: (message?: string) => void;
+  suspendu: (message: string) => void;
+}) {
+  const [aSuspendre, setASuspendre] = useState<string>();
+  const [motif, setMotif] = useState<string>();
+  const [envoi, setEnvoi] = useState(false);
+  const annuler = () => {
+    setASuspendre(undefined);
+    setMotif(undefined);
+  };
+  const confirmer = async (practitionerId: string) => {
+    setEnvoi(true);
+    try {
+      await appeler(p.jeton, `/${encodeURIComponent(practitionerId)}/suspension`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ motif }),
+      });
+      annuler();
+      p.suspendu(t('vpro.suspendu'));
+    } catch (e) {
+      p.signaler((e as Error).message);
+      setMotif(undefined);
+    } finally {
+      setEnvoi(false);
+    }
+  };
+  if (p.verifies === undefined) return null;
+  return (
+    <>
+      <h3>{t('vpro.verifies')}</h3>
+      {p.verifies.length === 0 ? (
+        <p>{t('vpro.aucunVerifie')}</p>
+      ) : (
+        <ul class="liste" aria-label={t('vpro.verifies')}>
+          {p.verifies.map((v) => (
+            <li key={v.practitionerId} data-verifie={v.practitionerId}>
+              {t('vpro.verifieJusquau', { fiche: v.practitionerId, date: jour(v.finValidite) })}
+              {echeanceProche(v.finValidite) && <strong> — {t('vpro.echeanceProche')}</strong>}
+              {aSuspendre !== v.practitionerId ? (
+                <button type="button" onClick={() => setASuspendre(v.practitionerId)}>
+                  {t('vpro.suspendre')}
+                </button>
+              ) : motif ? (
+                <div class="actions">
+                  <button
+                    class="principal"
+                    type="button"
+                    disabled={envoi}
+                    onClick={() => void confirmer(v.practitionerId)}
+                  >
+                    {t('vpro.confirmerSuspension')}
+                  </button>
+                  <button type="button" onClick={annuler}>
+                    {t('vpro.annuler')}
+                  </button>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setMotif(String(new FormData(e.currentTarget).get('motif-suspension') ?? ''));
+                  }}
+                >
+                  <label for={`motif-${v.practitionerId}`}>{t('vpro.motifSuspension')}</label>
+                  <select id={`motif-${v.practitionerId}`} name="motif-suspension" required>
+                    {cles(MOTIFS_SUSPENSION).map((m) => (
+                      <option key={m} value={m}>
+                        {t(MOTIFS_SUSPENSION[m])}
+                      </option>
+                    ))}
+                  </select>
+                  <div class="actions">
+                    <button type="submit">{t('vpro.suspendre')}</button>
+                    <button type="button" onClick={annuler}>
+                      {t('vpro.annuler')}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

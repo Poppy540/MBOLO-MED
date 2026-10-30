@@ -446,6 +446,25 @@ describe('suspension d’un professionnel vérifié (ADR-0026, étape 5)', () =>
     ).toEqual([CANDIDAT]);
   });
 
+  it('liste des vérifiés pour la personne habilitée : échéance la plus proche d’abord, sans les suspendus', async () => {
+    const m = await monter();
+    const lire = async (compte: string) => m.appel('GET', '/professionnels/verifies', compte);
+    expect((await lire('verificateur')).json()).toEqual({ professionnels: [] });
+    await verifier(m);
+    const r = await lire('verificateur');
+    expect(r.headers['cache-control']).toBe('no-store');
+    expect(r.json()).toEqual({
+      professionnels: [{ practitionerId: CANDIDAT, finValidite: '2027-10-01' }],
+    });
+    // Jamais sa propre fiche ; autres comptes refusés.
+    expect((await lire('luiMeme')).json()).toEqual({ professionnels: [] });
+    for (const compte of ['candidat', 'identite', 'agent']) {
+      expect((await lire(compte)).statusCode).toBe(403);
+    }
+    await suspendre(m, 'verificateur', 'signalement-ordre');
+    expect((await lire('verificateur')).json()).toEqual({ professionnels: [] });
+  });
+
   it('une suspension ne dépend pas du service invitations', async () => {
     const m = await monter({ invitationsEnPanne: true });
     m.fiches.changer(CANDIDAT, {

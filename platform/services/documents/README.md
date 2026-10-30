@@ -81,6 +81,7 @@ Pour le **professionnel candidat** seulement (rôle d'attente `professionnel-can
 
 Rôle humain `verification-professionnels` (double authentification, jamais un agent IA, aucun accès clinique). Disponible seulement si `INVITATIONS_URL` est configurée : **séparation des tâches**, le service demande au service `invitations` qui a recruté la fiche (`GET /service/professionnels/:practitionerId/recruteurs`, compte de service) et refuse à cette personne de voir le dossier ou de décider (403) ; invitations injoignable → 503, rien n'est montré.
 
+- `GET /professionnels/verifies` → `{ professionnels: [{ practitionerId, finValidite }] }` (`no-store`) : fiches dont la dernière décision est « vérifié », l'échéance la plus proche d'abord, jamais la sienne (étape 5e).
 - `GET /professionnels/a-verifier` → `{ candidats: [{ practitionerId, depuis }] }` : fiches inactives « à vérifier » qui ont des pièces présentes, et fiches suspendues, jamais la sienne.
 - `GET /professionnels/:practitionerId` → nom donné au recrutement, déclaration, pièces (type, date), décisions passées. `GET /professionnels/:practitionerId/pieces/:pieceId` → la pièce déchiffrée (`no-store`). **Chaque consultation est tracée dans le dossier** (`AuditEvent` sur la fiche du candidat, sous-type `verification-professionnel`) **avant** d'être montrée : sans trace, rien n'est montré.
 - `POST /professionnels/:practitionerId/decision` `{ resultat, controles, motif?, piecesARefaire?, validite? }` (listes fermées seulement, aucun texte libre) :
