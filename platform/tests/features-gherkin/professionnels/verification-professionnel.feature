@@ -24,7 +24,7 @@ Fonctionnalité: Une personne habilitée vérifie le dossier d'un professionnel 
     Quand le candidat se reconnecte à l’espace professionnel
     Alors il arrive sur ses rendez-vous, avec le rôle professionnel et sans le rôle d’attente
     Quand "verificateur-pro-fictif-01" ouvre les professionnels à vérifier dans l’espace professionnel
-    Et qu’elle suspend le professionnel vérifié pour un signalement de l’Ordre, et confirme
+    Et elle suspend le professionnel vérifié pour un signalement de l’Ordre, et confirme
     Alors la fiche du professionnel est suspendue et inactive, sa déclaration gardée
     Quand "verificateur-pro-fictif-01" est connecté
     Alors le professionnel revient dans les dossiers à vérifier de "verificateur-pro-fictif-01"
