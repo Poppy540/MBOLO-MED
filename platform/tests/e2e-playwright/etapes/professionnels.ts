@@ -593,14 +593,20 @@ When(
 // ── Suspension (ADR-0026, étape 5) ─────────────────────────────────────────────
 
 When(
-  '{string} suspend le professionnel pour un signalement de l’Ordre',
-  async ({ monde }, identifiant: string) => {
-    const r = await verification(monde, identifiant, '/suspension', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ motif: 'signalement-ordre' }),
-    });
-    expect(r.status).toBe(200);
+  'elle suspend le professionnel vérifié pour un signalement de l’Ordre, et confirme',
+  async ({ monde }) => {
+    const p = pagePro(monde);
+    const ligne = p.locator(`li[data-verifie="${monde.candidat?.practitionerId ?? 'absente'}"]`);
+    await ligne.getByRole('button', { name: 'Suspendre' }).click();
+    await ligne.getByLabel('Motif de la suspension').selectOption('signalement-ordre');
+    await ligne.getByRole('button', { name: 'Suspendre' }).click();
+    await ligne.getByRole('button', { name: 'Confirmer la suspension' }).click();
+    await expect(p.getByRole('alert')).toContainText('Professionnel suspendu');
+    // Il quitte la liste des vérifiés pour revenir dans les dossiers à vérifier.
+    await expect(ligne).toHaveCount(0);
+    await expect(
+      p.locator(`button[data-fiche="${monde.candidat?.practitionerId ?? 'absente'}"]`),
+    ).toBeVisible();
   },
 );
 

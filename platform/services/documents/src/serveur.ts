@@ -195,6 +195,12 @@ export async function creerServeur(o: {
       candidats: await verificationPro.aVerifier(await authentifier(req)),
     }));
 
+    app.get('/professionnels/verifies', async (req, reply) =>
+      reply
+        .header('cache-control', 'no-store')
+        .send({ professionnels: await verificationPro.verifies(await authentifier(req)) }),
+    );
+
     app.get<{ Params: { practitionerId: string } }>(
       '/professionnels/:practitionerId',
       {
