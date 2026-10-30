@@ -611,6 +611,34 @@ describe('professionnels vérifiés seulement (ADR-0026)', () => {
     expect((await service.mesRendezVous(patient)).map((x) => x.statut)).toEqual(['prevu']);
     expect(await service.praticiens(patient)).toEqual([]);
   });
+
+  it('suspendu : plus de salle, ni pour lui ni pour le patient (409), à l’instant', async () => {
+    const s = salles();
+    const fiches = new Map<string, Fiche>([['prac-fictif-001', { nom: 'Dr Test A [FICTIF]' }]]);
+    const creneaux = new DepotCreneauxMemoire();
+    const service = new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      creneaux,
+      s.f,
+      { estActif: async (nom) => nom !== 'paiement.mobile-money' },
+      () => new Date(DEBUT),
+      undefined,
+      new AnnuaireMemoire(fiches),
+      identitesVerifiees(),
+    );
+    const [c] = await creneaux.publier('prac-fictif-001', [
+      { debut: '2026-09-27T10:05:00Z', dureeMinutes: 20 },
+    ]);
+    const r = await service.demander(patient, { creneauId: c?.id ?? '' });
+    fiches.delete('prac-fictif-001');
+    for (const u of [patient, medecin]) {
+      await expect(service.rejoindre(u, r.id)).rejects.toMatchObject({
+        statut: 409,
+        message: expect.stringContaining('L’équipe vous contactera'),
+      });
+    }
+    expect(s.jetons).toHaveLength(0);
+  });
 });
 
 describe('annuaire lu dans le dossier (ADR-0026)', () => {

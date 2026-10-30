@@ -25,6 +25,8 @@ export type {
   OptionsJetonService,
 } from './jeton-service.js';
 export { JournalAccesFhir, JournalAccesMemoire } from './journal-acces.js';
+export { FichesPraticiensFhir, FichesPraticiensMemoire } from './praticiens.js';
+export type { FichesPraticiens } from './praticiens.js';
 export type { JournalAcces } from './journal-acces.js';
 export { ErreurRevue, ServiceRevue } from './revue.js';
 export type { BrisDeGlaceARevoir } from './revue.js';

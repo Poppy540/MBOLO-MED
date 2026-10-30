@@ -6,6 +6,7 @@ import { creerJournal } from '@mbolo/journal-securise';
 import { DepotMemoire, ServiceConsentements, type DepotConsentements } from './consentements.js';
 import { DepotFhir } from './depot-fhir.js';
 import { JournalAccesFhir, JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
+import { FichesPraticiensFhir, type FichesPraticiens } from './praticiens.js';
 import { ServiceRevue } from './revue.js';
 import { authentificationDepuis, creerFournisseurJeton } from './jeton-service.js';
 import { creerVerificateur } from './jeton.js';
@@ -36,6 +37,7 @@ if (env === 'prod') {
 
 let depot: DepotConsentements;
 let journalAcces: JournalAcces;
+let praticiens: FichesPraticiens | undefined;
 if (fhir) {
   if (!authService) {
     journal.erreur(
@@ -50,6 +52,7 @@ if (fhir) {
   });
   depot = new DepotFhir({ base: fhir, entetes });
   journalAcces = new JournalAccesFhir({ base: fhir, entetes });
+  praticiens = new FichesPraticiensFhir({ base: fhir, entetes });
   journal.info('consentements enregistrés dans le dossier FHIR (passerelle authentifiée)');
 } else {
   depot = new DepotMemoire();
@@ -99,6 +102,7 @@ const app = await creerServeur({
     env,
     Number(process.env['REVUE_BRIS_DE_GLACE_DELAI_HEURES'] ?? '24'),
   ),
+  ...(praticiens ? { praticiens } : {}),
   env,
   journal,
 });

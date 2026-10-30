@@ -97,6 +97,19 @@ describe('professionnel', () => {
       deciderAccesDossier(medecin, { patientId: P1, brisDeGlace: { motif: 'urgent' } }, []).motif,
     ).toBe('refus-bris-de-glace-sans-motif');
   });
+  it('suspendu ou à revérifier (ADR-0026) : refusé, même avec consentement ou bris de glace', () => {
+    for (const demande of [
+      { patientId: P1 },
+      { patientId: P1, brisDeGlace: { motif: 'Patient inconscient au point assisté [FICTIF]' } },
+    ]) {
+      expect(deciderAccesDossier(medecin, demande, partage, false)).toEqual({
+        autorise: false,
+        motif: 'refus-professionnel-non-verifie',
+        audit: 'normal',
+      });
+    }
+    expect(deciderAccesDossier(medecin, { patientId: P1 }, partage, true).autorise).toBe(true);
+  });
   it('un professionnel sans identifiant Practitioner n’a aucun accès', () => {
     expect(
       deciderAccesDossier({ sujet: 'x', roles: ['professionnel'] }, { patientId: P1 }, []).autorise,

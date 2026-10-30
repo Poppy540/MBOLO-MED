@@ -14,7 +14,8 @@ export type Motif =
   | 'refus-sans-consentement'
   | 'refus-role-sans-acces-clinique'
   | 'refus-agent-hors-session'
-  | 'refus-bris-de-glace-sans-motif';
+  | 'refus-bris-de-glace-sans-motif'
+  | 'refus-professionnel-non-verifie';
 
 export interface Decision {
   autorise: boolean;
@@ -59,7 +60,9 @@ export function consentementActif(
 /**
  * Peut-on lire le dossier du patient demandé ?
  * - patient : uniquement le sien ;
- * - professionnel / infirmier : consentement C-PARTAGE-PRO actif qui le désigne, ou bris de glace motivé ;
+ * - professionnel / infirmier : fiche vérifiée et inscription valable (ADR-0026 ; `praticienVerifie`
+ *   lu sans cache par l'appelant, false = suspendu ou à revérifier), puis consentement C-PARTAGE-PRO
+ *   actif qui le désigne, ou bris de glace motivé ;
  * - proche : consentement C-PROCHE actif qui le désigne ;
  * - agent IA : uniquement le patient de sa session, avec C-SOINS actif ;
  * - pharmacien, administrateur, relecteur des accès : jamais (revue sur les traces seulement).
@@ -68,6 +71,7 @@ export function deciderAccesDossier(
   u: Utilisateur,
   demande: DemandeAcces,
   consentements: readonly Consent[],
+  praticienVerifie?: boolean,
 ): Decision {
   const { patientId } = demande;
 
@@ -83,6 +87,8 @@ export function deciderAccesDossier(
   }
 
   if ((u.roles.includes('professionnel') || u.roles.includes('infirmier')) && u.practitionerId) {
+    // Suspendu ou à revérifier : plus aucun accès, même en bris de glace.
+    if (praticienVerifie === false) return refus('refus-professionnel-non-verifie');
     const ref = `Practitioner/${u.practitionerId}`;
     if (consentementActif(consentements, patientId, 'C-PARTAGE-PRO', ref)) {
       return accord('consentement-partage-pro');

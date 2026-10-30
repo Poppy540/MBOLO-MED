@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { DepotMemoire, ServiceConsentements } from './consentements.js';
 import { ErreurDepot } from './depot-fhir.js';
 import { JournalAccesMemoire, type JournalAcces } from './journal-acces.js';
+import { FichesPraticiensMemoire, type FichesPraticiens } from './praticiens.js';
 import { ServiceRevue } from './revue.js';
 import { creerVerificateur } from './jeton.js';
 import { creerServeur } from './serveur.js';
@@ -43,6 +44,7 @@ beforeAll(async () => {
 const app = async (
   journalAcces: JournalAcces = new JournalAccesMemoire(),
   limiteParMinute?: number,
+  praticiens?: FichesPraticiens,
 ) => {
   const depot = new DepotMemoire();
   return creerServeur({
@@ -58,6 +60,7 @@ const app = async (
     env: 'dev',
     journal,
     ...(limiteParMinute ? { limiteParMinute } : {}),
+    ...(praticiens ? { praticiens } : {}),
   });
 };
 
@@ -202,6 +205,50 @@ describe('API identité', () => {
       payload: { patientId: 'fictif-patient-0001' },
     });
     expect(apres.json()).toMatchObject({ autorise: false });
+  });
+
+  it('professionnel suspendu : accès refusé à l’instant, même avec consentement ou bris de glace (ADR-0026)', async () => {
+    const praticiens = new FichesPraticiensMemoire(new Set(['fictif-medecin-0001']));
+    const a = await app(new JournalAccesMemoire(), undefined, praticiens);
+    const patient = { authorization: `Bearer ${await jetonPatient()}` };
+    const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
+    await a.inject({
+      method: 'POST',
+      url: '/patients/fictif-patient-0001/consentements',
+      headers: patient,
+      payload: {
+        categorie: 'C-PARTAGE-PRO',
+        mode: 'vocal',
+        versionTexte: 'C-PARTAGE-PRO v0.1 (fr)',
+        accepte: true,
+        beneficiaire: 'Practitioner/fictif-medecin-0001',
+      },
+    });
+    const acces = (payload: object) =>
+      a.inject({ method: 'POST', url: '/acces/dossier', headers: medecin, payload });
+    expect((await acces({ patientId: 'fictif-patient-0001' })).json()).toMatchObject({
+      autorise: true,
+    });
+    // Suspension : la fiche n'est plus vérifiée, l'accès suivant est refusé.
+    praticiens.verifiees.clear();
+    for (const payload of [
+      { patientId: 'fictif-patient-0001' },
+      {
+        patientId: 'fictif-patient-0001',
+        brisDeGlace: { motif: 'Urgence vitale signalée [FICTIF]' },
+      },
+    ]) {
+      expect((await acces(payload)).json()).toEqual({
+        autorise: false,
+        motif: 'refus-professionnel-non-verifie',
+        audit: 'normal',
+      });
+    }
+    // Dossier injoignable : aucun accès (503).
+    praticiens.verifie = async () => {
+      throw new ErreurDepot('Dossier médical indisponible.', 503);
+    };
+    expect((await acces({ patientId: 'fictif-patient-0001' })).statusCode).toBe(503);
   });
 
   it('retrait des proches par l’équipe : refusé à un médecin (403) et sans jeton (401)', async () => {
