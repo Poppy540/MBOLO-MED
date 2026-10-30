@@ -15,6 +15,7 @@ import { CleMaitreLocale } from './chiffrement.js';
 import { ConditionsMemoire } from './conditions.js';
 import { DepotMemoire } from './depot.js';
 import { DossierMemoire, FichesMemoire } from './dossier.js';
+import { passerEcheances } from './echeances.js';
 import { creerServeur } from './serveur.js';
 import { ServiceDocuments } from './service.js';
 import { StockageMemoire } from './stockage.js';
@@ -476,5 +477,117 @@ describe('suspension d’un professionnel vérifié (ADR-0026, étape 5)', () =>
     // Une fois suspendue, une seconde suspension est refusée.
     expect((await suspendre(m, 'verificateur', 'incident-qualite-confirme')).statusCode).toBe(200);
     expect((await suspendre(m, 'verificateur', 'signalement-ordre')).statusCode).toBe(409);
+  });
+});
+
+describe('échéances des professionnels vérifiés (ADR-0026, étape 5)', () => {
+  const verifier = async (m: Awaited<ReturnType<typeof monter>>) =>
+    expect(
+      (await m.decider({ resultat: 'verifie', controles: CONTROLES, validite: VALIDITE }))
+        .statusCode,
+    ).toBe(200);
+
+  it('rappels à 30, 7 et 1 jours, puis fiche remise « à vérifier » à l’échéance, une seule fois', async () => {
+    const m = await monter();
+    await verifier(m);
+    const passer = async (jour: string) => {
+      m.horloge.maintenant = new Date(`${jour}T03:00:00Z`);
+      return m.service.echeances();
+    };
+    expect(await passer('2027-08-01')).toEqual({ rappels: [], echues: [] });
+    for (const [jour, jours] of [
+      ['2027-09-01', 30],
+      ['2027-09-24', 7],
+      ['2027-09-30', 1],
+    ] as const) {
+      expect(await passer(jour)).toEqual({
+        rappels: [{ practitionerId: CANDIDAT, jours }],
+        echues: [],
+      });
+    }
+    // Dernier jour de validité : encore vérifié, aucun rappel.
+    expect(await passer('2027-10-01')).toEqual({ rappels: [], echues: [] });
+    expect(statutDe(m.fiches)).toBe('verifie');
+
+    expect(await passer('2027-10-02')).toEqual({ rappels: [], echues: [CANDIDAT] });
+    const fiche = m.fiches.fiches.get(CANDIDAT);
+    expect(fiche?.active).toBe(false);
+    expect(fiche && statutVerification(fiche)).toBe('a-verifier');
+    expect(m.fiches.traces.at(-1)).toMatchObject({
+      action: 'U',
+      agent: [{ who: { identifier: { value: 'plateforme' } } }],
+    });
+    expect(m.decisions.decisions.at(-1)).toMatchObject({
+      resultat: 'echeance',
+      verificateur: 'plateforme',
+    });
+    // De retour dans la liste ; le passage suivant ne refait rien.
+    expect(
+      (await m.appel('GET', '/professionnels/a-verifier', 'verificateur'))
+        .json<{ candidats: { practitionerId: string }[] }>()
+        .candidats.map((c) => c.practitionerId),
+    ).toEqual([CANDIDAT]);
+    expect(await passer('2027-10-03')).toEqual({ rappels: [], echues: [] });
+    // Une nouvelle vérification complète le réactive.
+    expect(
+      (
+        await m.decider({
+          resultat: 'verifie',
+          controles: CONTROLES.map((c) => ({ ...c, consulteLe: '2027-10-03' })),
+          validite: { debut: '2027-10-01', fin: '2028-10-01' },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(statutDe(m.fiches)).toBe('verifie');
+    expect(await passer('2027-10-04')).toEqual({ rappels: [], echues: [] });
+  });
+
+  it('un professionnel suspendu n’est ni rappelé ni remis « à vérifier » par l’échéance', async () => {
+    const m = await monter();
+    await verifier(m);
+    expect(
+      (
+        await m.appel('POST', `/professionnels/${CANDIDAT}/suspension`, 'verificateur', {
+          motif: 'signalement-ordre',
+        })
+      ).statusCode,
+    ).toBe(200);
+    m.horloge.maintenant = new Date('2027-10-02T03:00:00Z');
+    expect(await m.service.echeances()).toEqual({ rappels: [], echues: [] });
+    expect(statutDe(m.fiches)).toBe('suspendu');
+  });
+
+  it('alertes au rôle de vérification, avec la fiche opaque et jamais le nom', async () => {
+    const m = await monter();
+    await verifier(m);
+    const lignes: string[] = [];
+    const journal = creerJournal({ service: 'documents', ecrire: (l) => lignes.push(l) });
+    m.horloge.maintenant = new Date('2027-09-01T03:00:00Z');
+    await passerEcheances(m.service, journal);
+    m.horloge.maintenant = new Date('2027-10-02T03:00:00Z');
+    await passerEcheances(m.service, journal);
+    const alertes = lignes.map(
+      (l) => (JSON.parse(l) as { contexte?: Record<string, unknown> }).contexte,
+    );
+    expect(alertes).toEqual([
+      expect.objectContaining({
+        alerte: 'professionnel-echeance',
+        practitionerId: CANDIDAT,
+        jours: 30,
+      }),
+      expect.objectContaining({ alerte: 'professionnel-echu', practitionerId: CANDIDAT }),
+    ]);
+    expect(lignes.join('\n')).not.toMatch(/Amina|FICTIF-ORDRE-0004/);
+    // Une erreur est journalisée, jamais lancée.
+    lignes.length = 0;
+    await passerEcheances(
+      {
+        echeances: async () => {
+          throw new Error('dossier indisponible');
+        },
+      },
+      journal,
+    );
+    expect(lignes.join('\n')).toContain('passage des échéances des professionnels impossible');
   });
 });

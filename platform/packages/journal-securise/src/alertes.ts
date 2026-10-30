@@ -41,6 +41,10 @@ export const ALERTES = [
   'numero-change',
   /** Paiement reçu pour un rendez-vous annulé : remboursement à valider par un humain (ADR-0017). */
   'remboursement-a-valider',
+  /** Inscription d'un professionnel vérifié qui arrive à échéance dans 30, 7 ou 1 jours (ADR-0026). */
+  'professionnel-echeance',
+  /** Professionnel arrivé à échéance sans nouvelle vérification : fiche remise « à vérifier » (ADR-0026). */
+  'professionnel-echu',
 ] as const;
 export type Alerte = (typeof ALERTES)[number];
 

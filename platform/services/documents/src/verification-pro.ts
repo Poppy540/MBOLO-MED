@@ -64,8 +64,15 @@ export const MOTIFS_SUSPENSION = [
   'incident-qualite-confirme',
 ] as const;
 export type MotifSuspension = (typeof MOTIFS_SUSPENSION)[number];
-/** Ce qui est gardé dans le dépôt : une décision sur un dossier, ou une suspension. */
-export type ResultatEnregistre = ResultatPro | 'suspendu';
+/**
+ * Ce qui est gardé dans le dépôt : une décision sur un dossier, une suspension, ou une échéance
+ * constatée par la plateforme (fin de validité passée sans nouvelle vérification).
+ */
+export type ResultatEnregistre = ResultatPro | 'suspendu' | 'echeance';
+/** Auteur des échéances : la plateforme, jamais une personne ni un agent IA. */
+export const SUJET_PLATEFORME = 'plateforme';
+/** Jours avant la fin de validité où la personne habilitée est prévenue (ADR-0026). */
+export const RAPPELS_ECHEANCE_JOURS = [30, 7, 1] as const;
 /** Durée maximale d'une vérification : au-delà, on revérifie (décision du 2026-10-29). */
 export const VALIDITE_MAX_MOIS = 12;
 
@@ -101,8 +108,16 @@ export interface DepotDecisionsPro {
   decisionsDe(practitionerId: string, limite: number): Promise<DecisionPro[]>;
   /** Fiches qui ont au moins une pièce présente, la plus ancienne attente d'abord. */
   candidatsAvecPieces(limite: number): Promise<{ practitionerId: string; depuis: Date }[]>;
-  /** Fiches dont la dernière décision (hors « à compléter ») est une suspension, la plus ancienne d'abord. */
-  suspendus(limite: number): Promise<{ practitionerId: string; depuis: Date }[]>;
+  /**
+   * Fiches remises en vérification : dernière décision (hors « à compléter ») qui est une
+   * suspension ou une échéance, la plus ancienne d'abord.
+   */
+  remisEnVerification(limite: number): Promise<{ practitionerId: string; depuis: Date }[]>;
+  /** Fiches dont la dernière décision est « vérifié » avec une fin de validité au plus tard ce jour. */
+  verifiesJusquau(
+    jour: string,
+    limite: number,
+  ): Promise<{ practitionerId: string; finValidite: string }[]>;
 }
 
 export class ErreurVerificationPro extends Error {
@@ -202,7 +217,7 @@ export class ServiceVerificationPro {
     const candidats = new Map<string, Date>();
     for (const c of [
       ...(await this.decisions.candidatsAvecPieces(50)),
-      ...(await this.decisions.suspendus(50)),
+      ...(await this.decisions.remisEnVerification(50)),
     ]) {
       const d = candidats.get(c.practitionerId);
       if (!d || c.depuis < d) candidats.set(c.practitionerId, c.depuis);
@@ -364,6 +379,68 @@ export class ServiceVerificationPro {
   }
 
   /**
+   * Passage quotidien des échéances (ADR-0026, étape 5) : la personne habilitée est prévenue 30, 7
+   * et 1 jours avant la fin de validité ; une fois la date passée sans nouvelle vérification, la
+   * fiche redevient inactive et « à vérifier » (trace d'abord, auteur : la plateforme) et revient
+   * dans la liste. L'accès clinique est déjà refusé dès le lendemain de la fin (fiche relue sans
+   * cache). Rien n'est décidé sur le fond : une personne revérifie.
+   */
+  async echeances(): Promise<{
+    rappels: { practitionerId: string; jours: number }[];
+    echues: string[];
+  }> {
+    const maintenant = this.horloge();
+    const jour = (decalage: number) => {
+      const d = new Date(maintenant);
+      d.setUTCDate(d.getUTCDate() + decalage);
+      return d.toISOString().slice(0, 10);
+    };
+    const aujourdhui = jour(0);
+    const rappels = [];
+    const echues = [];
+    for (const v of await this.decisions.verifiesJusquau(
+      jour(Math.max(...RAPPELS_ECHEANCE_JOURS)),
+      500,
+    )) {
+      if (v.finValidite >= aujourdhui) {
+        const jours = RAPPELS_ECHEANCE_JOURS.find((j) => jour(j) === v.finValidite);
+        if (jours !== undefined) rappels.push({ practitionerId: v.practitionerId, jours });
+        continue;
+      }
+      const lue = await this.fiches.lire(v.practitionerId);
+      // Fiche absente ou déjà sortie de « vérifié » (suspendue entre-temps) : rien à faire.
+      if (!lue || statutVerification(lue.fiche) !== 'verifie') continue;
+      await this.fiches.tracer(
+        evenementVerificationPro({
+          practitionerId: v.practitionerId,
+          sujet: SUJET_PLATEFORME,
+          roles: [],
+          objet: 'echeance',
+          action: 'U',
+          date: maintenant.toISOString(),
+          env: this.env,
+        }),
+      );
+      await this.fiches.decider(
+        v.practitionerId,
+        statutPraticien(lue.fiche, 'a-verifier'),
+        lue.version,
+      );
+      await this.decisions.enregistrer({
+        id: randomUUID(),
+        practitionerId: v.practitionerId,
+        verificateur: SUJET_PLATEFORME,
+        resultat: 'echeance',
+        controles: [],
+        piecesARefaire: [],
+        decideLe: maintenant,
+      });
+      echues.push(v.practitionerId);
+    }
+    return { rappels, echues };
+  }
+
+  /**
    * Suspension d'un professionnel vérifié : fiche inactive et « suspendu », effet immédiat sur
    * l'annuaire, les créneaux et l'accès aux dossiers (fiche relue sans cache). Mesure de sécurité :
    * elle ne dépend pas du service invitations (une panne ne doit pas l'empêcher).
@@ -412,18 +489,32 @@ export class DepotDecisionsProMemoire implements DepotDecisionsPro {
       .map((d) => structuredClone(d));
   }
 
-  async suspendus(limite: number) {
+  /** Dernière décision de chaque fiche ; « à compléter » ne change pas le statut de la fiche. */
+  private dernieres(): DecisionPro[] {
     const derniere = new Map<string, DecisionPro>();
-    // « À compléter » ne change pas le statut de la fiche : la suspension reste la dernière décision.
     for (const d of this.decisions.filter((x) => x.resultat !== 'a-completer')) {
       const avant = derniere.get(d.practitionerId);
       if (!avant || d.decideLe >= avant.decideLe) derniere.set(d.practitionerId, d);
     }
-    return [...derniere.values()]
-      .filter((d) => d.resultat === 'suspendu')
+    return [...derniere.values()];
+  }
+
+  async remisEnVerification(limite: number) {
+    return this.dernieres()
+      .filter((d) => d.resultat === 'suspendu' || d.resultat === 'echeance')
       .sort((a, b) => a.decideLe.getTime() - b.decideLe.getTime())
       .slice(0, limite)
       .map((d) => ({ practitionerId: d.practitionerId, depuis: d.decideLe }));
+  }
+
+  async verifiesJusquau(jour: string, limite: number) {
+    return this.dernieres()
+      .filter(
+        (d) => d.resultat === 'verifie' && d.finValidite !== undefined && d.finValidite <= jour,
+      )
+      .sort((a, b) => (a.finValidite ?? '').localeCompare(b.finValidite ?? ''))
+      .slice(0, limite)
+      .map((d) => ({ practitionerId: d.practitionerId, finValidite: d.finValidite ?? '' }));
   }
 
   async candidatsAvecPieces(limite: number) {
@@ -491,13 +582,24 @@ export class DepotDecisionsProPostgres implements DepotDecisionsPro {
     return lignes.map((l) => ({ practitionerId: l.practitioner_id, depuis: l.depuis }));
   }
 
-  async suspendus(limite: number) {
+  async remisEnVerification(limite: number) {
     const lignes = await this.sql<{ practitioner_id: string; depuis: Date }[]>`
       select practitioner_id, decide_le as depuis from (
         select distinct on (practitioner_id) practitioner_id, resultat, decide_le
           from documents.decisions_professionnels where resultat <> 'a-completer'
          order by practitioner_id, decide_le desc) derniere
-       where resultat = 'suspendu' order by depuis limit ${limite}`;
+       where resultat in ('suspendu', 'echeance') order by depuis limit ${limite}`;
     return lignes.map((l) => ({ practitionerId: l.practitioner_id, depuis: l.depuis }));
+  }
+
+  async verifiesJusquau(jour: string, limite: number) {
+    const lignes = await this.sql<{ practitioner_id: string; fin: string }[]>`
+      select practitioner_id, to_char(fin_validite, 'YYYY-MM-DD') as fin from (
+        select distinct on (practitioner_id) practitioner_id, resultat, fin_validite
+          from documents.decisions_professionnels where resultat <> 'a-completer'
+         order by practitioner_id, decide_le desc) derniere
+       where resultat = 'verifie' and fin_validite <= ${jour}::date
+       order by fin_validite limit ${limite}`;
+    return lignes.map((l) => ({ practitionerId: l.practitioner_id, finValidite: l.fin }));
   }
 }

@@ -11,6 +11,8 @@ export const DESTINATAIRES = [
   'astreinte-technique',
   /** Valideurs des remboursements (ADR-0017), heures ouvrées. */
   'validation-remboursement',
+  /** Vérification des professionnels de santé (ADR-0026), heures ouvrées. */
+  'verification-professionnels',
 ] as const;
 export type Destinataire = (typeof DESTINATAIRES)[number];
 
@@ -211,6 +213,36 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
             resume: 'Un paiement a été reçu pour un rendez-vous annulé : remboursement à valider.',
             conduite:
               'Espace des remboursements (rôle validation-remboursement) : valider ou refuser selon les règles du porteur de projet.',
+          },
+        },
+        {
+          alert: 'ProfessionnelsAEcheance',
+          expr: `${compter('professionnel-echeance', '1d')} > 0`,
+          labels: {
+            gravite: 'normale',
+            destinataire: 'verification-professionnels',
+            alerte: 'professionnel-echeance',
+          },
+          annotations: {
+            resume:
+              'L’inscription d’un professionnel vérifié arrive à échéance (dans 30, 7 ou 1 jours).',
+            conduite:
+              'Demander une attestation à jour et revérifier à la source avant l’échéance ; sinon il sortira de l’annuaire et perdra l’accès aux patients.',
+          },
+        },
+        {
+          alert: 'ProfessionnelsEchus',
+          expr: `${compter('professionnel-echu', '1d')} > 0`,
+          labels: {
+            gravite: 'normale',
+            destinataire: 'verification-professionnels',
+            alerte: 'professionnel-echu',
+          },
+          annotations: {
+            resume:
+              'Un professionnel est arrivé à échéance sans nouvelle vérification : fiche remise « à vérifier ».',
+            conduite:
+              'Le revérifier depuis « Professionnels à vérifier » ; ses rendez-vous à venir sont à signaler aux patients par l’équipe.',
           },
         },
       ],

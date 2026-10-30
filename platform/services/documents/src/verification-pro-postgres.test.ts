@@ -135,7 +135,8 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)(
     it('liste les fiches dont la dernière décision (hors « à compléter ») est une suspension', async () => {
       const depot = new DepotDecisionsProPostgres(execution);
       const fiche = `prac-suspendu-${randomUUID().slice(0, 8)}`;
-      const ids = async () => (await depot.suspendus(10_000)).map((c) => c.practitionerId);
+      const ids = async () =>
+        (await depot.remisEnVerification(10_000)).map((c) => c.practitionerId);
       await depot.enregistrer(decision({ practitionerId: fiche }));
       expect(await ids()).not.toContain(fiche);
       await depot.enregistrer(
@@ -160,6 +161,30 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)(
         decision({ practitionerId: fiche, decideLe: new Date('2026-11-04T09:00:00Z') }),
       );
       expect(await ids()).not.toContain(fiche);
+    });
+
+    it('échéance : par la plateforme seulement, et la fiche revient en vérification', async () => {
+      const depot = new DepotDecisionsProPostgres(execution);
+      const fiche = `prac-echeance-${randomUUID().slice(0, 8)}`;
+      const echeance = (o: Partial<DecisionPro>) =>
+        sansFin({ practitionerId: fiche, resultat: 'echeance', controles: [], ...o });
+      await expect(
+        depot.enregistrer(echeance({ verificateur: 'sujet-verificateur-fictif' })),
+      ).rejects.toThrow();
+      await depot.enregistrer(decision({ practitionerId: fiche, finValidite: '2027-10-01' }));
+      const verifies = async (jour: string) =>
+        (await depot.verifiesJusquau(jour, 10_000)).filter((v) => v.practitionerId === fiche);
+      expect(await verifies('2027-09-30')).toEqual([]);
+      expect(await verifies('2027-10-01')).toEqual([
+        { practitionerId: fiche, finValidite: '2027-10-01' },
+      ]);
+      await depot.enregistrer(
+        echeance({ verificateur: 'plateforme', decideLe: new Date('2027-10-02T03:00:00Z') }),
+      );
+      expect(await verifies('2027-10-02')).toEqual([]);
+      expect((await depot.remisEnVerification(10_000)).map((c) => c.practitionerId)).toContain(
+        fiche,
+      );
     });
   },
 );
