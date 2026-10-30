@@ -627,7 +627,10 @@ export class ServiceTeleconsultation {
     return annule;
   }
 
-  /** Jeton de salle : participant du rendez-vous, dans la fenêtre horaire, fonction activée. */
+  /**
+   * Jeton de salle : participant du rendez-vous, dans la fenêtre horaire, fonction activée,
+   * professionnel vérifié.
+   */
   async rejoindre(u: Utilisateur, rendezVousId: string): Promise<AccesSalle> {
     const { r, estPraticien } = await this.participant(u, rendezVousId);
     await this.exigerFonction(u);
@@ -635,6 +638,13 @@ export class ServiceTeleconsultation {
       throw new ErreurTeleconsultation('Rendez-vous en attente de paiement.', 409);
     }
     if (r.statut !== 'prevu') throw new ErreurTeleconsultation('Rendez-vous annulé.', 409);
+    // ADR-0026, étape 5 : professionnel suspendu ou à revérifier → plus de consultation, à l'instant
+    // (fiche relue sans cache), pour lui comme pour le patient ; l'équipe prévient le patient.
+    await this.exigerPraticienVerifie(
+      r.praticienId,
+      'Ce rendez-vous ne peut pas avoir lieu pour le moment. L’équipe vous contactera.',
+      409,
+    );
     const debut = new Date(r.debut).getTime();
     const fin = debut + r.dureeMinutes * 60_000;
     const t = this.maintenant().getTime();

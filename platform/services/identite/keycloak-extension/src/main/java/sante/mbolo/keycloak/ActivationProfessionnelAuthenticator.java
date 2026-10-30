@@ -23,9 +23,13 @@ import org.keycloak.provider.ProviderConfigProperty;
  * valable), le rôle {@code professionnel} remplace le rôle d'attente. Personne n'attribue ce rôle à
  * la main, et aucun service ne détient de droit d'administration sur les comptes.
  *
- * <p>N'empêche jamais la connexion : fiche non vérifiée, dossier injoignable ou compte d'un autre
- * type → rien ne change. Placé après le mot de passe et la double authentification ; une session
- * déjà ouverte n'est pas modifiée (le candidat se reconnecte après la décision).
+ * <p>Étape 5 (décision du 2026-10-29) : pour un compte {@code professionnel} dont la fiche lue n'est
+ * plus vérifiée (suspendu, à revérifier, inscription échue), le rôle d'attente remplace le rôle
+ * {@code professionnel} ; une nouvelle vérification complète le rendra à la connexion suivante.
+ *
+ * <p>N'empêche jamais la connexion : dossier injoignable ou compte d'un autre type → rien ne
+ * change (les services relisent de toute façon la fiche avant tout accès clinique). Placé après le
+ * mot de passe et la double authentification ; une session déjà ouverte n'est pas modifiée.
  */
 public final class ActivationProfessionnelAuthenticator implements Authenticator, AuthenticatorFactory {
 
@@ -53,17 +57,18 @@ public final class ActivationProfessionnelAuthenticator implements Authenticator
     RoleModel candidat = realm.getRole(ROLE_CANDIDAT);
     RoleModel professionnel = realm.getRole(ROLE_PROFESSIONNEL);
     String fiche = u == null ? null : u.getFirstAttribute(RolesInscription.ATTRIBUT_PRATICIEN);
+    boolean estCandidat = u != null && candidat != null && u.hasDirectRole(candidat);
+    boolean estProfessionnel = u != null && professionnel != null && u.hasDirectRole(professionnel);
     if (dossier == null
-        || u == null
         || candidat == null
         || professionnel == null
         || fiche == null
-        || !u.hasDirectRole(candidat)) {
+        || (!estCandidat && !estProfessionnel)) {
       context.success();
       return;
     }
     KeycloakSession session = context.getSession();
-    boolean verifiee =
+    var lue =
         new ClientDossier(
                 dossier,
                 () ->
@@ -73,13 +78,22 @@ public final class ActivationProfessionnelAuthenticator implements Authenticator
                         IdentitePatientRequiredAction.AUDIENCE_DOSSIER,
                         PERMISSIONS,
                         ELEMENTS))
-            .lirePraticien(fiche)
-            .map(f -> ActivationProfessionnel.ficheVerifiee(f, LocalDate.now(ZoneOffset.UTC)))
-            .orElse(false);
-    if (verifiee) {
-      u.grantRole(professionnel);
-      u.deleteRoleMapping(candidat);
-      JOURNAL.infof("professionnel activé après vérification : compte %s, fiche %s", u.getId(), fiche);
+            .lirePraticien(fiche);
+    switch (ActivationProfessionnel.changement(
+        estCandidat, estProfessionnel, lue, LocalDate.now(ZoneOffset.UTC))) {
+      case ACTIVER -> {
+        u.grantRole(professionnel);
+        u.deleteRoleMapping(candidat);
+        JOURNAL.infof("professionnel activé après vérification : compte %s, fiche %s", u.getId(), fiche);
+      }
+      case RETIRER -> {
+        u.deleteRoleMapping(professionnel);
+        u.grantRole(candidat);
+        JOURNAL.infof(
+            "rôle professionnel retiré (fiche suspendue ou à revérifier) : compte %s, fiche %s",
+            u.getId(), fiche);
+      }
+      case AUCUN -> {}
     }
     context.success();
   }
@@ -129,7 +143,7 @@ public final class ActivationProfessionnelAuthenticator implements Authenticator
 
   @Override
   public String getHelpText() {
-    return "Remplace le rôle professionnel-candidat par professionnel quand la fiche est vérifiée.";
+    return "Rôle professionnel quand la fiche est vérifiée, rôle d'attente quand elle ne l'est plus.";
   }
 
   @Override

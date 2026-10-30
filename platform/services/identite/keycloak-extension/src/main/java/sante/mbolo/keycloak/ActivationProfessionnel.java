@@ -3,6 +3,7 @@ package sante.mbolo.keycloak;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Règle d'activation d'un professionnel (ADR-0026) : la même que {@code praticienVerifie} du paquet
@@ -16,6 +17,32 @@ final class ActivationProfessionnel {
       "https://mbolo-sante.example/fhir/StructureDefinition/statut-verification";
 
   private ActivationProfessionnel() {}
+
+  /** Ce que la connexion change aux rôles d'un compte de professionnel. */
+  enum Changement {
+    /** Candidat dont la fiche est vérifiée : rôle {@code professionnel} à la place du rôle d'attente. */
+    ACTIVER,
+    /**
+     * Professionnel dont la fiche n'est plus vérifiée (suspendu, à revérifier, inscription échue) :
+     * retour au rôle d'attente (ADR-0026, étape 5, décision du porteur de projet du 2026-10-29).
+     */
+    RETIRER,
+    AUCUN
+  }
+
+  /**
+   * Fiche illisible ou dossier injoignable ({@code fiche} vide) → aucun changement : la connexion
+   * n'est jamais bloquée, et les services refusent de toute façon l'accès clinique (fiche relue sans
+   * cache à chaque accès).
+   */
+  static Changement changement(
+      boolean candidat, boolean professionnel, Optional<Map<String, Object>> fiche, LocalDate aujourdhui) {
+    if (fiche.isEmpty()) return Changement.AUCUN;
+    boolean verifiee = ficheVerifiee(fiche.get(), aujourdhui);
+    if (candidat && !professionnel && verifiee) return Changement.ACTIVER;
+    if (professionnel && !verifiee) return Changement.RETIRER;
+    return Changement.AUCUN;
+  }
 
   static boolean ficheVerifiee(Map<String, Object> fiche, LocalDate aujourdhui) {
     if (!Boolean.TRUE.equals(fiche.get("active"))) return false;

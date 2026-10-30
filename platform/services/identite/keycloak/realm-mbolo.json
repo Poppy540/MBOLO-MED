@@ -380,7 +380,7 @@
     },
     {
       "clientId": "mbolo-identite-service",
-      "name": "Compte de service du service identité (dossier : consentements et journal des accès)",
+      "name": "Compte de service du service identité (dossier : consentements, journal des accès, statut des professionnels)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-jwt",
@@ -414,7 +414,21 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Consent.crus system/AuditEvent.cs",
+            "claim.value": "system/Consent.crus system/AuditEvent.cs system/Practitioner.r",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "elements-autorises",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "mbolo_elements",
+            "claim.value": "Practitioner.active Practitioner.extension Practitioner.qualification",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

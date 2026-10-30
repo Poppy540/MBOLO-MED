@@ -20,6 +20,7 @@ import {
 import { ErreurDepot } from './depot-fhir.js';
 import type { VerifierJeton } from './jeton.js';
 import type { JournalAcces } from './journal-acces.js';
+import type { FichesPraticiens } from './praticiens.js';
 import { ErreurNiveauInsuffisant, reponseNiveauInsuffisant } from './niveau.js';
 import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
@@ -33,6 +34,11 @@ export interface OptionsServeur {
   /** Journal des accès au dossier (AuditEvent FHIR). */
   journalAcces: JournalAcces;
   revue: ServiceRevue;
+  /**
+   * Statut des professionnels (ADR-0026, étape 5), relu avant chaque accès d'un professionnel ;
+   * absent seulement en développement sans dossier.
+   */
+  praticiens?: FichesPraticiens;
   env: Environnement;
   journal: Journal;
   maintenant?: () => Date;
@@ -310,7 +316,15 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
     async (req) => {
       const u = await authentifier(req);
       const consentements = await o.depot.parPatient(req.body.patientId);
-      const decision = deciderAccesDossier(u, req.body, consentements);
+      // Fiche du professionnel relue sans cache : une suspension vaut à l'instant. Dossier
+      // injoignable → 503, aucun accès.
+      const praticienVerifie =
+        o.praticiens &&
+        u.practitionerId &&
+        (u.roles.includes('professionnel') || u.roles.includes('infirmier'))
+          ? await o.praticiens.verifie(u.practitionerId, o.maintenant?.() ?? new Date())
+          : undefined;
+      const decision = deciderAccesDossier(u, req.body, consentements, praticienVerifie);
       const contexte = {
         sujet: u.sujet,
         roles: u.roles,

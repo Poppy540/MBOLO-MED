@@ -184,10 +184,14 @@ describe('royaume mbolo', () => {
       ],
     ).toBe('mbolo-dossier-fhir');
     // Consentements (créer, lire, mettre à jour, rechercher) et journal des accès (créer, rechercher
-    // seulement : une trace ne se modifie pas) ; jamais de suppression.
+    // seulement : une trace ne se modifie pas) ; statut des professionnels en lecture seule, limité
+    // à trois éléments (ADR-0026, étape 5) ; jamais de suppression.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/Consent.crus system/AuditEvent.cs');
+    ).toBe('system/Consent.crus system/AuditEvent.cs system/Practitioner.r');
+    expect(
+      mappeurs.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
+    ).toBe('Practitioner.active Practitioner.extension Practitioner.qualification');
   });
 
   it('compte de service teleconsultation : rendez-vous et agendas uniquement, jamais de suppression', () => {

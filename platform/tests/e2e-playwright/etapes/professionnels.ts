@@ -518,21 +518,26 @@ Then(
     const p = pagePro(monde);
     await expect(p.getByRole('heading', { name: 'Rendez-vous à venir' })).toBeVisible();
     await expect(p.getByRole('button', { name: /Mes créneaux/ })).toBeVisible();
-    const jeton = await jetonAdministrateur();
-    const admin = (chemin: string) =>
-      fetch(`${KEYCLOAK_URL}/admin/realms/${ROYAUME}${chemin}`, {
-        headers: { authorization: `Bearer ${jeton}` },
-      }).then((r) => r.json());
-    const [compte] = (await admin(
-      `/users?username=${monde.inscription?.identifiant ?? ''}&exact=true`,
-    )) as { id: string }[];
-    const roles = (
-      (await admin(`/users/${compte?.id ?? ''}/role-mappings/realm`)) as { name: string }[]
-    ).map((r) => r.name);
+    const roles = await rolesDuCandidat(monde);
     expect(roles).toContain('professionnel');
     expect(roles).not.toContain('professionnel-candidat');
   },
 );
+
+/** Rôles du compte du candidat, lus dans Keycloak (compte d'administration de test). */
+async function rolesDuCandidat(monde: Monde): Promise<string[]> {
+  const jeton = await jetonAdministrateur();
+  const admin = (chemin: string) =>
+    fetch(`${KEYCLOAK_URL}/admin/realms/${ROYAUME}${chemin}`, {
+      headers: { authorization: `Bearer ${jeton}` },
+    }).then((r) => r.json());
+  const [compte] = (await admin(
+    `/users?username=${monde.inscription?.identifiant ?? ''}&exact=true`,
+  )) as { id: string }[];
+  return (
+    (await admin(`/users/${compte?.id ?? ''}/role-mappings/realm`)) as { name: string }[]
+  ).map((r) => r.name);
+}
 
 // ── Écran « Professionnels à vérifier » (ADR-0026, étape 4c) ───────────────────
 
@@ -630,5 +635,17 @@ Then(
       (c) => c.practitionerId,
     );
     expect(ids).toContain(monde.candidat?.practitionerId);
+  },
+);
+
+Then(
+  'il arrive sur sa candidature, avec le rôle d’attente et sans le rôle professionnel',
+  async ({ monde }) => {
+    const p = pagePro(monde);
+    await expect(p.getByRole('heading', { name: 'Ma candidature' })).toBeVisible();
+    await expect(p.getByRole('button', { name: /Mes créneaux/ })).toHaveCount(0);
+    const roles = await rolesDuCandidat(monde);
+    expect(roles).toContain('professionnel-candidat');
+    expect(roles).not.toContain('professionnel');
   },
 );
