@@ -139,6 +139,21 @@ export interface BilanExpiration {
   reportes: number;
 }
 
+/**
+ * Rendez-vous à venir d'un professionnel qui n'est plus vérifié (suspendu, à revérifier ou
+ * inscription échue, ADR-0026, étape 5) : l'équipe prévient le patient et propose un autre
+ * médecin ; rien n'est annulé automatiquement. Ni nom ni motif, des références opaques.
+ */
+export interface RendezVousAReprendre {
+  rendezVousId: string;
+  debut: string;
+  statut: 'prevu' | 'a-payer';
+  patientId: string;
+}
+
+/** Rôle de l'équipe qui rappelle les patients (ADR-0019, ADR-0026). */
+export const ROLE_ASSISTANCE = 'assistance-patient';
+
 export interface AccesSalle {
   url: string;
   jeton: string;
@@ -625,6 +640,37 @@ export class ServiceTeleconsultation {
     // Paiement éventuel : plus de collecte, remboursement préparé s'il a été reçu (ADR-0017).
     if (this.paiement) await this.paiement.service.annulation(r.id);
     return annule;
+  }
+
+  /**
+   * Rendez-vous à venir des professionnels qui ont un agenda et ne sont plus vérifiés (fiche relue
+   * sans cache), le plus proche d'abord. Utilisé par le passage périodique (alerte) et par
+   * l'équipe `assistance-patient` (liste).
+   */
+  async aReprendre(): Promise<RendezVousAReprendre[]> {
+    const maintenant = this.maintenant();
+    const liste: RendezVousAReprendre[] = [];
+    for (const praticienId of await this.creneaux.praticiensAvecAgenda()) {
+      if (await this.annuaire.fiche(praticienId, maintenant)) continue;
+      for (const r of await this.depot.pourPraticien(praticienId)) {
+        if (r.statut === 'annule' || new Date(r.debut).getTime() <= maintenant.getTime()) continue;
+        liste.push({
+          rendezVousId: r.id,
+          debut: r.debut,
+          statut: r.statut,
+          patientId: r.patientId,
+        });
+      }
+    }
+    return liste.sort((a, b) => a.debut.localeCompare(b.debut));
+  }
+
+  /** Liste pour l'équipe : personne humaine du rôle `assistance-patient`, jamais un agent IA. */
+  async rendezVousAReprendre(u: Utilisateur): Promise<RendezVousAReprendre[]> {
+    if (!u.roles.includes(ROLE_ASSISTANCE) || u.agent || u.roles.includes('agent-ia')) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    return this.aReprendre();
   }
 
   /**

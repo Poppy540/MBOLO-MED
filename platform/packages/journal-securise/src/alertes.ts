@@ -45,6 +45,11 @@ export const ALERTES = [
   'professionnel-echeance',
   /** Professionnel arrivé à échéance sans nouvelle vérification : fiche remise « à vérifier » (ADR-0026). */
   'professionnel-echu',
+  /**
+   * Rendez-vous à venir chez un professionnel suspendu ou à revérifier (ADR-0026) : l'équipe
+   * assistance-patient prévient chaque patient et propose un autre médecin.
+   */
+  'rendez-vous-a-reprendre',
 ] as const;
 export type Alerte = (typeof ALERTES)[number];
 

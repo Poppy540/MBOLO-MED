@@ -649,3 +649,33 @@ Then(
     expect(roles).not.toContain('professionnel');
   },
 );
+
+// ── Rendez-vous à reprendre (ADR-0026, étape 5) ────────────────────────────────
+
+const rendezVousAReprendre = (monde: Monde, identifiant: string) =>
+  fetch(`${TELECONSULTATION_URL}/assistance/rendez-vous-a-reprendre`, {
+    headers: { authorization: `Bearer ${monde.jetons.get(identifiant) ?? ''}` },
+  });
+
+Then(
+  '{string} obtient la liste des rendez-vous à reprendre, sans cache',
+  async ({ monde }, identifiant: string) => {
+    const r = await rendezVousAReprendre(monde, identifiant);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('cache-control')).toBe('no-store');
+    const { rendezVous } = (await r.json()) as {
+      rendezVous: { rendezVousId: string; debut: string; patientId: string }[];
+    };
+    // Références opaques seulement : ni nom ni motif.
+    for (const x of rendezVous) {
+      expect(Object.keys(x).sort()).toEqual(['debut', 'patientId', 'rendezVousId', 'statut']);
+    }
+  },
+);
+
+Then(
+  'la liste des rendez-vous à reprendre est refusée à {string}',
+  async ({ monde }, identifiant: string) => {
+    expect((await rendezVousAReprendre(monde, identifiant)).status).toBe(403);
+  },
+);

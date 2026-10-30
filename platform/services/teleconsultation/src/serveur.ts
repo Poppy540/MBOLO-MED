@@ -109,6 +109,18 @@ export async function creerServeur(o: {
     },
   );
 
+  // ADR-0026, étape 5 : rendez-vous à venir d'un professionnel qui n'est plus vérifié, pour que
+  // l'équipe prévienne chaque patient. Jamais gardé par un intermédiaire.
+  app.get('/assistance/rendez-vous-a-reprendre', async (req, reply) => {
+    const u = await authentifier(req);
+    const rendezVous = await o.service.rendezVousAReprendre(u);
+    o.journal.info('rendez-vous à reprendre consultés', {
+      sujet: u.sujet,
+      nombre: rendezVous.length,
+    });
+    return reply.header('cache-control', 'no-store').send({ rendezVous });
+  });
+
   app.get('/praticiens', async (req) => {
     const u = await authentifier(req);
     return { praticiens: await o.service.praticiens(u) };

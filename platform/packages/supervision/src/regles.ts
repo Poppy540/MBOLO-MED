@@ -13,6 +13,8 @@ export const DESTINATAIRES = [
   'validation-remboursement',
   /** Vérification des professionnels de santé (ADR-0026), heures ouvrées. */
   'verification-professionnels',
+  /** Équipe qui rappelle les patients (ADR-0019, ADR-0026), heures ouvrées. */
+  'assistance-patient',
 ] as const;
 export type Destinataire = (typeof DESTINATAIRES)[number];
 
@@ -243,6 +245,21 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
               'Un professionnel est arrivé à échéance sans nouvelle vérification : fiche remise « à vérifier ».',
             conduite:
               'Le revérifier depuis « Professionnels à vérifier » ; ses rendez-vous à venir sont à signaler aux patients par l’équipe.',
+          },
+        },
+        {
+          alert: 'RendezVousAReprendre',
+          expr: `${compter('rendez-vous-a-reprendre', '1h')} > 0`,
+          labels: {
+            gravite: 'normale',
+            destinataire: 'assistance-patient',
+            alerte: 'rendez-vous-a-reprendre',
+          },
+          annotations: {
+            resume:
+              'Des rendez-vous à venir sont pris chez un professionnel suspendu ou à revérifier.',
+            conduite:
+              'Ouvrir la liste des rendez-vous à reprendre, appeler chaque patient au numéro de son dossier et lui proposer un autre médecin ; rien n’est annulé automatiquement.',
           },
         },
       ],
