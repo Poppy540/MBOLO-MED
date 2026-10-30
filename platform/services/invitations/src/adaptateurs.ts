@@ -4,7 +4,14 @@
 // - identite, avec le jeton du patient, pour son consentement C-PROCHE ;
 // - notifications, avec le compte de service, pour le SMS du code.
 // Aucun contenu (prénom, numéro, code) n'est journalisé ici.
-import type { AuditEvent, FhirResource, Patient, Practitioner, RelatedPerson } from 'fhir/r4.js';
+import type {
+  Appointment,
+  AuditEvent,
+  FhirResource,
+  Patient,
+  Practitioner,
+  RelatedPerson,
+} from 'fhir/r4.js';
 import { ClientFhir, ErreurDepot, TYPE_FHIR, type FournisseurJeton } from '@mbolo/identite';
 import type { ConsentementsAssistance, DossierAssistance } from './assistance.js';
 import type { AlerteSms, ConsentementsProche, DossierProches, SmsInvitation } from './proches.js';
@@ -119,6 +126,16 @@ export class DossierAssistanceFhir extends ClientFhir implements DossierAssistan
       (r): r is RelatedPerson =>
         r.resourceType === 'RelatedPerson' && r.patient.reference === `Patient/${patientId}`,
     );
+  }
+
+  async rendezVous(rendezVousId: string): Promise<Appointment | undefined> {
+    const r = await this.appeler(`${this.base}/Appointment/${encodeURIComponent(rendezVousId)}`, {
+      headers: { 'cache-control': 'no-cache' },
+    });
+    if (r.status === 404 || r.status === 410) return undefined;
+    if (!r.ok) throw ClientFhir.echec(r, 'Rendez-vous');
+    const a = (await r.json()) as Appointment;
+    return a.resourceType === 'Appointment' && a.id === rendezVousId ? a : undefined;
   }
 
   async tracer(trace: AuditEvent): Promise<void> {

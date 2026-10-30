@@ -380,10 +380,14 @@ describe('royaume mbolo', () => {
     // seulement (ADR-0026) : jamais l'activer, ce que seule la vérification fera.
     expect(
       mappers.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
-    ).toBe('system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c system/Practitioner.c');
+    ).toBe(
+      'system/RelatedPerson.crus system/Patient.rs system/AuditEvent.c system/Practitioner.c system/Appointment.r',
+    );
     expect(
       mappers.find((m) => m.config['claim.name'] === 'mbolo_elements')?.config['claim.value'],
-    ).toBe('Patient.identifier Patient.telecom Patient.birthDate');
+    ).toBe(
+      'Patient.identifier Patient.telecom Patient.birthDate Appointment.status Appointment.start Appointment.participant',
+    );
   });
 
   it("n'ouvre l'inscription qu'avec un code d'invitation, vérifié après les autres champs (ADR-0014)", () => {

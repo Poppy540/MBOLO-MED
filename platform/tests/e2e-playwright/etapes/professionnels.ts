@@ -685,3 +685,25 @@ Then(
     expect((await rendezVousAReprendre(monde, identifiant)).status).toBe(403);
   },
 );
+
+const rappelRendezVous = (monde: Monde, identifiant: string, rendezVousId: string) =>
+  fetch(`${INVITATIONS_URL}/assistance/rappel-rendez-vous`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${monde.jetons.get(identifiant) ?? ''}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ rendezVousId }),
+  });
+
+Then(
+  'le numéro d’un dossier n’est pas donné à {string} pour un rendez-vous inconnu',
+  async ({ monde }, identifiant: string) => {
+    // 404 : le rendez-vous est lu dans le dossier (permission accordée) et n'existe pas.
+    expect((await rappelRendezVous(monde, identifiant, 'rdv-inconnu-fictif')).status).toBe(404);
+  },
+);
+
+Then('le numéro d’un dossier est refusé à {string}', async ({ monde }, identifiant: string) => {
+  expect((await rappelRendezVous(monde, identifiant, 'rdv-inconnu-fictif')).status).toBe(403);
+});

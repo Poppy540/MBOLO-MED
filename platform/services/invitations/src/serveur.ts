@@ -516,6 +516,31 @@ export async function creerServeur(o: {
       },
     );
 
+    // ADR-0026, étape 5 : numéro du dossier pour rappeler un patient dont le rendez-vous est à
+    // reprendre (professionnel suspendu ou à revérifier) ; seulement pour un rendez-vous à venir.
+    app.post<{ Body: { rendezVousId: string } }>(
+      '/assistance/rappel-rendez-vous',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['rendezVousId'],
+            properties: { rendezVousId: patientId },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { u } = await membre(req);
+        const r = await assistance.rappelRendezVous(u, req.body.rendezVousId);
+        o.journal.info('assistance : rappel d’un rendez-vous à reprendre', {
+          par: u.sujet,
+          patientId: r.patientId,
+        });
+        return reply.header('cache-control', 'no-store').send(r);
+      },
+    );
+
     app.post<{ Body: { patientId: string; naissance: string; rappel: true } }>(
       '/assistance/retrait-proches',
       {
