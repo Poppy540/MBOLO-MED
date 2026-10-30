@@ -18,6 +18,7 @@ import { trousseauDepuis } from './cles.js';
 import { ConditionsFhir } from './conditions.js';
 import { DepotPostgres } from './depot.js';
 import { DossierFhir, FichesFhir } from './dossier.js';
+import { passerEcheances } from './echeances.js';
 import { RecruteursHttp } from './recruteurs.js';
 import { DepotDecisionsProPostgres, ServiceVerificationPro } from './verification-pro.js';
 import { SPECIALITES } from '@mbolo/dossier-fhir';
@@ -271,6 +272,13 @@ const purger = async (): Promise<void> => {
 };
 await purger();
 setInterval(() => void purger(), 3_600_000).unref();
+
+// Échéances des professionnels vérifiés (ADR-0026, étape 5) : une fois par jour.
+if (verificationPro) {
+  const service = verificationPro;
+  await passerEcheances(service, journal);
+  setInterval(() => void passerEcheances(service, journal), 86_400_000).unref();
+}
 
 const port = Number(env['PORT'] ?? '3007');
 // Par défaut, seulement la machine locale ; `DOCUMENTS_HOST` permet à un Keycloak en conteneur de
