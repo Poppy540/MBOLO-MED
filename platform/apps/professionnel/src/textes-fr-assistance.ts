@@ -34,4 +34,15 @@ export const frAssistance = {
   'assist.retires': { one: '{nombre} proche retiré.', other: '{nombre} proches retirés.' },
   'assist.smsEnvoye': 'Le patient a reçu un SMS de confirmation.',
   'assist.smsEchec': 'Le SMS de confirmation n’a pas pu partir : prévenez le patient.',
+  'assist.reprendre.titre': 'Rendez-vous à reprendre',
+  'assist.reprendre.explication':
+    'Ces rendez-vous sont pris chez un professionnel suspendu ou à revérifier. Appelez chaque patient au numéro de son dossier pour l’en prévenir et lui proposer un autre médecin. Rien n’est annulé automatiquement. Chaque numéro demandé est enregistré dans le dossier du patient.',
+  'assist.reprendre.aucun': 'Aucun rendez-vous à reprendre.',
+  'assist.reprendre.du': 'Rendez-vous du {date}',
+  'assist.reprendre.aPayer': '(en attente de paiement)',
+  'assist.reprendre.rappeler': 'Rappeler le patient',
+  'assist.reprendre.numero': 'Numéro du dossier :',
+  'assist.reprendre.masquer': 'Masquer le numéro',
+  'assist.reprendre.sansNumero':
+    'Aucun numéro dans ce dossier : impossible de prévenir le patient par téléphone.',
 } as const satisfies Catalogue;
