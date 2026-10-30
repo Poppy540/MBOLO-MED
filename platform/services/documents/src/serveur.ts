@@ -23,10 +23,12 @@ import type { DemandeDecision, ServiceVerificateur } from './verificateur.js';
 import {
   ErreurVerificationPro,
   MOTIFS_REFUS_PRO,
+  MOTIFS_SUSPENSION,
   POINTS,
   RESULTATS_PRO,
   SOURCES,
   type DemandeDecisionPro,
+  type MotifSuspension,
   type ServiceVerificationPro,
 } from './verification-pro.js';
 
@@ -298,6 +300,35 @@ export async function creerServeur(o: {
           practitionerId: req.params.practitionerId,
           resultat: r.resultat,
           ...(req.body.motif ? { motif: req.body.motif } : {}),
+        });
+        return r;
+      },
+    );
+
+    app.post<{ Params: { practitionerId: string }; Body: { motif: MotifSuspension } }>(
+      '/professionnels/:practitionerId/suspension',
+      {
+        schema: {
+          params: {
+            type: 'object',
+            properties: { practitionerId: fiche },
+            required: ['practitionerId'],
+          },
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['motif'],
+            properties: { motif: { type: 'string', enum: [...MOTIFS_SUSPENSION] } },
+          },
+        },
+      },
+      async (req) => {
+        const u = await authentifier(req);
+        const r = await verificationPro.suspendre(u, req.params.practitionerId, req.body.motif);
+        o.journal.info('suspension d’un professionnel', {
+          sujet: u.sujet,
+          practitionerId: req.params.practitionerId,
+          motif: req.body.motif,
         });
         return r;
       },

@@ -8,6 +8,9 @@
 // Séparation des tâches : jamais le candidat qu'on a recruté (demandé au service invitations).
 // L'activation est faite par le serveur : fiche active et « verifie » ; le rôle Keycloak suit à la
 // connexion du candidat (étape 4b).
+// Étape 5 (décisions du porteur de projet du 2026-10-29) : validité retenue d'au plus un an ;
+// suspension d'un professionnel vérifié (motif codé) ; la fiche suspendue revient dans la liste et
+// seule une nouvelle vérification complète la réactive.
 import { randomUUID } from 'node:crypto';
 import type { Sql } from '@mbolo/base-donnees';
 import {
@@ -54,6 +57,20 @@ export const MOTIFS_REFUS_PRO = [
 export type MotifRefusPro = (typeof MOTIFS_REFUS_PRO)[number];
 export const RESULTATS_PRO = ['verifie', 'refuse', 'a-completer'] as const;
 export type ResultatPro = (typeof RESULTATS_PRO)[number];
+/** Motifs de suspension (ADR-0026, liste provisoire, à valider par le porteur de projet). */
+export const MOTIFS_SUSPENSION = [
+  'signalement-ordre',
+  'plainte-confirmee',
+  'incident-qualite-confirme',
+] as const;
+export type MotifSuspension = (typeof MOTIFS_SUSPENSION)[number];
+/** Ce qui est gardé dans le dépôt : une décision sur un dossier, ou une suspension. */
+export type ResultatEnregistre = ResultatPro | 'suspendu';
+/** Durée maximale d'une vérification : au-delà, on revérifie (décision du 2026-10-29). */
+export const VALIDITE_MAX_MOIS = 12;
+
+/** Une fiche suspendue attend, comme une fiche à vérifier, une nouvelle décision complète. */
+const EN_ATTENTE: readonly (StatutVerificationPro | undefined)[] = ['a-verifier', 'suspendu'];
 
 /** Pièces sans lesquelles un dossier ne peut pas être vérifié (l'assurance dépend du juriste). */
 const PIECES_REQUISES: readonly TypePiece[] = ['diplome', 'inscription-ordre', 'piece-identite'];
@@ -70,8 +87,8 @@ export interface DecisionPro {
   id: string;
   practitionerId: string;
   verificateur: string;
-  resultat: ResultatPro;
-  motif?: MotifRefusPro;
+  resultat: ResultatEnregistre;
+  motif?: MotifRefusPro | MotifSuspension;
   controles: Controle[];
   piecesARefaire: TypePiece[];
   finValidite?: string;
@@ -84,6 +101,8 @@ export interface DepotDecisionsPro {
   decisionsDe(practitionerId: string, limite: number): Promise<DecisionPro[]>;
   /** Fiches qui ont au moins une pièce présente, la plus ancienne attente d'abord. */
   candidatsAvecPieces(limite: number): Promise<{ practitionerId: string; depuis: Date }[]>;
+  /** Fiches dont la dernière décision (hors « à compléter ») est une suspension, la plus ancienne d'abord. */
+  suspendus(limite: number): Promise<{ practitionerId: string; depuis: Date }[]>;
 }
 
 export class ErreurVerificationPro extends Error {
@@ -111,7 +130,11 @@ export interface DossierCandidat {
   prenoms: string[];
   declaration?: Declaration & { specialiteLibelle: string };
   pieces: { id: string; type: TypePiece; deposeLe: string }[];
-  decisions: { resultat: ResultatPro; motif?: MotifRefusPro; decideLe: string }[];
+  decisions: {
+    resultat: ResultatEnregistre;
+    motif?: MotifRefusPro | MotifSuspension;
+    decideLe: string;
+  }[];
 }
 
 export class ServiceVerificationPro {
@@ -176,12 +199,20 @@ export class ServiceVerificationPro {
 
   async aVerifier(u: Utilisateur): Promise<{ practitionerId: string; depuis: string }[]> {
     this.exigerRole(u);
+    const candidats = new Map<string, Date>();
+    for (const c of [
+      ...(await this.decisions.candidatsAvecPieces(50)),
+      ...(await this.decisions.suspendus(50)),
+    ]) {
+      const d = candidats.get(c.practitionerId);
+      if (!d || c.depuis < d) candidats.set(c.practitionerId, c.depuis);
+    }
     const liste = [];
-    for (const c of await this.decisions.candidatsAvecPieces(50)) {
-      if (c.practitionerId === u.practitionerId) continue;
-      const lue = await this.fiches.lire(c.practitionerId);
-      if (lue && statutVerification(lue.fiche) === 'a-verifier') {
-        liste.push({ practitionerId: c.practitionerId, depuis: c.depuis.toISOString() });
+    for (const [practitionerId, depuis] of [...candidats].sort((a, b) => +a[1] - +b[1])) {
+      if (practitionerId === u.practitionerId) continue;
+      const lue = await this.fiches.lire(practitionerId);
+      if (lue && lue.fiche.active !== true && EN_ATTENTE.includes(statutVerification(lue.fiche))) {
+        liste.push({ practitionerId, depuis: depuis.toISOString() });
       }
     }
     return liste;
@@ -247,7 +278,7 @@ export class ServiceVerificationPro {
     await this.exigerNonRecruteur(u, practitionerId);
     const lue = await this.fiches.lire(practitionerId);
     if (!lue) throw new ErreurVerificationPro('Fiche introuvable.', 404);
-    if (lue.fiche.active !== false || statutVerification(lue.fiche) !== 'a-verifier') {
+    if (lue.fiche.active !== false || !EN_ATTENTE.includes(statutVerification(lue.fiche))) {
       throw new ErreurVerificationPro('Ce dossier n’attend pas de décision.', 409);
     }
     const pieces = await this.candidatures.piecesDe(practitionerId);
@@ -287,8 +318,19 @@ export class ServiceVerificationPro {
           422,
         );
       }
-      if (!v || v.debut > aujourdhui || v.fin <= aujourdhui || v.fin <= v.debut) {
-        throw new ErreurVerificationPro('Période de validité de l’inscription invalide.', 422);
+      const max = new Date(maintenant);
+      max.setUTCMonth(max.getUTCMonth() + VALIDITE_MAX_MOIS);
+      if (
+        !v ||
+        v.debut > aujourdhui ||
+        v.fin <= aujourdhui ||
+        v.fin <= v.debut ||
+        v.fin > max.toISOString().slice(0, 10)
+      ) {
+        throw new ErreurVerificationPro(
+          'Période de validité invalide (fin dans un an au plus).',
+          422,
+        );
       }
       elements = activationPraticien(lue.fiche, v);
     } else if (demande.resultat === 'refuse') {
@@ -320,6 +362,37 @@ export class ServiceVerificationPro {
     });
     return { resultat: demande.resultat };
   }
+
+  /**
+   * Suspension d'un professionnel vérifié : fiche inactive et « suspendu », effet immédiat sur
+   * l'annuaire, les créneaux et l'accès aux dossiers (fiche relue sans cache). Mesure de sécurité :
+   * elle ne dépend pas du service invitations (une panne ne doit pas l'empêcher).
+   */
+  async suspendre(
+    u: Utilisateur,
+    practitionerId: string,
+    motif: MotifSuspension,
+  ): Promise<{ resultat: 'suspendu' }> {
+    this.exigerRole(u, practitionerId);
+    const lue = await this.fiches.lire(practitionerId);
+    if (!lue) throw new ErreurVerificationPro('Fiche introuvable.', 404);
+    if (statutVerification(lue.fiche) !== 'verifie') {
+      throw new ErreurVerificationPro('Seul un professionnel vérifié peut être suspendu.', 409);
+    }
+    await this.tracer(u, practitionerId, 'suspension', 'U');
+    await this.fiches.decider(practitionerId, statutPraticien(lue.fiche, 'suspendu'), lue.version);
+    await this.decisions.enregistrer({
+      id: randomUUID(),
+      practitionerId,
+      verificateur: u.sujet,
+      resultat: 'suspendu',
+      motif,
+      controles: [],
+      piecesARefaire: [],
+      decideLe: this.horloge(),
+    });
+    return { resultat: 'suspendu' };
+  }
 }
 
 export class DepotDecisionsProMemoire implements DepotDecisionsPro {
@@ -337,6 +410,20 @@ export class DepotDecisionsProMemoire implements DepotDecisionsPro {
       .sort((a, b) => b.decideLe.getTime() - a.decideLe.getTime())
       .slice(0, limite)
       .map((d) => structuredClone(d));
+  }
+
+  async suspendus(limite: number) {
+    const derniere = new Map<string, DecisionPro>();
+    // « À compléter » ne change pas le statut de la fiche : la suspension reste la dernière décision.
+    for (const d of this.decisions.filter((x) => x.resultat !== 'a-completer')) {
+      const avant = derniere.get(d.practitionerId);
+      if (!avant || d.decideLe >= avant.decideLe) derniere.set(d.practitionerId, d);
+    }
+    return [...derniere.values()]
+      .filter((d) => d.resultat === 'suspendu')
+      .sort((a, b) => a.decideLe.getTime() - b.decideLe.getTime())
+      .slice(0, limite)
+      .map((d) => ({ practitionerId: d.practitionerId, depuis: d.decideLe }));
   }
 
   async candidatsAvecPieces(limite: number) {
@@ -357,8 +444,8 @@ interface LigneDecision {
   id: string;
   practitioner_id: string;
   verificateur: string;
-  resultat: ResultatPro;
-  motif: MotifRefusPro | null;
+  resultat: ResultatEnregistre;
+  motif: MotifRefusPro | MotifSuspension | null;
   controles: Controle[];
   pieces_a_refaire: TypePiece[];
   fin_validite: Date | null;
@@ -401,6 +488,16 @@ export class DepotDecisionsProPostgres implements DepotDecisionsPro {
       select practitioner_id, max(depose_le) as depuis from documents.pieces_professionnels
        where supprime_le is null
        group by practitioner_id order by depuis limit ${limite}`;
+    return lignes.map((l) => ({ practitionerId: l.practitioner_id, depuis: l.depuis }));
+  }
+
+  async suspendus(limite: number) {
+    const lignes = await this.sql<{ practitioner_id: string; depuis: Date }[]>`
+      select practitioner_id, decide_le as depuis from (
+        select distinct on (practitioner_id) practitioner_id, resultat, decide_le
+          from documents.decisions_professionnels where resultat <> 'a-completer'
+         order by practitioner_id, decide_le desc) derniere
+       where resultat = 'suspendu' order by depuis limit ${limite}`;
     return lignes.map((l) => ({ practitionerId: l.practitioner_id, depuis: l.depuis }));
   }
 }

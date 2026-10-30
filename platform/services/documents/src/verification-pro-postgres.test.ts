@@ -1,4 +1,4 @@
-// Décisions de vérification des professionnels sur un vrai PostgreSQL (ADR-0026, étape 4) :
+// Décisions de vérification des professionnels sur un vrai PostgreSQL (ADR-0026, étapes 4 et 5) :
 // migration réelle, rôle d'exécution restreint, contraintes de la table. Données de test uniquement ;
 // exécuté si les variables MBOLO_TEST_DATABASE_URL* sont définies (toujours en CI).
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -117,6 +117,49 @@ describe.runIf(URL_MIGRATION && URL_EXECUTION)(
       expect((await depot.candidatsAvecPieces(10_000)).map((c) => c.practitionerId)).not.toContain(
         practitionerId,
       );
+    });
+
+    it('suspension : motif de suspension obligatoire, jamais un motif de refus', async () => {
+      const depot = new DepotDecisionsProPostgres(execution);
+      const suspendu = (o: Partial<DecisionPro>) =>
+        sansFin({ resultat: 'suspendu', controles: [], ...o });
+      await expect(depot.enregistrer(suspendu({}))).rejects.toThrow();
+      await expect(
+        depot.enregistrer(suspendu({ motif: 'inscription-introuvable' })),
+      ).rejects.toThrow();
+      await expect(
+        depot.enregistrer(sansFin({ resultat: 'refuse', motif: 'signalement-ordre' })),
+      ).rejects.toThrow();
+    });
+
+    it('liste les fiches dont la dernière décision (hors « à compléter ») est une suspension', async () => {
+      const depot = new DepotDecisionsProPostgres(execution);
+      const fiche = `prac-suspendu-${randomUUID().slice(0, 8)}`;
+      const ids = async () => (await depot.suspendus(10_000)).map((c) => c.practitionerId);
+      await depot.enregistrer(decision({ practitionerId: fiche }));
+      expect(await ids()).not.toContain(fiche);
+      await depot.enregistrer(
+        sansFin({
+          practitionerId: fiche,
+          resultat: 'suspendu',
+          motif: 'signalement-ordre',
+          controles: [],
+          decideLe: new Date('2026-11-02T09:00:00Z'),
+        }),
+      );
+      await depot.enregistrer(
+        sansFin({
+          practitionerId: fiche,
+          resultat: 'a-completer',
+          piecesARefaire: ['diplome'],
+          decideLe: new Date('2026-11-03T09:00:00Z'),
+        }),
+      );
+      expect(await ids()).toContain(fiche);
+      await depot.enregistrer(
+        decision({ practitionerId: fiche, decideLe: new Date('2026-11-04T09:00:00Z') }),
+      );
+      expect(await ids()).not.toContain(fiche);
     });
   },
 );
