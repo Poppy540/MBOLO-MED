@@ -15,3 +15,8 @@ Fonctionnalité: L'équipe d'assistance voit les rendez-vous à reprendre
     Et la liste des rendez-vous à reprendre est refusée à "patient-fictif-01"
     Et le numéro d’un dossier n’est pas donné à "assistant-fictif-01" pour un rendez-vous inconnu
     Et le numéro d’un dossier est refusé à "patient-fictif-01"
+
+  Scénario: L'écran d'assistance montre la section des rendez-vous à reprendre
+    Quand "assistant-fictif-01" ouvre l’espace d’assistance
+    Alors l’espace d’assistance montre les rendez-vous à reprendre
+    Et l’écran de l’"espace d’assistance" respecte les règles d’accessibilité

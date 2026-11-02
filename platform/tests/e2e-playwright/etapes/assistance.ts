@@ -152,3 +152,10 @@ When(
 Then('la demande à l’assistance est refusée avec le statut {int}', ({ monde }, statut: number) => {
   expect(monde.reponse?.statut).toBe(statut);
 });
+
+// Rendez-vous à reprendre (ADR-0026, étape 5) : section de l'écran, liste lue sans cache.
+Then('l’espace d’assistance montre les rendez-vous à reprendre', async ({ monde }) => {
+  const p = page(monde);
+  await expect(p.getByRole('heading', { name: 'Rendez-vous à reprendre' })).toBeVisible();
+  await expect(p.getByText('Rien n’est annulé automatiquement.', { exact: false })).toBeVisible();
+});

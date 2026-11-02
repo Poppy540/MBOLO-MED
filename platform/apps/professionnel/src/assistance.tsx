@@ -9,7 +9,10 @@
 // - lui donner un code pour retrouver son compte (ADR-0021) : le patient lit aussi son numéro, que le
 //   service compare ; le code est affiché une seule fois, pour être dicté pendant l'appel.
 // Rien d'autre du dossier n'est affiché. Chargé à la demande.
-import { useState } from 'preact/hooks';
+// Rendez-vous à reprendre (ADR-0026, étape 5) : rendez-vous à venir chez un professionnel suspendu
+// ou à revérifier ; l'équipe appelle chaque patient au numéro de son dossier (donné pour ce
+// rendez-vous seulement, et tracé) pour lui proposer un autre médecin. Rien n'est annulé.
+import { useEffect, useState } from 'preact/hooks';
 import { appelReseau, creerTraducteur } from '@mbolo/client-web';
 import { CONFIG } from './config.js';
 import { frAssistance } from './textes-fr-assistance.js';
@@ -45,6 +48,26 @@ async function appeler<T>(jeton: string, chemin: string, corps: unknown): Promis
     throw new ErreurAssistance(e.erreur ?? t('assist.indisponible'));
   }
   return (await r.json()) as T;
+}
+
+interface AReprendre {
+  rendezVousId: string;
+  debut: string;
+  statut: 'prevu' | 'a-payer';
+}
+
+async function lireAReprendre(jeton: string): Promise<AReprendre[]> {
+  let r: Response;
+  try {
+    r = await appelReseau(`${CONFIG.api}/assistance/rendez-vous-a-reprendre`, {
+      headers: { authorization: `Bearer ${jeton}` },
+      cache: 'no-store',
+    });
+  } catch (e) {
+    throw new ErreurAssistance((e as Error).message);
+  }
+  if (!r.ok) throw new ErreurAssistance(t('assist.indisponible'));
+  return ((await r.json()) as { rendezVous: AReprendre[] }).rendezVous;
 }
 
 const champ = (f: HTMLFormElement, nom: string) =>
@@ -245,6 +268,71 @@ export function Assistance(p: { jeton: string; signaler: (m?: string) => void })
           )}
         </div>
       )}
+      <RendezVousAReprendre jeton={p.jeton} signaler={p.signaler} />
     </section>
+  );
+}
+
+function RendezVousAReprendre(p: { jeton: string; signaler: (m?: string) => void }) {
+  const [liste, setListe] = useState<AReprendre[]>();
+  const [rappel, setRappel] = useState<{ rendezVousId: string; telephone?: string }>();
+  const [envoi, setEnvoi] = useState(false);
+  useEffect(() => {
+    lireAReprendre(p.jeton)
+      .then(setListe)
+      .catch((e: unknown) => p.signaler((e as Error).message));
+  }, []);
+
+  const rappeler = async (rendezVousId: string) => {
+    setEnvoi(true);
+    try {
+      const r = await appeler<{ telephone?: string }>(p.jeton, '/assistance/rappel-rendez-vous', {
+        rendezVousId,
+      });
+      setRappel({ rendezVousId, ...(r.telephone ? { telephone: r.telephone } : {}) });
+    } catch (x) {
+      p.signaler((x as Error).message);
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  if (liste === undefined) return null;
+  return (
+    <>
+      <h3>{t('assist.reprendre.titre')}</h3>
+      <p>{t('assist.reprendre.explication')}</p>
+      {liste.length === 0 ? (
+        <p>{t('assist.reprendre.aucun')}</p>
+      ) : (
+        <ul class="liste" aria-label={t('assist.reprendre.titre')}>
+          {liste.map((r) => (
+            <li key={r.rendezVousId} data-a-reprendre={r.rendezVousId}>
+              {t('assist.reprendre.du', { date: heure(r.debut) })}
+              {r.statut === 'a-payer' && ` ${t('assist.reprendre.aPayer')}`}
+              {rappel?.rendezVousId !== r.rendezVousId ? (
+                <button
+                  type="button"
+                  disabled={envoi}
+                  onClick={() => void rappeler(r.rendezVousId)}
+                >
+                  {t('assist.reprendre.rappeler')}
+                </button>
+              ) : rappel.telephone ? (
+                <p>
+                  {t('assist.reprendre.numero')}{' '}
+                  <a href={`tel:${rappel.telephone.replace(/\s/g, '')}`}>{rappel.telephone}</a>{' '}
+                  <button type="button" onClick={() => setRappel(undefined)}>
+                    {t('assist.reprendre.masquer')}
+                  </button>
+                </p>
+              ) : (
+                <p role="status">{t('assist.reprendre.sansNumero')}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
