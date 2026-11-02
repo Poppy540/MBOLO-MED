@@ -13,3 +13,5 @@
 | N° | Traitement | État |
 |---|---|---|
 | 1 | [Vérification d'identité par photos (T9, ADR-0015)](aipd-verification-identite.md) | Brouillon v0.1, à valider par le porteur de projet, le juriste et le DPO |
+| 2 | [Téléconsultation, périmètre de la vague 1 — AIPD générale (T2, T4, T8 ; T1 et T6 si les agents 1 et 4 sont retenus)](aipd-teleconsultation.md) | Brouillon v0.1, à valider par le porteur de projet, le juriste, le DPO et le comité médical |
+| — | Vérification des professionnels (T10, ADR-0026) | À évaluer |
