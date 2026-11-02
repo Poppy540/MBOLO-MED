@@ -9,12 +9,12 @@
     "e2e": "bddgen && playwright test"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@mbolo/base-donnees": "workspace:*",
     "@mbolo/dossier-fhir": "workspace:*",
     "@mbolo/identite": "workspace:*",
-    "@playwright/test": "1.56.1",
-    "livekit-client": "^2.22.3",
+    "@playwright/test": "1.64.1",
+    "livekit-client": "^2.23.0",
     "playwright-bdd": "^9.2.1"
   }
 }
