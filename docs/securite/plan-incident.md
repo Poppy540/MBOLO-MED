@@ -42,7 +42,7 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 
 | N° | Scénario | État |
 |---|---|---|
-| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.1, à valider puis à jouer avant la vague 1 ; 7 écarts pressentis (E1 à E7) |
+| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.1, à valider puis à jouer avant la vague 1 ; 7 écarts pressentis (E1 à E7), E1 corrigé (règle `LecturesDossiersEnSerie`) |
 
 ## Contacts (à compléter — rôles, pas de données personnelles dans le dépôt)
 Directeur médical de garde · Responsable sécurité · Porteur de projet · Hébergeur · Prestataires critiques.

@@ -42,6 +42,20 @@ export const FLUX = '{app="mbolo-sante"}';
 export const compter = (alerte: Alerte, fenetre: string, par?: string): string =>
   `sum${par ? ` by (${par})` : ''} (count_over_time(${FLUX} | json | contexte_alerte="${alerte}" [${fenetre}]))`;
 
+/**
+ * Nombre de valeurs distinctes de `distinct` par `par` sur la fenêtre. `distinct` ne sert qu'au
+ * regroupement intérieur : l'alerte ne porte que `par`.
+ */
+export const compterDistincts = (
+  alerte: Alerte,
+  fenetre: string,
+  par: string,
+  distinct: string,
+): string => `count by (${par}) (${compter(alerte, fenetre, `${par}, ${distinct}`)})`;
+
+/** Dossiers différents lus sur consentement en une heure par un même professionnel (écart E1). */
+export const SEUIL_DOSSIERS_LUS_PAR_HEURE = 30;
+
 export const REGLES_LOKI: { groups: Groupe[] } = {
   groups: [
     {
@@ -84,6 +98,22 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
               'Plus de 20 refus d’accès au dossier en 5 minutes pour un même compte ou service.',
             conduite:
               'Vérifier le compte ; le désactiver dans Keycloak en cas de tentative d’intrusion.',
+          },
+        },
+        {
+          // Un médecin voit quelques patients par heure ; des dizaines de dossiers différents en une
+          // heure, même avec consentement, signent un compte volé (exercice sur table n°1, E1).
+          alert: 'LecturesDossiersEnSerie',
+          expr: `${compterDistincts('acces-professionnel', '1h', 'contexte_sujet', 'contexte_patientId')} > ${SEUIL_DOSSIERS_LUS_PAR_HEURE}`,
+          labels: {
+            gravite: 'critique',
+            destinataire: 'responsable-securite',
+            alerte: 'acces-professionnel',
+          },
+          annotations: {
+            resume: `Plus de ${SEUIL_DOSSIERS_LUS_PAR_HEURE} dossiers différents lus en une heure par un même professionnel.`,
+            conduite:
+              'Plan d’incident, exercice n°1 : vérifier les traces du compte ; le désactiver dans Keycloak et fermer ses sessions s’il est compromis.',
           },
         },
         {

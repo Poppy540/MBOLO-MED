@@ -10,6 +10,11 @@ export const ALERTES = [
   'bris-de-glace',
   /** Accès au dossier refusé (compte humain ou service). */
   'acces-refuse',
+  /**
+   * Dossier lu par un professionnel sur consentement : un accès normal, compté pour repérer un compte
+   * qui lit des dossiers en série (exercice sur table n°1, écart E1).
+   */
+  'acces-professionnel',
   /** Requêtes refusées par une limite d'appels (429). */
   'limite-appels',
   /** Erreur interne d'un service, ou dossier médical indisponible (5xx). */

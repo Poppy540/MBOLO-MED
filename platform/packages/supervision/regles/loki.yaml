@@ -31,6 +31,15 @@ groups:
         annotations:
           resume: "Plus de 20 refus d’accès au dossier en 5 minutes pour un même compte ou service."
           conduite: "Vérifier le compte ; le désactiver dans Keycloak en cas de tentative d’intrusion."
+      - alert: "LecturesDossiersEnSerie"
+        expr: "count by (contexte_sujet) (sum by (contexte_sujet, contexte_patientId) (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"acces-professionnel\" [1h]))) > 30"
+        labels:
+          gravite: "critique"
+          destinataire: "responsable-securite"
+          alerte: "acces-professionnel"
+        annotations:
+          resume: "Plus de 30 dossiers différents lus en une heure par un même professionnel."
+          conduite: "Plan d’incident, exercice n°1 : vérifier les traces du compte ; le désactiver dans Keycloak et fermer ses sessions s’il est compromis."
       - alert: "CodesRecuperationEnSerie"
         expr: "sum by (contexte_par) (count_over_time({app=\"mbolo-sante\"} | json | contexte_alerte=\"code-recuperation\" [1h])) > 5"
         labels:
