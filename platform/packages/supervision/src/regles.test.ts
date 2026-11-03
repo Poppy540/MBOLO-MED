@@ -27,6 +27,9 @@ describe('règles d’alerte (ADR-0016)', () => {
     expect(regle('ConsultationsPhotosAnormales').expr).toContain('by (contexte_sujet)');
     expect(regle('BrisDeGlace').expr).toMatch(/ > 0$/);
     expect(regle('AccesRefusesEnRafale').expr).toMatch(/\[5m\]\)\) > 20$/);
+    expect(regle('LecturesDossiersEnSerie').expr).toMatch(
+      /^count by \(contexte_sujet\) \(sum by \(contexte_sujet, contexte_patientId\) .*\[1h\]\)\)\) > 30$/,
+    );
     expect(regle('LimitesAppelsDepassees').expr).toMatch(/\[5m\]\)\) > 100$/);
     expect(regle('ServiceInjoignable').for).toBe('2m');
   });
@@ -46,7 +49,13 @@ describe('règles d’alerte (ADR-0016)', () => {
 
   it('noms de règles uniques et expressions sans donnée personnelle', () => {
     expect(new Set(toutes.map((r) => r.alert)).size).toBe(toutes.length);
-    for (const r of toutes) expect(r.expr).not.toMatch(/patient|telephone|nom=/i);
+    // Seule exception : le regroupement intérieur d'un compte de dossiers distincts, absent de
+    // l'alerte qui ne porte que le compte du professionnel.
+    const interieur = 'sum by (contexte_sujet, contexte_patientId)';
+    for (const r of toutes) {
+      if (r.expr.includes(interieur)) expect(r.expr).toMatch(/^count by \(contexte_sujet\) \(/);
+      expect(r.expr.replace(interieur, '')).not.toMatch(/patient|telephone|nom=/i);
+    }
   });
 
   it('les fichiers YAML du dépôt sont à jour (pnpm --filter @mbolo/supervision generer)', () => {

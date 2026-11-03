@@ -59,7 +59,7 @@ Durée prévue : **2 heures** (90 minutes de jeu, 30 minutes de retour d'expéri
 | **11 h 00** | *Clôture du jeu* : retour d'expérience. | Voir la section 6. | |
 
 **Variante si le temps le permet.** Même scénario, mais l'attaquant ne lit que les 6 patients du médecin, par des accès autorisés. Question : qui s'en rend compte, et quand ?
-Réponse attendue aujourd'hui : **personne**, avant qu'un patient ne regarde son historique. Voir l'écart E1.
+Avant la correction de l'écart E1, la réponse était : **personne**, avant qu'un patient ne regarde son historique. Depuis cette correction, la règle `LecturesDossiersEnSerie` appelle le responsable sécurité au-delà de 30 dossiers différents lus en une heure. Six dossiers ne la déclenchent pas : en séance, discuter du seuil et de ce qui reste invisible.
 
 ## 5. Grille d'évaluation
 
@@ -91,7 +91,7 @@ Réponse attendue aujourd'hui : **personne**, avant qu'un patient ne regarde son
 
 | N° | Écart | Proposition (à décider) |
 |---|---|---|
-| E1 | **Aucune alerte sur un volume anormal d'accès autorisés** d'un même professionnel : seuls les refus et les bris de glace sont surveillés. | Règle Loki « lectures de dossiers en série » par compte (seuil à fixer), vers le responsable sécurité |
+| E1 | **Aucune alerte sur un volume anormal d'accès autorisés** d'un même professionnel : seuls les refus et les bris de glace sont surveillés. | **Corrigé** : événement `acces-professionnel` (service `identite`) et règle `LecturesDossiersEnSerie` (plus de 30 dossiers différents en 1 h, vers le responsable sécurité ; seuil provisoire à confirmer en séance) |
 | E2 | Pas de motif de suspension « compte compromis », et la suspension remet la fiche en vérification. La bonne coupure passe par Keycloak, mais la procédure n'est pas écrite. | Procédure « couper un compte compromis » dans le plan d'incident ; motif de suspension `securite` à étudier |
 | E3 | Pas d'écran ni de requête prête pour « toutes les traces d'un compte depuis H ». | Requête documentée pour l'astreinte technique, puis écran pour le responsable sécurité si l'exercice le confirme |
 | E4 | Pas de procédure pour un patient qui **conteste un accès** vu dans son historique. | Procédure pour l'équipe `assistance-patient`, puis transmission au responsable sécurité |

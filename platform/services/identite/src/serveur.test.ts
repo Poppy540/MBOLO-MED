@@ -190,6 +190,10 @@ describe('API identité', () => {
       payload: { patientId: 'fictif-patient-0001' },
     });
     expect(pendant.json()).toMatchObject({ autorise: true, motif: 'consentement-partage-pro' });
+    // Compté par la supervision (lectures en série), avec le compte et le dossier pour l'enquête.
+    expect(
+      lignes.find((l) => l.contexte?.['alerte'] === 'acces-professionnel')?.contexte,
+    ).toMatchObject({ sujet: expect.any(String), patientId: 'fictif-patient-0001' });
 
     // Révocation par la patiente : effet immédiat.
     const rev = await a.inject({

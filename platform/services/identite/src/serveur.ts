@@ -341,6 +341,14 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
         );
       } else if (!decision.autorise) {
         signalerAlerte(o.journal, 'acces-refuse', 'accès au dossier refusé', contexte);
+      } else if (decision.motif === 'consentement-partage-pro') {
+        // Compté par la supervision : des dossiers lus en série signent un compte volé.
+        signalerAlerte(
+          o.journal,
+          'acces-professionnel',
+          'dossier lu par un professionnel',
+          contexte,
+        );
       } else {
         o.journal.info('décision d’accès au dossier', contexte);
       }
