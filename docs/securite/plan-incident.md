@@ -38,5 +38,11 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 
 **Retour d'expérience** : fiche problématique, `memory.md`, mise à jour de l'[AIPD n°1](aipd-verification-identite.md) et du [modèle de menaces](modele-menaces.md).
 
+## Exercices sur table
+
+| N° | Scénario | État |
+|---|---|---|
+| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.1, à valider puis à jouer avant la vague 1 ; 7 écarts pressentis (E1 à E7) |
+
 ## Contacts (à compléter — rôles, pas de données personnelles dans le dépôt)
 Directeur médical de garde · Responsable sécurité · Porteur de projet · Hébergeur · Prestataires critiques.
