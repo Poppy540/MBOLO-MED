@@ -38,11 +38,52 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 
 **Retour d'expérience** : fiche problématique, `memory.md`, mise à jour de l'[AIPD n°1](aipd-verification-identite.md) et du [modèle de menaces](modele-menaces.md).
 
+## Procédure : couper un compte compromis (professionnel ou équipe) — brouillon, à valider
+
+Écart E2 de l'[exercice sur table n°1](exercice-sur-table-01.md). À appliquer dès qu'un compte est **soupçonné** d'être utilisé par quelqu'un d'autre. Exemples : alerte `LecturesDossiersEnSerie` ou `AccesRefusesEnRafale`, bris de glace inexpliqué, signalement du titulaire ou d'un patient. Dans le doute, on coupe : un compte coupé à tort se rétablit, une fuite ne se rattrape pas.
+
+**Qui** : le responsable sécurité décide ; l'astreinte technique agit dans la console d'administration de Keycloak, avec sa double authentification. Le porteur de projet est informé. Un agent IA ne fait jamais ces gestes.
+
+**Couper (en moins de 30 minutes après l'alerte)**, dans la console Keycloak, royaume `mbolo`, fiche de l'utilisateur :
+
+1. **Désactiver le compte** (« Enabled » sur off) : plus aucune connexion ni aucun renouvellement de jeton.
+2. **Fermer toutes ses sessions** (onglet « Sessions », « Sign out ») : les jetons de rafraîchissement sont révoqués.
+3. **Supprimer son code de double authentification** (onglet « Credentials ») : le code volé ne servira plus, même après réactivation.
+4. Noter l'heure exacte de chaque geste dans le journal d'incident (`control-room/incidents/INC-AAAA-NNN.md`, voir le skill `reponse-incident`).
+
+**Ce que la coupure ne fait pas encore** (à connaître, à surveiller) :
+
+- **Jeton d'accès déjà délivré** : il reste accepté **jusqu'à 5 minutes**, car les services vérifient la signature localement (`accessTokenLifespan` = 300 s). Après 5 minutes, plus rien ne passe.
+- **Téléconsultation en cours** : le jeton de salle LiveKit vaut 10 minutes pour entrer, mais un participant **déjà dans la salle y reste** jusqu'à sa fermeture. Aucun outil ne retire aujourd'hui un participant. Il faut fermer la salle en annulant le rendez-vous, ce qui prévient le patient. Écart à corriger.
+- **Fiche du professionnel** : elle reste « vérifiée ». **Ne pas utiliser la suspension** (`POST /professionnels/:id/suspension`) pour un compte volé : elle remet le professionnel en vérification complète, et ses motifs (signalement de l'Ordre, plainte confirmée, incident qualité) ne correspondent pas. Elle ne sert que si c'est le professionnel lui-même qui est en cause.
+- **Rendez-vous à venir** : ils ne sont pas annulés. Tant que la fiche reste vérifiée, ils n'apparaissent pas dans « Rendez-vous à reprendre » (écart E5). L'assistance les reprend à la main si la coupure dure.
+
+**Vérifier (dans les 15 minutes suivantes)** :
+
+- plus aucune connexion réussie de ce compte dans les événements de Keycloak (événements de connexion et d'administration activés dans le royaume) ;
+- plus aucun accès accordé à ce compte dans les traces du dossier (`AuditEvent`) après l'heure de coupure + 5 minutes ;
+- la fin des alertes `LecturesDossiersEnSerie` et `AccesRefusesEnRafale` pour ce compte.
+
+**Ne jamais** :
+
+- supprimer le compte : ses traces doivent rester rattachées à un compte existant ;
+- effacer des journaux ou des traces ;
+- prévenir le titulaire par le canal qui a pu être compromis (courriel ou téléphone inconnu) : utiliser les coordonnées connues de l'équipe.
+
+**Rétablir** (décidé par le responsable sécurité, jamais le jour même sans contact direct) :
+
+1. Joindre le titulaire par un canal déjà connu et confirmer son identité. Pour un professionnel, appeler l'équipe `verification-professionnels`, qui a vérifié son identité.
+2. Lui imposer un nouveau mot de passe temporaire et une nouvelle double authentification (actions requises « Update Password » et « Configure OTP »).
+3. Réactiver le compte, puis noter l'heure et la décision dans le journal d'incident.
+4. Revoir avec lui les accès faits pendant la période suspecte : ils alimentent l'évaluation de la notification (étape 5 des étapes ci-dessus).
+
+**Compte d'un patient** : même coupure. Le rétablissement passe ensuite par la récupération du compte avec l'équipe `assistance-patient` (ADR-0021) : code remis après rappel au numéro du dossier, autres sessions fermées, SMS d'alerte.
+
 ## Exercices sur table
 
 | N° | Scénario | État |
 |---|---|---|
-| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.1, à valider puis à jouer avant la vague 1 ; 7 écarts pressentis (E1 à E7), E1 corrigé (règle `LecturesDossiersEnSerie`) |
+| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.1, à valider puis à jouer avant la vague 1 ; 7 écarts pressentis (E1 à E7), E1 corrigé (règle `LecturesDossiersEnSerie`), E2 traité (procédure ci-dessus) |
 
 ## Contacts (à compléter — rôles, pas de données personnelles dans le dépôt)
 Directeur médical de garde · Responsable sécurité · Porteur de projet · Hébergeur · Prestataires critiques.
