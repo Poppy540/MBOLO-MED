@@ -29,3 +29,21 @@ describe('jeton LiveKit', () => {
     expect(c.exp - Math.floor(Date.now() / 1000)).toBeLessThanOrEqual(600);
   });
 });
+
+describe('retrait d’un compte des salles LiveKit', () => {
+  it('retire le compte de chaque salle où il est, et seulement de celles-là', async () => {
+    const s = new SalleLiveKit({ url: 'ws://livekit.test', cle, secret });
+    const retraits: string[] = [];
+    (s as unknown as { api: unknown }).api = {
+      listRooms: async () => [{ name: 'rdv-1' }, { name: 'rdv-2' }, { name: 'rdv-3' }],
+      listParticipants: async (salle: string) =>
+        salle === 'rdv-2' ? [{ identity: 'u-p2' }] : [{ identity: 'u-p1' }, { identity: 'u-m1' }],
+      removeParticipant: async (salle: string, identite: string) => {
+        retraits.push(`${salle}/${identite}`);
+      },
+    };
+    expect(await s.retirer('u-m1')).toBe(2);
+    expect(retraits).toEqual(['rdv-1/u-m1', 'rdv-3/u-m1']);
+    expect(await s.retirer('u-inconnu')).toBe(0);
+  });
+});

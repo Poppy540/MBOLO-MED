@@ -150,6 +150,14 @@
         "composites": {
           "realm": ["mfa-requise"]
         }
+      },
+      {
+        "name": "responsable-securite",
+        "description": "Responsable sécurité (plan d'incident) : retire un compte compromis des téléconsultations en cours. Aucun accès clinique. MFA obligatoire. Jamais un agent IA.",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-requise"]
+        }
       }
     ]
   },

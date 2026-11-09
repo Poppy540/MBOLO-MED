@@ -22,7 +22,11 @@ async function serveur(
   const service = new ServiceTeleconsultation(
     new DepotRendezVousMemoire(),
     new DepotCreneauxMemoire(),
-    { preparer: async () => undefined, jeton: async () => 'jeton-salle-fictif' } as never,
+    {
+      preparer: async () => undefined,
+      jeton: async () => 'jeton-salle-fictif',
+      retirer: async () => 1,
+    } as never,
     { estActif: async (nom) => nom !== 'paiement.mobile-money' },
     () => new Date('2026-09-27T09:00:00Z'),
     undefined,
@@ -34,6 +38,7 @@ async function serveur(
     verifierJeton: async (j) => {
       if (j === 'medecin') return MEDECIN;
       if (j === 'assistance') return { sujet: 'u-a1', roles: ['assistance-patient'] };
+      if (j === 'securite') return { sujet: 'u-s1', roles: ['responsable-securite'] };
       if (j !== 'patient') throw new Error('jeton invalide');
       return PATIENT;
     },
@@ -135,5 +140,26 @@ describe('API de téléconsultation : rendez-vous à reprendre (ADR-0026, étape
     expect((await appel('patient')).statusCode).toBe(403);
     expect((await appel('medecin')).statusCode).toBe(403);
     expect((await appel()).statusCode).toBe(401);
+  });
+});
+
+describe('API de téléconsultation : retrait d’un compte compromis (plan d’incident, écart E2)', () => {
+  it('pour le responsable sécurité seulement, avec un identifiant de compte valide', async () => {
+    const app = await serveur();
+    const retirer = (jeton: string | undefined, corps: unknown) =>
+      app.inject({
+        method: 'POST',
+        url: '/securite/retrait-salles',
+        headers: jeton ? { authorization: `Bearer ${jeton}` } : {},
+        payload: corps as object,
+      });
+    const r = await retirer('securite', { sujet: 'u-m1' });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ salles: 1 });
+    expect((await retirer('assistance', { sujet: 'u-m1' })).statusCode).toBe(403);
+    expect((await retirer('medecin', { sujet: 'u-m1' })).statusCode).toBe(403);
+    expect((await retirer(undefined, { sujet: 'u-m1' })).statusCode).toBe(401);
+    expect((await retirer('securite', { sujet: 'u m1' })).statusCode).toBe(400);
+    expect((await retirer('securite', { sujet: 'u-m1', salle: 'x' })).statusCode).toBe(400);
   });
 });

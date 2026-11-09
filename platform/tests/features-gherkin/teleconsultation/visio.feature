@@ -16,6 +16,22 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Alors "patient-fictif-01" entend "Professionnel de santé"
     Et "medecin-fictif-01" entend "Patient"
 
+  Scénario: Le responsable sécurité retire un compte compromis de la téléconsultation en cours
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que "securite-fictif-01" est connecté
+    Quand "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
+    Alors le rendez-vous est enregistré
+    Quand "patient-fictif-01" rejoint la téléconsultation
+    Et que "medecin-fictif-01" rejoint la téléconsultation
+    Alors "patient-fictif-01" entend "Professionnel de santé"
+    Quand "patient-fictif-01" retire "medecin-fictif-01" des téléconsultations en cours
+    Alors le retrait est refusé
+    Et "patient-fictif-01" entend "Professionnel de santé"
+    Quand "securite-fictif-01" retire "medecin-fictif-01" des téléconsultations en cours
+    Alors le compte est retiré de 1 salle
+    Et "patient-fictif-01" n'entend plus personne
+
   Scénario: Le rendez-vous est enregistré dans le dossier médical, sans aucun motif
     Étant donné que "patient-fictif-01" est connecté
     Et que "medecin-fictif-01" est connecté

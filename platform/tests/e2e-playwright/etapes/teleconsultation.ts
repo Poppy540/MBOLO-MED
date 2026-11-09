@@ -7,7 +7,7 @@ import { expect, type Browser } from '@playwright/test';
 import { creneauVideo } from '@mbolo/dossier-fhir';
 import { FHIR_URL, NOTIFICATIONS_URL, TELECONSULTATION_URL, WEBRTC_URL } from '../configuration.js';
 import { jetonService } from './dossier.js';
-import { Given, Then, When, type Monde } from './fixtures.js';
+import { Given, Then, When, revendications, type Monde } from './fixtures.js';
 
 // Bundle navigateur du client LiveKit, lu depuis le paquet installé (hors champ « exports »).
 const require = createRequire(import.meta.url);
@@ -276,6 +276,38 @@ When(
     );
   },
 );
+
+// Plan d'incident (écart E2) : le compte visé est désigné par son identifiant Keycloak (`sub`).
+When(
+  '{string} retire {string} des téléconsultations en cours',
+  async ({ monde }, demandeur: string, cible: string) => {
+    const jetonCible = monde.jetons.get(cible);
+    if (!jetonCible) throw new Error(`${cible} n'est pas connecté.`);
+    await appeler(monde, 'POST', '/securite/retrait-salles', monde.jetons.get(demandeur), {
+      sujet: revendications(jetonCible)['sub'],
+    });
+  },
+);
+
+Then('le retrait est refusé', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(403);
+});
+
+Then('le compte est retiré de {int} salle(s)', ({ monde }, n: number) => {
+  expect(monde.reponse?.statut).toBe(200);
+  expect(monde.reponse?.corps['salles']).toBe(n);
+});
+
+Then("{string} n'entend plus personne", async ({ monde }, auditeur: string) => {
+  const page = monde.visio.get(auditeur)?.page;
+  if (!page) throw new Error(`${auditeur} n'a pas rejoint la salle.`);
+  await expect
+    .poll(
+      () => page.evaluate(() => (window as unknown as { distants: () => unknown[] }).distants()),
+      { timeout: 15_000 },
+    )
+    .toEqual([]);
+});
 
 Then("l'entrée dans la salle est refusée", ({ monde }) => {
   expect(monde.reponse?.statut).toBe(404);

@@ -23,6 +23,7 @@ const salle: FournisseurSalle = {
   url: 'ws://livekit.test',
   preparer: async () => undefined,
   jeton: async () => 'jeton-fictif',
+  retirer: async () => 0,
 };
 
 const DEBUT = '2026-09-27T10:00:00.000Z';

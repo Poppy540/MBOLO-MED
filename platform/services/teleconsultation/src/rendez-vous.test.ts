@@ -33,6 +33,7 @@ const pharmacien: Utilisateur = { sujet: 'u-ph', roles: ['pharmacien'] };
 const salles = () => {
   const jetons: { salle: string; identite: string; nomAffiche: string }[] = [];
   const preparees: string[] = [];
+  const retires: string[] = [];
   const f: FournisseurSalle = {
     url: 'ws://livekit.test',
     preparer: async (nom) => {
@@ -42,8 +43,12 @@ const salles = () => {
       jetons.push(j);
       return `jeton-${j.identite}`;
     },
+    retirer: async (identite) => {
+      retires.push(identite);
+      return 1;
+    },
   };
-  return { f, jetons, preparees };
+  return { f, jetons, preparees, retires };
 };
 
 const DEBUT = '2026-09-27T10:00:00.000Z';
@@ -750,5 +755,41 @@ describe('rendez-vous à reprendre par l’équipe (ADR-0026, étape 5)', () => 
     for (const u of [patient, medecin, agent]) {
       await expect(service.rendezVousAReprendre(u)).rejects.toMatchObject({ statut: 403 });
     }
+  });
+});
+
+describe('retrait d’un compte compromis des salles (plan d’incident, écart E2)', () => {
+  const securite: Utilisateur = { sujet: 'u-s1', roles: ['responsable-securite'] };
+
+  it('le responsable sécurité retire le compte de toutes les salles ouvertes', async () => {
+    const s = salles();
+    const service = new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      new DepotCreneauxMemoire(),
+      s.f,
+      { estActif: async () => true },
+    );
+    expect(await service.retirerDesSalles(securite, 'u-m1')).toBe(1);
+    expect(s.retires).toEqual(['u-m1']);
+  });
+
+  it('personne d’autre : patient, professionnel, assistance, agent IA refusés (403)', async () => {
+    const s = salles();
+    const service = new ServiceTeleconsultation(
+      new DepotRendezVousMemoire(),
+      new DepotCreneauxMemoire(),
+      s.f,
+      { estActif: async () => true },
+    );
+    const assistance: Utilisateur = { sujet: 'u-a1', roles: ['assistance-patient'] };
+    const agent: Utilisateur = {
+      sujet: 'u-agent',
+      roles: ['responsable-securite', 'agent-ia'],
+      agent: { nom: 'agent-01-accueil', patientSession: 'aucune' },
+    };
+    for (const u of [patient, medecin, assistance, agent]) {
+      await expect(service.retirerDesSalles(u, 'u-m1')).rejects.toMatchObject({ statut: 403 });
+    }
+    expect(s.retires).toEqual([]);
   });
 });
