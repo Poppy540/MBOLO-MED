@@ -172,6 +172,8 @@ describe('rôles sans accès clinique', () => {
     'verification-professionnels',
     // Candidat en attente de vérification (ADR-0026) : même avec une fiche et un partage, refusé.
     'professionnel-candidat',
+    // Coupe un compte compromis (plan d'incident) : jamais d'accès clinique.
+    'responsable-securite',
   ] as const)('%s : toujours refusé', (role) => {
     const u: Utilisateur = { sujet: 'x', roles: [role], practitionerId: 'fictif-medecin-0001' };
     expect(

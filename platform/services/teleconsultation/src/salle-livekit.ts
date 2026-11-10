@@ -25,6 +25,17 @@ export class SalleLiveKit implements FournisseurSalle {
     await this.api.createRoom({ name: nom, maxParticipants: 2, emptyTimeout: 300 });
   }
 
+  async retirer(identite: string): Promise<number> {
+    let salles = 0;
+    for (const salle of await this.api.listRooms()) {
+      const participants = await this.api.listParticipants(salle.name);
+      if (!participants.some((p) => p.identity === identite)) continue;
+      await this.api.removeParticipant(salle.name, identite);
+      salles += 1;
+    }
+    return salles;
+  }
+
   async jeton(j: { salle: string; identite: string; nomAffiche: string }): Promise<string> {
     const t = new AccessToken(this.o.cle, this.o.secret, {
       identity: j.identite,

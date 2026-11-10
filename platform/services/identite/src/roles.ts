@@ -51,6 +51,11 @@ export const ROLES = [
    * (ADR-0026) : il complète son dossier de candidature, sans aucun accès aux patients.
    */
   'professionnel-candidat',
+  /**
+   * Responsable sécurité (plan d'incident) : retire un compte compromis des téléconsultations en
+   * cours. Aucun accès clinique. Double authentification. Jamais un agent IA.
+   */
+  'responsable-securite',
 ] as const;
 export type Role = (typeof ROLES)[number];
 

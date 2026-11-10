@@ -121,6 +121,31 @@ export async function creerServeur(o: {
     return reply.header('cache-control', 'no-store').send({ rendezVous });
   });
 
+  // Plan d'incident (écart E2) : un compte coupé dans Keycloak reste dans la salle où il est déjà.
+  app.post<{ Body: { sujet: string } }>(
+    '/securite/retrait-salles',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sujet'],
+          properties: { sujet: ID },
+        },
+      },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const salles = await o.service.retirerDesSalles(u, req.body.sujet);
+      o.journal.avertissement('compte retiré des téléconsultations en cours', {
+        par: u.sujet,
+        sujet: req.body.sujet,
+        salles,
+      });
+      return { salles };
+    },
+  );
+
   app.get('/praticiens', async (req) => {
     const u = await authentifier(req);
     return { praticiens: await o.service.praticiens(u) };

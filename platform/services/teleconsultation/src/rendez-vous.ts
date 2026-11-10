@@ -108,6 +108,8 @@ export interface FournisseurSalle {
   /** Crée la salle si besoin : deux participants au maximum, jamais d'enregistrement. */
   preparer(nom: string): Promise<void>;
   jeton(o: { salle: string; identite: string; nomAffiche: string }): Promise<string>;
+  /** Retire ce compte de toutes les salles ouvertes ; rend le nombre de salles concernées. */
+  retirer(identite: string): Promise<number>;
 }
 
 export class ErreurTeleconsultation extends Error {
@@ -153,6 +155,9 @@ export interface RendezVousAReprendre {
 
 /** Rôle de l'équipe qui rappelle les patients (ADR-0019, ADR-0026). */
 export const ROLE_ASSISTANCE = 'assistance-patient';
+
+/** Responsable sécurité : coupe un compte compromis (plan d'incident, écart E2). */
+export const ROLE_SECURITE = 'responsable-securite';
 
 export interface AccesSalle {
   url: string;
@@ -671,6 +676,18 @@ export class ServiceTeleconsultation {
       throw new ErreurTeleconsultation('Accès refusé.', 403);
     }
     return this.aReprendre();
+  }
+
+  /**
+   * Retire un compte compromis de toutes les téléconsultations en cours (plan d'incident). Une
+   * personne du rôle `responsable-securite` seulement, jamais un agent IA. Le compte doit d'abord
+   * être désactivé dans Keycloak : sinon il peut redemander un jeton de salle et revenir.
+   */
+  async retirerDesSalles(u: Utilisateur, sujet: string): Promise<number> {
+    if (!u.roles.includes(ROLE_SECURITE) || u.agent || u.roles.includes('agent-ia')) {
+      throw new ErreurTeleconsultation('Accès refusé.', 403);
+    }
+    return this.salles.retirer(sujet);
   }
 
   /**

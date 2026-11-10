@@ -80,7 +80,8 @@ export interface CompteFictif {
     | 'assistance-patient'
     | 'validation-reversement'
     | 'recrutement'
-    | 'verification-professionnels';
+    | 'verification-professionnels'
+    | 'responsable-securite';
   /** Rôles supplémentaires (ex. séparation des tâches : recruter et vérifier). */
   autresRoles?: CompteFictif['role'][];
   application: keyof typeof APPLICATIONS;
@@ -225,6 +226,14 @@ export const COMPTES: CompteFictif[] = [
     identifiant: 'assistant-fictif-01',
     prenom: 'Blaise',
     role: 'assistance-patient',
+    application: 'pro',
+    attributs: {},
+  },
+  {
+    // Coupe un compte compromis : le retire des téléconsultations en cours (plan d'incident).
+    identifiant: 'securite-fictif-01',
+    prenom: 'Odile',
+    role: 'responsable-securite',
     application: 'pro',
     attributs: {},
   },

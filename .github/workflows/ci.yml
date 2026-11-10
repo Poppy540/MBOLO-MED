@@ -104,7 +104,9 @@ jobs:
 
   e2e:
     name: E2E (Keycloak + identité, comptes fictifs)
-    runs-on: ubuntu-latest
+    # Épinglé : ubuntu-latest est passé à 26.04, que Playwright 1.56.1 ne prend pas en charge
+    # (« does not support chromium on ubuntu26.04 »). À lever avec une montée de Playwright.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6

@@ -49,12 +49,13 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 1. **Désactiver le compte** (« Enabled » sur off) : plus aucune connexion ni aucun renouvellement de jeton.
 2. **Fermer toutes ses sessions** (onglet « Sessions », « Sign out ») : les jetons de rafraîchissement sont révoqués.
 3. **Supprimer son code de double authentification** (onglet « Credentials ») : le code volé ne servira plus, même après réactivation.
-4. Noter l'heure exacte de chaque geste dans le journal d'incident (`control-room/incidents/INC-AAAA-NNN.md`, voir le skill `reponse-incident`).
+4. **Retirer le compte des téléconsultations en cours** : `POST /securite/retrait-salles` du service `teleconsultation` (voir ci-dessous).
+5. Noter l'heure exacte de chaque geste dans le journal d'incident (`control-room/incidents/INC-AAAA-NNN.md`, voir le skill `reponse-incident`).
 
 **Ce que la coupure ne fait pas encore** (à connaître, à surveiller) :
 
 - **Jeton d'accès déjà délivré** : il reste accepté **jusqu'à 5 minutes**, car les services vérifient la signature localement (`accessTokenLifespan` = 300 s). Après 5 minutes, plus rien ne passe.
-- **Téléconsultation en cours** : le jeton de salle LiveKit vaut 10 minutes pour entrer, mais un participant **déjà dans la salle y reste** jusqu'à sa fermeture. Aucun outil ne retire aujourd'hui un participant. Il faut fermer la salle en annulant le rendez-vous, ce qui prévient le patient. Écart à corriger.
+- **Téléconsultation en cours** : un participant déjà dans une salle y reste après la coupure. Juste après les gestes ci-dessus, le responsable sécurité le retire de toutes les salles ouvertes avec `POST /securite/retrait-salles` `{ sujet }` du service `teleconsultation` (rôle `responsable-securite`, double authentification ; le `sujet` est l'identifiant Keycloak du compte, celui des alertes). Le compte doit d'abord être désactivé : sinon il redemande un jeton de salle et revient. Un jeton de salle déjà délivré permet encore d'entrer pendant 10 minutes au plus ; refaire le retrait si besoin, ou annuler le rendez-vous en dernier recours (le patient est alors prévenu).
 - **Fiche du professionnel** : elle reste « vérifiée ». **Ne pas utiliser la suspension** (`POST /professionnels/:id/suspension`) pour un compte volé : elle remet le professionnel en vérification complète, et ses motifs (signalement de l'Ordre, plainte confirmée, incident qualité) ne correspondent pas. Elle ne sert que si c'est le professionnel lui-même qui est en cause.
 - **Rendez-vous à venir** : ils ne sont pas annulés. Tant que la fiche reste vérifiée, ils n'apparaissent pas dans « Rendez-vous à reprendre » (écart E5). L'assistance les reprend à la main si la coupure dure.
 

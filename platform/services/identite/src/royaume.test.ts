@@ -79,6 +79,8 @@ describe('royaume mbolo', () => {
     'recrutement',
     'verification-professionnels',
     'professionnel-candidat',
+    // Coupe un compte compromis (plan d'incident).
+    'responsable-securite',
     // Le proche voit des données de santé d'une autre personne (ADR-0019, porteur de projet).
     'proche',
   ])('impose la double authentification au rôle %s', (nom) => {
