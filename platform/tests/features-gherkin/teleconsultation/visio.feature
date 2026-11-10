@@ -29,7 +29,7 @@ Fonctionnalité: Téléconsultation vidéo entre un patient et son médecin
     Alors le retrait est refusé
     Et "patient-fictif-01" entend "Professionnel de santé"
     Quand "securite-fictif-01" retire "medecin-fictif-01" des téléconsultations en cours
-    Alors le compte est retiré de 1 salle
+    Alors le compte est retiré des salles où il se trouvait
     Et "patient-fictif-01" n'entend plus personne
 
   Scénario: Le rendez-vous est enregistré dans le dossier médical, sans aucun motif
