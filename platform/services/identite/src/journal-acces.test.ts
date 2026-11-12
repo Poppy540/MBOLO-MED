@@ -87,7 +87,7 @@ describe('JournalAccesFhir.parCompte', () => {
     );
     expect(traces.map((t) => t.recorded)).toEqual(['2026-11-02T05:00:00Z', '2026-11-02T03:00:00Z']);
     const url = decodeURIComponent(appels[0]?.url ?? '');
-    expect(url).toContain(`/AuditEvent?agent:identifier=${SYSTEME}|u-vole`);
+    expect(url).toContain('/AuditEvent?altid=u-vole&');
     expect(url).toContain('date=ge2026-11-02T02:00:00.000Z');
     expect(appels[0]?.entetes['cache-control']).toBe('no-cache');
   });

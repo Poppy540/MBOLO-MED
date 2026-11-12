@@ -86,11 +86,10 @@ export class JournalAccesFhir extends ClientFhir implements JournalAcces {
   }
 
   async parCompte(sujet: string, depuis: string): Promise<AuditEvent[]> {
-    // Le compte figure dans agent.who.identifier (jamais un nom) : modificateur :identifier.
-    // Le filtre local reste la règle si le serveur rendait plus large.
-    const agent = encodeURIComponent(`${SYSTEMES.sujetCompte}|${sujet}`);
+    // Le compte (jamais un nom) figure dans agent.altId, recherchable par `altid` (HAPI n'indexe
+    // pas agent:identifier par défaut). Le filtre local sur agent.who reste la règle.
     const traces = await this.rechercher(
-      `${this.base}/AuditEvent?agent:identifier=${agent}&date=ge${encodeURIComponent(depuis)}&_sort=-date&_count=100`,
+      `${this.base}/AuditEvent?altid=${encodeURIComponent(sujet)}&date=ge${encodeURIComponent(depuis)}&_sort=-date&_count=100`,
       'Trace d’accès',
       (r): r is AuditEvent =>
         r.resourceType === 'AuditEvent' && deCompte(r, sujet) && depuisLe(r, depuis),
