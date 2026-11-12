@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evenementAccesDossier, revueBrisDeGlace } from './construire.js';
+import { contestationAcces, evenementAccesDossier, revueBrisDeGlace } from './construire.js';
 import { valider } from './regles.js';
 
 // Données FICTIVES.
@@ -93,5 +93,27 @@ describe('AuditEvent — journal des accès au dossier', () => {
     });
     expect(r.entity?.[0]?.detail?.[0]?.valueString).toBe('Aucune urgence documentée [FICTIF]');
     expect(valider(r, 'dev')).toEqual([]);
+  });
+
+  it('contestation d’un accès par le patient : désigne l’accès et le dossier, sans texte libre', () => {
+    const c = contestationAcces({
+      traceId: '42',
+      patientId: 'pat-fictif-001',
+      sujet: 'compte-fictif-patient',
+      canal: 'patient',
+      date: '2026-11-12T08:00:00Z',
+      env: 'dev',
+    });
+    expect(c).toMatchObject({
+      subtype: [{ code: 'contestation-acces' }],
+      outcomeDesc: 'patient',
+      agent: [{ altId: 'compte-fictif-patient', role: [{ coding: [{ code: 'patient' }] }] }],
+      entity: [
+        { what: { reference: 'AuditEvent/42' } },
+        { what: { reference: 'Patient/pat-fictif-001' } },
+      ],
+    });
+    expect(JSON.stringify(c)).not.toContain('valueString');
+    expect(valider(c, 'dev')).toEqual([]);
   });
 });

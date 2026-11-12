@@ -7,6 +7,7 @@ export {
   compteRendu,
   conditionDeclaree,
   consentement,
+  contestationAcces,
   creneauVideo,
   evenementAccesDossier,
   patientInscrit,
@@ -20,6 +21,7 @@ export {
 } from './construire.js';
 export type {
   OptionsCompteRendu,
+  OptionsContestationAcces,
   OptionsConditionDeclaree,
   OptionsConsentement,
   OptionsCreneau,

@@ -54,6 +54,15 @@ Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses
   - **Personne ne revoit son propre accès d'urgence** (séparation des tâches).
   - Une conclusion `injustifie` ou `a-approfondir` produit une alerte dans le journal, pour que le responsable sécurité et le DPO donnent une suite (à relier à l'astreinte, ADR-0006).
 
+## Contestation d'un accès par le patient (plan d'incident)
+
+- `GET /patients/:patientId/acces` donne pour chaque accès son `traceId` et `conteste` (vrai si le patient l'a déjà signalé). Les contestations elles-mêmes n'y figurent pas comme des accès.
+- `POST /patients/:patientId/acces/:traceId/contestation` : le **patient lui-même** (ni un proche, ni un agent IA) signale un accès qu'il ne reconnaît pas, **sans texte libre**. Seule une demande d'accès à son propre dossier peut être contestée (sinon 404). Réponses : 201 à la première contestation, 200 ensuite, sans nouvelle trace.
+  - Une nouvelle trace `contestation-acces` est ajoutée au dossier ; l'accès contesté n'est jamais modifié.
+  - L'alerte `acces-conteste` ne porte que la trace contestée (règle `AccesConteste`, responsable sécurité).
+- `GET /securite/contestations` (rôle `responsable-securite`) : les 50 dernières contestations, avec l'accès contesté (date, compte, rôles, décision, motif, urgence), sans justification écrite.
+- Procédure complète : plan d'incident, « accès contesté par un patient ».
+
 ## Traces d'un compte (plan d'incident)
 
 `GET /securite/traces-compte?sujet=…&depuis=…` liste toutes les traces laissées par un compte depuis une date : accès accordés ou refusés, bris de glace, revues, vérifications. Elle sert à établir ce qu'un compte compromis a obtenu (procédure « couper un compte compromis » du plan d'incident, écart E3 de l'exercice sur table n°1).

@@ -13,6 +13,7 @@ Règles d'alerte de Mbolo Santé, versionnées avec le code.
 | `ConsultationsPhotosAnormales` | plus de 60 photos en 1 h par vérificateur | critique | responsable sécurité |
 | `BrisDeGlace` | chaque accès d'urgence | normale | relecteur des accès |
 | `AccesRefusesEnRafale` | plus de 20 refus en 5 min par compte ou service | critique | responsable sécurité |
+| `AccesConteste` | un patient conteste un accès à son dossier (événement `acces-conteste` ; exercice sur table n°1, écart E4 ; seule la trace contestée figure dans l'alerte) | critique | responsable sécurité |
 | `LecturesDossiersEnSerie` | plus de 30 dossiers **différents** lus sur consentement en 1 h par un même professionnel (événement `acces-professionnel` ; exercice sur table n°1, écart E1 ; seuil provisoire) | critique | responsable sécurité |
 | `CodesRecuperationEnSerie` | plus de 5 codes de récupération de compte remis en 1 h par un même membre de l'équipe (ADR-0021) | critique | responsable sécurité |
 | `CodesConnexionBloques` | un dossier a demandé plus de 10 codes de connexion par SMS en 1 h ; envois bloqués (ADR-0022) — le dossier est dans le journal, jamais dans l'alerte | normale | responsable sécurité |

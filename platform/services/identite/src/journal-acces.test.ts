@@ -92,3 +92,22 @@ describe('JournalAccesFhir.parCompte', () => {
     expect(appels[0]?.entetes['cache-control']).toBe('no-cache');
   });
 });
+
+describe('JournalAccesFhir.parIds', () => {
+  it('cherche par _id, sans cache, et écarte les traces non demandées', async () => {
+    const lot: Bundle = {
+      resourceType: 'Bundle',
+      type: 'searchset',
+      entry: [
+        { resource: { ...trace('2026-11-12T03:00:00Z'), id: 't1' } },
+        { resource: { ...trace('2026-11-12T04:00:00Z'), id: 'autre' } },
+      ],
+    };
+    const { appels, f } = fauxServeur([new Response(JSON.stringify(lot), { status: 200 })]);
+    const traces = await new JournalAccesFhir({ base: BASE, fetch: f }).parIds(['t1', 't2']);
+    expect(traces.map((t) => t.id)).toEqual(['t1']);
+    expect(appels[0]?.url).toContain('/AuditEvent?_id=t1,t2&');
+    expect(appels[0]?.entetes['cache-control']).toBe('no-cache');
+    expect(await new JournalAccesFhir({ base: BASE, fetch: f }).parIds([])).toEqual([]);
+  });
+});
