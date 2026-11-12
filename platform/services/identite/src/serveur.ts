@@ -25,6 +25,12 @@ import { ErreurNiveauInsuffisant, reponseNiveauInsuffisant } from './niveau.js';
 import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
 import { ErreurPeriode, ServiceTracesCompte } from './traces-compte.js';
+import {
+  ErreurContestation,
+  ServiceContestations,
+  estContestable,
+  tracesContestees,
+} from './contestations.js';
 import { limiterAppels } from './limites-appels.js';
 import { entetesSecurite } from './securite-http.js';
 
@@ -95,6 +101,7 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
     if (err instanceof ErreurAcces) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if (err instanceof ErreurRevue) return reply.code(err.statut).send({ erreur: err.message });
     if (err instanceof ErreurPeriode) return reply.code(400).send({ erreur: err.message });
+    if (err instanceof ErreurContestation) return reply.code(404).send({ erreur: err.message });
     if (err instanceof ErreurFonctionInactive) {
       return reply.code(403).send({ erreur: 'Fonction non disponible.' });
     }
@@ -179,8 +186,12 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
         sujet: u.sujet,
         patientId: req.params.patientId,
       });
+      const contestees = tracesContestees(traces);
       return {
-        acces: traces.map((t) => ({
+        // Les contestations sont des traces du dossier, pas des accès : elles marquent l'accès visé.
+        acces: traces.filter(estContestable).map((t) => ({
+          traceId: t.id,
+          conteste: contestees.has(t.id ?? ''),
           date: t.recorded,
           autorise: t.outcome === '0',
           motif: t.outcomeDesc,
@@ -273,6 +284,40 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
       return c;
     },
   );
+
+  // Contestation d'un accès par le patient lui-même (plan d'incident, écart E4) : nouvelle trace,
+  // alerte au responsable sécurité ; aucun texte libre.
+  const contestations = new ServiceContestations(o.journalAcces, o.env, o.maintenant);
+  app.post<{ Params: { patientId: string; traceId: string } }>(
+    '/patients/:patientId/acces/:traceId/contestation',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: { patientId: ID, traceId: ID },
+          required: ['patientId', 'traceId'],
+        },
+      },
+    },
+    async (req, reply) => {
+      const u = await authentifier(req);
+      const { cree } = await contestations.contester(u, req.params.patientId, req.params.traceId);
+      if (cree) {
+        // Seule la trace contestée figure dans l'alerte : ni patient ni professionnel.
+        signalerAlerte(o.journal, 'acces-conteste', 'un patient conteste un accès à son dossier', {
+          traceId: req.params.traceId,
+        });
+      }
+      return reply.code(cree ? 201 : 200).send({ conteste: true });
+    },
+  );
+
+  app.get('/securite/contestations', async (req) => {
+    const u = await authentifier(req);
+    const liste = await contestations.lister(u);
+    o.journal.info('contestations d’accès consultées', { par: u.sujet, nombre: liste.length });
+    return { contestations: liste };
+  });
 
   // Traces d'un compte depuis une date (plan d'incident, compte compromis) : rôle
   // responsable-securite seulement (MFA), jamais un agent IA ; aucun contenu de dossier.

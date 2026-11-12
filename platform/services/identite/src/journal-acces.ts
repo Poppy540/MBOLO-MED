@@ -5,7 +5,8 @@ import type { AuditEvent } from 'fhir/r4.js';
 import { SYSTEMES } from '@mbolo/dossier-fhir';
 import { ClientFhir, ErreurDepot, TYPE_FHIR } from './client-fhir.js';
 
-export type SousTypeTrace = 'acces-dossier' | 'bris-de-glace' | 'revue-bris-de-glace';
+export type SousTypeTrace =
+  'acces-dossier' | 'bris-de-glace' | 'revue-bris-de-glace' | 'contestation-acces';
 
 export interface JournalAcces {
   consigner(e: AuditEvent): Promise<void>;
@@ -18,6 +19,8 @@ export interface JournalAcces {
    * récentes d'abord : accès accordés ou refusés, bris de glace, revues, vérifications.
    */
   parCompte(sujet: string, depuis: string): Promise<AuditEvent[]>;
+  /** Traces désignées par leur identifiant (au plus 50) ; les inconnues sont absentes. */
+  parIds(ids: readonly string[]): Promise<AuditEvent[]>;
 }
 
 const deSousType = (e: AuditEvent, code: SousTypeTrace): boolean =>
@@ -54,6 +57,10 @@ export class JournalAccesMemoire implements JournalAcces {
 
   async parCompte(sujet: string, depuis: string): Promise<AuditEvent[]> {
     return this.traces.filter((e) => deCompte(e, sujet) && depuisLe(e, depuis)).sort(plusRecentes);
+  }
+
+  async parIds(ids: readonly string[]): Promise<AuditEvent[]> {
+    return this.traces.filter((e) => e.id !== undefined && ids.includes(e.id));
   }
 }
 
@@ -95,6 +102,17 @@ export class JournalAccesFhir extends ClientFhir implements JournalAcces {
         r.resourceType === 'AuditEvent' && deCompte(r, sujet) && depuisLe(r, depuis),
     );
     return traces.sort(plusRecentes);
+  }
+
+  async parIds(ids: readonly string[]): Promise<AuditEvent[]> {
+    if (ids.length === 0) return [];
+    if (ids.length > 50) throw new ErreurDepot('Trop de traces demandées.', 422);
+    return this.rechercher(
+      `${this.base}/AuditEvent?_id=${ids.map(encodeURIComponent).join(',')}&_count=50`,
+      'Trace d’accès',
+      (r): r is AuditEvent =>
+        r.resourceType === 'AuditEvent' && r.id !== undefined && ids.includes(r.id),
+    );
   }
 }
 

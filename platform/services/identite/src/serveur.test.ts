@@ -463,6 +463,7 @@ describe('API identité', () => {
       parPatient: async () => [],
       parSousType: async () => [],
       parCompte: async () => [],
+      parIds: async () => [],
     };
     const a = await app(enPanne);
     const accordable = await a.inject({
@@ -535,6 +536,80 @@ describe('traces d’un compte (plan d’incident)', () => {
         400,
       );
     }
+  });
+});
+
+describe('contestation d’un accès (plan d’incident, E4)', () => {
+  it('le patient conteste un accès de son historique ; alerte ; liste pour le responsable sécurité', async () => {
+    const a = await app();
+    const medecin = { authorization: `Bearer ${await jetonMedecin()}` };
+    const patient = { authorization: `Bearer ${await jetonPatient(1)}` };
+    await a.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: medecin,
+      payload: { patientId: 'fictif-patient-0001', brisDeGlace: { motif: 'Urgence [FICTIF]' } },
+    });
+    const historique = await a.inject({
+      method: 'GET',
+      url: '/patients/fictif-patient-0001/acces',
+      headers: patient,
+    });
+    const [acces] = historique.json().acces as { traceId: string; conteste: boolean }[];
+    expect(acces).toMatchObject({ conteste: false });
+    const url = `/patients/fictif-patient-0001/acces/${acces?.traceId ?? ''}/contestation`;
+
+    expect((await a.inject({ method: 'POST', url, headers: medecin })).statusCode).toBe(403);
+    expect((await a.inject({ method: 'POST', url })).statusCode).toBe(401);
+    expect((await a.inject({ method: 'POST', url, headers: patient })).statusCode).toBe(201);
+    expect(
+      lignes.some(
+        (l) =>
+          l.contexte?.['alerte'] === 'acces-conteste' &&
+          l.contexte['traceId'] === acces?.traceId &&
+          !('patientId' in l.contexte),
+      ),
+    ).toBe(true);
+    expect((await a.inject({ method: 'POST', url, headers: patient })).statusCode).toBe(200);
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/patients/fictif-patient-0001/acces/trace-inconnue/contestation',
+          headers: patient,
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    const apres = await a.inject({
+      method: 'GET',
+      url: '/patients/fictif-patient-0001/acces',
+      headers: patient,
+    });
+    // La contestation marque l'accès et n'apparaît pas comme un accès.
+    expect(apres.json().acces).toHaveLength(1);
+    expect(apres.json().acces[0]).toMatchObject({ traceId: acces?.traceId, conteste: true });
+
+    const securite = {
+      authorization: `Bearer ${await signer({ sub: 'u-securite', realm_access: { roles: ['responsable-securite'] } })}`,
+    };
+    const liste = await a.inject({
+      method: 'GET',
+      url: '/securite/contestations',
+      headers: securite,
+    });
+    expect(liste.statusCode).toBe(200);
+    expect(liste.json().contestations).toMatchObject([
+      {
+        canal: 'patient',
+        patientId: 'fictif-patient-0001',
+        acces: { demandeur: 'u-m1', urgence: true },
+      },
+    ]);
+    expect(
+      (await a.inject({ method: 'GET', url: '/securite/contestations', headers: patient }))
+        .statusCode,
+    ).toBe(403);
   });
 });
 

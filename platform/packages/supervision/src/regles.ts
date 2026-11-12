@@ -101,6 +101,22 @@ export const REGLES_LOKI: { groups: Groupe[] } = {
           },
         },
         {
+          // Un patient ne reconnaît pas un accès à son dossier (exercice sur table n°1, E4) : chaque
+          // contestation est examinée par le responsable sécurité.
+          alert: 'AccesConteste',
+          expr: `${compter('acces-conteste', '5m')} > 0`,
+          labels: {
+            gravite: 'critique',
+            destinataire: 'responsable-securite',
+            alerte: 'acces-conteste',
+          },
+          annotations: {
+            resume: 'Un patient conteste un accès à son dossier.',
+            conduite:
+              'Plan d’incident, « accès contesté par un patient » : liste des contestations, traces du compte qui a eu l’accès.',
+          },
+        },
+        {
           // Un médecin voit quelques patients par heure ; des dizaines de dossiers différents en une
           // heure, même avec consentement, signent un compte volé (exercice sur table n°1, E1).
           alert: 'LecturesDossiersEnSerie',

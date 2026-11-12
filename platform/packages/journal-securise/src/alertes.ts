@@ -15,6 +15,11 @@ export const ALERTES = [
    * qui lit des dossiers en série (exercice sur table n°1, écart E1).
    */
   'acces-professionnel',
+  /**
+   * Un patient ne reconnaît pas un accès à son dossier (plan d'incident, écart E4) : chaque
+   * contestation est remise au responsable sécurité.
+   */
+  'acces-conteste',
   /** Requêtes refusées par une limite d'appels (429). */
   'limite-appels',
   /** Erreur interne d'un service, ou dossier médical indisponible (5xx). */

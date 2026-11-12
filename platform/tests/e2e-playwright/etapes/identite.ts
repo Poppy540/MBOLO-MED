@@ -482,3 +482,63 @@ Then(
     expect(monde.reponse?.corps['dossiersAccordes']).toContain(dossier);
   },
 );
+
+// ── Contestation d'un accès par le patient (plan d'incident, E4) ─────────────
+
+When(
+  "{string} conteste l'accès en urgence justifié par {string}",
+  async ({ monde }, identifiant: string, justification: string) => {
+    const dossier = patientId(identifiant);
+    await appeler(monde, 'GET', `/patients/${dossier}/acces`, {
+      jeton: jeton(monde, identifiant),
+    });
+    const acces = (monde.reponse?.corps['acces'] ?? []) as {
+      traceId: string;
+      justification?: string;
+    }[];
+    // Le plus récent d'abord : celui du scénario en cours.
+    const cible = acces.find((a) => a.justification === justification);
+    expect(cible, 'accès à contester').toBeDefined();
+    if (cible) monde.traceId = cible.traceId;
+    await appeler(
+      monde,
+      'POST',
+      `/patients/${dossier}/acces/${cible?.traceId ?? ''}/contestation`,
+      {
+        jeton: jeton(monde, identifiant),
+      },
+    );
+    expect(monde.reponse?.statut).toBe(201);
+  },
+);
+
+Then(
+  "l'historique de {string} montre cet accès comme contesté",
+  async ({ monde }, identifiant: string) => {
+    await appeler(monde, 'GET', `/patients/${patientId(identifiant)}/acces`, {
+      jeton: jeton(monde, identifiant),
+    });
+    const acces = (monde.reponse?.corps['acces'] ?? []) as { traceId: string; conteste: boolean }[];
+    expect(acces.find((a) => a.traceId === monde.traceId)?.conteste).toBe(true);
+  },
+);
+
+When("{string} consulte les contestations d'accès", async ({ monde }, identifiant: string) => {
+  await appeler(monde, 'GET', '/securite/contestations', { jeton: jeton(monde, identifiant) });
+});
+
+Then(
+  "la contestation de cet accès figure dans la liste, avec le compte qui a eu l'accès",
+  ({ monde }) => {
+    expect(monde.reponse?.statut).toBe(200);
+    const liste = (monde.reponse?.corps['contestations'] ?? []) as {
+      canal: string;
+      acces?: { traceId: string; demandeur: string; urgence: boolean };
+    }[];
+    const medecin = String(revendications(jeton(monde, 'medecin-fictif-01'))['sub'] ?? '');
+    expect(liste.find((c) => c.acces?.traceId === monde.traceId)).toMatchObject({
+      canal: 'patient',
+      acces: { demandeur: medecin, urgence: true },
+    });
+  },
+);

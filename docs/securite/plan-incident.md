@@ -82,6 +82,27 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 
 **Compte d'un patient** : même coupure. Le rétablissement passe ensuite par la récupération du compte avec l'équipe `assistance-patient` (ADR-0021) : code remis après rappel au numéro du dossier, autres sessions fermées, SMS d'alerte.
 
+## Procédure : accès contesté par un patient — brouillon, à valider
+
+Écart E4 de l'[exercice sur table n°1](exercice-sur-table-01.md). Un patient voit dans l'historique des accès à son dossier un accès qu'il ne reconnaît pas.
+
+**Le patient le signale lui-même** dans son historique (« Je ne reconnais pas cet accès »), sans rien écrire : `POST /patients/:patientId/acces/:traceId/contestation` du service `identite`, le patient lui-même seulement, jamais un agent IA ni un proche. Une nouvelle trace est ajoutée au dossier (l'accès n'est jamais modifié) et l'alerte `AccesConteste` part vers le responsable sécurité. Une seconde contestation du même accès ne crée rien.
+
+**S'il appelle l'équipe `assistance-patient`** :
+
+1. Vérifier son identité par la procédure de rappel au numéro du dossier (écran « Aider un patient qui appelle »).
+2. Ne rien confirmer ni commenter au téléphone : l'équipe ne voit pas l'historique et ne sait pas qui a eu l'accès.
+3. L'aider à faire le signalement lui-même depuis son historique. S'il ne le peut pas, transmettre au responsable sécurité la date et l'heure approximatives de l'accès, sans autre détail, et noter l'appel.
+
+**Le responsable sécurité** (rôle `responsable-securite`, double authentification) :
+
+1. Ouvre la liste des contestations (`GET /securite/contestations`) : date, dossier, et pour l'accès contesté le compte qui l'a demandé, ses rôles, la décision, le motif et s'il s'agissait d'un accès d'urgence.
+2. Lit les traces de ce compte depuis quelques jours (`GET /securite/traces-compte`).
+3. Décide : accès expliqué (rendez-vous, urgence revue par `revue-acces`), ou compte suspect → procédure « couper un compte compromis » ci-dessus, puis évaluation de la notification.
+4. Fait répondre au patient par l'équipe d'assistance, par un canal connu, sans citer le nom d'un professionnel avant la fin de l'examen.
+
+Restent à faire : écran du responsable sécurité ; suivi de l'issue de chaque contestation (aujourd'hui dans le journal d'incident).
+
 ## Exercices sur table
 
 | N° | Scénario | État |

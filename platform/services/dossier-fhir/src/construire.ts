@@ -262,6 +262,60 @@ export function revueBrisDeGlace(o: OptionsRevueBrisDeGlace): AuditEvent {
   };
 }
 
+export interface OptionsContestationAcces {
+  /** Identifiant de l'AuditEvent de l'accès contesté. */
+  traceId: string;
+  patientId: string;
+  /** Identifiant technique du patient qui conteste (sujet Keycloak), jamais un nom. */
+  sujet: string;
+  /** Par qui la contestation est enregistrée : le patient lui-même, ou l'équipe après un rappel. */
+  canal: 'patient' | 'assistance';
+  date: string;
+  env: Environnement;
+}
+
+/**
+ * Contestation d'un accès par le patient (plan d'incident, écart E4) : nouvelle trace qui désigne
+ * l'accès contesté, sans texte libre ; elle est remise au responsable sécurité.
+ */
+export function contestationAcces(o: OptionsContestationAcces): AuditEvent {
+  return {
+    resourceType: 'AuditEvent',
+    ...(o.env === 'prod' ? {} : { meta: { tag: [MARQUEUR_FICTIF] } }),
+    type: { system: SYSTEMES.auditType, code: '110100', display: 'Application Activity' },
+    subtype: [{ system: SYSTEMES.sousTypeAudit, code: 'contestation-acces' }],
+    action: 'E',
+    recorded: o.date,
+    outcome: '0',
+    outcomeDesc: o.canal,
+    agent: [
+      {
+        who: { identifier: { system: SYSTEMES.sujetCompte, value: o.sujet } },
+        altId: o.sujet,
+        requestor: true,
+        role: [
+          {
+            coding: [
+              {
+                system: SYSTEMES.role,
+                code: o.canal === 'patient' ? 'patient' : 'assistance-patient',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    source: { observer: { display: 'identite' } },
+    entity: [
+      { what: { reference: `AuditEvent/${o.traceId}` } },
+      {
+        what: { reference: `Patient/${o.patientId}` },
+        type: { system: SYSTEMES.auditEntiteType, code: '1', display: 'Person' },
+      },
+    ],
+  };
+}
+
 export interface OptionsRendezVous {
   patientId: string;
   praticienId: string;
