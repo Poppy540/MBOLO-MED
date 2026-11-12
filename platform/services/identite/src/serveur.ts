@@ -24,6 +24,7 @@ import type { FichesPraticiens } from './praticiens.js';
 import { ErreurNiveauInsuffisant, reponseNiveauInsuffisant } from './niveau.js';
 import { CONCLUSIONS_REVUE, ErreurRevue, type ServiceRevue } from './revue.js';
 import type { Utilisateur } from './roles.js';
+import { ErreurPeriode, ServiceTracesCompte } from './traces-compte.js';
 import { limiterAppels } from './limites-appels.js';
 import { entetesSecurite } from './securite-http.js';
 
@@ -93,6 +94,7 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
     }
     if (err instanceof ErreurAcces) return reply.code(403).send({ erreur: 'Accès refusé.' });
     if (err instanceof ErreurRevue) return reply.code(err.statut).send({ erreur: err.message });
+    if (err instanceof ErreurPeriode) return reply.code(400).send({ erreur: err.message });
     if (err instanceof ErreurFonctionInactive) {
       return reply.code(403).send({ erreur: 'Fonction non disponible.' });
     }
@@ -269,6 +271,41 @@ export async function creerServeur(o: OptionsServeur): Promise<FastifyInstance> 
       const c = await o.consentements.revoquer(u, req.params.consentementId);
       o.journal.info('consentement révoqué', { sujet: u.sujet, consentementId: c.id });
       return c;
+    },
+  );
+
+  // Traces d'un compte depuis une date (plan d'incident, compte compromis) : rôle
+  // responsable-securite seulement (MFA), jamais un agent IA ; aucun contenu de dossier.
+  const tracesCompte = new ServiceTracesCompte(o.journalAcces, o.maintenant);
+  app.get<{ Querystring: { sujet: string; depuis: string } }>(
+    '/securite/traces-compte',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sujet', 'depuis'],
+          properties: {
+            sujet: ID,
+            depuis: {
+              type: 'string',
+              pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+(Z|[+-][0-9]{2}:[0-9]{2})$',
+            },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const u = await authentifier(req);
+      const resultat = await tracesCompte.lister(u, req.query.sujet, req.query.depuis);
+      // Consultation elle-même tracée : qui a cherché, quel compte, depuis quand, combien.
+      o.journal.avertissement('traces d’un compte consultées (plan d’incident)', {
+        par: u.sujet,
+        sujet: req.query.sujet,
+        depuis: resultat.depuis,
+        traces: resultat.traces.length,
+      });
+      return resultat;
     },
   );
 

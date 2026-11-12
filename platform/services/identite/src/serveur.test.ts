@@ -462,6 +462,7 @@ describe('API identité', () => {
       },
       parPatient: async () => [],
       parSousType: async () => [],
+      parCompte: async () => [],
     };
     const a = await app(enPanne);
     const accordable = await a.inject({
@@ -479,6 +480,61 @@ describe('API identité', () => {
     });
     expect(refus.statusCode).toBe(200);
     expect(refus.json()).toMatchObject({ autorise: false });
+  });
+});
+
+describe('traces d’un compte (plan d’incident)', () => {
+  const jetonSecurite = () =>
+    signer({ sub: 'u-securite', realm_access: { roles: ['responsable-securite'] } });
+
+  it('le responsable sécurité liste les traces d’un compte ; refusé aux autres ; requête vérifiée', async () => {
+    const a = await app();
+    await a.inject({
+      method: 'POST',
+      url: '/acces/dossier',
+      headers: { authorization: `Bearer ${await jetonMedecin()}` },
+      payload: { patientId: 'fictif-patient-0001' },
+    });
+    const depuis = new Date(Date.now() - 3_600_000).toISOString();
+    const url = `/securite/traces-compte?sujet=u-m1&depuis=${encodeURIComponent(depuis)}`;
+    const ok = await a.inject({
+      method: 'GET',
+      url,
+      headers: { authorization: `Bearer ${await jetonSecurite()}` },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({
+      sujet: 'u-m1',
+      traces: [{ type: 'acces-dossier', cible: 'Patient/fictif-patient-0001', source: 'identite' }],
+    });
+    expect(
+      lignes.some(
+        (l) =>
+          l.message.startsWith('traces d’un compte consultées') &&
+          l.contexte?.['par'] === 'u-securite',
+      ),
+    ).toBe(true);
+
+    const parMedecin = await a.inject({
+      method: 'GET',
+      url,
+      headers: { authorization: `Bearer ${await jetonMedecin()}` },
+    });
+    expect(parMedecin.statusCode).toBe(403);
+    expect((await a.inject({ method: 'GET', url })).statusCode).toBe(401);
+
+    const entete = { authorization: `Bearer ${await jetonSecurite()}` };
+    for (const mauvaise of [
+      '/securite/traces-compte?sujet=u-m1',
+      `/securite/traces-compte?sujet=u%20m1&depuis=${encodeURIComponent(depuis)}`,
+      '/securite/traces-compte?sujet=u-m1&depuis=hier',
+      `${url}&autre=1`,
+      '/securite/traces-compte?sujet=u-m1&depuis=2020-01-01T00:00:00Z',
+    ]) {
+      expect((await a.inject({ method: 'GET', url: mauvaise, headers: entete })).statusCode).toBe(
+        400,
+      );
+    }
   });
 });
 

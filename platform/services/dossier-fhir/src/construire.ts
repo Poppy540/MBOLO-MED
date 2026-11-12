@@ -185,6 +185,8 @@ export function evenementAccesDossier(o: OptionsEvenementAcces): AuditEvent {
     agent: [
       {
         who: { identifier: { system: SYSTEMES.sujetCompte, value: o.sujet } },
+        // Recherchable (paramètre `altid`) : traces d'un compte, plan d'incident.
+        altId: o.sujet,
         requestor: true,
         role: o.roles.map((r) => ({ coding: [{ system: SYSTEMES.role, code: r }] })),
       },
@@ -242,6 +244,8 @@ export function revueBrisDeGlace(o: OptionsRevueBrisDeGlace): AuditEvent {
     agent: [
       {
         who: { identifier: { system: SYSTEMES.sujetCompte, value: o.sujet } },
+        // Recherchable (paramètre `altid`) : traces d'un compte, plan d'incident.
+        altId: o.sujet,
         requestor: true,
         role: [{ coding: [{ system: SYSTEMES.role, code: 'revue-acces' }] }],
       },
