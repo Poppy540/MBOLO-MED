@@ -440,3 +440,45 @@ Then("cet accès n'est plus à revoir", ({ monde }) => {
   const liste = (monde.reponse?.corps['brisDeGlace'] ?? []) as { traceId: string }[];
   expect(liste.map((x) => x.traceId)).not.toContain(monde.traceId);
 });
+
+// ── Traces d'un compte (plan d'incident) ─────────────────────────────────────
+
+When(
+  '{string} consulte les traces de {string} depuis une heure',
+  async ({ monde }, identifiant: string, cible: string) => {
+    const sujet = String(revendications(jeton(monde, cible))['sub'] ?? '');
+    const depuis = new Date(Date.now() - 3_600_000).toISOString();
+    await appeler(
+      monde,
+      'GET',
+      `/securite/traces-compte?sujet=${encodeURIComponent(sujet)}&depuis=${encodeURIComponent(depuis)}`,
+      { jeton: jeton(monde, identifiant) },
+    );
+  },
+);
+
+Then(
+  'les traces contiennent un accès en urgence accordé au dossier {string}',
+  ({ monde }, dossier: string) => {
+    expect(monde.reponse?.statut).toBe(200);
+    const traces = (monde.reponse?.corps['traces'] ?? []) as {
+      type: string;
+      cible: string;
+      autorise: boolean;
+    }[];
+    expect(traces).toContainEqual(
+      expect.objectContaining({
+        type: 'bris-de-glace',
+        cible: `Patient/${dossier}`,
+        autorise: true,
+      }),
+    );
+  },
+);
+
+Then(
+  'le dossier {string} figure parmi les dossiers obtenus par ce compte',
+  ({ monde }, dossier: string) => {
+    expect(monde.reponse?.corps['dossiersAccordes']).toContain(dossier);
+  },
+);

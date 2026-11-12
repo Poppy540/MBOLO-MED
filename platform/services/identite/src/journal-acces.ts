@@ -13,6 +13,11 @@ export interface JournalAcces {
   parPatient(patientId: string): Promise<AuditEvent[]>;
   /** Traces d'un sous-type (ex. tous les bris de glace), les plus récentes d'abord. */
   parSousType(code: SousTypeTrace): Promise<AuditEvent[]>;
+  /**
+   * Traces laissées par un compte depuis une date (plan d'incident, compte compromis), les plus
+   * récentes d'abord : accès accordés ou refusés, bris de glace, revues, vérifications.
+   */
+  parCompte(sujet: string, depuis: string): Promise<AuditEvent[]>;
 }
 
 const deSousType = (e: AuditEvent, code: SousTypeTrace): boolean =>
@@ -20,6 +25,14 @@ const deSousType = (e: AuditEvent, code: SousTypeTrace): boolean =>
 
 const concerne = (e: AuditEvent, patientId: string): boolean =>
   (e.entity ?? []).some((x) => x.what?.reference === `Patient/${patientId}`);
+
+const deCompte = (e: AuditEvent, sujet: string): boolean =>
+  e.agent.some(
+    (a) => a.who?.identifier?.system === SYSTEMES.sujetCompte && a.who.identifier.value === sujet,
+  );
+
+const depuisLe = (e: AuditEvent, depuis: string): boolean =>
+  new Date(e.recorded).getTime() >= new Date(depuis).getTime();
 
 const plusRecentes = (a: AuditEvent, b: AuditEvent): number => b.recorded.localeCompare(a.recorded);
 
@@ -37,6 +50,10 @@ export class JournalAccesMemoire implements JournalAcces {
 
   async parSousType(code: SousTypeTrace): Promise<AuditEvent[]> {
     return this.traces.filter((e) => deSousType(e, code)).sort(plusRecentes);
+  }
+
+  async parCompte(sujet: string, depuis: string): Promise<AuditEvent[]> {
+    return this.traces.filter((e) => deCompte(e, sujet) && depuisLe(e, depuis)).sort(plusRecentes);
   }
 }
 
@@ -64,6 +81,19 @@ export class JournalAccesFhir extends ClientFhir implements JournalAcces {
       `${this.base}/AuditEvent?subtype=${encodeURIComponent(`${SYSTEMES.sousTypeAudit}|${code}`)}&_sort=-date&_count=100`,
       'Trace d’accès',
       (r): r is AuditEvent => r.resourceType === 'AuditEvent' && deSousType(r, code),
+    );
+    return traces.sort(plusRecentes);
+  }
+
+  async parCompte(sujet: string, depuis: string): Promise<AuditEvent[]> {
+    // Le compte figure dans agent.who.identifier (jamais un nom) : modificateur :identifier.
+    // Le filtre local reste la règle si le serveur rendait plus large.
+    const agent = encodeURIComponent(`${SYSTEMES.sujetCompte}|${sujet}`);
+    const traces = await this.rechercher(
+      `${this.base}/AuditEvent?agent:identifier=${agent}&date=ge${encodeURIComponent(depuis)}&_sort=-date&_count=100`,
+      'Trace d’accès',
+      (r): r is AuditEvent =>
+        r.resourceType === 'AuditEvent' && deCompte(r, sujet) && depuisLe(r, depuis),
     );
     return traces.sort(plusRecentes);
   }

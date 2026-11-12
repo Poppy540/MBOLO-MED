@@ -54,6 +54,16 @@ Seul le patient (ou l'agent de sa session) peut donner, consulter ou retirer ses
   - **Personne ne revoit son propre accès d'urgence** (séparation des tâches).
   - Une conclusion `injustifie` ou `a-approfondir` produit une alerte dans le journal, pour que le responsable sécurité et le DPO donnent une suite (à relier à l'astreinte, ADR-0006).
 
+## Traces d'un compte (plan d'incident)
+
+`GET /securite/traces-compte?sujet=…&depuis=…` liste toutes les traces laissées par un compte depuis une date : accès accordés ou refusés, bris de glace, revues, vérifications. Elle sert à établir ce qu'un compte compromis a obtenu (procédure « couper un compte compromis » du plan d'incident, écart E3 de l'exercice sur table n°1).
+
+- **Qui** : le rôle `responsable-securite` seul, avec double authentification ; jamais un agent IA.
+- `sujet` est l'identifiant Keycloak du compte, celui qui figure dans les alertes ; `depuis` est une date ISO 8601 avec fuseau, ni future ni plus ancienne que **30 jours**.
+- Chaque trace donne sa date, son type, la ressource visée (`Patient/…`, `Practitioner/…`), la décision, son motif, le service qui l'a écrite et les rôles du compte. **Aucun contenu de dossier** ni aucune justification écrite : celle d'un bris de glace se lit dans la revue.
+- `dossiersAccordes` liste, sans doublon, les dossiers de patients dont l'accès a été accordé sur la période : c'est la base de l'évaluation de la notification.
+- La recherche elle-même est journalisée : qui a cherché, quel compte, depuis quand.
+
 ## ⚠️ Sécurité : identifiants FHIR des comptes
 
 Les revendications `patient_id`, `practitioner_id`, `related_person_id` du jeton déterminent **à quel dossier** un compte est rattaché. Elles doivent être **posées par un administrateur habilité** après vérification, **jamais modifiables par l'utilisateur**.

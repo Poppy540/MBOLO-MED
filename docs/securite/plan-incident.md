@@ -65,6 +65,8 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 - plus aucun accès accordé à ce compte dans les traces du dossier (`AuditEvent`) après l'heure de coupure + 5 minutes ;
 - la fin des alertes `LecturesDossiersEnSerie` et `AccesRefusesEnRafale` pour ce compte.
 
+**Établir ce que le compte a obtenu** : le responsable sécurité liste toutes les traces du compte depuis le début de la période suspecte avec `GET /securite/traces-compte?sujet=…&depuis=…` du service `identite` (rôle `responsable-securite`, 30 jours au plus). La réponse distingue les accès refusés (rien de lu), les accès accordés et les bris de glace, et donne la liste des dossiers obtenus (`dossiersAccordes`). La recherche sert aussi à la vérification ci-dessus (plus aucun accès accordé après la coupure) et à l'évaluation de la notification. Elle est elle-même journalisée.
+
 **Ne jamais** :
 
 - supprimer le compte : ses traces doivent rester rattachées à un compte existant ;

@@ -61,3 +61,34 @@ describe('JournalAccesFhir', () => {
     expect(appels[0]?.entetes['cache-control']).toBe('no-cache');
   });
 });
+
+describe('JournalAccesFhir.parCompte', () => {
+  const SYSTEME = 'https://mbolo-sante.example/fhir/identifiant-compte';
+  const deCompte = (date: string, sujet: string): AuditEvent => ({
+    ...trace(date),
+    agent: [{ requestor: true, who: { identifier: { system: SYSTEME, value: sujet } } }],
+  });
+
+  it('cherche par identifiant du compte et date, sans cache, et écarte ce qui ne correspond pas', async () => {
+    const lot: Bundle = {
+      resourceType: 'Bundle',
+      type: 'searchset',
+      entry: [
+        { resource: deCompte('2026-11-02T03:00:00Z', 'u-vole') },
+        { resource: deCompte('2026-11-02T04:00:00Z', 'u-autre') },
+        { resource: deCompte('2026-11-02T01:00:00Z', 'u-vole') },
+        { resource: deCompte('2026-11-02T05:00:00Z', 'u-vole') },
+      ],
+    };
+    const { appels, f } = fauxServeur([new Response(JSON.stringify(lot), { status: 200 })]);
+    const traces = await new JournalAccesFhir({ base: BASE, fetch: f }).parCompte(
+      'u-vole',
+      '2026-11-02T02:00:00.000Z',
+    );
+    expect(traces.map((t) => t.recorded)).toEqual(['2026-11-02T05:00:00Z', '2026-11-02T03:00:00Z']);
+    const url = decodeURIComponent(appels[0]?.url ?? '');
+    expect(url).toContain(`/AuditEvent?agent:identifier=${SYSTEME}|u-vole`);
+    expect(url).toContain('date=ge2026-11-02T02:00:00.000Z');
+    expect(appels[0]?.entetes['cache-control']).toBe('no-cache');
+  });
+});
