@@ -26,6 +26,19 @@ Fonctionnalité: Le patient décide qui lit son dossier, depuis son application
     Alors l’application montre qu’un professionnel de santé a lu le dossier, puis s’est vu refuser l’accès
     Et l’écran de l’"application patient" respecte les règles d’accessibilité
 
+  Scénario: Le patient signale un accès qu'il ne reconnaît pas, depuis son application
+    Étant donné que "patient-fictif-01" est connecté
+    Et que "medecin-fictif-01" est connecté
+    Et que "securite-fictif-01" est connecté
+    Et que "medecin-fictif-01" demande l'accès au dossier "pat-fictif-001" en urgence avec le motif "Accès inconnu, application [FICTIF]"
+    Quand "patient-fictif-01" ouvre l’application patient
+    Et que le patient ouvre ses partages et accès
+    Et que le patient signale l’accès en urgence "Accès inconnu, application [FICTIF]" qu’il ne reconnaît pas
+    Alors l’application indique que cet accès est signalé et vérifié par l’équipe chargée de la sécurité
+    Et l’écran de l’"application patient" respecte les règles d’accessibilité
+    Quand "securite-fictif-01" consulte les contestations d'accès
+    Alors la contestation de cet accès figure dans la liste, avec le compte qui a eu l'accès
+
   Scénario: Sans accord explicite du patient, rien n'est partagé
     Étant donné que "patient-fictif-01" est connecté
     Et que "patient-fictif-01" demande un rendez-vous vidéo avec "prac-fictif-001" maintenant
