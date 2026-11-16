@@ -119,3 +119,33 @@ Then(
     await expect(p.locator('li[data-acces]').first()).toContainText('Un professionnel de santé');
   },
 );
+
+When(
+  'le patient signale l’accès en urgence {string} qu’il ne reconnaît pas',
+  async ({ monde }, justification: string) => {
+    const p = page(monde);
+    // Le plus récent en premier : l'accès du scénario en cours.
+    const ligne = p.locator('li[data-acces]', { hasText: justification }).first();
+    await ligne.getByRole('button', { name: 'Je ne reconnais pas cet accès' }).click();
+    const [reponse] = await Promise.all([
+      p.waitForResponse(
+        (r) => r.url().endsWith('/contestation') && r.request().method() === 'POST',
+      ),
+      ligne.getByRole('button', { name: 'Oui, signaler' }).click(),
+    ]);
+    expect(reponse.status()).toBe(201);
+    // Identifiant de la trace contestée, pour la vérification côté responsable sécurité.
+    monde.traceId = decodeURIComponent(reponse.url().split('/acces/')[1]?.split('/')[0] ?? '');
+  },
+);
+
+Then(
+  'l’application indique que cet accès est signalé et vérifié par l’équipe chargée de la sécurité',
+  async ({ monde }) => {
+    const p = page(monde);
+    await expect(p.getByRole('status')).toContainText(
+      'L’équipe chargée de la sécurité va vérifier',
+    );
+    await expect(p.locator('li[data-acces] [data-conteste]').first()).toBeVisible();
+  },
+);

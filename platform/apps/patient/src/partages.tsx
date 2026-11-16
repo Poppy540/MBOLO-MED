@@ -30,6 +30,9 @@ interface Consentement {
 }
 
 interface Acces {
+  traceId: string;
+  /** Déjà signalé par le patient (plan d'incident, accès contesté). */
+  conteste: boolean;
   date: string;
   autorise: boolean;
   motif: string;
@@ -114,6 +117,8 @@ export function Partages(p: {
   /** `null` : invitation des proches non ouverte pour ce patient (ou service indisponible). */
   const [proches, setProches] = useState<Proche[] | null>(null);
   const [message, setMessage] = useState<string>();
+  /** Accès que le patient s'apprête à signaler : une confirmation avant l'envoi. */
+  const [aSignaler, setASignaler] = useState<string>();
   useTitreAuFocus(propose ? 'partager' : 'liste');
   const patient = encodeURIComponent(p.patientId);
 
@@ -150,6 +155,22 @@ export function Partages(p: {
     }
   };
   useEffect(() => void charger(), []);
+
+  // « Je ne reconnais pas cet accès » : remis au responsable sécurité, sans rien écrire.
+  const signaler = async (traceId: string) => {
+    setASignaler(undefined);
+    try {
+      await appeler<{ conteste: boolean }>(
+        p.jeton,
+        `${CONFIG.apiIdentite}/patients/${patient}/acces/${encodeURIComponent(traceId)}/contestation`,
+        { method: 'POST' },
+      );
+      setMessage(t('partages.signale'));
+      await charger();
+    } catch (e) {
+      setMessage(e instanceof ErreurPartage ? e.message : t('partages.indisponibleCourt'));
+    }
+  };
 
   const nomDe = (reference: string) => {
     const id = reference.replace(/^Practitioner\//, '');
@@ -280,8 +301,8 @@ export function Partages(p: {
             <p>{t('partages.personnePourLeMoment')}</p>
           ) : (
             <ul class="liste" aria-label={t('partages.historique')}>
-              {historique.map((a, i) => (
-                <li key={i} data-acces={a.autorise ? 'accorde' : 'refuse'}>
+              {historique.map((a) => (
+                <li key={a.traceId} data-acces={a.autorise ? 'accorde' : 'refuse'}>
                   <strong>{date(a.date)}</strong> {t('partages.ligneAcces', { qui: qui(a) })}{' '}
                   {t(a.autorise ? 'partages.accorde' : 'partages.refuse')}
                   {a.urgence && (
@@ -291,6 +312,21 @@ export function Partages(p: {
                         ? t('partages.urgenceMotif', { motif: a.justification })
                         : t('partages.urgence')}
                     </p>
+                  )}
+                  {a.conteste ? (
+                    <p data-conteste>{t('partages.dejaSignale')}</p>
+                  ) : a.roles.includes('patient') ? null : aSignaler === a.traceId ? (
+                    <p>
+                      {t('partages.confirmerSignalement')}{' '}
+                      <button data-confirmer-signalement onClick={() => void signaler(a.traceId)}>
+                        {t('partages.oui')}
+                      </button>{' '}
+                      <button onClick={() => setASignaler(undefined)}>{t('partages.non')}</button>
+                    </p>
+                  ) : (
+                    <button data-signaler onClick={() => setASignaler(a.traceId)}>
+                      {t('partages.jeNeReconnaisPas')}
+                    </button>
                   )}
                 </li>
               ))}

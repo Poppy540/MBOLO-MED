@@ -39,6 +39,15 @@ export const frPartages = {
   'partages.urgence': 'Accès en urgence. Il sera vérifié par une personne de l’équipe.',
   'partages.urgenceMotif':
     'Accès en urgence : {motif}. Il sera vérifié par une personne de l’équipe.',
+  'partages.jeNeReconnaisPas': 'Je ne reconnais pas cet accès',
+  'partages.confirmerSignalement':
+    'Signaler cet accès à l’équipe chargée de la sécurité ? Elle vérifiera qui a ouvert votre dossier.',
+  'partages.oui': 'Oui, signaler',
+  'partages.non': 'Non',
+  'partages.signale':
+    'Merci. L’équipe chargée de la sécurité va vérifier cet accès. Vous n’avez rien d’autre à faire.',
+  'partages.dejaSignale':
+    'Vous avez signalé cet accès. L’équipe chargée de la sécurité le vérifie.',
   'partages.vousMeme': 'Vous-même',
   'partages.assistant': 'L’assistant Mbolo Santé (programme informatique)',
   'partages.infirmier': 'Un infirmier',
