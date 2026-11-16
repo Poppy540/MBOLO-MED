@@ -19,6 +19,6 @@
   },
   "dependencies": {
     "@openfeature/server-sdk": "^1.23.0",
-    "unleash-client": "^6.12.1"
+    "unleash-client": "^6.12.2"
   }
 }
