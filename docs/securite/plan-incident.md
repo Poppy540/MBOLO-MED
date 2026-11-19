@@ -34,7 +34,7 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 
 **Évaluer** : quelles photos, quels patients, depuis quand (traces `AuditEvent` de motif `verification-identite`, décisions du schéma `documents`, journaux du stockage).
 
-**Notifier** (si requis, avec le juriste) : autorité de protection des données (Gabon : CNPDCP ; UE : autorité du pays) et **patients concernés**, en phrases simples, avec les mesures à prendre (vigilance sur l'usurpation d'identité) `[À CONFIRMER : délais légaux]`.
+**Notifier** (si requis, avec le juriste) : autorité de protection des données (Gabon : CNPDCP ; UE : autorité du pays) et **patients concernés**, en phrases simples, avec les mesures à prendre (vigilance sur l'usurpation d'identité) `[À CONFIRMER : délais légaux]`. Brouillons du SMS, de la lettre au patient et de la notification à l'autorité : [information en cas de violation de données](information-violation-donnees.md) (à valider par le juriste ; rien n'est envoyé sans décision humaine).
 
 **Retour d'expérience** : fiche problématique, `memory.md`, mise à jour de l'[AIPD n°1](aipd-verification-identite.md) et du [modèle de menaces](modele-menaces.md).
 
