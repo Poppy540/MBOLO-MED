@@ -113,6 +113,17 @@ export function redigerCodeConnexion(code: string, pays: Pays = PAYS_PAR_DEFAUT)
   return texte.replace('{code}', code);
 }
 
+/**
+ * BROUILLON — information d'un patient après une violation de données (plan d'incident, écart E6).
+ * À valider par le juriste avant tout usage : aucune route ne l'envoie encore. L'envoi sera
+ * déclenché par une personne du rôle `responsable-securite`, dossier par dossier, jamais par un
+ * agent IA. Sans lien (risque d'hameçonnage), sans donnée de santé ni nom de professionnel ; la
+ * lettre complète est lue par l'équipe (`docs/securite/information-violation-donnees.md`).
+ */
+export const CATALOGUE_INFORMATION_VIOLATION: Readonly<Record<string, string>> = {
+  fr: 'Mbolo Santé : un incident de sécurité a pu toucher votre dossier. L’équipe va vous appeler. Ne donnez jamais votre code à personne.',
+};
+
 /** Alertes de sécurité envoyées au patient, sans condition C-RAPPELS. */
 export const ALERTES_PATIENT = {
   'proche-inscrit': CATALOGUE_ALERTE_PROCHE,

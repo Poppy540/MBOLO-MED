@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALERTES_PATIENT,
   CATALOGUE,
+  CATALOGUE_INFORMATION_VIOLATION,
   IDENTIFIANTS_GABARITS,
   languesApprouvees,
   PAYS_PAR_DEFAUT,
@@ -42,6 +44,16 @@ describe('gabarits', () => {
         expect(texte).not.toMatch(/\{|\}|Dr|docteur|médecin|motif|spécialit/i);
       }
     }
+  });
+
+  it('brouillon « violation de données » : un SMS, sans variable, lien, ni donnée de santé, et non envoyé', () => {
+    for (const texte of Object.values(CATALOGUE_INFORMATION_VIOLATION)) {
+      expect(texte.length).toBeLessThanOrEqual(160);
+      expect(texte).toMatch(/^Mbolo Santé : /);
+      expect(texte).not.toMatch(/\{|\}|https?:|www\.|Dr|docteur|médecin|motif|spécialit/i);
+    }
+    // À valider par le juriste avant tout usage : aucune route ne l'envoie.
+    expect(Object.values(ALERTES_PATIENT)).not.toContain(CATALOGUE_INFORMATION_VIOLATION);
   });
 
   it('donnent la date et l’heure du pays déployé (Gabon par défaut)', () => {
