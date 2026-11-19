@@ -474,3 +474,38 @@ Then('le numéro {string} ne reçoit aucun message', async ({ monde }, telephone
   );
   expect(recus).toEqual([]);
 });
+
+// Plan d'incident (écart E5) : marque « compte coupé » posée et levée par le responsable sécurité.
+When(
+  '{string} coupe le compte du professionnel {string}',
+  async ({ monde }, demandeur: string, praticien: string) => {
+    await appeler(
+      monde,
+      'POST',
+      `/securite/professionnels/${praticien}/compte-coupe`,
+      monde.jetons.get(demandeur),
+    );
+  },
+);
+
+When(
+  '{string} rétablit le compte du professionnel {string}',
+  async ({ monde }, demandeur: string, praticien: string) => {
+    await appeler(
+      monde,
+      'POST',
+      `/securite/professionnels/${praticien}/retablissement`,
+      monde.jetons.get(demandeur),
+    );
+    expect(monde.reponse?.statut).toBe(200);
+  },
+);
+
+Then('le compte du professionnel est coupé', ({ monde }) => {
+  expect([200, 201]).toContain(monde.reponse?.statut);
+  expect(monde.reponse?.corps).toEqual({ coupe: true });
+});
+
+Then('la coupure est refusée', ({ monde }) => {
+  expect(monde.reponse?.statut).toBe(403);
+});

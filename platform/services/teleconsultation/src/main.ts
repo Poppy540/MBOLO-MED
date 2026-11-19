@@ -10,6 +10,13 @@ import {
 import { creerJournal, signalerAlerte } from '@mbolo/journal-securise';
 import { type DepotCreneaux, DepotCreneauxMemoire } from './creneaux.js';
 import { AnnuaireFhir, AnnuaireMemoire, type Annuaire } from './annuaire.js';
+import {
+  AnnuaireSansComptesCoupes,
+  ComptesCoupesFhir,
+  ComptesCoupesMemoire,
+  ServiceComptesCoupes,
+  type ComptesCoupes,
+} from './comptes-coupes.js';
 import { IdentitesFhir, IdentitesMemoire, type Identites } from './identites.js';
 import { DepotCreneauxFhir, DepotRendezVousFhir } from './depot-fhir.js';
 import { aucunNotificateur, type Notificateur, NotificateurHttp } from './notificateur.js';
@@ -48,6 +55,8 @@ let creneaux: DepotCreneaux;
 // Notifications (ADR-0012) : même jeton de service, audience mbolo-notifications.
 let notificateur: Notificateur = aucunNotificateur;
 let annuaire: Annuaire = new AnnuaireMemoire();
+// Comptes coupés par le responsable sécurité (plan d'incident, E5) : marques Flag du dossier.
+let comptesCoupes: ComptesCoupes = new ComptesCoupesMemoire();
 // Sans dossier FHIR, aucune identité n'est connue : aucune réservation (ADR-0014).
 let identites: Identites = new IdentitesMemoire();
 // Paiement des réservations (ADR-0017) : même jeton de service, audience mbolo-paiement-api.
@@ -69,6 +78,7 @@ if (fhir) {
   depot = new DepotRendezVousFhir({ base: fhir, entetes }, 'dev');
   creneaux = new DepotCreneauxFhir({ base: fhir, entetes }, 'dev');
   annuaire = new AnnuaireFhir({ base: fhir, entetes });
+  comptesCoupes = new ComptesCoupesFhir({ base: fhir, entetes }, 'dev');
   identites = new IdentitesFhir({ base: fhir, entetes });
   journal.info('rendez-vous enregistrés dans le dossier FHIR (passerelle authentifiée)');
   if (env['NOTIFICATIONS_URL']) {
@@ -105,7 +115,8 @@ const service = new ServiceTeleconsultation(
   drapeaux,
   () => new Date(),
   notificateur,
-  annuaire,
+  // Un compte coupé n'a plus de fiche : ni annuaire, ni réservation, rendez-vous à reprendre.
+  new AnnuaireSansComptesCoupes(annuaire, comptesCoupes),
   identites,
   paiements ? { service: paiements, delaiMinutes } : undefined,
 );
@@ -178,6 +189,7 @@ const app = await creerServeur({
     audience: env['TELECONSULTATION_AUDIENCE'] ?? 'mbolo-teleconsultation-api',
   }),
   service,
+  comptesCoupes: new ServiceComptesCoupes(comptesCoupes),
   journal,
   limites: {
     parMinute: Number(env['TELECONSULTATION_LIMITE_PAR_MINUTE'] ?? LIMITES_PAR_DEFAUT.parMinute),

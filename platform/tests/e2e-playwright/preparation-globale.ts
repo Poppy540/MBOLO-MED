@@ -5,6 +5,7 @@ import { connecter } from '@mbolo/base-donnees';
 import {
   agendaVideo,
   EXTENSION_STATUT_IDENTITE,
+  leverCompteCoupe,
   MARQUEUR_FICTIF,
   praticien,
   SYSTEMES,
@@ -163,6 +164,24 @@ async function preparerDossier(): Promise<void> {
         });
         if (!m.ok) throw new Error(`Serveur FHIR : retrait de Slot/${resource.id} impossible.`);
       }
+    }
+  }
+  // Plan d'incident (E5) : une marque « compte coupé » laissée par une exécution interrompue est
+  // levée (passée inactive, jamais supprimée), sinon le professionnel manquerait à l'annuaire.
+  for (const { id } of RESSOURCES_FHIR.filter((x) => x.type === 'Practitioner')) {
+    const lot = (await (
+      await fetch(`${FHIR_URL}/Flag?subject=Practitioner/${id}&_count=50`, {
+        headers: { 'cache-control': 'no-cache' },
+      })
+    ).json()) as { entry?: { resource: Parameters<typeof leverCompteCoupe>[0] }[] };
+    for (const { resource } of lot.entry ?? []) {
+      if (resource.status !== 'active') continue;
+      const m = await fetch(`${FHIR_URL}/Flag/${resource.id ?? ''}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/fhir+json' },
+        body: JSON.stringify(leverCompteCoupe(resource, new Date().toISOString())),
+      });
+      if (!m.ok) throw new Error(`Serveur FHIR : levée de Flag/${resource.id ?? ''} impossible.`);
     }
   }
   // Scénarios indépendants des exécutions précédentes : les consentements encore actifs des patients

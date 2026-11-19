@@ -211,11 +211,12 @@ describe('royaume mbolo', () => {
         'included.client.audience'
       ],
     ).toBe('mbolo-dossier-fhir');
-    // Aucun accès aux consentements, au journal ni aux données cliniques.
+    // Aucun accès aux consentements, au journal ni aux données cliniques. Flag : marque « compte
+    // coupé » d'un professionnel (plan d'incident, E5), règle mbolo-flag-1 de la passerelle.
     expect(
       mappeurs.find((m) => m.config['claim.name'] === 'mbolo_scopes')?.config['claim.value'],
     ).toBe(
-      'system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru',
+      'system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru system/Flag.crus',
     );
     // Annuaire : du professionnel, seuls le nom, la qualification et le statut de sa vérification
     // (active, extension, ADR-0026) sortent de la passerelle ; du patient, seulement le statut de vérification d'identité (extension, ADR-0014) et la
