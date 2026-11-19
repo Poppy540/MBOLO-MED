@@ -4,11 +4,9 @@
 // et met ses rendez-vous à venir dans « Rendez-vous à reprendre », jusqu'au rétablissement.
 import type { Flag } from 'fhir/r4.js';
 import {
-  CODE_COMPTE_COUPE,
   estCompteCoupe,
   leverCompteCoupe,
   marqueCompteCoupe,
-  SYSTEMES,
   type Environnement,
 } from '@mbolo/dossier-fhir';
 import { ClientFhir, TYPE_FHIR, type OptionsDepotFhir, type Utilisateur } from '@mbolo/identite';
@@ -64,10 +62,11 @@ export class ComptesCoupesFhir extends ClientFhir implements ComptesCoupes {
   }
 
   private async actives(praticienId: string): Promise<Flag[]> {
+    // FHIR R4 ne cherche un Flag ni par code ni par statut (HAPI répond 400) : recherche par
+    // sujet, puis filtre local sur le code et le statut.
     const sujet = encodeURIComponent(`Practitioner/${praticienId}`);
-    const code = encodeURIComponent(`${SYSTEMES.marqueSecurite}|${CODE_COMPTE_COUPE}`);
     return this.rechercher(
-      `${this.base}/Flag?subject=${sujet}&code=${code}&status=active&_count=20`,
+      `${this.base}/Flag?subject=${sujet}&_count=50`,
       'Marque de sécurité',
       (r): r is Flag =>
         r.resourceType === 'Flag' &&

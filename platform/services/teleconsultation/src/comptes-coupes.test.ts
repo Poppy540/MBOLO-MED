@@ -122,8 +122,9 @@ describe('ComptesCoupesFhir', () => {
     }) as typeof fetch;
     const depot = new ComptesCoupesFhir({ base: 'http://fhir.test/fhir', fetch: f }, 'dev');
     expect(await depot.couper('prac-fictif-002', '2026-11-17T03:15:00Z')).toBe(true);
+    // Ni `code` ni `status` : FHIR R4 ne cherche pas un Flag par ces paramètres.
     expect(decodeURIComponent(appels[0]?.url ?? '')).toContain(
-      '/Flag?subject=Practitioner/prac-fictif-002&code=',
+      '/Flag?subject=Practitioner/prac-fictif-002&_count=50',
     );
     expect(appels[0]?.entetes['cache-control']).toBe('no-cache');
     expect(appels[1]).toMatchObject({ url: 'http://fhir.test/fhir/Flag', methode: 'POST' });

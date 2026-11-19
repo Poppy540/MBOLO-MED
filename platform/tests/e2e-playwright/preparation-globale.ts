@@ -170,11 +170,12 @@ async function preparerDossier(): Promise<void> {
   // levée (passée inactive, jamais supprimée), sinon le professionnel manquerait à l'annuaire.
   for (const { id } of RESSOURCES_FHIR.filter((x) => x.type === 'Practitioner')) {
     const lot = (await (
-      await fetch(`${FHIR_URL}/Flag?subject=Practitioner/${id}&status=active&_count=50`, {
+      await fetch(`${FHIR_URL}/Flag?subject=Practitioner/${id}&_count=50`, {
         headers: { 'cache-control': 'no-cache' },
       })
     ).json()) as { entry?: { resource: Parameters<typeof leverCompteCoupe>[0] }[] };
     for (const { resource } of lot.entry ?? []) {
+      if (resource.status !== 'active') continue;
       const m = await fetch(`${FHIR_URL}/Flag/${resource.id ?? ''}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/fhir+json' },
