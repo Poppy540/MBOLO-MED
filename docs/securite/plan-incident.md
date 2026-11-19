@@ -50,14 +50,15 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 2. **Fermer toutes ses sessions** (onglet « Sessions », « Sign out ») : les jetons de rafraîchissement sont révoqués.
 3. **Supprimer son code de double authentification** (onglet « Credentials ») : le code volé ne servira plus, même après réactivation.
 4. **Retirer le compte des téléconsultations en cours** : `POST /securite/retrait-salles` du service `teleconsultation` (voir ci-dessous).
-5. Noter l'heure exacte de chaque geste dans le journal d'incident (`control-room/incidents/INC-AAAA-NNN.md`, voir le skill `reponse-incident`).
+5. **Pour un professionnel, marquer le compte « coupé »** : `POST /securite/professionnels/:practitionerId/compte-coupe` du service `teleconsultation` (rôle `responsable-securite`). Le professionnel disparaît de l'annuaire, ne reçoit plus de réservation, et ses rendez-vous à venir passent dans « Rendez-vous à reprendre » de l'équipe d'assistance.
+6. Noter l'heure exacte de chaque geste dans le journal d'incident (`control-room/incidents/INC-AAAA-NNN.md`, voir le skill `reponse-incident`).
 
 **Ce que la coupure ne fait pas encore** (à connaître, à surveiller) :
 
 - **Jeton d'accès déjà délivré** : il reste accepté **jusqu'à 5 minutes**, car les services vérifient la signature localement (`accessTokenLifespan` = 300 s). Après 5 minutes, plus rien ne passe.
 - **Téléconsultation en cours** : un participant déjà dans une salle y reste après la coupure. Juste après les gestes ci-dessus, le responsable sécurité le retire de toutes les salles ouvertes avec `POST /securite/retrait-salles` `{ sujet }` du service `teleconsultation` (rôle `responsable-securite`, double authentification ; le `sujet` est l'identifiant Keycloak du compte, celui des alertes). Le compte doit d'abord être désactivé : sinon il redemande un jeton de salle et revient. Un jeton de salle déjà délivré permet encore d'entrer pendant 10 minutes au plus ; refaire le retrait si besoin, ou annuler le rendez-vous en dernier recours (le patient est alors prévenu).
 - **Fiche du professionnel** : elle reste « vérifiée ». **Ne pas utiliser la suspension** (`POST /professionnels/:id/suspension`) pour un compte volé : elle remet le professionnel en vérification complète, et ses motifs (signalement de l'Ordre, plainte confirmée, incident qualité) ne correspondent pas. Elle ne sert que si c'est le professionnel lui-même qui est en cause.
-- **Rendez-vous à venir** : ils ne sont pas annulés. Tant que la fiche reste vérifiée, ils n'apparaissent pas dans « Rendez-vous à reprendre » (écart E5). L'assistance les reprend à la main si la coupure dure.
+- **Rendez-vous à venir** : ils ne sont jamais annulés automatiquement. Avec la marque « compte coupé » (étape 5), ils apparaissent dans « Rendez-vous à reprendre », et l'équipe d'assistance prévient chaque patient. La marque est une ressource `Flag` du dossier, sans texte libre (règle `mbolo-flag-1`) : le motif reste dans le journal d'incident.
 
 **Vérifier (dans les 15 minutes suivantes)** :
 
@@ -77,7 +78,7 @@ Destinataires par type d'alerte et délais d'escalade : [ADR-0016](../architectu
 
 1. Joindre le titulaire par un canal déjà connu et confirmer son identité. Pour un professionnel, appeler l'équipe `verification-professionnels`, qui a vérifié son identité.
 2. Lui imposer un nouveau mot de passe temporaire et une nouvelle double authentification (actions requises « Update Password » et « Configure OTP »).
-3. Réactiver le compte, puis noter l'heure et la décision dans le journal d'incident.
+3. Réactiver le compte et, pour un professionnel, lever la marque (`POST /securite/professionnels/:practitionerId/retablissement` : passée inactive et datée, jamais supprimée), puis noter l'heure et la décision dans le journal d'incident.
 4. Revoir avec lui les accès faits pendant la période suspecte : ils alimentent l'évaluation de la notification (étape 5 des étapes ci-dessus).
 
 **Compte d'un patient** : même coupure. Le rétablissement passe ensuite par la récupération du compte avec l'équipe `assistance-patient` (ADR-0021) : code remis après rappel au numéro du dossier, autres sessions fermées, SMS d'alerte.

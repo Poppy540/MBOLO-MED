@@ -46,6 +46,8 @@ export const SYSTEMES = {
   changementTelephone: `${CANONIQUE}/CodeSystem/mbolo-changement-telephone`,
   statutVerificationPro: `${CANONIQUE}/CodeSystem/mbolo-statut-verification`,
   specialite: `${CANONIQUE}/CodeSystem/mbolo-specialite`,
+  marqueSecurite: `${CANONIQUE}/CodeSystem/mbolo-marque-securite`,
+  categorieFlag: 'http://terminology.hl7.org/CodeSystem/flag-category',
   pays: 'urn:iso:std:iso:3166',
 } as const;
 

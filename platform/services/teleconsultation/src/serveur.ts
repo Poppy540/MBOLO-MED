@@ -8,6 +8,7 @@ import {
   limiterAppels,
 } from '@mbolo/identite';
 import { signalerAlerte, type Journal } from '@mbolo/journal-securise';
+import type { ServiceComptesCoupes } from './comptes-coupes.js';
 import { ErreurCreneau } from './creneaux.js';
 import {
   CRENEAUX_MAX,
@@ -31,6 +32,8 @@ export const LIMITES_PAR_DEFAUT: Limites = { parMinute: 300, identiteParMinute: 
 export async function creerServeur(o: {
   verifierJeton: VerifierJeton;
   service: ServiceTeleconsultation;
+  /** Comptes coupés par le responsable sécurité (plan d'incident, E5) ; absent : routes absentes. */
+  comptesCoupes?: ServiceComptesCoupes;
   journal: Journal;
   limites?: Limites;
   /** Derrière un proxy de confiance, l'adresse du client est lue dans X-Forwarded-For. */
@@ -145,6 +148,47 @@ export async function creerServeur(o: {
       return { salles };
     },
   );
+
+  // Plan d'incident (écart E5) : le compte d'un professionnel est coupé (compte volé). Sa fiche reste
+  // « vérifiée » ; la marque le retire de l'annuaire et met ses rendez-vous à venir à reprendre.
+  const comptesCoupes = o.comptesCoupes;
+  if (comptesCoupes) {
+    const schemaPraticien = {
+      params: {
+        type: 'object',
+        properties: { practitionerId: ID },
+        required: ['practitionerId'],
+      },
+    } as const;
+    app.post<{ Params: { practitionerId: string } }>(
+      '/securite/professionnels/:practitionerId/compte-coupe',
+      { schema: schemaPraticien },
+      async (req, reply) => {
+        const u = await authentifier(req);
+        const cree = await comptesCoupes.couper(u, req.params.practitionerId);
+        o.journal.avertissement('compte d’un professionnel coupé (plan d’incident)', {
+          par: u.sujet,
+          practitionerId: req.params.practitionerId,
+          nouveau: cree,
+        });
+        return reply.code(cree ? 201 : 200).send({ coupe: true });
+      },
+    );
+    app.post<{ Params: { practitionerId: string } }>(
+      '/securite/professionnels/:practitionerId/retablissement',
+      { schema: schemaPraticien },
+      async (req) => {
+        const u = await authentifier(req);
+        const retabli = await comptesCoupes.retablir(u, req.params.practitionerId);
+        o.journal.avertissement('compte d’un professionnel rétabli (plan d’incident)', {
+          par: u.sujet,
+          practitionerId: req.params.practitionerId,
+          retabli,
+        });
+        return { retabli };
+      },
+    );
+  }
 
   app.get('/praticiens', async (req) => {
     const u = await authentifier(req);

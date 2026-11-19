@@ -502,7 +502,7 @@
           "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
             "claim.name": "mbolo_scopes",
-            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru",
+            "claim.value": "system/Appointment.crus system/Schedule.crus system/Slot.crus system/Practitioner.r system/Patient.ru system/Flag.crus",
             "jsonType.label": "String",
             "access.token.claim": "true",
             "id.token.claim": "false",

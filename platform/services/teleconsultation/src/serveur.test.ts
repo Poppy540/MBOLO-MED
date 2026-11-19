@@ -5,6 +5,7 @@ import { AnnuaireMemoire } from './annuaire.js';
 import { DepotCreneauxMemoire } from './creneaux.js';
 import { IdentitesMemoire } from './identites.js';
 import { DepotRendezVousMemoire, ServiceTeleconsultation } from './rendez-vous.js';
+import { ComptesCoupesMemoire, ServiceComptesCoupes } from './comptes-coupes.js';
 import { creerServeur } from './serveur.js';
 
 // Jetons factices : la vérification réelle (signature Keycloak) est testée dans @mbolo/identite.
@@ -43,6 +44,7 @@ async function serveur(
       return PATIENT;
     },
     service,
+    comptesCoupes: new ServiceComptesCoupes(new ComptesCoupesMemoire()),
     journal: creerJournal({ service: 'teleconsultation', ecrire: () => undefined }),
     limites,
   });
@@ -161,5 +163,29 @@ describe('API de téléconsultation : retrait d’un compte compromis (plan d’
     expect((await retirer(undefined, { sujet: 'u-m1' })).statusCode).toBe(401);
     expect((await retirer('securite', { sujet: 'u m1' })).statusCode).toBe(400);
     expect((await retirer('securite', { sujet: 'u-m1', salle: 'x' })).statusCode).toBe(400);
+  });
+});
+
+describe('API : compte d’un professionnel coupé (plan d’incident, E5)', () => {
+  it('le responsable sécurité coupe puis rétablit ; refusé aux autres ; identifiant vérifié', async () => {
+    const app = await serveur();
+    const appel = (jeton: string | undefined, action: string, id = 'prac-fictif-001') =>
+      app.inject({
+        method: 'POST',
+        url: `/securite/professionnels/${id}/${action}`,
+        ...(jeton ? { headers: { authorization: `Bearer ${jeton}` } } : {}),
+      });
+    expect((await appel('medecin', 'compte-coupe')).statusCode).toBe(403);
+    expect((await appel('assistance', 'compte-coupe')).statusCode).toBe(403);
+    expect((await appel(undefined, 'compte-coupe')).statusCode).toBe(401);
+    expect((await appel('securite', 'compte-coupe', 'prac%20x')).statusCode).toBe(400);
+
+    expect((await appel('securite', 'compte-coupe')).statusCode).toBe(201);
+    expect((await appel('securite', 'compte-coupe')).statusCode).toBe(200);
+
+    const r = await appel('securite', 'retablissement');
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ retabli: true });
+    expect((await appel('securite', 'retablissement')).json()).toEqual({ retabli: false });
   });
 });

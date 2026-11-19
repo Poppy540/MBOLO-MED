@@ -24,3 +24,10 @@ export { LIMITES_PAR_DEFAUT, creerServeur } from './serveur.js';
 export type { Limites } from './serveur.js';
 export { AnnuaireFhir, AnnuaireMemoire, versFiche } from './annuaire.js';
 export type { Annuaire, Fiche } from './annuaire.js';
+export {
+  AnnuaireSansComptesCoupes,
+  ComptesCoupesFhir,
+  ComptesCoupesMemoire,
+  ServiceComptesCoupes,
+} from './comptes-coupes.js';
+export type { ComptesCoupes } from './comptes-coupes.js';

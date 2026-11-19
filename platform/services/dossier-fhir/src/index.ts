@@ -53,6 +53,14 @@ export {
   verifierOrdonnance,
 } from './ordonnance.js';
 export type { Code, LigneOrdonnance, OptionsOrdonnance } from './ordonnance.js';
+export {
+  CODE_COMPTE_COUPE,
+  estCompteCoupe,
+  leverCompteCoupe,
+  marqueCompteCoupe,
+  verifierMarque,
+} from './compte-coupe.js';
+export type { OptionsCompteCoupe } from './compte-coupe.js';
 export { LIENS_PROCHE, PRENOM_MAX, SYSTEME_LIEN, procheInvite, verifierProche } from './proche.js';
 export type { LienProche, OptionsProche } from './proche.js';
 export {
