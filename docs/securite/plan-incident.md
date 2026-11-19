@@ -108,7 +108,7 @@ Restent à faire : écran du responsable sécurité ; suivi de l'issue de chaque
 
 | N° | Scénario | État |
 |---|---|---|
-| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.1, à valider puis à jouer avant la vague 1 ; 7 écarts pressentis (E1 à E7), E1 corrigé (règle `LecturesDossiersEnSerie`), E2 traité (procédure ci-dessus) |
+| 1 | [Compte professionnel compromis](exercice-sur-table-01.md) (hameçonnage, refus en série, bris de glace) | Brouillon v0.2 (2026-11-19), à valider puis à jouer avant la vague 1 ; écarts E1 à E5 traités, brouillons de E6 à valider par le juriste ; reste E7 (titulaires des rôles) et une date ; fiche d'animation prête |
 
 ## Contacts (à compléter — rôles, pas de données personnelles dans le dépôt)
 Directeur médical de garde · Responsable sécurité · Porteur de projet · Hébergeur · Prestataires critiques.

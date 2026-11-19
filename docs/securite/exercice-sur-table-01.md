@@ -1,6 +1,6 @@
-# Exercice sur table n°1 — Compte professionnel compromis — BROUILLON v0.1
+# Exercice sur table n°1 — Compte professionnel compromis — BROUILLON v0.2
 
-> **Brouillon préparé par l'Agent 6 le 2026-11-02**, à valider par le porteur de projet et le responsable sécurité avant d'être joué.
+> **Brouillon préparé par l'Agent 6 le 2026-11-02, mis à jour le 2026-11-19** (v0.2 : écarts E1 à E6 traités, fiche d'animation), à valider par le porteur de projet et le responsable sécurité avant d'être joué.
 >
 > - Critère 8 du passage en vague 1 : « Plan d'incident testé (exercice sur table) » ([bilan n°2](../../control-room/passages-de-vague/vague-1-2026-11-02.md)).
 > - **Tout est fictif** (`[FICTIF]`) : personnes, numéros, dossiers. L'exercice se joue autour d'une table ou en visioconférence, **sans rien toucher en production ni en recette**.
@@ -51,17 +51,47 @@ Durée prévue : **2 heures** (90 minutes de jeu, 30 minutes de retour d'expéri
 | **02 h 52** | Il demande le dossier de 40 patients [FICTIF] qui ne sont pas les siens, en 4 minutes. | L'alerte critique doit être reçue et prise en compte. | Règle `AccesRefusesEnRafale` (plus de 20 refus en 5 min pour un même compte) → **responsable sécurité**, gravité critique, appel OnCall. |
 | **02 h 58** | Il utilise le **bris de glace** sur 3 dossiers, avec le motif « urgence vitale ». | Relier les deux alertes ; qualifier « critique, sécurité des données » ; prévenir le porteur de projet. | Règle `BrisDeGlace` → `revue-acces` (gravité normale, revue sous 24 h). Les trois accès sont tracés (`AuditEvent`, motif conservé). |
 | **03 h 05** | *Question de l'animateur* : qui a été réveillé, par quel canal, et qui décide de couper le compte ? | Responsable sécurité joint ; astreinte technique appelée ; décision prise par un humain. | Circuit dans le plan d'incident et l'ADR-0016 ; **titulaires non désignés**. |
-| **03 h 15** | *Question* : comment couper l'accès **tout de suite** ? | 1. Désactiver le compte dans Keycloak et fermer toutes ses sessions. 2. Vérifier qu'aucun jeton encore valable ne permet d'accéder au dossier. 3. Ne pas annuler les rendez-vous des patients. | Désactivation et fermeture des sessions : console Keycloak (administrateur). Le service `identite` relit la fiche à chaque accès, mais une **suspension** (`POST /professionnels/:id/suspension`) n'a pas de motif « compte compromis » (liste fermée : signalement de l'Ordre, plainte confirmée, incident qualité confirmé). Durée de vie restante des jetons : `[À VÉRIFIER pendant l'exercice]`. |
+| **03 h 15** | *Question* : comment couper l'accès **tout de suite** ? | 1. Désactiver le compte dans Keycloak et fermer toutes ses sessions. 2. Vérifier qu'aucun jeton encore valable ne permet d'accéder au dossier. 3. Ne pas annuler les rendez-vous des patients. | Procédure « couper un compte compromis » du plan d'incident (écart E2) : désactiver le compte dans Keycloak, fermer ses sessions, supprimer sa double authentification ; retirer le compte des téléconsultations en cours (`POST /securite/retrait-salles`) ; marquer le compte « coupé » (`POST /securite/professionnels/:id/compte-coupe`, écart E5). Pas de suspension pour un compte volé. Un jeton déjà délivré reste valable **5 minutes au plus**. |
 | **03 h 40** | *Question* : que sait-on ? Quels dossiers ont été lus, et qu'est-ce qui a été lu ? | Lister à partir des traces : refus (rien de lu), bris de glace (3 dossiers lus), lectures autorisées des 6 patients du médecin depuis 02 h 47. | `AuditEvent` par dossier, avec qui, quand et pourquoi. Toutes les traces d'un même compte depuis une heure donnée : `GET /securite/traces-compte` (responsable sécurité, depuis la correction de l'écart E3) ; **pas encore d'écran**. |
 | **08 h 30** | Un patient [FICTIF] appelle l'assistance : « Dans mon historique, un médecin que je ne connais pas a ouvert mon dossier cette nuit. » | L'assistance vérifie l'identité par la procédure de rappel, ne confirme rien au téléphone, transmet au responsable sécurité, note l'appel. | Écran « Aider un patient qui appelle » (rappel au numéro du dossier). Depuis la correction de l'écart E4 : le patient conteste l'accès lui-même depuis son historique (alerte `AccesConteste` au responsable sécurité), et la procédure « accès contesté par un patient » du plan d'incident guide l'assistance. |
 | **09 h 00** | Le vrai Dr Fictif-Pro-07 [FICTIF] écrit : il ne peut plus se connecter et a des patients ce matin. | Rendez-vous du jour signalés à l'assistance, jamais annulés automatiquement ; réactiver le compte seulement après un nouveau mot de passe, une nouvelle double authentification et un entretien. | Section « Rendez-vous à reprendre » : depuis la correction de l'écart E5, elle liste aussi les rendez-vous d'un professionnel dont le compte est marqué « coupé » par le responsable sécurité ; la marque est levée au rétablissement. |
 | **10 h 00** | *Question* : faut-il notifier ? Qui, dans quel délai, avec quels mots ? | Avec le juriste : autorité de protection des données (CNPDCP ; autorité de l'UE sous 72 h si le RGPD s'applique) ; information des 3 patients dont le dossier a été lu ; brouillons préparés, envoyés par un humain. | Délais légaux gabonais `[À CONFIRMER]` (D-0003). Depuis l'écart E6 : brouillons du SMS, de la lettre au patient et de la notification à l'autorité ([information en cas de violation](information-violation-donnees.md)), à valider par le juriste ; envoi du SMS pas encore branché. |
-| **11 h 00** | *Clôture du jeu* : retour d'expérience. | Voir la section 6. | |
+| **11 h 00** | *Clôture du jeu* : retour d'expérience. | Voir la section 7. | |
 
 **Variante si le temps le permet.** Même scénario, mais l'attaquant ne lit que les 6 patients du médecin, par des accès autorisés. Question : qui s'en rend compte, et quand ?
 Avant la correction de l'écart E1, la réponse était : **personne**, avant qu'un patient ne regarde son historique. Depuis cette correction, la règle `LecturesDossiersEnSerie` appelle le responsable sécurité au-delà de 30 dossiers différents lus en une heure. Six dossiers ne la déclenchent pas : en séance, discuter du seuil et de ce qui reste invisible.
 
-## 5. Grille d'évaluation
+## 5. Fiche d'animation
+
+**Avant la séance** (au moins une semaine avant) :
+
+| À faire | Qui | État |
+|---|---|---|
+| Désigner les titulaires : responsable sécurité, astreinte technique, relecteur des bris de glace (écart E7) | Porteur de projet | `[À FAIRE]` (questions n°2 et n°10 de `memory.md`) |
+| Fixer la date et inviter les participants de la section 2 | Porteur de projet | `[À FAIRE]` |
+| Valider ce brouillon (scénario, cibles de la grille) | Porteur de projet et responsable sécurité | `[À FAIRE]` |
+| Imprimer une fiche par injection (heure de jeu et texte de la colonne « Injection » seulement, jamais les réponses) | Animateur | `[À FAIRE]` |
+| Ouvrir le journal d'incident fictif `INC-EXERCICE-01`, marqué `[FICTIF]`, pour la chronologie | Observateur (Agent 6) | Prêt le jour J |
+| Prévoir un chronomètre et un tableau visible de tous (heure de jeu, décisions, questions) | Animateur | `[À FAIRE]` |
+
+**Pendant la séance** :
+- L'animateur remet les injections une par une, à l'heure de jeu prévue, et n'en donne jamais la réponse.
+- Chaque geste est dit à voix haute, puis noté dans la chronologie avec l'heure réelle et l'heure de jeu.
+- Quand un outil manque ou qu'une réponse hésite, l'observateur le note comme écart et l'on continue.
+- À 11 h 00 (heure de jeu), le jeu s'arrête, même si tout n'est pas joué.
+
+**Chronologie (à remplir pendant la séance)** :
+
+| Heure réelle | Heure de jeu | Qui | Geste ou décision | Outil utilisé | Écart noté |
+|---|---|---|---|---|---|
+| | | | | | |
+
+**État de préparation au 2026-11-19.**
+- Côté outils, il ne manque plus rien pour jouer l'exercice. Les écarts E1 à E5 sont traités et ont tous un geste ou un outil, en ligne de commande ou par API (pas encore d'écran pour la sécurité).
+- Les brouillons de l'écart E6 attendent la validation du juriste. Ils peuvent servir pendant l'exercice comme brouillons.
+- Restent : les titulaires des rôles (E7), une date, et la présence du juriste ou du DPO pour l'injection de 10 h 00.
+
+## 6. Grille d'évaluation
 
 | Mesure | Cible | Relevé |
 |---|---|---|
@@ -75,7 +105,7 @@ Avant la correction de l'écart E1, la réponse était : **personne**, avant qu'
 | Chronologie tenue en temps réel | Oui | |
 | Aucune preuve modifiée ou effacée | Oui | |
 
-## 6. Retour d'expérience (30 minutes)
+## 7. Retour d'expérience (30 minutes)
 
 1. Ce qui a marché, ce qui a manqué, ce qui a surpris.
 2. Pour chaque écart : une **action**, un **rôle responsable**, une **échéance** ; une fiche problématique si une décision du porteur de projet est nécessaire.
@@ -87,14 +117,14 @@ Avant la correction de l'écart E1, la réponse était : **personne**, avant qu'
    - registre des risques.
 4. Date du prochain exercice. Le skill `reponse-incident` prévoit un exercice par trimestre.
 
-## 7. Écarts relevés en préparant l'exercice (à confirmer en séance)
+## 8. Écarts relevés en préparant l'exercice (à confirmer en séance)
 
 | N° | Écart | Proposition (à décider) |
 |---|---|---|
 | E1 | **Aucune alerte sur un volume anormal d'accès autorisés** d'un même professionnel : seuls les refus et les bris de glace sont surveillés. | **Corrigé** : événement `acces-professionnel` (service `identite`) et règle `LecturesDossiersEnSerie` (plus de 30 dossiers différents en 1 h, vers le responsable sécurité ; seuil provisoire à confirmer en séance) |
 | E2 | Pas de motif de suspension « compte compromis », et la suspension remet la fiche en vérification. La bonne coupure passe par Keycloak, mais la procédure n'est pas écrite. | **Traité** : procédure « couper un compte compromis » dans le [plan d'incident](plan-incident.md) (Keycloak : désactiver, fermer les sessions, retirer la double authentification ; jeton encore valable jusqu'à 5 min ; pas de suspension pour un compte volé). Retrait d'une téléconsultation en cours : `POST /securite/retrait-salles` (rôle `responsable-securite`) |
 | E3 | Pas d'écran ni de requête prête pour « toutes les traces d'un compte depuis H ». | **Traité** : `GET /securite/traces-compte` du service `identite` (rôle `responsable-securite`, 30 jours au plus, dossiers obtenus sans doublon), dans le [plan d'incident](plan-incident.md). Un écran reste à faire si l'exercice le confirme |
-| E4 | Pas de procédure pour un patient qui **conteste un accès** vu dans son historique. | **Traité** : `POST /patients/:id/acces/:traceId/contestation` (le patient lui-même, sans texte libre, trace dans le dossier), alerte `AccesConteste` et `GET /securite/contestations` (responsable sécurité) ; procédure « accès contesté par un patient » dans le [plan d'incident](plan-incident.md). bouton « Je ne reconnais pas cet accès » dans « Mes partages et accès » de l'application patient |
+| E4 | Pas de procédure pour un patient qui **conteste un accès** vu dans son historique. | **Traité** : `POST /patients/:id/acces/:traceId/contestation` (le patient lui-même, sans texte libre, trace dans le dossier), alerte `AccesConteste` et `GET /securite/contestations` (responsable sécurité) ; procédure « accès contesté par un patient » dans le [plan d'incident](plan-incident.md) ; bouton « Je ne reconnais pas cet accès » dans « Mes partages et accès » de l'application patient |
 | E5 | Un professionnel désactivé dans Keycloak mais toujours « vérifié » n'apparaît pas dans « Rendez-vous à reprendre ». | **Traité** : marque « compte coupé » (`Flag` du dossier, posée et levée par le responsable sécurité depuis le service `teleconsultation`) : professionnel retiré de l'annuaire, réservations refusées, rendez-vous à venir à reprendre ; fiche toujours « vérifiée », sans nouvelle vérification complète |
 | E6 | Aucun gabarit d'information des patients en cas de violation de données. | **Brouillons faits** ([information en cas de violation](information-violation-donnees.md)) : SMS au catalogue de `notifications` (contrôlé par les tests, envoyé par aucune route), lettre au patient, notification à l'autorité ; à valider par le juriste, puis envoi par le responsable sécurité sous un flag |
 | E7 | Titulaires des rôles non désignés ; aucune astreinte réelle. | Questions n°2 et n°10 de `memory.md` |
